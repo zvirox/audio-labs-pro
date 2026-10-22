@@ -35,7 +35,8 @@ Measured on Arch Linux / niri 26.04 Wayland / Intel Iris Xe:
 
 - `alp-ui-kit` is built in-house on iced; no raw `iced::widget::button` in
   screens (Phase 2 lint).
-- Blur needs a raw window handle, which iced 0.14 does not expose. See ADR 0003.
+- Blur needs a raw window handle. iced 0.14 exposes one through
+  `window::run`; see ADR 0012 (which supersedes ADR 0003).
 - A small toolkit wrapper in `alp-ui` isolates iced API churn.
 - Tauri and Slint are rejected for v1; revisiting them requires a new ADR with
   fresh measurements.

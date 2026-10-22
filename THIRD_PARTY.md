@@ -5,14 +5,16 @@ with a version and a license that is compatible with Apache-2.0 (see
 `docs/adr/0001-license-platform-scope.md`).
 
 Status legend: **P0** used by a Phase 0 spike, **P1** used by the Phase 1
-workspace, **planned** approved but not yet wired into the app.
+workspace, **P2** used by the Phase 2 shell, **planned** approved but not yet
+wired into the app.
 
 ## Rust crates
 
 | Crate | Version | License | Status | Purpose |
 |---|---|---|---|---|
-| iced | 0.14.0 | MIT | P0 | UI toolkit, pinned exactly; Phase 2 |
-| lilt | 0.8.2 | MIT | P0 | time-based transitions; Phase 2 |
+| iced | 0.14.0 | MIT | P2 | UI toolkit, pinned exactly; wgpu, canvas, advanced |
+| lilt | 0.8.2 | MIT | P2 | time-based panel transitions |
+| x11rb | 0.13.2 | MIT OR Apache-2.0 | P2 | KWin X11 blur property; safe Rust |
 | cpal | 0.18.2 | Apache-2.0 | P1 | audio I/O |
 | rtrb | 0.4.0 | MIT OR Apache-2.0 | P1 | lock-free SPSC ring buffer |
 | symphonia | 0.6.1 | MPL-2.0 | P1 | decoding (unmodified; file-level copyleft only) |
@@ -62,8 +64,8 @@ F5-TTS weights (CC-BY-NC), XTTS-v2 (CPML), KittenTTS 2 (custom license + AUP).
 | Asset | License | Status |
 |---|---|---|
 | CMU Pronouncing Dictionary v0.7b (`cmudict_data.json`) | BSD-style (CMU) | P0, used via `piper-plus-g2p`; ship the notice with the app |
-| Inter (static weights: Regular, Medium, SemiBold) | SIL OFL-1.1 | planned, bundle in `assets/fonts/` with the OFL text |
-| Apollo/Material icons — TBD | — | choose in Phase 2 |
+| Inter variable (`InterVariable.ttf`, family “Inter Variable”) | SIL OFL-1.1 | P2, bundled in `crates/alp-ui-kit/assets/fonts/` with `LICENSE-Inter.txt` |
+| Icons | — | no icon font in Phase 2; Unicode text glyphs render through Inter or the system fallback |
 
 ## Distribution obligations
 

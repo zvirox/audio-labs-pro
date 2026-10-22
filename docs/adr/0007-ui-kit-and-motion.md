@@ -43,5 +43,7 @@ animation candidates `lilt` 0.8.2 and `iced_anim` 0.3.1.
 ## Consequences
 
 - iced upgrades are our responsibility; one wrapper module isolates them.
-- A clippy `disallowed-methods` list blocks raw `iced::widget::button` in
-  `alp-ui` from Phase 2.
+- `scripts/check-ui.sh` blocks raw `iced::widget::button` in `alp-ui` from
+  Phase 2; a clippy `disallowed-methods` list remains a possible hardening.
+- Phase 2 implementation note: panel motion uses a lilt ease-out offset; the
+  spring settle was not needed for the stub and is deferred.

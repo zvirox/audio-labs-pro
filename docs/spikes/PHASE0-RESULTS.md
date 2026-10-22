@@ -1,5 +1,11 @@
 # Phase 0 — spike results
 
+> **Phase 2 update:** iced 0.14 exposes raw window/display handles through
+> `window::run`, so the vendor-patch assumption in ADR 0003 is cancelled. KWin/X11
+> blur and the Wayland tint fallback are implemented in `alp-ui::glass`; see
+> ADR 0012 and `docs/spikes/PHASE2-RESULTS.md`. The Phase 0 finding below is kept
+> as the measurement that led to the later decision.
+
 Machine: Arch Linux, kernel 7.2.11, niri 26.04 (Wayland), Intel TigerLake
 (Iris Xe, no discrete GPU), Rust 1.99.1, PipeWire audio. Wayland and X11
 (Xwayland) were exercised on this one machine; KDE, GNOME and NVIDIA are **not**

@@ -15,10 +15,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install ALSA headers
+      - name: Install system libraries
         run: |
           sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends libasound2-dev pkg-config
+          sudo apt-get install --yes --no-install-recommends \
+            libasound2-dev pkg-config \
+            libxkbcommon-dev libwayland-dev wayland-protocols \
+            libx11-dev libxcursor-dev libxrandr-dev libxi-dev \
+            libgl1-mesa-dev libegl1-mesa-dev libfontconfig1-dev \
+            libxcb1-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -48,3 +53,6 @@ jobs:
 
       - name: Module documentation guard
         run: bash scripts/check-docs.sh
+
+      - name: UI widget guard
+        run: bash scripts/check-ui.sh

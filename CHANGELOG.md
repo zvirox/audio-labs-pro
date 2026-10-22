@@ -5,6 +5,56 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+### Added (Phase 2 — shell and glass system)
+
+- `alp-ui-kit`: design tokens, bundled Inter variable font (family
+  `Inter Variable`) with OFL text, dark/light glass palettes, semantic
+  buttons/icon buttons/toggles/sliders/dropdowns/tabs/tooltips/progress, cards,
+  modal, toast, command palette, panel motion and a peak-pyramid canvas
+  waveform.
+- `alp-ui`: transparent undecorated window, custom chrome, four visible panel
+  defaults among eight stubs, drag/resize/z-order/snap/collapse/dock, responsive
+  geometry, versioned atomic `workspace.json`, command palette with autofocus,
+  keyboard shortcuts, Reduce motion, theme cycling, toast, worker job queue and
+  demo peaks.
+- Glass probe using iced 0.14's safe `window::run` handles; KWin/X11
+  `_KDE_NET_WM_BLUR_BEHIND_REGION` through `x11rb`; honest tint fallback with
+  `ALP_FORCE_TINT`.
+- `scripts/check-ui.sh` guard against raw `iced::widget::button` in `alp-ui`,
+  wired into CI with the Linux GUI build packages.
+- Phase 2 module docs, results, ADR 0012, updated architecture/stack/README and
+  third-party inventory.
+
+### Changed
+
+- ADR 0003 is superseded: no vendored `iced_winit` is needed because iced 0.14
+  exposes raw handles safely; ADR 0012 records the KWin/X11 path and the
+  unsafe Wayland limit.
+- ADR 0007 now points at the UI-widget guard and records that panel motion uses
+  a lilt ease-out offset, with a spring settle deferred.
+- CI installs winit/iced graphics libraries in addition to ALSA headers.
+
+### Measured (Phase 2)
+
+- 1-hour (3,600 s) waveform autoscroll: 60–61 frames/s, 16.6 ms average
+  frame time; first second 45–55 frames/s during load.
+- Idle CPU after startup: 0.00% over 7 s (0 scheduler ticks); idle RSS about
+  86 MB. One early run sampled a transient 4.25% during startup rendering.
+- 104 workspace tests pass (30 `alp-ui`, 18 `alp-ui-kit`, plus the Phase 1
+  suites and one doctest).
+
+### Known gaps (Phase 2)
+
+- Cross-desktop KDE/GNOME matrix not run on this machine; GNOME has no supported
+  blur protocol in this build. The KWin/X11 path compiles and its eligibility is
+  unit-tested; the compositor effect still needs a manual KDE/X11 run.
+- The panels are stubs; transport/timeline do not drive the engine or real media.
+- No full accessibility tree, screen-reader labels or in-app text scale.
+- `app.rs` is close to the 1,500-line ceiling; split views before the next UI
+  feature.
+- No standalone popover/spinner; button hover states are immediate, not spring
+  animated.
+
 ### Added (Phase 1 — foundation)
 
 - Cargo workspace (edition 2024, Rust 1.89) with nine crates:
@@ -62,8 +112,8 @@ versions follow the release milestones in the build plan.
 - WAV/FLAC/OGG Vorbis at v1; MP3 deferred (LGPL).
 - Moonshine for dictation; `alp-infer` as a separate process; heavy tier
   deferred to Phase 8.
-- Blur path: vendor a minimal `iced_winit` patch to expose window handles
-  (ADR 0003); tint fallback ships until it lands.
+- Blur path: KWin/X11 property via safe `x11rb`; Wayland/GNOME tint fallback
+  (ADR 0012 supersedes the ADR 0003 vendor patch).
 - Heavy voice-cloning tier deferred to Phase 8 (ADR 0008).
 
 ### Known gaps

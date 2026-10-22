@@ -39,6 +39,25 @@ impl Radius {
     pub const PILL: u16 = 999;
 }
 
+/// Control sizing in logical pixels.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Control;
+
+impl Control {
+    /// Compact row height.
+    pub const SM: u16 = 28;
+    /// Default control height.
+    pub const MD: u16 = 34;
+    /// Large primary action height.
+    pub const LG: u16 = 42;
+    /// Panel title bar height.
+    pub const TITLE_BAR: u16 = 34;
+    /// Resize grip hit area.
+    pub const GRIP: u16 = 14;
+    /// Custom window chrome height (title, panel menu and controls).
+    pub const CHROME: u16 = 46;
+}
+
 /// Motion durations in milliseconds (ADR 0007).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Duration;
@@ -68,14 +87,57 @@ impl Motion {
 }
 
 /// Light or dark theme selection.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ThemeMode {
     /// Dark glass (default).
+    #[default]
     Dark,
     /// Light glass.
     Light,
     /// Follow the desktop preference.
     System,
+}
+
+impl ThemeMode {
+    /// Stable string used by the workspace file.
+    #[must_use]
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Dark => "dark",
+            Self::Light => "light",
+            Self::System => "system",
+        }
+    }
+
+    /// Parse a persisted mode, falling back to dark.
+    #[must_use]
+    pub fn parse(value: &str) -> Self {
+        match value {
+            "light" => Self::Light,
+            "system" => Self::System,
+            _ => Self::Dark,
+        }
+    }
+
+    /// Resolve a system preference.
+    #[must_use]
+    pub fn resolve(self, system_dark: bool) -> Self {
+        match self {
+            Self::System if system_dark => Self::Dark,
+            Self::System => Self::Light,
+            other => other,
+        }
+    }
+
+    /// Cycle dark → light → system → dark.
+    #[must_use]
+    pub fn next(self) -> Self {
+        match self {
+            Self::Dark => Self::Light,
+            Self::Light => Self::System,
+            Self::System => Self::Dark,
+        }
+    }
 }
 
 /// Type scale in logical pixels.
@@ -93,6 +155,36 @@ impl TypeScale {
     pub const TITLE: u16 = 20;
     /// Screen titles.
     pub const DISPLAY: u16 = 28;
+}
+
+/// Detect a dark desktop preference from the environment.
+///
+/// iced does not expose the portal preference in 0.14, so this uses the two
+/// reliable Linux hints and falls back to dark. Callers can override with
+/// `ALP_SYSTEM_THEME=light|dark`.
+#[must_use]
+pub fn system_is_dark() -> bool {
+    if let Ok(value) = std::env::var("ALP_SYSTEM_THEME") {
+        return value.eq_ignore_ascii_case("dark");
+    }
+    if let Ok(theme) = std::env::var("GTK_THEME") {
+        let lower = theme.to_ascii_lowercase();
+        if lower.contains("dark") {
+            return true;
+        }
+        if lower.contains("light") {
+            return false;
+        }
+    }
+    if let Ok(value) = std::env::var("COLORFGBG") {
+        // `fg;bg`; 0-6 are dark, 8-15 are light.
+        if let Some(background) = value.rsplit(';').next()
+            && let Ok(index) = background.parse::<u8>()
+        {
+            return index < 8;
+        }
+    }
+    true
 }
 
 #[cfg(test)]
@@ -115,5 +207,22 @@ mod tests {
             .duration_ms(Duration::PANEL_MS),
             0
         );
+    }
+
+    #[test]
+    fn theme_mode_round_trips_and_cycles() {
+        for mode in [ThemeMode::Dark, ThemeMode::Light, ThemeMode::System] {
+            assert_eq!(ThemeMode::parse(mode.as_str()), mode);
+        }
+        assert_eq!(ThemeMode::Dark.next(), ThemeMode::Light);
+        assert_eq!(ThemeMode::Light.next(), ThemeMode::System);
+        assert_eq!(ThemeMode::System.next(), ThemeMode::Dark);
+        assert_eq!(ThemeMode::System.resolve(true), ThemeMode::Dark);
+        assert_eq!(ThemeMode::System.resolve(false), ThemeMode::Light);
+    }
+
+    #[test]
+    fn unknown_theme_mode_falls_back_to_dark() {
+        assert_eq!(ThemeMode::parse("solarized"), ThemeMode::Dark);
     }
 }
