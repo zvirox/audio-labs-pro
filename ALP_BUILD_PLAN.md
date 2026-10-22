@@ -1,6 +1,7 @@
-# Audio Lab Pro (ALP) — Agent Build Plan
+# Audio Labs Pro (ALP) — Agent Build Plan
 
-> Linux-only, English-only, fully-Rust audio studio: multitrack recording/editing/export + local AI TTS, dictation, voice profiles and optional voice cloning.
+> **Product name: Audio Labs Pro** (renamed from "Audio Lab Pro"). **ALP** is the abbreviation; the crate prefix stays `alp-` and the binary stays `alp`. Use the full name "Audio Labs Pro" in all user-facing text (window title, About dialog, desktop file, docs, packaging) and "ALP" only as shorthand in code and internal docs.
+> Linux-only, English-only, fully-Rust audio studio: multitrack recording/editing/export + local AI TTS, dictation, voice profiles, optional voice cloning, and a local MCP server so AI agents can edit, create and export audio (Phase 10).
 > Status: **planning**. Items marked **[VERIFY]** came from secondary sources and must be confirmed against primary docs/model cards before relying on them.
 
 ---
@@ -12,7 +13,7 @@
 3. Before adding **any** crate or model: record name, version, and license in `THIRD_PARTY.md`. Reject anything whose license conflicts with the app's license (see Open Decisions).
 4. Never copy code from Audacity (GPL) or any project whose license is incompatible. Study behavior, not source.
 5. `cargo fmt`, `cargo clippy -- -D warnings`, and `cargo test` must pass before every commit. Commit small and often.
-6. No telemetry. The only network traffic is **user-initiated model downloads**.
+6. No telemetry. The only outbound network traffic is **user-initiated model downloads**. The optional MCP server (Phase 10) is local-only: stdio by default, or a loopback or Unix-socket endpoint the user switches on. It never makes outbound connections.
 7. Never allocate, lock, or block inside the real-time audio callback.
 8. When an Open Decision blocks progress, stop and ask the human instead of guessing.
 9. Every phase ends with: updated module docs, an updated architecture diagram (if structure changed), updated `CHANGELOG.md`, a demo script, green guard scripts (file length, dependency directions, module docs), and a short "what's next" note.
@@ -31,6 +32,8 @@
 2. Follow the **allowed dependency directions** in 3.6. A new dependency edge needs an ADR and a diagram update **in the same commit**.
 3. `scripts/check-deps.sh` (built on `cargo metadata`) fails CI on forbidden edges.
 4. If code and diagram disagree, fix the code or deliberately update the diagram. Never leave drift.
+5. **All project changes are `Command`s in `alp-core`.** The UI never mutates project state any other way. Phase 10 adds a second client (the automation API behind MCP) over the same commands, so undo/redo, autosave and validation behave identically for humans and AI.
+6. **No feature exists only in MCP.** If an AI tool needs a capability, implement it in the right domain crate (core, media, dsp, voice, engine) so the UI can use it too. `alp-api` and `alp-mcp` hold schemas, permissions, sessions and transport only, never audio or editing logic.
 
 ### 0.3 Documentation rules
 1. **Every module gets its own doc file** under `docs/modules/`: `docs/modules/<crate>.md`, plus `docs/modules/<crate>/<submodule>.md` for each significant submodule.
@@ -65,10 +68,11 @@ If Phase 0 selects a different toolkit, port these rules to it and record an ADR
 - Local dictation (speech → text), transcript export.
 - Frosted-glass UI with modular floating panels (Motrix 2.0-inspired).
 - Linux only (Wayland + X11), English only.
+- Local MCP server (Phase 10): AI agents can create, edit, mix, transcribe, narrate and export audio, headless or live in the app.
 
 ### Out of scope (v1)
 - Windows/macOS, non-English UI or models.
-- Cloud APIs or accounts.
+- Cloud APIs or accounts. (The Phase 10 MCP server is local-only.)
 - Plugin hosting (CLAP/LV2) and MIDI — post-1.0 candidates.
 - Video editing.
 
@@ -90,6 +94,8 @@ If Phase 0 selects a different toolkit, port these rules to it and record an ADR
 | UI font | Inter |
 | UI components | In-house `alp-ui-kit` (interior.dev as design reference only); iced libraries evaluated in Phase 0 |
 | UI motion | Motion across the UI through a single `motion` module; honors Reduce motion |
+| App name | **Audio Labs Pro** (ALP); crate prefix `alp-` and binary `alp` unchanged |
+| AI integration | Local MCP server in Phase 10: AI can edit, create and export audio; local-only, stdio by default, permissioned, every AI edit undoable |
 
 ### Open (resolve in Phase 0)
 | # | Decision | Notes |
@@ -102,6 +108,10 @@ If Phase 0 selects a different toolkit, port these rules to it and record an ADR
 | D6 | Dictation model | Proposed: Moonshine (MIT, English); fallback Whisper `.en` (MIT) |
 | D7 | Component library: adopt an iced crate vs build in-house | Evaluate `iced-plus`, `iced_aw`, `iced_ui`; interior.dev is React-only |
 | D8 | Animation crate: `lilt` vs `iced_anim` | Pick from the Phase 0 motion spike (frame time, idle CPU) |
+| D9 | MCP SDK: official `rmcp` vs a thin hand-rolled layer, and the target spec revision | Resolve in Phase 10.0. Latest revision is 2026-07-28 (stateless, Tasks extension, multi-round-trip input). Confirm what the pinned `rmcp` implements **[VERIFY]** |
+| D10 | Live-control transport for attach mode: Unix-socket proxy (preferred) vs embedded loopback Streamable HTTP | Resolve in Phase 10.0 |
+| D11 | Default AI permission tier and approval mode | Proposed: Edit + Export (exports folder only), confirm destructive actions, checkpoint at session start. The human can choose Observe-only or Review mode |
+| D12 | Reverse-DNS app ID for Flatpak and the desktop file | Needs a domain or project URL the human controls. Ask the human in Phase 9; do not invent one |
 
 ---
 
@@ -119,11 +129,14 @@ alp/
 │  ├─ alp-infer/       # inference worker process (ONNX / GGUF backends)
 │  ├─ alp-ui/          # UI app (iced if confirmed): screens, panels, glass window
 │  ├─ alp-ui-kit/      # design tokens, Inter font, components (buttons etc.), motion
+│  ├─ alp-api/         # (Phase 10) automation API: typed operations, handles, permissions, jobs, audit log, control socket
+│  ├─ alp-mcp/         # (Phase 10) MCP server adapter: tools, resources, prompts, transports
 │  └─ alp-cli/         # headless export/TTS/transcribe for tests and scripting
 ├─ docs/
 │  ├─ README.md                       # docs index
 │  ├─ architecture/ARCHITECTURE.md    # diagram + dependency rules (source of truth)
 │  ├─ modules/                        # one .md per crate/module: <crate>.md, <crate>/<submodule>.md
+│  ├─ mcp/                            # (Phase 10) TOOLS.md, WORKFLOWS.md, SECURITY.md, CLIENT_SETUP.md, AGENT_GUIDE.md, EVAL.md
 │  └─ adr/
 ├─ scripts/            # check-file-length.sh, check-deps.sh, check-docs.sh
 ├─ assets/             # icons, fonts (Inter + OFL license), themes, model manifest
@@ -136,6 +149,7 @@ alp/
 - **Audio thread** (cpal callback): reads clips from pre-decoded buffers; communicates via lock-free ring buffers (`rtrb` or `ringbuf` [VERIFY choice]).
 - **Worker pool**: decode, peak generation, export, effect rendering; every job has a cancellation token and progress channel.
 - **Inference worker process** (`alp-infer`): runs TTS/STT/clone models out-of-process so a GPU/VRAM crash or OOM never takes down the editor. Talks to the app over a Unix socket with a small versioned protocol. Also keeps any GPL phonemizer behind a process boundary (get license advice if relevant to D1).
+- **MCP server process** (`alp-mcp`, Phase 10): a separate process, spawned by the AI client over stdio or started by the user. It never touches the audio thread. In headless mode it owns a session (offline render only, no audio device). In attach mode it forwards calls over a local control socket to the running UI, which applies them through the same command channel as user input.
 
 ### 3.3 Non-destructive editing model
 - Source media is **immutable** and imported into the project's `media/` folder (or referenced).
@@ -176,6 +190,11 @@ flowchart TD
     CORE["alp-core<br/>project model, commands, types"]
   end
   INFER["alp-infer (separate process)<br/>ONNX / GGUF backends"]
+  subgraph AUTO["Automation (Phase 10)"]
+    MCP["alp-mcp<br/>MCP server: tools, resources, prompts"]
+    API["alp-api<br/>typed operations, permissions, jobs, control socket"]
+  end
+  AI(["AI client / MCP host"])
 
   UI --> KIT
   UI --> ENG
@@ -196,6 +215,15 @@ flowchart TD
   MEDIA --> CORE
   INFER --> VOICE
   VOICE -. "Unix socket (runtime)" .-> INFER
+  MCP --> API
+  UI --> API
+  API --> ENG
+  API --> VOICE
+  API --> DSP
+  API --> MEDIA
+  API --> CORE
+  AI -. "MCP: stdio or loopback HTTP" .-> MCP
+  MCP -. "control socket (attach mode)" .-> UI
 ```
 
 Allowed dependency directions (enforced by `scripts/check-deps.sh`):
@@ -205,8 +233,29 @@ Allowed dependency directions (enforced by `scripts/check-deps.sh`):
 - `alp-voice` depends on core and media. It reaches `alp-infer` only through the socket protocol at runtime.
 - `alp-infer` depends on `alp-voice` (traits and protocol), core, and media.
 - `alp-ui-kit` depends on iced only (no ALP crates).
-- `alp-ui` depends on ui-kit, core, engine, media, and voice. It never touches cpal or ONNX directly.
+- `alp-ui` depends on ui-kit, core, engine, media, voice, and (Phase 10) api. It never touches cpal or ONNX directly.
 - `alp-cli` depends on core, engine, media, dsp, and voice. Never on UI.
+- `alp-api` (Phase 10) depends on core, engine (offline render only; no cpal output in headless mode), media, dsp, and voice. Never on UI, and never on ONNX or cpal directly.
+- `alp-mcp` (Phase 10) depends on `alp-api` and the MCP SDK only. In attach mode it reaches the running UI through the control socket at runtime, never by linking `alp-ui`.
+
+### 3.7 Automation architecture (Phase 10)
+Two clients drive the same engine: the human in the UI and AI agents through MCP. Both go through `alp-core` commands.
+
+```mermaid
+flowchart LR
+  H["Human<br/>(alp-ui)"] --> CMD["alp-core commands<br/>undo, validation, autosave"]
+  A["AI agent<br/>(MCP host)"] -. "MCP" .-> M["alp-mcp"] --> API["alp-api<br/>permissions, handles, jobs, audit"] --> CMD
+  CMD --> P["Project state<br/>(revisioned)"]
+  P --> R["Offline render and export<br/>engine, dsp, media"]
+  API --> V["alp-voice, then alp-infer<br/>TTS and STT"]
+```
+
+- **Headless mode** (scripts, CI, default): `alp-mcp --workspace <dir>` is spawned by the AI client over stdio. It owns the project session, renders offline, and needs no audio device or GUI.
+- **Attach mode** (live): the running app hosts a control socket (off by default; the user turns on "Allow AI control"). `alp-mcp --attach` forwards calls to it, so the user watches edits happen and can undo them. Human and AI edits are serialized through one command queue.
+- **No implicit state.** Every tool takes explicit handles (`project_id`, `track_id`, `clip_id`, `media_id`, `job_id`). There is no "current project". This matches the stateless MCP revision (2026-07-28) and works on any transport.
+- **Revisions.** Each project has a `revision` counter. Mutating tools return the new revision and accept `expected_revision` to detect concurrent edits.
+- **Long jobs** (TTS, transcription, analysis, export) run in a job manager. Clients that support the MCP Tasks extension get a task handle. Other clients get progress notifications and a `job_id` to poll with `job_status`.
+- **Results are written for models:** a short text summary plus `structuredContent` that matches an `outputSchema`; large lists are paginated; waveform and spectrogram renders come back as `image` content; files come back as `resource_link`s.
 
 ---
 
@@ -231,6 +280,10 @@ Allowed dependency directions (enforced by `scripts/check-deps.sh`):
 | Window blur | `ext-background-effect-v1`, KDE blur protocol, X11 property | Needs raw window handle access **[VERIFY in iced]** |
 | Serialization | `serde`, `serde_json` | |
 | Async/jobs | `tokio` or `rayon` + channels | Keep the audio thread free of both |
+| MCP server (Phase 10) | `rmcp`, the official Rust MCP SDK (`#[tool]` and `#[prompt]` macros, stdio and Streamable HTTP server transports, optional `elicitation` feature) | Pin a version that includes the HTTP `Host`-header protection (fixed in 1.4.0). Confirm which spec revision it implements (D9) **[VERIFY]** |
+| Tool schemas | `schemars` + `serde` | JSON Schema 2020-12 `inputSchema` and `outputSchema`; schema snapshot tests **[VERIFY crate choice]** |
+| Control socket | Unix domain socket + JSON-RPC, `SO_PEERCRED` uid check | Mode 0600 under `$XDG_RUNTIME_DIR` |
+| Images for AI | `png` or `image` crate **[VERIFY]** | Waveform and spectrogram renders returned as MCP image content |
 
 ---
 
@@ -271,7 +324,7 @@ Fields: `id`, `name`, `role` (tts|stt|clone|design), `tier` (builtin|download), 
 > Targets below are **initial** and should be tuned after the Phase 0 spikes.
 
 ### Phase 0 — Research spikes and decisions (≈1–2 weeks)
-**Goal:** replace assumptions with evidence; close D1–D6.
+**Goal:** replace assumptions with evidence; close D1–D8. (D9–D11 are resolved at the start of Phase 10; D12 in Phase 9.)
 
 Tasks
 - **UI spike:** one frosted-glass floating panel + a live scrolling waveform in **iced** and in **Tauri 2**. Test on KDE Plasma (Wayland), GNOME (Wayland), an X11 session, and one NVIDIA machine.
@@ -424,7 +477,7 @@ Tasks
 - **Reference capture/import:** record or import a clip; quality checks (length, clipping, noise, silence, sample rate) with actionable advice; optional auto-clean using Phase 5 tools; optional transcript for "continuation-style" cloning where the model supports it.
 - **Voice design:** create a voice from a text description where supported (e.g. VoxCPM2), then save it as a profile.
 - **Generation controls:** per-profile style/speed/emotion controls exposed only where the backend supports them (capability flags drive the UI).
-- **Consent and safety:** a clear consent gate before creating a clone (attestation that the user has the speaker's permission), stored in the profile; no bundled voices of real people; an optional "synthetic voice" metadata tag on exports (on by default); documented acceptable-use note.
+- **Consent and safety:** a clear consent gate before creating a clone (attestation that the user has the speaker's permission), stored in the profile; **the gate is human-only: no CLI or automation API (including MCP) may satisfy it or create a cloned profile on its own**; no bundled voices of real people; an optional "synthetic voice" metadata tag on exports (on by default); documented acceptable-use note.
 - **Compare tool:** A/B a reference vs generated line; side-by-side profile preview.
 - Cache generated audio by `(profile, text, params)` to avoid regenerating identical lines.
 
@@ -440,7 +493,7 @@ Acceptance
 Tasks
 - Performance pass: startup time, memory, peak-cache sizes, large-project stress tests.
 - Reliability: crash recovery, corrupted-project handling, fuzzing the project loader and importers.
-- Packaging: AppImage and Flatpak first; `.deb`/`.rpm` as follow-ups; desktop file, icons, MIME types for `.alp`.
+- Packaging: AppImage and Flatpak first; `.deb`/`.rpm` as follow-ups; desktop file, icons, MIME types for `.alp`. The app name everywhere is **Audio Labs Pro**. The reverse-DNS app ID needs a domain the human controls (D12): ask, do not invent one.
 - Accessibility and usability pass; first-run wizard (device setup, model selection, glass preview/fallback).
 - Documentation: user guide, keyboard shortcuts, voice-cloning ethics note, troubleshooting (Wayland/NVIDIA/ALSA/PipeWire).
 - Final license audit and `THIRD_PARTY.md` completeness; reproducible release builds.
@@ -448,8 +501,112 @@ Tasks
 Acceptance
 - **v1.0 release checklist** (Section 9) passes on a clean machine for each supported packaging format.
 
+### Phase 10 — MCP: AI-driven editing, creation, and export (≈4–5 weeks)  → **Release v1.1 "Agent"**
+**Goal:** any MCP-capable AI client can create, edit, mix, clean up, transcribe, narrate, and export audio in Audio Labs Pro, headless or live inside the running app, with every change undoable.
+
+Prerequisites: Phases 1–8 done (Phase 9 may run in parallel). Rules 0.1–0.4 apply, especially 0.2 items 5–6.
+
+**Design principles**
+1. **Same engine, second client.** MCP actions are `alp-core` commands, the same ones the UI uses (undo, validation, autosave).
+2. **Give the AI eyes and ears.** A model usually can't listen, so analysis tools return timestamped transcripts, loudness, silence maps, clipping, noise/hum/sibilance metrics, and waveform/spectrogram images. The standard loop is *analyze → edit → re-analyze → export*.
+3. **Safe by default.** Local-only, workspace-scoped, permissioned, audited. Human-only gates stay human-only.
+4. **Built for models.** Well-named tools shown by permission tier, explicit handles, stable readable IDs, paginated and size-capped results, errors that say what to do next.
+5. **No hidden state, no hidden features.** Explicit handles on every call. Nothing exists only in MCP.
+
+#### Work packages
+
+**10.0 Spike and decisions (≈2–3 days)**
+- Resolve D9–D11. Confirm which MCP spec revision the pinned `rmcp` implements. The latest revision (2026-07-28) is stateless: no initialize handshake or protocol sessions, a `server/discover` call, Tasks as an optional extension, and multi-round-trip input in place of server-initiated requests **[VERIFY SDK support]**. If the SDK lags, pin to the newest revision it supports and record the gap in an ADR.
+- Prototype three tools (`project_info`, `clip_split`, `export_audio`) and test with the MCP Inspector and at least two real MCP clients. Record which clients support Tasks, elicitation, image content, and audio content **[VERIFY]**.
+- Spike word-level timestamps. Some Moonshine builds return no timestamps **[VERIFY]**. If so, choose Whisper `.en` with word timestamps or a forced-alignment step. This gates filler-word removal in 10.4.
+
+**10.1 `alp-api` (automation service layer)**
+- Typed operations over core, media, dsp, voice, and engine (offline render only; no cpal in headless mode).
+- Handles and IDs: `project_id`, `track_id`, `clip_id`, `media_id`, `job_id`, `checkpoint_id`. Opaque, short, stable and readable (for example `clp_7f3a`).
+- Revisions and locking: one writer per project; `revision` on every project read; optional `expected_revision` on writes; conflict errors tell the AI to re-read.
+- Undo grouping: each tool call (or `edit_batch`) is one undo group labeled with the tool and client. A checkpoint at session start lets the whole AI session be rolled back.
+- Atomic batches: `edit_batch` validates N operations, then applies them all-or-nothing as one undo group.
+- Job manager: progress, cancellation, timeouts, and a result cache for TTS, transcription, analysis, and export.
+- Permission engine (10.6) and audit log (JSONL in the XDG state dir: time, client, tool, argument hash, result status, revision before and after).
+- Workspace sandbox: canonicalized directory allowlist for projects, imports, previews, and exports, with `..` and symlink-escape protection.
+- Units: seconds as numbers (the text echo also shows `hh:mm:ss.mmm`); sample-accurate internally; sample rate and channel layout always returned.
+
+**10.2 `alp-mcp` (the MCP server)**
+- **Transports:** stdio by default. Streamable HTTP only when the user enables it: bind `127.0.0.1`, validate `Host` and `Origin`, require a bearer token, no wildcard CORS. Binding to loopback is not authentication, so the token is mandatory. Do not implement the deprecated HTTP+SSE transport.
+- **Capabilities:** `tools`, `resources`, `prompts`, and `server/discover`. Deterministic tool order, `ttlMs` and `cacheScope` on list results (required by the 2026-07-28 spec), and a `title` on every tool.
+- **Schemas:** every tool has an `inputSchema` and `outputSchema` (JSON Schema 2020-12), returns `structuredContent` plus a short text summary, and sets annotations (read-only, destructive, idempotent, open-world hints **[VERIFY field names]**). Clients must treat annotations as untrusted, so enforcement lives in `alp-api`, never in the hints.
+- **Errors:** protocol errors only for malformed calls. Anything the model can fix is returned with `isError: true`, a plain-language cause, and a suggested next call.
+- **Long jobs:** if the client declared the Tasks extension, return a task handle. Otherwise send progress notifications and, past a timeout, return a `job_id` to poll with `job_status`. Cancellation maps to `job_cancel`.
+- **Human confirmation:** use MCP elicitation (multi-round-trip input) where the client supports it. Otherwise require approval in the GUI (attach mode) or refuse (headless) unless the human preset that permission in config.
+- **Size and pagination:** cap result size (initial target about 20 KB of text), `limit` and `cursor` on lists, a `detail` argument for summary versus full output.
+- **Logging:** MCP protocol logging is deprecated, so log to stderr and the audit log. Directories come from server configuration and tool arguments, not from the deprecated Roots feature.
+
+**10.3 Tool surface** (full schemas generated into `docs/mcp/TOOLS.md`)
+
+| Group | Tools | Tier |
+|---|---|---|
+| Projects and history | `project_list`, `project_info` · `project_create`, `project_open`, `project_save`, `project_close` · `history_list`, `history_undo`, `history_redo` · `checkpoint_create`, `checkpoint_restore` | Observe for reads, Edit for writes |
+| Media | `media_list` · `media_import` | Observe · Edit |
+| Tracks and clips | `track_add`, `track_update`, `track_remove`, `clip_add`, `clip_update`, `clip_split`, `clip_remove`, `range_edit` (delete, silence, insert, ripple across tracks), `marker_add`, `edit_batch` | Edit |
+| Effects | `effect_catalog` · `effect_apply` (any catalog effect: EQ, compressor, limiter, de-esser, noise reduction, loudness normalize, ducking), `effect_update`, `effect_remove`, `preset_apply` (for example `voice_cleanup`, `podcast_master`) | Observe · Edit |
+| Smart edits | `edit_trim_silence`, `edit_shorten_pauses`, `edit_remove_fillers`, `edit_cut_transcript_ranges`, `edit_match_loudness` | Edit |
+| Voice and TTS | `tts_voices`, `voice_profile_get` · `tts_generate`, `tts_script_generate`, `tts_regenerate`, `voice_design` (only if a design backend is installed) | Observe · Edit |
+| Transcription | `transcribe`, `transcript_get` (search and paging) | Observe (compute only) |
+| Analysis | `analyze_loudness`, `analyze_silence`, `analyze_quality` (clipping, noise floor, hum, sibilance), `analyze_spectrum`, `render_waveform`, `render_spectrogram`, `compare_renders` | Observe |
+| Export | `export_presets` · `export_audio`, `export_stems`, `export_transcript`, `preview_render` | Observe · Export |
+| Jobs | `job_status`, `job_cancel` | Same as the job |
+
+- Roughly 18 tools are visible at Observe, 51 at Edit, and 55 at Export. These counts are approximate: tune them with the eval harness (10.8), merge or drop rarely used tools, and keep a hard cap of 60. The spec allows the tool list to vary with the permissions presented, so lower tiers simply don't see higher-tier tools.
+- **Resources** (read-only `alp://` URIs; clients may subscribe to changes in attach mode): `alp://project/{id}`, `.../tracks`, `.../history`, `.../transcript`, `alp://media/{id}`, `alp://effects/catalog`, `alp://presets`, `alp://voices`, `alp://docs/agent-guide`.
+- **Prompts** (workflow recipes that spell out the tool sequence, the checks, and the stopping condition): `clean_up_voice_recording`, `produce_podcast_episode`, `narrate_script`, `multi_voice_dialogue`, `remove_fillers_and_dead_air`, `master_for_platform`, `fix_clipping_and_hum`, `audiobook_chapter_export`.
+- **Reference workflow (narrate and master):** `project_create` → `tts_voices` → `tts_script_generate` (one clip per line, on `trk_1`) → `media_import` (music bed) → `clip_add` on `trk_2` → `effect_apply` ducking (music under the voice track) → `analyze_loudness` → `effect_apply` loudness normalize (−16 LUFS, true peak −1 dBTP) → `analyze_loudness` again to verify → `render_waveform` for a visual check → `export_audio` with a podcast preset.
+
+**10.4 Gap-fill domain features** (built in the domain crates, with UI exposure, per rule 0.2 item 6)
+- **Auto-ducking:** lower music under speech using voice activity.
+- **Room-tone fill:** replace removed pauses and cuts with matching ambience, and crossfade at cut points.
+- **Loudness matching** between clips and tracks.
+- **Transcript-based cutting** (promoted from the Phase 7 stretch goal): remove words or ranges and cut the audio with micro-crossfades. Needs word-level timestamps (see 10.0).
+- **Filler-word detection** from the transcript, with a user-editable word list and conservative defaults.
+- **Batch apply:** run the same chain or preset over many files, with a per-file report.
+- **Deterministic mode:** a `seed` for TTS where the backend supports it; otherwise document the nondeterminism.
+
+**10.5 Live attach mode and GUI**
+- **Settings → AI control:** master switch (off by default), permission tier, workspace folders, approval mode, and transport options. Built from `alp-ui-kit` components in Inter, with motion that respects Reduce motion.
+- **Control host** in `alp-ui` using `alp-api`: Unix socket in `$XDG_RUNTIME_DIR`, mode 0600, `SO_PEERCRED` uid check, per-session token. A first connection from a new client shows an approval prompt (this session, or always).
+- **AI activity panel:** live list of tool calls with arguments and results, highlighting for AI-made edits, a **Stop AI** kill switch (revokes the session and cancels jobs immediately), and one-click **Undo all AI changes** (restores the session-start checkpoint).
+- **Approval modes:** *Auto* (apply, undo available) · *Confirm destructive* (default) · *Review* (stretch: AI edits go to a staged checkpoint that the human accepts or rejects).
+- **Concurrency:** human and AI edits share one command queue; revision conflicts reach the AI as actionable errors; the UI never blocks on an MCP call.
+- **Change notifications** to subscribed clients when the human edits the project.
+
+**10.6 Safety and security** (see also the Risk register)
+- **Permission tiers.** *Observe*: read, analyze, transcribe, render images. *Edit*: change projects inside the workspace, import media, generate speech with installed voices (all undoable). *Export*: write files to the exports and previews folders; no overwriting without confirmation.
+- **Never available through MCP at any tier:** creating or importing cloned voice profiles (human-only consent gate), downloading or installing models, changing app settings, disabling the synthetic-voice metadata tag, reading or writing outside the workspace, running commands.
+- **Human confirmation every time** (elicitation or GUI prompt): deleting a project or media, deleting a voice profile, overwriting an existing file, restoring a checkpoint that would discard human edits.
+- **Prompt-injection hygiene:** transcripts, filenames, tags, and markers are untrusted data, returned in clearly delimited fields and never interpreted as instructions. Tool descriptions are static and versioned. No shell or generic file tools exist.
+- **Process confinement:** stdio shares the client's trust domain, so run `alp-mcp` as an unprivileged process and, where practical, sandbox it to the workspace (for example Landlock or bubblewrap **[VERIFY]**).
+- **Limits:** rate limits, per-call timeouts, maximum payload sizes, and a maximum number of concurrent jobs.
+- **Audit log** of every call, viewable in the AI activity panel. It records hashes and lengths, never raw audio or full transcripts.
+- **Visibility:** the spec expects a human to be able to see and deny tool calls, so the UI shows a persistent AI-activity indicator whenever a session is attached.
+
+**10.7 Docs and tooling**
+- Module docs `docs/modules/alp-api.md` and `docs/modules/alp-mcp.md` using the module template.
+- `docs/mcp/TOOLS.md` (generated), `WORKFLOWS.md` (recipes with example call sequences), `SECURITY.md` (threat model and permissions), `CLIENT_SETUP.md` (config snippets for common MCP clients: stdio command, workspace argument, HTTP token), `AGENT_GUIDE.md` (conventions for AI: units, IDs, analyze before editing, checkpoint before big changes, verify before exporting, how to read errors; also served as `alp://docs/agent-guide`).
+- Update `check-deps.sh` and `check-docs.sh` for the new crates, and update `docs/architecture/ARCHITECTURE.md` (diagram and Section 3.7).
+
+**10.8 Evaluation harness**
+- Scripted-agent replays (no LLM) of every prompt recipe through a real MCP client library, with golden project JSON and render null-tests.
+- Optional LLM-in-the-loop trials with real MCP clients on a fixed task set (clean a noisy recording, narrate a script, remove fillers, master to a target loudness). Record success rate, tool-call count, tokens, and failure causes in `docs/mcp/EVAL.md`, then tighten tool descriptions and defaults from the findings.
+
+Acceptance
+- **Headless, MCP only, no GUI, no audio device:** (a) import a noisy speech WAV, analyze, apply `voice_cleanup`, normalize to −16 LUFS, verify with analysis, export WAV and MP3; (b) take a 1,000-word script, narrate it with a built-in voice, add a music bed with ducking, master, export; (c) remove fillers and long pauses from a 10-minute recording by transcript. Each finishes with zero manual steps, loudness within ±0.5 LU of target, true peak at or below −1 dBTP, and no clipping.
+- **Attach mode:** AI edits appear in the UI within about 200 ms (initial target); every AI action is undoable with Ctrl+Z; **Stop AI** and **Undo all AI changes** work; concurrent human edits produce revision conflicts that are handled gracefully.
+- **Security tests pass:** path traversal and symlink escape blocked; tiers enforced (a lower-tier session can't call higher-tier tools even if it forces the name); cloning, model install and settings changes unreachable; synthetic-voice tag can't be disabled; overwrite and delete require confirmation; HTTP rejects non-loopback `Host`, bad `Origin`, and a missing token; injection strings in transcripts and filenames never change behavior.
+- **Protocol:** verified with the MCP Inspector and at least two real clients; schemas snapshot-tested; deterministic tool ordering; both Tasks and the polling fallback work.
+- Latency and size budgets met (Section 8). Module docs, `docs/mcp/*`, and the architecture diagram are updated; guard scripts are green.
+- **v1.1 release checklist** (Section 9) passes.
+
 ### Post-1.0 backlog
-CLAP/LV2 plugin hosting; time-stretch/pitch (check license: Rubber Band is GPL; Signalsmith Stretch is MIT — **[VERIFY]**); spectral editing; macros/batch processing; text-based audio editing; MIDI; additional export codecs (Opus/AAC); optional Python-free multi-voice dialogue tools.
+CLAP/LV2 plugin hosting; time-stretch/pitch (check license: Rubber Band is GPL; Signalsmith Stretch is MIT — **[VERIFY]**); spectral editing; macros/batch processing; text-based audio editing; MIDI; additional export codecs (Opus/AAC); optional Python-free multi-voice dialogue tools. MCP follow-ups: authenticated remote access, multi-client sessions, Review mode for AI edits (if not finished in Phase 10), more workflow recipes.
 
 ---
 
@@ -461,6 +618,7 @@ CLAP/LV2 plugin hosting; time-stretch/pitch (check license: Rubber Band is GPL; 
 - **Soak tests:** long recordings and long playback on the reference machine.
 - **Model tests:** each backend has a smoke test (short phrase → non-silent audio of plausible duration), plus checksum and manifest validation.
 - **Cross-desktop manual matrix:** KDE Wayland, GNOME Wayland, X11, NVIDIA; PipeWire and ALSA.
+- **MCP tests (Phase 10):** scripted-agent replays through a real MCP client library; schema snapshot tests for every tool; security tests (path traversal, symlink escape, tier enforcement, injection strings, HTTP `Host`, `Origin` and token checks); MCP Inspector conformance runs; optional LLM-in-the-loop task trials recorded in `docs/mcp/EVAL.md`.
 
 ## 8. Performance and quality budgets (initial)
 | Area | Target |
@@ -471,6 +629,11 @@ CLAP/LV2 plugin hosting; time-stretch/pitch (check license: Rubber Band is GPL; 
 | Light TTS first audio | < ~2 s for a 20-word sentence (CPU) |
 | Dictation latency | Sub-second for short utterances (CPU) |
 | Installer (without heavy models) | Keep as small as practical; light models can be first-run downloads |
+| MCP read calls | < 100 ms for `project_info`, `history_list`, `media_list` (initial target) |
+| MCP edit calls | < 150 ms for a single edit; `edit_batch` of 50 operations < 1 s (initial target) |
+| MCP result size | About 20 KB of text per call by default; paginated beyond that |
+| Live attach latency | An AI edit is visible in the UI within about 200 ms |
+| MCP analysis and export | Run as jobs with progress; no call blocks the UI |
 
 ## 9. Release milestones
 | Release | After phase | Contents |
@@ -479,8 +642,9 @@ CLAP/LV2 plugin hosting; time-stretch/pitch (check license: Rubber Band is GPL; 
 | **v0.2 "Voice"** | 6–7 | Built-in TTS, script mode, dictation, model manager |
 | **v0.3 "Clone"** | 8 | Voice profiles, optional cloning/design backends |
 | **v1.0** | 9 | Polished, packaged, documented |
+| **v1.1 "Agent"** | 10 | Local MCP server: AI can edit, create and export audio, headless or live in the app |
 
-Per-release checklist: all acceptance criteria met · guard scripts green (file length, dependency directions, module docs) · cross-desktop matrix run · `THIRD_PARTY.md` audited · model licenses re-verified · changelog · packaged builds smoke-tested.
+Per-release checklist: all acceptance criteria met · guard scripts green (file length, dependency directions, module docs) · cross-desktop matrix run · `THIRD_PARTY.md` audited · model licenses re-verified · changelog · packaged builds smoke-tested · (v1.1 onward) MCP tool schema snapshots reviewed and the MCP security test suite green.
 
 ## 10. Risk register
 | Risk | Impact | Mitigation |
@@ -496,6 +660,13 @@ Per-release checklist: all acceptance criteria met · guard scripts green (file 
 | Animation causes jank or idle CPU use | Poor UX, battery drain | Redraw only while animating; no blur-radius animation; frame-time tests; Reduce-motion setting |
 | Files and modules grow into monoliths | Hard to maintain, agent mistakes | 1,500-line CI gate, early splits, per-module docs, dependency check |
 | Voice cloning misuse | Ethical/legal exposure | Consent gate, metadata tag, no celebrity voices, clear usage note |
+| AI makes destructive or unwanted edits | Lost work, bad output | Every change is an undoable command; session checkpoint; confirmation for destructive actions; Stop AI and Undo-all-AI buttons; audit log |
+| Prompt injection through transcripts, filenames, tags | AI steered into harmful tool use | Treat as untrusted data; no shell or generic file tools; tiered permissions; static tool descriptions; human gates for sensitive actions |
+| Local MCP endpoint abused by other local processes or web pages (DNS rebinding) | Unauthorized control of the app | stdio by default; HTTP is opt-in on loopback with a token and `Host`/`Origin` validation; control socket 0600 plus peer-uid check; per-session approval |
+| AI creates or misuses cloned voices | Consent and legal exposure | Cloning and profile creation are human-only; synthetic-voice tag can't be disabled via MCP; audit log |
+| MCP spec or SDK churn (the latest revision changed core mechanics: stateless, Tasks extension, multi-round-trip input) | Rework, client incompatibility | Thin `alp-mcp` adapter over `alp-api`; pinned SDK; tests with real clients; an ADR per spec change |
+| Too many tools or oversized results hurt AI performance | Low success rate, wasted tokens | Tier-based tool exposure, merged tools, pagination and size caps, eval harness to prune |
+| Human and AI edit at the same time | Conflicts, surprises | One command queue, project revisions, conflict errors, visible AI-activity indicator |
 
 ## 11. Phase handoff template (agent fills at the end of each phase)
 ```
@@ -504,6 +675,7 @@ Phase N — summary
 - Acceptance results: (criterion → pass/fail + evidence)
 - Guard checks: file length / dependency directions / module docs (pass/fail)
 - Docs updated: modules touched and any architecture-diagram changes
+- Public interfaces changed: project format version, CLI flags, MCP tool schemas (snapshots updated)
 - Deviations from plan and ADRs written: …
 - Known issues / tech debt: …
 - Open decisions needing the human: …
