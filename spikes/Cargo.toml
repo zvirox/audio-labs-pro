@@ -1,0 +1,15 @@
+[workspace]
+resolver = "3"
+members = [
+    "ui-iced",
+    "audio-spike",
+    "model-spike",
+    "wayland-probe",
+]
+
+# Phase 0 spikes are throwaway evidence artifacts. They are NOT part of the
+# shipping workspace (crates/) created in Phase 1 and must never be linked in.
+[workspace.package]
+edition = "2024"
+license = "Apache-2.0"
+publish = false

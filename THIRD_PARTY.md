@@ -1,0 +1,66 @@
+# Third-party inventory
+
+Rule: nothing is added to the build or shipped as an asset until it appears here
+with a version and a license that is compatible with Apache-2.0 (see
+`docs/adr/0001-license-platform-scope.md`).
+
+Status legend: **P0** used by a Phase 0 spike, **planned** approved but not yet
+wired into the app.
+
+## Rust crates
+
+| Crate | Version | License | Status | Purpose |
+|---|---|---|---|---|
+| iced | 0.14.0 | MIT | P0 | UI toolkit, pinned exactly |
+| lilt | 0.8.2 | MIT | P0 | time-based transitions |
+| cpal | 0.18.2 | Apache-2.0 | P0 | audio I/O |
+| rtrb | 0.4.0 | MIT OR Apache-2.0 | P0 | lock-free SPSC ring buffer |
+| symphonia | 0.6.1 | MPL-2.0 | P0 | decoding (unmodified; file-level copyleft only) |
+| hound | 3.5.1 | Apache-2.0 | P0 | WAV read/write |
+| rubato | 5.0.1 | MIT OR Apache-2.0 | planned | resampling (pin version) |
+| ort | 2.0.0-rc.15 | MIT OR Apache-2.0 | P0 | ONNX Runtime bindings |
+| ONNX Runtime (binary) | 1.31 | MIT | P0 | downloaded by `ort` |
+| piper-plus-g2p | 0.5.2 | MIT | P0 | English G2P (eSpeak-free) |
+| serde / serde_json | 1.0 | MIT OR Apache-2.0 | P0 | serialization |
+| wayland-client | 0.31.15 | MIT | P0 | compositor capability probe |
+| ebur128 | 0.1.10 | MIT | planned | LUFS |
+| nnnoiseless | 0.5.2 | BSD-3-Clause | planned | RNNoise denoise |
+| flacenc | 0.5.1 | Apache-2.0 | planned | FLAC encoding |
+| vorbis_rs | 0.5.6 | BSD-3-Clause | planned | OGG Vorbis encoding |
+| rustfft / realfft | 6.4.1 / 3.5.0 | MIT / MIT OR Apache-2.0 | planned | FFT |
+| fundsp | 0.23.0 | MIT OR Apache-2.0 | candidate | DSP blocks (own biquads preferred) |
+| tracing | 0.1 | MIT | planned | logging (never in the audio callback) |
+
+Rejected: `mp3lame-encoder`/LAME (LGPL-3.0), espeak-ng (GPL-3.0),
+`espeak-rs` bindings (would link GPL code), Qwen3-TTS-Rust example (no license),
+F5-TTS weights (CC-BY-NC), XTTS-v2 (CPML), KittenTTS 2 (custom license + AUP).
+
+## Models
+
+| Model | Role | License (verified) | Status |
+|---|---|---|---|
+| onnx-community/Kokoro-82M-v1.0-ONNX | main TTS | Apache-2.0 (HF cardData) | P0, ran end-to-end |
+| hexgrad/Kokoro-82M (weights origin) | main TTS | Apache-2.0 (HF cardData) | reference |
+| KittenML/kitten-tts-nano-0.8-fp32 | instant TTS | Apache-2.0 (model card front matter) | approved, not run |
+| onnx-community/moonshine-tiny-ONNX | dictation | MIT (HF cardData) | approved, not run |
+| Qwen/Qwen3-TTS-12Hz-0.6B-Base | clone "Fast" | Apache-2.0 (HF cardData) | Phase 8, not run |
+| Qwen/Qwen3-TTS-12Hz-1.7B-Base | clone "Best" | Apache-2.0 (HF cardData) | Phase 8, not run |
+| openbmb/VoxCPM2 | voice design | Apache-2.0 (HF cardData) | Phase 8, verify weights on model card |
+| OmniVoice | clone | **unverified** | blocked until license verified |
+| Silero VAD | VAD | MIT | candidate for Phase 7 |
+
+## Data and assets
+
+| Asset | License | Status |
+|---|---|---|
+| CMU Pronouncing Dictionary v0.7b (`cmudict_data.json`) | BSD-style (CMU) | P0, used via `piper-plus-g2p`; ship the notice with the app |
+| Inter (static weights: Regular, Medium, SemiBold) | SIL OFL-1.1 | planned, bundle in `assets/fonts/` with the OFL text |
+| Apollo/Material icons — TBD | — | choose in Phase 2 |
+
+## Distribution obligations
+
+- MPL-2.0 (`symphonia`): ship the license text; changes to its files must be
+  published. We do not patch it.
+- MIT/BSD/Apache: ship `LICENSE` + this file + the upstream notices.
+- Models: ship each `license_url` in the model manifest and show it before
+  download; no model is bundled without an accepted license screen.
