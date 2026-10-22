@@ -1,0 +1,24 @@
+[package]
+name = "alp-engine"
+description = "Real-time playback, capture, transport and offline mixdown for Audio Lab Pro"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+alp-core.workspace = true
+alp-media.workspace = true
+cpal.workspace = true
+hound.workspace = true
+rtrb.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,19 @@
+[package]
+name = "alp-ui"
+description = "Desktop application shell for Audio Lab Pro"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+alp-core.workspace = true
+alp-engine.workspace = true
+alp-media.workspace = true
+alp-ui-kit.workspace = true
+alp-voice.workspace = true
+
+[lints]
+workspace = true

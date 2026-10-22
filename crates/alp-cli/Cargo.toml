@@ -1,0 +1,34 @@
+[package]
+name = "alp-cli"
+description = "Headless decode, peaks, render and device tools for Audio Lab Pro"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lib]
+name = "alp_cli"
+path = "src/lib.rs"
+
+[[bin]]
+name = "alp-cli"
+path = "src/main.rs"
+
+[dependencies]
+alp-core.workspace = true
+alp-dsp.workspace = true
+alp-engine.workspace = true
+alp-media.workspace = true
+alp-voice.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

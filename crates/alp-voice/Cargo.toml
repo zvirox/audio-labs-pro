@@ -1,0 +1,17 @@
+[package]
+name = "alp-voice"
+description = "TTS, STT and voice-cloning traits, profiles and model manifest for Audio Lab Pro"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+alp-core.workspace = true
+alp-media.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

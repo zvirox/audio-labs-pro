@@ -2,4 +2,5 @@
 /spikes/target
 *.alp
 *.wav.tmp
+*.tmp
 *.peaks

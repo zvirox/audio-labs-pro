@@ -15,8 +15,9 @@ be near-instant. Peaks are derived data and can be rebuilt.
 - Values stored as **i16 min/max pairs** (−32768..32767), not f32, halving size.
 - Header: `ALPPEAKS` magic, u32 version, u32 sample rate, u64 frames, u32 level
   count; then per level `{u32 bucket_samples, u64 count, i16 pairs}`.
-- Stored in the project's `peaks/` directory, keyed by source id + a hash of
-  (file size, mtime, sample rate).
+- Stored in the project's `peaks/` directory. The filename is derived from the
+  source file stem plus an FNV-1a hash of (file size, mtime, sample rate); the
+  header repeats the version, rate and frame count so a stale entry is rejected.
 - Corrupt or stale caches are deleted and rebuilt; peaks are never required for
   correctness.
 

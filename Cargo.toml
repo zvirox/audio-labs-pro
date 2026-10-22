@@ -1,0 +1,54 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.89"
+license = "Apache-2.0"
+repository = "https://github.com/zvirox/audio-labs-pro"
+publish = false
+
+[workspace.dependencies]
+alp-core = { path = "crates/alp-core" }
+alp-dsp = { path = "crates/alp-dsp" }
+alp-engine = { path = "crates/alp-engine" }
+alp-media = { path = "crates/alp-media" }
+alp-voice = { path = "crates/alp-voice" }
+alp-ui-kit = { path = "crates/alp-ui-kit" }
+
+anyhow = "1.0"
+clap = { version = "4.5", features = ["derive"] }
+cpal = "0.18.2"
+dirs = "7.0.0"
+hound = "3.5.1"
+proptest = "1.12.0"
+rtrb = "0.4.0"
+rubato = "5.0.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+symphonia = { version = "0.6.1", default-features = false, features = [
+  "aiff",
+  "flac",
+  "id3v2",
+  "mp3",
+  "ogg",
+  "opt-simd",
+  "pcm",
+  "vorbis",
+  "wav",
+] }
+tempfile = "3.27"
+thiserror = "2.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+uuid = { version = "1.27", features = ["serde", "v4"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+dbg_macro = "deny"
+todo = "deny"
+unimplemented = "deny"

@@ -4,17 +4,18 @@ Source of truth for crate boundaries and dependency directions. If this file and
 `cargo metadata` disagree, the code or this document is wrong and must be fixed
 in the same commit.
 
-Status: Phase 0 draft (structure confirmed by five spikes; blur path is still an
-open decision, see ADR 0003).
+Status: Phase 1 complete (workspace, real-time engine, media pipeline, CLI and
+guards). Phase 2 adds the glass shell and editing UI.
 
 ## Processes
 
 | Process | Responsibility |
 |---|---|
 | `alp-ui` | One transparent OS window, floating panels, input, rendering. Never touches cpal or ONNX. |
-| `alp-engine` (in-process audio thread) | cpal callbacks, transport, mixer, recorder. Real-time safe: no allocation, no locks, no logging. |
+| `alp-engine` (in-process audio thread) | cpal callbacks, mixer, transport, recorder. Real-time safe: no allocation, no locks, no logging. |
 | `alp-infer` (separate process) | TTS/STT/clone models over ONNX Runtime and GGUF. Isolated so an OOM or GPU crash never kills the editor. Talks over a versioned Unix-socket protocol owned by `alp-voice`. |
 | Worker pool | Decode, peak building, effect rendering, export. Cancellable jobs with progress channels. |
+
 
 ## Crate graph
 
@@ -47,7 +48,6 @@ flowchart TD
   CLI --> DSP
   CLI --> MEDIA
   CLI --> CORE
-  ENG --> DSP
   ENG --> MEDIA
   ENG --> CORE
   VOICE --> MEDIA
@@ -64,20 +64,26 @@ Enforced by `scripts/check-deps.sh` from Phase 1.
 
 - `alp-core` depends on no other ALP crate.
 - `alp-media` and `alp-dsp` depend on `alp-core` only.
-- `alp-engine` depends on core, media and dsp. Never on ui or voice.
+- `alp-engine` depends on core and media. Never on dsp, ui or voice.
 - `alp-voice` depends on core and media. It reaches `alp-infer` only over the
   socket protocol.
 - `alp-infer` depends on `alp-voice` (traits and protocol), core and media.
-- `alp-ui-kit` depends on iced and small presentation crates only — never on
-  another ALP crate.
+- `alp-ui-kit` has no ALP dependencies; in Phase 2 it adds iced and small
+  presentation crates only.
 - `alp-ui` depends on ui-kit, core, engine, media and voice. It never touches
   cpal, ONNX or GGUF directly.
 - `alp-cli` depends on core, engine, media, dsp and voice. Never on ui.
 
-### Phase 0 additions
+### Phase 1 additions
 
-- The wayland glass/`ext-background-effect-v1` client lives in `alp-ui` behind a
-  `glass` module (Platform shell). It is the only place that talks to the
+- Phase 1 crates: `alp-core`, `alp-media`, `alp-engine` and `alp-cli` are
+  implemented; `alp-dsp`, `alp-voice`, `alp-infer`, `alp-ui-kit` and `alp-ui`
+  are boundaries with manifests, tests and docs.
+- `scripts/check-deps.sh` compares these rules against `cargo metadata` on
+  every CI run. `scripts/check-file-length.sh` and `scripts/check-docs.sh`
+  enforce the source-size and module-documentation rules.
+- The wayland glass/`ext-background-effect-v1` client will live in `alp-ui`
+  behind a `glass` module (Phase 2). It is the only place that talks to the
   compositor beyond what iced/winit does.
 - Peak cache format is owned by `alp-media`; UI reads it through a public type,
   never by parsing the file.
@@ -87,13 +93,24 @@ Enforced by `scripts/check-deps.sh` from Phase 1.
 | Context | May do | Must not do |
 |---|---|---|
 | UI thread | Render, input, cheap state updates | Decode, infer, block, wait on workers |
-| Audio callback | Read pre-decoded buffers, apply cheap DSP, write ring buffer | Allocate, lock, log, syscall, join, sleep |
+| Audio callback | Read pre-decoded buffers, mix, write the device buffer, drain `rtrb` commands | Allocate, lock, log, syscall, join, sleep |
 | Worker pool | Decode, peaks, offline render, export | Touch the audio callback directly |
 | `alp-infer` | Model load/inference, its own memory | Depend on UI state; hold the audio device |
 
-Measured Phase 0 evidence: cpal callback period 10.66 ms with zero callback
-gaps across a 10 s tone and a 5 s capture; peak pyramid for a 1-hour WAV builds
-in ~1.0 s and reloads in <1 ms (see `docs/spikes/PHASE0-RESULTS.md`).
+Phase 1 measurements (release build, this machine):
+
+| Check | Result |
+|---|---|
+| 1-hour mono 48 kHz WAV peak build | 1.42 s |
+| same cache reopened | 0.013 s |
+| eight simultaneous 60 s clips rendered | 2,880,000 frames in 1.5 s |
+| 10 s device playback | 931 callbacks, 476,672 frames, no stream error |
+| 10-minute eight-clip soak | see `docs/spikes/PHASE1-RESULTS.md` |
+
+The Phase 0 evidence remains the reference for the compositor and inference
+spikes (`docs/spikes/PHASE0-RESULTS.md`). The mixer is allocation-free by
+construction; an automated allocator guard is tracked in ADR 0011 as a
+follow-up.
 
 ## Non-destructive editing
 
@@ -108,7 +125,8 @@ in ~1.0 s and reloads in <1 ms (see `docs/spikes/PHASE0-RESULTS.md`).
 
 Directory `*.alp/` containing `project.json` (versioned + migrations), `media/`,
 `peaks/` (i16 min/max pyramid, 3 levels, ~3.4 MB per hour), `renders/` and
-`voices.ref`. Saves are atomic: temp file, fsync, rename.
+`voices.ref`. Saves are atomic: sibling temp file, `sync_all`, rename. A corrupt
+or stale peak cache is rebuilt; it is never authoritative.
 
 ## Glass strategy
 
@@ -123,7 +141,7 @@ Directory `*.alp/` containing `project.json` (versioned + migrations), `media/`,
 Measured: window translucency works on niri/Wayland; niri advertises
 `ext_background_effect_manager_v1`, but iced 0.14 exposes no window handle, so
 blur cannot be requested yet. ADR 0003 accepts a minimal vendored `iced_winit`
-patch in Phase 1 that publishes the `wl_surface`/`wl_display` pointers to a
+patch in Phase 2 that publishes the `wl_surface`/`wl_display` pointers to a
 `glass` module; until that lands, the tint fallback ships.
 
 ### Glass module boundary (Phase 2)

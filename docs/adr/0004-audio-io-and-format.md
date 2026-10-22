@@ -33,8 +33,9 @@ in Rust and its API changed in 0.18 (typed `Device` display, `SampleRate = u32`,
 
 ## Consequences
 
-- No lock, allocation, logging or syscall in the callback; enforced in Phase 1 by
-  a debug allocator guard.
+- No lock, allocation, logging or syscall in the callback. Phase 1 enforces this
+  by construction and review (`Mixer::render_into`); an automated debug
+  allocator guard is still a follow-up (ADR 0011).
 - Device format negotiation must support F32 and I16 at least (both seen).
 - Latency is reported as the callback period (≈10.7 ms at 48 kHz / 512 frames);
   the app must expose buffer-size settings for slower machines.

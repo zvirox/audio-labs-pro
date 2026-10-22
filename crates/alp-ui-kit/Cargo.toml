@@ -1,0 +1,12 @@
+[package]
+name = "alp-ui-kit"
+description = "Design tokens, components and motion for Audio Lab Pro"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true

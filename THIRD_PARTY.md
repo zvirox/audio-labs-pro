@@ -4,32 +4,40 @@ Rule: nothing is added to the build or shipped as an asset until it appears here
 with a version and a license that is compatible with Apache-2.0 (see
 `docs/adr/0001-license-platform-scope.md`).
 
-Status legend: **P0** used by a Phase 0 spike, **planned** approved but not yet
-wired into the app.
+Status legend: **P0** used by a Phase 0 spike, **P1** used by the Phase 1
+workspace, **planned** approved but not yet wired into the app.
 
 ## Rust crates
 
 | Crate | Version | License | Status | Purpose |
 |---|---|---|---|---|
-| iced | 0.14.0 | MIT | P0 | UI toolkit, pinned exactly |
-| lilt | 0.8.2 | MIT | P0 | time-based transitions |
-| cpal | 0.18.2 | Apache-2.0 | P0 | audio I/O |
-| rtrb | 0.4.0 | MIT OR Apache-2.0 | P0 | lock-free SPSC ring buffer |
-| symphonia | 0.6.1 | MPL-2.0 | P0 | decoding (unmodified; file-level copyleft only) |
-| hound | 3.5.1 | Apache-2.0 | P0 | WAV read/write |
-| rubato | 5.0.1 | MIT OR Apache-2.0 | planned | resampling (pin version) |
-| ort | 2.0.0-rc.15 | MIT OR Apache-2.0 | P0 | ONNX Runtime bindings |
+| iced | 0.14.0 | MIT | P0 | UI toolkit, pinned exactly; Phase 2 |
+| lilt | 0.8.2 | MIT | P0 | time-based transitions; Phase 2 |
+| cpal | 0.18.2 | Apache-2.0 | P1 | audio I/O |
+| rtrb | 0.4.0 | MIT OR Apache-2.0 | P1 | lock-free SPSC ring buffer |
+| symphonia | 0.6.1 | MPL-2.0 | P1 | decoding (unmodified; file-level copyleft only) |
+| hound | 3.5.1 | Apache-2.0 | P1 | WAV read/write |
+| rubato | 5.0.1 | MIT OR Apache-2.0 | P1 | offline FFT resampling |
+| ort | 2.0.0-rc.15 | MIT OR Apache-2.0 | P0 | ONNX Runtime bindings; Phase 6 |
 | ONNX Runtime (binary) | 1.31 | MIT | P0 | downloaded by `ort` |
 | piper-plus-g2p | 0.5.2 | MIT | P0 | English G2P (eSpeak-free) |
-| serde / serde_json | 1.0 | MIT OR Apache-2.0 | P0 | serialization |
+| serde / serde_json | 1.0 | MIT OR Apache-2.0 | P1 | serialization |
+| thiserror | 2.0 | MIT OR Apache-2.0 | P1 | typed errors |
+| clap | 4.6 | MIT OR Apache-2.0 | P1 | CLI grammar |
+| anyhow | 1.0 | MIT OR Apache-2.0 | P1 | CLI error context |
+| dirs | 7.0 | MIT OR Apache-2.0 | P1 | XDG base directories |
+| uuid | 1.27 | Apache-2.0 OR MIT | P1 | typed project ids |
+| proptest | 1.12 | MIT OR Apache-2.0 | P1 (dev) | undo/redo property test |
+| tempfile | 3.27 | MIT OR Apache-2.0 | P1 (dev) | temporary files in tests |
+| tracing | 0.1 | MIT | P1 | logging (never in the audio callback) |
+| tracing-subscriber | 0.3 | MIT | P1 | log filter and formatting |
 | wayland-client | 0.31.15 | MIT | P0 | compositor capability probe |
 | ebur128 | 0.1.10 | MIT | planned | LUFS |
 | nnnoiseless | 0.5.2 | BSD-3-Clause | planned | RNNoise denoise |
 | flacenc | 0.5.1 | Apache-2.0 | planned | FLAC encoding |
 | vorbis_rs | 0.5.6 | BSD-3-Clause | planned | OGG Vorbis encoding |
-| rustfft / realfft | 6.4.1 / 3.5.0 | MIT / MIT OR Apache-2.0 | planned | FFT |
+| rustfft / realfft | 6.4.1 / 3.5.0 | MIT / MIT OR Apache-2.0 | P1 (transitive) | FFT (via rubato) |
 | fundsp | 0.23.0 | MIT OR Apache-2.0 | candidate | DSP blocks (own biquads preferred) |
-| tracing | 0.1 | MIT | planned | logging (never in the audio callback) |
 
 Rejected: `mp3lame-encoder`/LAME (LGPL-3.0), espeak-ng (GPL-3.0),
 `espeak-rs` bindings (would link GPL code), Qwen3-TTS-Rust example (no license),
