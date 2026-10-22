@@ -1,6 +1,6 @@
 [package]
 name = "alp-voice"
-description = "TTS, STT and voice-cloning traits, profiles and model manifest for Audio Lab Pro"
+description = "TTS, STT and voice-cloning traits, profiles and model manifest for Audio Labs Pro"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

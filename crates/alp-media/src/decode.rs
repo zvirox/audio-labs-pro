@@ -6,7 +6,11 @@
 
 use std::path::Path;
 
-use symphonia::core::codecs::audio::AudioDecoderOptions;
+use symphonia::core::codecs::audio::well_known::{
+    CODEC_ID_AAC, CODEC_ID_FLAC, CODEC_ID_MP3, CODEC_ID_OPUS, CODEC_ID_PCM_F32LE,
+    CODEC_ID_PCM_S16LE, CODEC_ID_PCM_S24LE, CODEC_ID_PCM_S32LE, CODEC_ID_VORBIS,
+};
+use symphonia::core::codecs::audio::{AudioCodecId, AudioDecoderOptions};
 use symphonia::core::errors::Error as SymphoniaError;
 use symphonia::core::formats::probe::Hint;
 use symphonia::core::formats::{FormatOptions, FormatReader, TrackType};
@@ -59,7 +63,7 @@ pub fn probe(path: impl AsRef<Path>) -> Result<MediaInfo, MediaError> {
             .as_ref()
             .map_or(1, |channels| channels.count() as u16),
         frames: track.num_frames,
-        codec: format!("{:?}", params.codec),
+        codec: codec_label(params.codec),
     })
 }
 
@@ -83,7 +87,7 @@ where
         .and_then(|params| params.audio())
         .ok_or_else(|| MediaError::Decode("missing audio codec parameters".into()))?
         .clone();
-    let codec = format!("{:?}", params.codec);
+    let codec = codec_label(params.codec);
     let mut decoder = symphonia::default::get_codecs()
         .make_audio_decoder(&params, &AudioDecoderOptions::default())
         .map_err(|error| MediaError::Decode(format!("could not create decoder: {error}")))?;
@@ -145,6 +149,19 @@ where
         frames: Some(frames),
         codec,
     })
+}
+
+fn codec_label(codec: AudioCodecId) -> String {
+    let label = match codec {
+        CODEC_ID_FLAC => "flac",
+        CODEC_ID_VORBIS => "vorbis",
+        CODEC_ID_OPUS => "opus",
+        CODEC_ID_MP3 => "mp3",
+        CODEC_ID_AAC => "aac",
+        CODEC_ID_PCM_S16LE | CODEC_ID_PCM_S24LE | CODEC_ID_PCM_S32LE | CODEC_ID_PCM_F32LE => "pcm",
+        _ => return format!("{codec:?}"),
+    };
+    label.to_owned()
 }
 
 fn open_format(path: &Path) -> Result<Box<dyn FormatReader>, MediaError> {

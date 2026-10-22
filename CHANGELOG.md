@@ -1,9 +1,65 @@
 # Changelog
 
-All notable changes to Audio Lab Pro. Format loosely follows Keep a Changelog;
+All notable changes to Audio Labs Pro. Format loosely follows Keep a Changelog;
 versions follow the release milestones in the build plan.
 
 ## [Unreleased]
+
+### Added (Phase 3 — recording and single-track editing)
+
+- `alp-core`: selection/cursor/snap model, clipboard fragments, undoable
+  `DeleteRange`/`SilenceRange`/`PasteClips`/`DuplicateClip`/`PunchIn` commands,
+  `NormalizeClip`, and non-destructive reverse/invert clip flags.
+- `alp-core`: source-level peak measurement and serde defaults, plus atomic
+  `autosave/project.json` recovery through `ProjectPaths`.
+- `alp-engine`: crash-safe capture to a raw f32 spool with a chunk-synced JSON
+  manifest, `recover_capture`, peak/RMS input meter, device selection and
+  optional monitoring. Reverse and inverted clips now render in mixer and
+  offline render.
+- `alp-media`: WAV/FLAC export with bit depth, sample rate, deterministic TPDF
+  dither, RIFF/Vorbis metadata, atomic replacement, and a null-test comparison
+  helper. FLAC works around Symphonia 0.6.1's short-final-block rejection.
+- `alp-cli`: `render --format/--bit-depth/--sample-rate/--dither` plus tags,
+  import-time resampling/conversion and peak capture, `record --device/--monitor/
+  --chunk-seconds`, `recover`, `delete-range`, `autosave`, `recover-project` and
+  `null-test`.
+- `alp-ui`: input picker, monitor and punch-in toggles, record start/stop with
+  peak/RMS meters, drag/drop background import, a live `EditSession` inspector
+  with clip list, selection fields, cut/copy/paste/delete/silence/trim/split/
+  duplicate, normalize/reverse/invert, envelope dip/reset, gain/fades, undo/redo,
+  recording import and background mix export.
+- Phase 3 module docs, ADR 0013, `scripts/phase3-demo.sh` and results page.
+
+### Changed
+
+- `alp-ui/src/app.rs` was split: panel rendering now lives in
+  `alp-ui/src/app/views.rs`; the live editing model lives in
+  `alp-ui/src/session.rs`.
+- `flacenc` is now a Phase 3 dependency (`default-features = false`).
+- `alp-engine`: the capture ring buffer is ten seconds and the spool writer polls
+  at 1 ms, so chunk syncing no longer drops callbacks on a busy disk.
+
+### Measured (Phase 3)
+
+- `scripts/phase3-demo.sh`: 2-clip 5 s project, 44.1 kHz → 48 kHz conversion,
+  autosave recovery from 3 to 4 clips, 480,000-frame reference, 24-bit WAV and
+  FLAC exports, null-test max difference 1.8e-7 (threshold 0.001).
+- 30-minute stereo capture soak: 86,401,536 frames, 1,800.032 s, 168,753
+  callbacks, 0 dropped samples.
+- Forced-kill capture recovery: 379,904 frames recovered after `SIGKILL`.
+- Workspace tests: 144 passing plus doctests; fmt and clippy `-D warnings` green.
+
+### Known gaps (Phase 3)
+
+- Hardware acceptance was run on the system default 48 kHz stereo input; other
+  devices, sample rates and channel counts remain untested.
+- A 30-minute stereo capture needs about 1.5 GB free for the spool and final
+  WAV; the harness workspace follows `TMPDIR`.
+- The desktop session opens a fixed `ui-demo` project and autosaves it, but
+  there is no project picker, save-as or recent-project list.
+- Import after recording is synchronous and can briefly block the UI.
+- Normalization uses the source peak, not a per-clip measured peak.
+- Monitoring is a nearest-frame copy, not a filtered resampler.
 
 ### Added (Phase 2 — shell and glass system)
 

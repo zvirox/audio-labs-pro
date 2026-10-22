@@ -16,9 +16,9 @@ use ort::value::Tensor;
 
 const SAMPLE_RATE: u32 = 24_000;
 
-/// "Hello from Audio Lab Pro." in Kokoro's IPA alphabet (fallback when no G2P).
+/// "Hello from Audio Labs Pro." in Kokoro's IPA alphabet (fallback when no G2P).
 const IPA: &str = "həlˈoʊ fɹʌm ˈɔːdioʊ læb pɹˈoʊ";
-const TEXT: &str = "Hello from Audio Lab Pro.";
+const TEXT: &str = "Hello from Audio Labs Pro.";
 
 fn phonemize(text: &str) -> Result<String, Box<dyn std::error::Error>> {
     use piper_plus_g2p::Phonemizer;

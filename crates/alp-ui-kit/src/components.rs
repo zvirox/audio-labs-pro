@@ -1,4 +1,4 @@
-//! The Audio Lab Pro control set.
+//! The Audio Labs Pro control set.
 //!
 //! Screens never construct raw iced buttons: every interactive control goes
 //! through this module so variants, padding, focus and motion stay consistent.

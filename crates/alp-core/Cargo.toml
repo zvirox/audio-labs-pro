@@ -1,6 +1,6 @@
 [package]
 name = "alp-core"
-description = "Project model, identifiers, commands and persistence for Audio Lab Pro"
+description = "Project model, identifiers, commands and persistence for Audio Labs Pro"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

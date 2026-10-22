@@ -28,7 +28,7 @@ use waveform::Waveform;
 
 fn main() -> iced::Result {
     iced::application(App::boot, App::update, App::view)
-        .title("Audio Lab Pro — Phase 0 UI spike")
+        .title("Audio Labs Pro — Phase 0 UI spike")
         .transparent(true)
         .decorations(false)
         .antialiasing(true)

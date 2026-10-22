@@ -16,7 +16,8 @@ designed to run without allocation, locks, logging or syscalls.
 - `EngineCommand`, `CommandSender`, `CommandReceiver`, `command_channel`
 - `list_devices`, `DeviceInfo`, `DeviceDirection`
 - `play_scene`, `PlaybackReport`
-- `record_to_wav`, `CaptureReport`
+- `CaptureConfig`, `Recording`, `InputMeter`, `CaptureReport`
+- `start_recording`, `record_to_wav`, `recover_capture`
 - `render_scene`, `render_scene_to_wav`, `RenderReport`, `DEFAULT_BLOCK_FRAMES`
 - `EngineError`
 
@@ -45,7 +46,10 @@ designed to run without allocation, locks, logging or syscalls.
 - Envelope cursors and the device scratch buffer are allocated before the
   stream starts.
 - The control channel is an `rtrb` SPSC ring; producers never block.
-- Capture copies samples into an SPSC ring; a writer thread does WAV I/O.
+- Capture copies samples into a ten-second SPSC ring; a writer thread does
+  raw-spool I/O and syncs a manifest at chunk boundaries.
+- Capture metering uses atomics. Monitoring uses a second SPSC ring and a
+  nearest-frame output copy; it never allocates in either callback.
 - The backend error callback only sets an atomic flag.
 
 ## Error handling
@@ -62,12 +66,18 @@ Unit tests cover sample-accurate mixing, overlapping clips, fades, envelope
 interpolation, block-size invariance, transport transitions and loop wrapping,
 scene validation and resampling length. Device tests are intentionally omitted
 from CI because hosted runners have no sound card; acceptance playback is run on
-a real machine with `scripts/phase1-demo.sh --play`.
+a real machine with `scripts/phase1-demo.sh --play`. Capture acceptance used
+`scripts/phase3-demo.sh --record --soak --minutes 30`: 0 dropped samples and a
+recovered forced-kill take.
 
 ## Known limits
 
-- Playback and capture use the default device only.
+- Playback uses the default output device; capture accepts an exact input device
+  name and falls back to the host default.
 - Pan is stored but not applied; the effect chain owns it in Phase 5.
 - Playback decodes all sources before the stream starts.
 - Only f32 and i16 device formats are supported.
-- Capture writes float32 WAV and does not resample.
+- Capture writes float32 WAV and does not resample. Monitoring is a simple
+  nearest-frame copy, not a filtered resampler.
+- A 30-minute stereo capture needs about 1.5 GB free for the spool and final WAV.
+  The Phase 3 harness workspace follows `TMPDIR`.

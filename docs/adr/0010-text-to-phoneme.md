@@ -32,7 +32,7 @@ shipped in assets. No GPL code enters the build.
 End-to-end run on this machine:
 
 ```
-g2p: "Hello from Audio Lab Pro." -> "həlˈoʊ fɹʌm ˈɑdiːˌoʊ lˈæb pɹˈoʊ."
+g2p: "Hello from Audio Labs Pro." -> "həlˈoʊ fɹʌm ˈɑdiːˌoʊ lˈæb pɹˈoʊ."
 tokens=34 skipped=""
 Kokoro-82M inference: 589–822 ms for 2.25 s audio (RTF 0.26–0.36)
 ```

@@ -1,4 +1,4 @@
-//! Design tokens shared by every Audio Lab Pro screen.
+//! Design tokens shared by every Audio Labs Pro screen.
 //!
 //! Values are unitless logical pixels or milliseconds. No screen may hard-code
 //! its own spacing, radius or duration (build-plan rule 0.4.8).

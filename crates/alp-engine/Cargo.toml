@@ -1,6 +1,6 @@
 [package]
 name = "alp-engine"
-description = "Real-time playback, capture, transport and offline mixdown for Audio Lab Pro"
+description = "Real-time playback, capture, transport and offline mixdown for Audio Labs Pro"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -14,6 +14,8 @@ alp-media.workspace = true
 cpal.workspace = true
 hound.workspace = true
 rtrb.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 

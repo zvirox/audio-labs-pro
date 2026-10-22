@@ -20,7 +20,11 @@ audio devices, codecs or a UI.
   `SetClipGain`, `SetClipFades`, `SetClipEnvelope`, `SetClipEffects`,
   `SetTrackGain`, `SetTrackPan`, `SetTrackMuted`, `SetTrackSolo`,
   `RenameProject`, `RenameTrack`
-- `ProjectPaths`, `AppDirs`, `to_json`, `from_json`, `schema_version`
+- Phase 3 edits: `DeleteRange`, `SilenceRange`, `PasteClips`, `DuplicateClip`,
+  `PunchIn`, `NormalizeClip`, `SetClipReversed`, `SetClipInverted`
+- Selection and clipboard: `Selection`, `Clipboard`, `ClipFragment`, `copy_range`
+- `ProjectPaths` including `autosave`, `recover_autosave`, `discard_autosave`
+- `AppDirs`, `to_json`, `from_json`, `schema_version`
 - `write_atomic`, `create_temp_sibling`, `commit_temp`
 - `init_logging`, `CoreError`
 
@@ -33,7 +37,9 @@ audio devices, codecs or a UI.
 3. `CommandStack::undo` calls `revert`; `redo` applies again.
 4. `ProjectPaths::save` serialises the project to the versioned JSON envelope,
    writes a sibling temp file, fsyncs it and renames it into place.
-5. Media paths are stored relative to the project root and resolved only at
+5. `ProjectPaths::autosave` writes the same envelope to `autosave/` without
+   replacing the clean file; `recover_autosave` validates and promotes it.
+6. Media paths are stored relative to the project root and resolved only at
    load or render time.
 
 ## Allowed dependencies
@@ -59,11 +65,11 @@ before every save.
 
 ## Testing
 
-Unit tests cover IDs, frame conversion, project validation, atomic files and
-path helpers, plus apply/revert for the most-used commands. The
-`tests/undo_redo.rs` property test applies random sequences across fourteen
-command types, then checks that full undo and redo reproduce the serialised
-project byte-for-byte.
+Unit tests cover IDs, frame conversion, project validation, atomic files, path
+helpers and autosave recovery, plus apply/revert for the most-used commands. The
+`tests/undo_redo.rs` property test applies random sequences across 23 Phase 1 and
+Phase 3 command variants, then checks that full undo and redo reproduce the
+serialised project byte-for-byte.
 
 ## Known limits
 

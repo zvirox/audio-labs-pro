@@ -1,4 +1,4 @@
-//! `alp-cli` — headless tools for Audio Lab Pro.
+//! `alp-cli` — headless tools for Audio Labs Pro.
 //!
 //! The CLI is the Phase 1 acceptance harness: it generates fixtures, decodes
 //! files, builds and reopens peak caches, and renders projects without a UI.

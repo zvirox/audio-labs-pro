@@ -1,4 +1,4 @@
-# Audio Lab Pro
+# Audio Labs Pro
 
 A Linux-only, English-only audio studio written in Rust: multitrack
 recording/editing/mixing/export plus local AI text-to-speech, dictation and voice
@@ -11,11 +11,17 @@ downloads.
 
 ## Status
 
-Phase 1 (foundation) and Phase 2 (UI shell and glass system) are complete. The
-workspace builds, the project model and audio engine are tested, and the desktop
-binary now opens a real transparent shell with bundled Inter, eight floating
-panel stubs, drag/resize/z-order/snap/collapse/dock, a GPU canvas waveform,
-command palette, shortcuts, Reduce motion, worker jobs and persisted layout.
+Phases 1–3 are complete on this machine. Phase 3 (recording and single-track
+editing) is green: crash-safe capture with recovery, input peak/RMS metering
+and monitoring, undoable range edits, import conversion, clipboard, trim,
+fades/gain/normalize/reverse/invert, envelope dips, punch-in, background
+drag/drop import, autosave recovery, and WAV/FLAC export with dither and tags.
+The shell exposes these through the transport, inspector and export panels.
+
+Hardware acceptance also passes: a 30-minute 48 kHz stereo capture recorded
+86,401,536 frames with **0 dropped samples**, and a capture killed with
+`SIGKILL` recovered 379,904 frames. See
+[Phase 3 results](docs/spikes/PHASE3-RESULTS.md).
 
 Real compositor blur is implemented for KWin on X11. Wayland and GNOME keep the
 legible tint fallback because the Wayland background-effect bridge requires
@@ -29,6 +35,7 @@ See:
 - [Phase 0 results](docs/spikes/PHASE0-RESULTS.md)
 - [Phase 1 results](docs/spikes/PHASE1-RESULTS.md)
 - [Phase 2 results](docs/spikes/PHASE2-RESULTS.md)
+- [Phase 3 results](docs/spikes/PHASE3-RESULTS.md)
 - [Third-party licenses](THIRD_PARTY.md)
 
 ## Build and test
@@ -81,14 +88,28 @@ cargo run -p alp-cli -- decode demo.wav
 cargo run -p alp-cli -- peaks demo.wav
 cargo run -p alp-cli -- new demo.alp --name "My Project"
 cargo run -p alp-cli -- import demo.alp demo.wav
-cargo run -p alp-cli -- render demo.alp mix.wav --bit-depth float32
+cargo run -p alp-cli -- render demo.alp mix.flac --format flac --bit-depth int24 \
+  --dither triangular --title "My mix"
 cargo run -p alp-cli -- play demo.alp
 cargo run -p alp-cli -- devices
+cargo run -p alp-cli -- record take.wav --seconds 10 --chunk-seconds 2
+cargo run -p alp-cli -- recover take.wav
+cargo run -p alp-cli -- autosave demo.alp
+cargo run -p alp-cli -- recover-project demo.alp
+cargo run -p alp-cli -- null-test reference.wav mix.wav
 ```
 
 `scripts/phase1-demo.sh` is the Phase 1 acceptance harness: a one-hour fixture,
 peak-cache miss/hit timing, an eight-clip project and an offline render. Add
 `--play`, `--soak` (ten minutes) or `--record` for hardware checks.
 
-Phase 2 remains a shell demo: the transport and panels are stubs, not a working
-editor. Recording and editing arrive in Phase 3.
+`scripts/phase3-demo.sh` is the Phase 3 harness: import conversion, autosave
+recovery, WAV/FLAC export and null tests. Add `--record` for forced-kill capture
+recovery, or `--soak --minutes 30` for the full dropout gate. A 30-minute stereo
+soak needs about 1.5 GB free in `$TMPDIR`; set `TMPDIR` to a larger disk if
+needed.
+
+The transport playback controls and most panels are still shell demos. The
+inspector edits the fixed `ui-demo` project, recording and imports write real
+WAVs into its `media/` directory, autosave protects unsaved edits, and export
+renders the edited project. A project picker and save-as remain future work.

@@ -5,8 +5,8 @@ with a version and a license that is compatible with Apache-2.0 (see
 `docs/adr/0001-license-platform-scope.md`).
 
 Status legend: **P0** used by a Phase 0 spike, **P1** used by the Phase 1
-workspace, **P2** used by the Phase 2 shell, **planned** approved but not yet
-wired into the app.
+workspace, **P2** used by the Phase 2 shell, **P3** used by Phase 3 recording and
+editing, **planned** approved but not yet wired into the app.
 
 ## Rust crates
 
@@ -36,7 +36,7 @@ wired into the app.
 | wayland-client | 0.31.15 | MIT | P0 | compositor capability probe |
 | ebur128 | 0.1.10 | MIT | planned | LUFS |
 | nnnoiseless | 0.5.2 | BSD-3-Clause | planned | RNNoise denoise |
-| flacenc | 0.5.1 | Apache-2.0 | planned | FLAC encoding |
+| flacenc | 0.5.1 | Apache-2.0 | P3 | FLAC encoding (`default-features = false`) |
 | vorbis_rs | 0.5.6 | BSD-3-Clause | planned | OGG Vorbis encoding |
 | rustfft / realfft | 6.4.1 / 3.5.0 | MIT / MIT OR Apache-2.0 | P1 (transitive) | FFT (via rubato) |
 | fundsp | 0.23.0 | MIT OR Apache-2.0 | candidate | DSP blocks (own biquads preferred) |

@@ -233,6 +233,9 @@ pub struct Source {
     pub channels: u16,
     /// Native length in frames.
     pub frames: u64,
+    /// Largest absolute sample value measured at import.
+    #[serde(default)]
+    pub peak: f32,
     /// Import time in Unix milliseconds.
     pub imported_at_ms: u64,
 }
@@ -257,8 +260,16 @@ impl Source {
             sample_rate,
             channels,
             frames,
+            peak: 0.0,
             imported_at_ms: now_ms(),
         })
+    }
+
+    /// Record the measured source peak for normalization.
+    #[must_use]
+    pub fn with_peak(mut self, peak: f32) -> Self {
+        self.peak = peak;
+        self
     }
 
     fn validate(&self) -> Result<(), CoreError> {
@@ -273,6 +284,9 @@ impl Source {
         }
         if !(MIN_SAMPLE_RATE..=MAX_SAMPLE_RATE).contains(&self.sample_rate) {
             return Err(CoreError::InvalidSampleRate(self.sample_rate));
+        }
+        if !self.peak.is_finite() || self.peak < 0.0 {
+            return Err(CoreError::validation("source peak is invalid"));
         }
         Ok(())
     }
@@ -364,6 +378,12 @@ pub struct Clip {
     pub fade_out_frames: u64,
     /// Volume automation relative to the clip start.
     pub envelope: Vec<EnvelopePoint>,
+    /// Play the source region backwards.
+    #[serde(default)]
+    pub reversed: bool,
+    /// Flip the sample sign during playback and render.
+    #[serde(default)]
+    pub inverted: bool,
     /// Effect chain placeholders (Phase 5 fills these in).
     pub effects: Vec<EffectRef>,
 }
@@ -386,6 +406,8 @@ impl Clip {
             fade_in_frames: 0,
             fade_out_frames: 0,
             envelope: Vec::new(),
+            reversed: false,
+            inverted: false,
             effects: Vec::new(),
         }
     }

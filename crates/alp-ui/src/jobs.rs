@@ -8,7 +8,6 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::time::Duration;
 
 /// Lifecycle of a background job.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -137,21 +136,6 @@ impl JobQueue {
             let _ = tx.send(JobEvent::Finished(id, result));
         });
         id
-    }
-
-    /// Start a short deterministic demo job (used by the export queue stub).
-    pub fn spawn_demo_export(&mut self, name: impl Into<String>) -> u64 {
-        self.spawn(name, |reporter| {
-            for step in 0..=100u16 {
-                if reporter.is_cancelled() {
-                    return Err("cancelled".into());
-                }
-                reporter.progress(f32::from(step) / 100.0);
-                reporter.detail(format!("Rendering stem {step}%"));
-                std::thread::sleep(Duration::from_millis(12));
-            }
-            Ok("export-ready.wav".into())
-        })
     }
 
     /// Drain pending events and update job state.

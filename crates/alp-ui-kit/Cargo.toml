@@ -1,6 +1,6 @@
 [package]
 name = "alp-ui-kit"
-description = "Design tokens, components and motion for Audio Lab Pro"
+description = "Design tokens, components and motion for Audio Labs Pro"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

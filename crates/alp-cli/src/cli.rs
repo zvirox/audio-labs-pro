@@ -4,12 +4,12 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 
-/// Headless tools for Audio Lab Pro.
+/// Headless tools for Audio Labs Pro.
 #[derive(Debug, Parser)]
 #[command(
     name = "alp-cli",
     version,
-    about = "Decode, inspect, render and play Audio Lab Pro projects"
+    about = "Decode, inspect, render and play Audio Labs Pro projects"
 )]
 pub struct Cli {
     /// Tracing filter (defaults to ALP_LOG, then `info`).
@@ -104,15 +104,36 @@ pub enum Command {
         name: Option<String>,
     },
 
-    /// Render a project to WAV offline.
+    /// Render a project to WAV or FLAC offline.
     Render {
         /// Project directory or `project.json`.
         project: PathBuf,
-        /// Output WAV path.
+        /// Output media path.
         output: PathBuf,
-        /// Output format: `16`, `24` or `float32`.
+        /// Container: `wav` or `flac`.
+        #[arg(long, default_value = "wav")]
+        format: String,
+        /// Bit depth: `int16`, `int24` or `float32` (WAV only).
         #[arg(long, default_value = "int16")]
         bit_depth: String,
+        /// Target sample rate in Hz (defaults to the project rate).
+        #[arg(long)]
+        sample_rate: Option<u32>,
+        /// Dither: `none` or `triangular`.
+        #[arg(long, default_value = "none")]
+        dither: String,
+        /// Title tag.
+        #[arg(long)]
+        title: Option<String>,
+        /// Artist tag.
+        #[arg(long)]
+        artist: Option<String>,
+        /// Album tag.
+        #[arg(long)]
+        album: Option<String>,
+        /// Comment tag.
+        #[arg(long)]
+        comment: Option<String>,
     },
 
     /// Play a project on the default output device.
@@ -131,12 +152,72 @@ pub enum Command {
         json: bool,
     },
 
-    /// Record the default input device to a WAV file.
+    /// Record an input device to a crash-safe WAV file.
     Record {
         /// Output WAV path.
         output: PathBuf,
         /// Duration in seconds.
         #[arg(long, default_value_t = 5.0)]
         seconds: f64,
+        /// Exact input device name (defaults to the host default).
+        #[arg(long)]
+        device: Option<String>,
+        /// Monitor input through the default output device.
+        #[arg(long)]
+        monitor: bool,
+        /// Manifest sync interval in seconds.
+        #[arg(long, default_value_t = 10.0)]
+        chunk_seconds: f64,
+    },
+
+    /// Finish a recording left behind by a forced kill.
+    Recover {
+        /// Output WAV path used by the interrupted recording.
+        output: PathBuf,
+        /// Emit machine-readable JSON.
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Delete a timeline range and write the result to autosave only.
+    DeleteRange {
+        /// Project directory or `project.json`.
+        project: PathBuf,
+        /// Range start in seconds.
+        start: f64,
+        /// Range end in seconds.
+        end: f64,
+        /// Leave a gap instead of closing it.
+        #[arg(long)]
+        no_ripple: bool,
+    },
+
+    /// Write a crash-recovery autosave without replacing project.json.
+    Autosave {
+        /// Project directory or `project.json`.
+        project: PathBuf,
+    },
+
+    /// Restore the latest autosave over project.json.
+    RecoverProject {
+        /// Project directory or `project.json`.
+        project: PathBuf,
+        /// Emit machine-readable JSON.
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Null-test an export against a reference render.
+    NullTest {
+        /// Reference render, usually a float WAV from `render`.
+        reference: PathBuf,
+        /// Exported file to compare.
+        rendered: PathBuf,
+        /// Maximum absolute sample difference (linear, 0..=1).
+        #[arg(long, default_value_t = 0.001)]
+        tolerance: f32,
+        /// Emit machine-readable JSON.
+        #[arg(long)]
+        json: bool,
     },
 }

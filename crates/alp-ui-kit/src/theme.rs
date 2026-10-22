@@ -112,7 +112,7 @@ impl ThemeColors {
     #[must_use]
     pub fn to_theme(self) -> Theme {
         Theme::custom(
-            "Audio Lab Pro",
+            "Audio Labs Pro",
             theme::Palette {
                 background: self.background,
                 text: self.text,

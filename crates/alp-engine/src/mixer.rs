@@ -107,7 +107,11 @@ impl Mixer {
 
             for timeline_frame in overlap_start..overlap_end {
                 let clip_frame = timeline_frame - clip_start;
-                let source_frame = clip.source_start + clip_frame;
+                let source_frame = if clip.reversed {
+                    clip.source_end.saturating_sub(1).saturating_sub(clip_frame)
+                } else {
+                    clip.source_start + clip_frame
+                };
                 let source_index = source_frame as usize * source_channels;
                 if source_index + source_channels > source_samples.len() {
                     continue;
@@ -122,16 +126,18 @@ impl Mixer {
                     gain *= remaining as f32 / clip.fade_out_frames as f32;
                 }
                 gain *= envelope_gain(&clip.envelope, cursor, clip_frame);
+                let polarity = if clip.inverted { -1.0 } else { 1.0 };
 
                 let destination = (timeline_frame - start) as usize * channels;
                 if source_channels == 1 {
-                    let value = source_samples[source_index] * gain;
+                    let value = source_samples[source_index] * gain * polarity;
                     for channel in 0..channels {
                         out[destination + channel] += value;
                     }
                 } else {
                     for channel in 0..channels.min(source_channels) {
-                        out[destination + channel] += source_samples[source_index + channel] * gain;
+                        out[destination + channel] +=
+                            source_samples[source_index + channel] * gain * polarity;
                     }
                 }
             }
@@ -190,6 +196,8 @@ mod tests {
             fade_in_frames: 0,
             fade_out_frames: 0,
             envelope: Vec::new(),
+            reversed: false,
+            inverted: false,
         }
     }
 
@@ -241,6 +249,37 @@ mod tests {
         assert!(output[0].abs() < 1e-6);
         assert!((output[50] - 0.5).abs() < 1e-6);
         assert!((output[99] - 0.99).abs() < 1e-6);
+    }
+
+    #[test]
+    fn reverse_reads_the_clip_backwards() {
+        let source = Arc::new(
+            SourceAudio::from_samples(48_000, 1, vec![1.0, 2.0, 3.0, 4.0]).expect("source"),
+        );
+        let mut reversed = clip(0, 4, 0, 1.0);
+        reversed.source = source;
+        reversed.reversed = true;
+        let scene = MixScene::new(48_000, 1, vec![reversed]).expect("scene");
+        let mut mixer = Mixer::new(scene);
+        let mut output = vec![0.0f32; 4];
+        mixer.render_into(&mut output);
+        assert_eq!(output, vec![4.0, 3.0, 2.0, 1.0]);
+    }
+
+    #[test]
+    fn invert_flips_the_sample_sign() {
+        let source =
+            Arc::new(SourceAudio::from_samples(48_000, 1, vec![0.5, -0.25, 0.75]).expect("source"));
+        let mut inverted = clip(0, 3, 0, 1.0);
+        inverted.source = source;
+        inverted.inverted = true;
+        let scene = MixScene::new(48_000, 1, vec![inverted]).expect("scene");
+        let mut mixer = Mixer::new(scene);
+        let mut output = vec![0.0f32; 3];
+        mixer.render_into(&mut output);
+        assert!((output[0] + 0.5).abs() < 1e-6);
+        assert!((output[1] - 0.25).abs() < 1e-6);
+        assert!((output[2] + 0.75).abs() < 1e-6);
     }
 
     #[test]

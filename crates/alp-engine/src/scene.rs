@@ -91,6 +91,10 @@ pub struct SceneClip {
     pub fade_out_frames: u64,
     /// Volume automation relative to the clip start.
     pub envelope: Vec<EnvelopePoint>,
+    /// Play the source range backwards.
+    pub reversed: bool,
+    /// Flip the sample sign during playback.
+    pub inverted: bool,
 }
 
 impl SceneClip {
@@ -266,6 +270,8 @@ impl MixScene {
                     fade_in_frames,
                     fade_out_frames,
                     envelope,
+                    reversed: clip.reversed,
+                    inverted: clip.inverted,
                 });
             }
         }
@@ -355,6 +361,8 @@ impl MixScene {
                 fade_in_frames,
                 fade_out_frames,
                 envelope,
+                reversed: clip.reversed,
+                inverted: clip.inverted,
             });
         }
         Self::new(target_rate, self.channels, clips)
@@ -425,6 +433,8 @@ mod tests {
             fade_in_frames: 0,
             fade_out_frames: 0,
             envelope: Vec::new(),
+            reversed: false,
+            inverted: false,
         };
         let scene = MixScene::new(48_000, 2, vec![clip]).expect("scene");
         let converted = scene.resampled(96_000).expect("resample");
@@ -443,6 +453,8 @@ mod tests {
             fade_in_frames: 100,
             fade_out_frames: 100,
             envelope: Vec::new(),
+            reversed: false,
+            inverted: false,
         };
         clip.envelope = vec![EnvelopePoint {
             frame: 4_800,
@@ -502,6 +514,8 @@ mod tests {
             fade_in_frames: 0,
             fade_out_frames: 0,
             envelope: Vec::new(),
+            reversed: false,
+            inverted: false,
         };
         assert!(MixScene::new(48_000, 2, vec![clip]).is_err());
     }

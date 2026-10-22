@@ -6,11 +6,14 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use alp_core::{
-    AddClip, AddSource, AddTrack, Clip, ClipId, CommandStack, FrameRange, Project, ProjectPaths,
-    Source, SourceId, Track, TrackId, secs_to_frames,
+    AddClip, AddSource, AddTrack, Clip, ClipId, CommandStack, DeleteRange, FrameRange, Project,
+    ProjectPaths, Source, SourceId, Track, TrackId, secs_to_frames,
 };
-use alp_engine::{MixScene, SourceAudio, play_scene, render_scene_to_wav};
-use alp_media::{WavBitDepth, decode, probe};
+use alp_engine::{MixScene, SourceAudio, play_scene, render_scene};
+use alp_media::{
+    AudioMetadata, DitherMode, ExportFormat, ExportSettings, WavBitDepth, decode, resample,
+    write_wav,
+};
 use anyhow::{Context, Result, bail};
 
 /// Create a project directory with one empty track.
@@ -138,26 +141,50 @@ pub fn import(
         .with_context(|| format!("open {}", project_path.display()))?;
     paths.ensure_layout()?;
 
-    let info = probe(input).with_context(|| format!("probe {}", input.display()))?;
-    let frames = match info.frames {
-        Some(frames) => frames,
-        None => decode(input)
-            .with_context(|| format!("decode {}", input.display()))?
-            .frames(),
-    };
-    if frames == 0 {
+    let decoded = decode(input).with_context(|| format!("decode {}", input.display()))?;
+    if decoded.frames() == 0 {
         bail!("{} contains no audio", input.display());
     }
-
+    let peak = decoded.peak();
     let source_id = SourceId::new();
-    let file_name = input
-        .file_name()
-        .map(|name| name.to_string_lossy().into_owned())
-        .unwrap_or_else(|| "audio.wav".to_owned());
-    let relative_path = format!("media/{source_id}-{file_name}");
-    let destination = paths.root().join(&relative_path);
-    std::fs::copy(input, &destination)
-        .with_context(|| format!("copy {} to {}", input.display(), destination.display()))?;
+    let needs_conversion = decoded.sample_rate() != project.sample_rate;
+    let (relative_path, source_rate, channels, frames) = if needs_conversion {
+        let converted = resample(&decoded, project.sample_rate).with_context(|| {
+            format!("resample {} to {} Hz", input.display(), project.sample_rate)
+        })?;
+        let file_name = format!("{source_id}-import.wav");
+        let relative_path = format!("media/{file_name}");
+        let destination = paths.root().join(&relative_path);
+        write_wav(&destination, &converted, WavBitDepth::Float32)
+            .with_context(|| format!("write converted import {}", destination.display()))?;
+        println!(
+            "converted {} from {} Hz to {} Hz",
+            input.display(),
+            decoded.sample_rate(),
+            project.sample_rate
+        );
+        (
+            relative_path,
+            converted.sample_rate(),
+            converted.channels(),
+            converted.frames(),
+        )
+    } else {
+        let file_name = input
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "audio.wav".to_owned());
+        let relative_path = format!("media/{source_id}-{file_name}");
+        let destination = paths.root().join(&relative_path);
+        std::fs::copy(input, &destination)
+            .with_context(|| format!("copy {} to {}", input.display(), destination.display()))?;
+        (
+            relative_path,
+            decoded.sample_rate(),
+            decoded.channels(),
+            decoded.frames(),
+        )
+    };
 
     let name = display_name.unwrap_or_else(|| {
         input
@@ -168,11 +195,12 @@ pub fn import(
     let source = Source::new(
         source_id,
         name,
-        relative_path,
-        info.sample_rate,
-        info.channels,
+        relative_path.clone(),
+        source_rate,
+        channels,
         frames,
-    )?;
+    )?
+    .with_peak(peak);
 
     let mut stack = CommandStack::new();
     let source_index = project.sources.len();
@@ -222,23 +250,137 @@ pub fn import(
     println!("source:      {} ({})", source_id, frames);
     println!("clip:        {} on track {}", clip_id, track_id);
     println!("at:          {timeline_start} frames ({at_seconds:.3}s)");
-    println!("file:        {}", destination.display());
+    println!(
+        "file:        {}",
+        paths.root().join(&relative_path).display()
+    );
     Ok(())
 }
 
-/// Render a project to a WAV file.
-pub fn render(project_path: &Path, output: &Path, bit_depth: &str) -> Result<()> {
+/// Delete a range on the first track, then write it to autosave only.
+///
+/// The clean `project.json` is intentionally left untouched so the run models an
+/// editor that has autosaved an edit but not yet saved the project.
+pub fn delete_range(project_path: &Path, start: f64, end: f64, ripple: bool) -> Result<()> {
+    let (paths, mut project) = ProjectPaths::open(project_path)
+        .with_context(|| format!("open {}", project_path.display()))?;
+    let track_id = project
+        .tracks
+        .first()
+        .map(|track| track.id)
+        .ok_or_else(|| anyhow::anyhow!("project has no tracks"))?;
+    let range = FrameRange::new(
+        secs_to_frames(start.max(0.0), project.sample_rate),
+        secs_to_frames(end.max(0.0), project.sample_rate),
+    )?;
+    let mut stack = CommandStack::new();
+    stack
+        .execute(
+            &mut project,
+            Box::new(DeleteRange::new(track_id, range, ripple)),
+        )
+        .map_err(|error| anyhow::anyhow!("delete range: {error}"))?;
+    project.touch();
+    paths.autosave(&project)?;
+    println!("deleted {start:.3}s..{end:.3}s (ripple={ripple})");
+    println!("project:     {} clips in memory", project.clip_count());
+    println!("autosave:    {}", paths.autosave_file().display());
+    println!(
+        "clean file:  {} (not replaced)",
+        paths.project_file().display()
+    );
+    Ok(())
+}
+
+/// Write a recovery copy after an edit without replacing the clean project file.
+pub fn autosave(project_path: &Path) -> Result<()> {
+    let (paths, project) = ProjectPaths::open(project_path)
+        .with_context(|| format!("open {}", project_path.display()))?;
+    project.validate()?;
+    paths.autosave(&project)?;
+    println!("autosaved {}", paths.autosave_file().display());
+    println!("project:     {} ({})", project.name, project.id);
+    println!(
+        "recover:     alp-cli recover-project {}",
+        paths.root().display()
+    );
+    Ok(())
+}
+
+/// Restore an autosave over project.json after an interrupted session.
+pub fn recover_project(project_path: &Path, json: bool) -> Result<()> {
+    let root = if project_path.is_file() || project_path.ends_with("project.json") {
+        project_path
+            .parent()
+            .unwrap_or_else(|| Path::new("."))
+            .to_path_buf()
+    } else {
+        project_path.to_path_buf()
+    };
+    let paths = ProjectPaths::new(root);
+    let recovered = paths
+        .recover_autosave()
+        .with_context(|| format!("recover autosave in {}", paths.root().display()))?;
+    if !recovered {
+        bail!("no autosave found at {}", paths.autosave_file().display());
+    }
+    let project = paths.load()?;
+    if json {
+        let value = serde_json::json!({
+            "path": paths.root().display().to_string(),
+            "id": project.id.to_string(),
+            "name": project.name,
+            "sample_rate": project.sample_rate,
+            "clips": project.clip_count(),
+            "recovered": true,
+        });
+        println!("{}", serde_json::to_string_pretty(&value)?);
+    } else {
+        println!("recovered {}", paths.project_file().display());
+        println!("project:     {} ({})", project.name, project.id);
+        println!("clips:       {}", project.clip_count());
+    }
+    Ok(())
+}
+
+/// Render a project to WAV or FLAC with optional resampling and tags.
+pub fn render(
+    project_path: &Path,
+    output: &Path,
+    format: &str,
+    bit_depth: &str,
+    sample_rate: Option<u32>,
+    dither: &str,
+    metadata: AudioMetadata,
+) -> Result<()> {
+    let format: ExportFormat = format.parse()?;
     let depth: WavBitDepth = bit_depth.parse()?;
+    let dither: DitherMode = dither.parse()?;
     let (_, project, scene) = load_scene(project_path)?;
     let started = Instant::now();
-    let report = render_scene_to_wav(&scene, output, depth).context("render scene to WAV")?;
+    let buffer = render_scene(&scene, alp_engine::DEFAULT_BLOCK_FRAMES).context("render scene")?;
+    let settings = ExportSettings {
+        format,
+        bit_depth: depth,
+        sample_rate,
+        dither,
+        metadata,
+    };
+    let report = alp_media::export(output, &buffer, &settings).context("export audio")?;
     println!("rendered {}", output.display());
     println!("project:     {} ({})", project.name, project.id);
     println!("frames:      {}", report.frames);
-    println!("duration:    {:.3}s", report.duration_secs);
+    println!(
+        "duration:    {:.3}s",
+        report.frames as f64 / f64::from(report.sample_rate)
+    );
     println!("peak:        {:.4}", report.peak);
     println!("rms:         {:.4}", report.rms);
-    println!("format:      {}", depth.label());
+    println!(
+        "format:      {} · {} bit",
+        report.format, report.bits_per_sample
+    );
+    println!("dither:      {dither}", dither = dither.label());
     println!("elapsed:     {:.3}s", started.elapsed().as_secs_f64());
     Ok(())
 }

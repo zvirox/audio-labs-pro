@@ -3,8 +3,8 @@
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-use alp_media::{CacheStatus, PeakCache, decode, probe, write_test_tone};
-use anyhow::{Context, Result};
+use alp_media::{CacheStatus, PeakCache, compare, decode, probe, resample, write_test_tone};
+use anyhow::{Context, Result, bail};
 
 /// Generate a deterministic WAV fixture.
 pub fn generate(
@@ -123,6 +123,64 @@ pub fn peaks(input: &Path, cache_dir: Option<PathBuf>, json: bool) -> Result<()>
         );
     }
     println!("elapsed:      {elapsed:.3}s");
+    Ok(())
+}
+
+/// Compare an export with a reference render.
+pub fn null_test(
+    reference_path: &Path,
+    rendered_path: &Path,
+    tolerance: f32,
+    json: bool,
+) -> Result<()> {
+    let reference =
+        decode(reference_path).with_context(|| format!("decode {}", reference_path.display()))?;
+    let mut rendered =
+        decode(rendered_path).with_context(|| format!("decode {}", rendered_path.display()))?;
+    if rendered.sample_rate() != reference.sample_rate() {
+        rendered = resample(&rendered, reference.sample_rate()).with_context(|| {
+            format!(
+                "resample {} to {} Hz",
+                rendered_path.display(),
+                reference.sample_rate()
+            )
+        })?;
+    }
+    let report = compare(&reference, &rendered).context("compare buffers")?;
+    let passed = report.passed(tolerance);
+    if json {
+        let value = serde_json::json!({
+            "reference": reference_path.display().to_string(),
+            "rendered": rendered_path.display().to_string(),
+            "reference_frames": report.reference_frames,
+            "rendered_frames": report.rendered_frames,
+            "compared_frames": report.compared_frames,
+            "max_abs_diff": report.max_abs_diff,
+            "max_abs_diff_db": if report.max_abs_diff > 0.0 {
+                f64::from(report.max_abs_diff).log10() * 20.0
+            } else {
+                f64::NEG_INFINITY
+            },
+            "rms_diff": report.rms_diff,
+            "tolerance": tolerance,
+            "passed": passed,
+        });
+        println!("{}", serde_json::to_string_pretty(&value)?);
+    } else {
+        println!("reference:    {}", reference_path.display());
+        println!("rendered:     {}", rendered_path.display());
+        println!(
+            "frames:       {} / {}",
+            report.compared_frames, report.reference_frames
+        );
+        println!("max diff:     {:.8}", report.max_abs_diff);
+        println!("rms diff:     {:.8}", report.rms_diff);
+        println!("tolerance:    {tolerance:.8}");
+        println!("result:       {}", if passed { "PASS" } else { "FAIL" });
+    }
+    if !passed {
+        bail!("null test failed: max difference exceeds tolerance or lengths differ");
+    }
     Ok(())
 }
 

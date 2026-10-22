@@ -5,9 +5,11 @@
 //! reproduce the edited JSON byte-for-byte.
 
 use alp_core::{
-    AddClip, AddTrack, Clip, ClipId, CommandStack, FrameRange, MoveClip, Project, ProjectId,
-    RemoveClip, RemoveTrack, RenameTrack, SetClipFades, SetClipGain, SetTrackGain, SetTrackMuted,
-    SetTrackPan, SetTrackSolo, Source, SourceId, SplitClip, Track, TrackId, TrimClip,
+    AddClip, AddTrack, Clip, ClipId, CommandStack, DeleteRange, DuplicateClip, FrameRange,
+    MoveClip, NormalizeClip, PasteClips, Project, ProjectId, PunchIn, RemoveClip, RemoveTrack,
+    RenameTrack, SetClipFades, SetClipGain, SetClipInverted, SetClipReversed, SetTrackGain,
+    SetTrackMuted, SetTrackPan, SetTrackSolo, SilenceRange, Source, SourceId, SplitClip, Track,
+    TrackId, TrimClip, copy_range,
 };
 use proptest::prelude::*;
 
@@ -25,7 +27,8 @@ fn fixture() -> Project {
             1,
             480_000,
         )
-        .expect("source"),
+        .expect("source")
+        .with_peak(0.5),
     );
     project
 }
@@ -55,7 +58,7 @@ fn apply_op(
     next: &mut u128,
     op: u8,
 ) -> Result<(), String> {
-    match op % 16 {
+    match op % 23 {
         0..=2 => {
             let id = TrackId::from_u128(next_id(next));
             let name = format!("Track {id}");
@@ -233,6 +236,115 @@ fn apply_op(
                 Box::new(MoveClip::new(clip_id, target_track, 0, timeline_start)),
             )
         }
+        15 => {
+            let Some((track_id, range)) = sample_clip_range(project, u64::from(op)) else {
+                return Ok(());
+            };
+            commit(
+                project,
+                stack,
+                Box::new(DeleteRange::new(track_id, range, op.is_multiple_of(2))),
+            )
+        }
+        16 => {
+            let Some((track_id, range)) = sample_clip_range(project, u64::from(op)) else {
+                return Ok(());
+            };
+            commit(project, stack, Box::new(SilenceRange::new(track_id, range)))
+        }
+        17 => {
+            let Some(clip) = project
+                .tracks
+                .iter()
+                .flat_map(|track| track.clips.iter())
+                .next()
+            else {
+                return Ok(());
+            };
+            let clip_id = clip.id;
+            commit(
+                project,
+                stack,
+                Box::new(DuplicateClip::new(
+                    clip_id,
+                    ClipId::from_u128(next_id(next)),
+                    1_000,
+                )),
+            )
+        }
+        18 => {
+            let Some(clip) = project
+                .tracks
+                .iter()
+                .flat_map(|track| track.clips.iter())
+                .next()
+            else {
+                return Ok(());
+            };
+            let id = clip.id;
+            commit(
+                project,
+                stack,
+                Box::new(SetClipReversed::new(id, op.is_multiple_of(2))),
+            )
+        }
+        19 => {
+            let Some(clip) = project
+                .tracks
+                .iter()
+                .flat_map(|track| track.clips.iter())
+                .next()
+            else {
+                return Ok(());
+            };
+            let id = clip.id;
+            commit(
+                project,
+                stack,
+                Box::new(SetClipInverted::new(id, op.is_multiple_of(2))),
+            )
+        }
+        20 => {
+            let Some(clip) = project
+                .tracks
+                .iter()
+                .flat_map(|track| track.clips.iter())
+                .next()
+            else {
+                return Ok(());
+            };
+            let id = clip.id;
+            commit(project, stack, Box::new(NormalizeClip::new(id, 0.5)))
+        }
+        21 => {
+            let Some((track_id, range)) = sample_clip_range(project, u64::from(op)) else {
+                return Ok(());
+            };
+            let clipboard = copy_range(project, track_id, range).map_err(|e| e.to_string())?;
+            if clipboard.is_empty() {
+                return Ok(());
+            }
+            let at = project.duration_frames().saturating_add(1_000);
+            commit(
+                project,
+                stack,
+                Box::new(PasteClips::new(track_id, at, clipboard.fragments())),
+            )
+        }
+        22 => {
+            let Some((track_id, range)) = sample_clip_range(project, u64::from(op)) else {
+                return Ok(());
+            };
+            let clipboard = copy_range(project, track_id, range).map_err(|e| e.to_string())?;
+            if clipboard.is_empty() {
+                return Ok(());
+            }
+            commit(
+                project,
+                stack,
+                Box::new(PunchIn::new(track_id, range, clipboard.fragments())),
+            )
+        }
         _ => {
             if let Some(clip) = project
                 .tracks
@@ -250,6 +362,22 @@ fn apply_op(
             Ok(())
         }
     }
+}
+
+fn sample_clip_range(project: &Project, seed: u64) -> Option<(TrackId, FrameRange)> {
+    let track = project
+        .tracks
+        .iter()
+        .find(|track| !track.clips.is_empty())?;
+    let clip = track.clips.get(seed as usize % track.clips.len())?;
+    let end = project.clip_timeline_end(clip);
+    let len = end.saturating_sub(clip.timeline_start).max(2);
+    let start = clip.timeline_start.saturating_add(len / 4);
+    let stop = start.saturating_add((len / 2).max(1)).min(end);
+    if stop <= start {
+        return None;
+    }
+    Some((track.id, FrameRange::new(start, stop).ok()?))
 }
 
 fn run(ops: &[u8]) -> Result<(), String> {

@@ -20,9 +20,11 @@
 //! assert_eq!(project.tracks.len(), 1);
 //! ```
 
+mod clipboard;
 mod command;
 mod commands;
 mod config;
+mod edit_commands;
 mod error;
 mod files;
 mod ids;
@@ -30,8 +32,10 @@ mod logging;
 mod project;
 mod project_dir;
 mod schema;
+mod selection;
 mod time;
 
+pub use clipboard::{ClipFragment, Clipboard, copy_range};
 pub use command::{Command, CommandError, CommandStack};
 pub use commands::{
     AddClip, AddSource, AddTrack, MoveClip, MoveTrack, RemoveClip, RemoveSource, RemoveTrack,
@@ -39,6 +43,10 @@ pub use commands::{
     SetTrackGain, SetTrackMuted, SetTrackPan, SetTrackSolo, SplitClip, TrimClip,
 };
 pub use config::AppDirs;
+pub use edit_commands::{
+    DeleteRange, DuplicateClip, NormalizeClip, PasteClips, PunchIn, SetClipInverted,
+    SetClipReversed, SilenceRange,
+};
 pub use error::CoreError;
 pub use files::{commit_temp, create_temp_sibling, write_atomic};
 pub use ids::{ClipId, ProjectId, SourceId, TrackId};
@@ -49,4 +57,5 @@ pub use project::{
 };
 pub use project_dir::ProjectPaths;
 pub use schema::{CURRENT_SCHEMA_VERSION, from_json, schema_version, to_json};
+pub use selection::Selection;
 pub use time::{FrameRange, frames_to_secs, secs_to_frames};

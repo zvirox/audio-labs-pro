@@ -1,11 +1,13 @@
-# Audio Lab Pro — architecture
+# Audio Labs Pro — architecture
 
 Source of truth for crate boundaries and dependency directions. If this file and
 `cargo metadata` disagree, the code or this document is wrong and must be fixed
 in the same commit.
 
-Status: Phase 2 complete (glass shell, component kit, floating panels, waveform,
-command palette and persistence). Phase 1 foundation remains the base.
+Status: Phase 3 complete on this machine and wired into the shell (crash-safe
+capture, single-track edits, import conversion, WAV/FLAC export and autosave
+recovery). The 30-minute dropout soak and forced-kill recovery pass; other audio
+devices remain untested. Phase 1 and Phase 2 remain the base.
 
 ## Processes
 
@@ -14,7 +16,7 @@ command palette and persistence). Phase 1 foundation remains the base.
 | `alp-ui` | One transparent OS window, floating panels, input, rendering. Never touches cpal or ONNX. |
 | `alp-engine` (in-process audio thread) | cpal callbacks, mixer, transport, recorder. Real-time safe: no allocation, no locks, no logging. |
 | `alp-infer` (separate process) | TTS/STT/clone models over ONNX Runtime and GGUF. Isolated so an OOM or GPU crash never kills the editor. Talks over a versioned Unix-socket protocol owned by `alp-voice`. |
-| Worker threads | Decode, peak building, effect rendering, export. Cancellable jobs with progress channels; the Phase 2 UI uses the same pattern for its stubs. |
+| Worker threads | Decode, peak building, effect rendering, export. Cancellable jobs with progress channels; the shell uses this for real background mix export. |
 
 ## Crate graph
 
@@ -73,6 +75,25 @@ Enforced by `scripts/check-deps.sh`.
   cpal, ONNX or GGUF directly.
 - `alp-cli` depends on core, engine, media, dsp and voice. Never on ui.
 
+### Phase 3 additions
+
+- Capture writes a raw f32 spool plus a chunk-synced JSON manifest; recovery
+  truncates to the committed frame count and finalizes a WAV atomically. A
+  ten-second SPSC ring absorbs chunk-sync stalls; the writer polls at 1 ms.
+- `alp-core` owns the selection model, clipboard fragments and undoable range
+  edits (`DeleteRange`, `SilenceRange`, `PasteClips`, `DuplicateClip`,
+  `PunchIn`, `NormalizeClip`, reverse/invert). Split ids are cached across redo.
+- `alp-media` owns WAV/FLAC export, deterministic TPDF dither, RIFF/Vorbis
+  metadata, and the null-test comparison helper.
+- `alp-ui` keeps a live `EditSession` with a real project and command stack;
+  views send messages and never mutate project state. Mix export runs on the
+  worker queue from a cloned `MixScene`.
+- `ProjectPaths` writes an atomic autosave recovery copy and restores it only
+  after schema validation. The desktop session opens a fixed `ui-demo` project
+  and debounces autosaves after edits.
+- Hardware acceptance is automated by `scripts/phase3-demo.sh` but still needs a
+  real input device.
+
 ### Phase 2 additions
 
 - `alp-ui-kit` implements tokens, bundled Inter, dark/light glass palettes,
@@ -95,11 +116,11 @@ Enforced by `scripts/check-deps.sh`.
 |---|---|---|
 | UI thread | Render, input, cheap state updates, drain worker events | Decode, infer, block, wait on workers |
 | Audio callback | Read pre-decoded buffers, mix, write the device buffer, drain `rtrb` commands | Allocate, lock, log, syscall, join, sleep |
-| Worker threads | Decode, peaks, offline render, export, Phase 2 job stubs | Touch the audio callback directly |
+| Worker threads | Decode, peaks, offline render, export, import conversion | Touch the audio callback directly |
 | `alp-infer` | Model load/inference, its own memory | Depend on UI state; hold the audio device |
 
-The UI subscribes to `window::frames()` only while a panel animates, the demo
-transport plays, a job runs, or a diagnostic env var is set. When nothing moves
+The UI subscribes to `window::frames()` only while a panel animates, a recording
+runs, the demo transport plays, a job runs, or a diagnostic env var is set. When nothing moves
 there is no redraw subscription, which is why idle CPU is zero. Worker progress
 arrives over `std::sync::mpsc` and is drained with `try_recv()` from a frame.
 
@@ -122,6 +143,18 @@ Phase 2 measurements (release build, this machine):
 | idle RSS | about 88 MB |
 | module/unit tests | 30 in `alp-ui`, 18 in `alp-ui-kit`; 104 workspace-wide |
 
+Phase 3 headless measurements (release build, this machine):
+
+| Check | Result |
+|---|---|
+| import conversion | 44.1 kHz source converted to 48 kHz |
+| autosave recovery | clean 3 clips; recovered edited project 4 clips |
+| 10 s reference render | 480,000 frames |
+| WAV/FLAC null test | max sample difference 1.8e-7 at 24-bit |
+| full workspace tests | 144 tests plus doctests |
+| 30-minute capture soak | 86,401,536 frames · 0 dropped samples |
+| forced-kill capture recovery | 379,904 frames · `recovered=true` |
+
 The mixer is allocation-free by construction; an automated allocator guard is
 tracked in ADR 0011 as a follow-up.
 
@@ -129,17 +162,25 @@ tracked in ADR 0011 as a follow-up.
 
 - Source media is immutable; imports are copied into `media/`.
 - A project is tracks → clips `{source_id, source_range, timeline_start, gain,
-  fade_in, fade_out, envelope, effects[]}`.
+  fade_in, fade_out, envelope, reversed, inverted, effects[]}`.
 - Every mutation is a `Command` with `apply`/`revert`; undo/redo is the stack.
+- Range edits cache the complete replacement clip list once, so redo restores
+  the same ids. `SilenceRange` keeps later clips in place; `DeleteRange` can
+  ripple or leave a gap.
+- Reverse and invert are clip flags rendered by the mixer; normalization uses
+  the source peak measured at import.
 - Playback, bounce and export walk the same clip graph and the same `Effect`
   implementations, so a null test can compare preview and render.
 
 ## Project format
 
 Directory `*.alp/` containing `project.json` (versioned + migrations), `media/`,
-`peaks/` (i16 min/max pyramid, 3 levels, ~3.4 MB per hour), `renders/` and
-`voices.ref`. Saves are atomic: sibling temp file, `sync_all`, rename. A corrupt
-or stale peak cache is rebuilt; it is never authoritative.
+`peaks/` (i16 min/max pyramid, 3 levels, ~3.4 MB per hour), `renders/`, `voices.ref`
+and `autosave/project.json` while edits are unsaved. Saves are atomic: sibling
+temp file, `sync_all`, rename. A clean save removes the recovery copy; recovery
+validates it before replacing `project.json`. A capture in progress uses
+`<output>.alp-capture` plus `<output>.alp-capture.json`. A corrupt or stale peak
+cache is rebuilt; it is never authoritative.
 
 The UI workspace is a separate `~/.config/alp/workspace.json`, also written
 atomically. It stores schema version 1, theme, Reduce motion, last glass mode and

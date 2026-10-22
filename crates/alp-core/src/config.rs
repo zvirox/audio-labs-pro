@@ -8,7 +8,7 @@ use std::path::PathBuf;
 
 use crate::CoreError;
 
-/// Resolved directories used by Audio Lab Pro.
+/// Resolved directories used by Audio Labs Pro.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AppDirs {
     /// Configuration (theme, devices, preferences).

@@ -76,6 +76,8 @@ mod tests {
             fade_in_frames: 0,
             fade_out_frames: 0,
             envelope: Vec::new(),
+            reversed: false,
+            inverted: false,
         };
         MixScene::new(48_000, 2, vec![clip]).expect("scene")
     }

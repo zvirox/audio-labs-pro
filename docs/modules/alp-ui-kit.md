@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The in-house design system for Audio Lab Pro: design tokens, bundled Inter,
+The in-house design system for Audio Labs Pro: design tokens, bundled Inter,
 dark/light glass palettes, semantic controls, overlay builders, motion
 primitives and the peak-pyramid waveform canvas. Screens consume these modules
 instead of raw iced widgets, which is how the shell keeps one visual language and

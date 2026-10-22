@@ -3,12 +3,15 @@
 //! Writes are atomic: a temporary sibling is finalized and renamed over the
 //! destination. Encoding is an offline/worker operation, never real-time.
 
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::Path;
 use std::str::FromStr;
 
 use alp_core::{commit_temp, create_temp_sibling};
 
+use crate::dither::{DitherMode, Quantizer};
 use crate::error::MediaError;
+use crate::export::AudioMetadata;
 use crate::pcm::PcmBuffer;
 
 /// Output sample format for a WAV file.
@@ -65,9 +68,27 @@ pub fn write_wav(
     buffer: &PcmBuffer,
     bit_depth: WavBitDepth,
 ) -> Result<(), MediaError> {
+    write_wav_with(
+        path,
+        buffer,
+        bit_depth,
+        DitherMode::None,
+        &AudioMetadata::default(),
+    )
+}
+
+/// Write a WAV file with dither and RIFF INFO metadata.
+pub(crate) fn write_wav_with(
+    path: impl AsRef<Path>,
+    buffer: &PcmBuffer,
+    bit_depth: WavBitDepth,
+    dither: DitherMode,
+    metadata: &AudioMetadata,
+) -> Result<(), MediaError> {
     let path = path.as_ref();
     let (temp, file) = create_temp_sibling(path)?;
-    let result = write_to(file, buffer, bit_depth);
+    let result =
+        write_to(file, buffer, bit_depth, dither).and_then(|()| append_riff_info(&temp, metadata));
     match result {
         Ok(()) => {
             commit_temp(&temp, path)?;
@@ -84,6 +105,7 @@ fn write_to(
     file: std::fs::File,
     buffer: &PcmBuffer,
     bit_depth: WavBitDepth,
+    dither: DitherMode,
 ) -> Result<(), MediaError> {
     let spec = hound::WavSpec {
         channels: buffer.channels(),
@@ -98,16 +120,18 @@ fn write_to(
         hound::WavWriter::new(file, spec).map_err(|error| MediaError::Encode(error.to_string()))?;
     match bit_depth {
         WavBitDepth::Int16 => {
+            let mut quantizer = Quantizer::new(i32::from(i16::MAX), dither);
             for sample in buffer.samples() {
                 writer
-                    .write_sample(float_to_i16(*sample))
+                    .write_sample(quantizer.quantize(*sample) as i16)
                     .map_err(|error| MediaError::Encode(error.to_string()))?;
             }
         }
         WavBitDepth::Int24 => {
+            let mut quantizer = Quantizer::new(8_388_607, dither);
             for sample in buffer.samples() {
                 writer
-                    .write_sample(float_to_i24(*sample))
+                    .write_sample(quantizer.quantize(*sample))
                     .map_err(|error| MediaError::Encode(error.to_string()))?;
             }
         }
@@ -124,12 +148,59 @@ fn write_to(
         .map_err(|error| MediaError::Encode(error.to_string()))
 }
 
-fn float_to_i16(sample: f32) -> i16 {
-    (sample.clamp(-1.0, 1.0) * f32::from(i16::MAX)).round() as i16
-}
+fn append_riff_info(path: &Path, metadata: &AudioMetadata) -> Result<(), MediaError> {
+    let tags = metadata.riff_tags();
+    if tags.is_empty() {
+        return Ok(());
+    }
+    let mut file = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(path)
+        .map_err(MediaError::Io)?;
+    let mut header = [0u8; 12];
+    file.read_exact(&mut header).map_err(MediaError::Io)?;
+    if &header[0..4] != b"RIFF" || &header[8..12] != b"WAVE" {
+        return Err(MediaError::Encode("not a RIFF/WAVE file".into()));
+    }
 
-fn float_to_i24(sample: f32) -> i32 {
-    (sample.clamp(-1.0, 1.0) * 8_388_607.0).round() as i32
+    let mut body = Vec::from(*b"INFO");
+    for (id, value) in tags {
+        let mut data = value.as_bytes().to_vec();
+        data.push(0);
+        if data.len().is_multiple_of(2) {
+            // Already even, including the NUL terminator.
+        } else {
+            data.push(0);
+        }
+        body.extend_from_slice(id);
+        body.extend_from_slice(
+            &u32::try_from(data.len())
+                .map_err(|_| MediaError::Encode("RIFF tag is too long".into()))?
+                .to_le_bytes(),
+        );
+        body.extend_from_slice(&data);
+    }
+
+    let end = file.seek(SeekFrom::End(0)).map_err(MediaError::Io)?;
+    file.write_all(b"LIST").map_err(MediaError::Io)?;
+    file.write_all(
+        &u32::try_from(body.len())
+            .map_err(|_| MediaError::Encode("RIFF INFO chunk is too long".into()))?
+            .to_le_bytes(),
+    )
+    .map_err(MediaError::Io)?;
+    file.write_all(&body).map_err(MediaError::Io)?;
+    let new_len = end + 8 + body.len() as u64;
+    file.seek(SeekFrom::Start(4)).map_err(MediaError::Io)?;
+    file.write_all(
+        &u32::try_from(new_len - 8)
+            .map_err(|_| MediaError::Encode("WAV file is too long".into()))?
+            .to_le_bytes(),
+    )
+    .map_err(MediaError::Io)?;
+    file.sync_all().map_err(MediaError::Io)?;
+    Ok(())
 }
 
 #[cfg(test)]

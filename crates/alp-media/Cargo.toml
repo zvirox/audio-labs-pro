@@ -1,6 +1,6 @@
 [package]
 name = "alp-media"
-description = "Decoding, resampling, peak pyramids and WAV output for Audio Lab Pro"
+description = "Decoding, resampling, peak pyramids and WAV output for Audio Labs Pro"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -10,6 +10,7 @@ publish.workspace = true
 
 [dependencies]
 alp-core.workspace = true
+flacenc.workspace = true
 hound.workspace = true
 rubato.workspace = true
 symphonia.workspace = true

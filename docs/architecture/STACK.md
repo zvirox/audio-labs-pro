@@ -1,9 +1,9 @@
-# Tech stack — Phase 2 revision
+# Tech stack — Phase 3 revision
 
 Replaces Section 4 of the build plan where a choice changed or was confirmed.
 Licenses are tracked in `THIRD_PARTY.md`; decisions in `docs/adr/`.
 
-Status: **P2** is in the shipping workspace; **planned** is approved for a later
+Status: **P3** is in the shipping workspace; **planned** is approved for a later
 phase; **deferred** is not in v1.
 
 | Concern | Choice | Version | License | Status | Notes |
@@ -18,8 +18,9 @@ phase; **deferred** is not in v1.
 | Audio I/O | `cpal` | 0.18.2 | Apache-2.0 | P1 | ALSA host, F32/I16 |
 | Ring buffer | `rtrb` | 0.4.0 | MIT/Apache-2.0 | P1 | SPSC, no locks in callback |
 | Decode | `symphonia` | 0.6.1 | MPL-2.0 | P1 | unmodified; WAV/FLAC/MP3/OGG/Vorbis |
-| Encode | `hound` | 3.5.1 | Apache-2.0 | P1 | WAV 16/24/f32 |
-| Encode | `flacenc`, `vorbis_rs` | 0.5 | Apache / BSD-3 | planned | MP3 deferred (LGPL) |
+| Encode | `hound` | 3.5.1 | Apache-2.0 | P1 | WAV 16/24/f32, RIFF tags |
+| Encode | `flacenc` | 0.5.1 | Apache-2.0 | P3 | FLAC 16/24-bit, Vorbis comments |
+| Encode | `vorbis_rs` | 0.5.6 | BSD-3 | planned | OGG Vorbis; MP3 deferred (LGPL) |
 | Resample | `rubato` | 5.0.1 | MIT/Apache-2.0 | P1 | offline FFT |
 | Loudness | `ebur128` | 0.1.10 | MIT | planned | LUFS + true peak |
 | Denoise | `nnnoiseless` + classical fallback | 0.5.2 | BSD-3 | planned | speech-oriented |
@@ -31,7 +32,9 @@ phase; **deferred** is not in v1.
 | CLI | `clap` + `anyhow` | 4.6 / 1.0 | MIT/Apache | P1 | headless acceptance harness |
 | Directories | `dirs` | 7.0 | MIT/Apache | P1 | XDG roots |
 | IDs | `uuid` | 1.27 | Apache/MIT | P1 | typed project ids |
-| Background jobs | `std::thread` + `mpsc` + atomics | std | — | P2 | cancellable UI stubs; no async runtime |
+| Background jobs | `std::thread` + `mpsc` + atomics | std | — | P2 | cancellable jobs; real background mix export in P3; no async runtime |
+| Capture recovery | raw f32 spool + JSON manifest | — | — | P3 | chunk-boundary sync; `recover_capture` |
+| Dither / null test | in-house | — | Apache-2.0 | P3 | deterministic 1-LSB TPDF; sample-difference report |
 | Logging | `tracing` + `tracing-subscriber` | 0.1 / 0.3 | MIT | P1 | never inside the audio callback |
 | Tests | `proptest`, `tempfile` | 1.12 / 3.27 | MIT/Apache | P1 | undo/redo properties, atomic files |
 

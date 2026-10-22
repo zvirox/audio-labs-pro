@@ -13,7 +13,10 @@ mod render;
 mod scene;
 mod transport;
 
-pub use capture::{CaptureReport, record_to_wav};
+pub use capture::{
+    CaptureConfig, CaptureReport, InputMeter, Recording, record_to_wav, recover_capture,
+    start_recording,
+};
 pub use command::{CommandReceiver, CommandSender, EngineCommand, command_channel};
 pub use device::{DeviceDirection, DeviceInfo, PlaybackReport, list_devices, play_scene};
 pub use error::EngineError;

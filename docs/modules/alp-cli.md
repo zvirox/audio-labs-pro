@@ -2,9 +2,10 @@
 
 ## Purpose
 
-A headless harness for Phase 1 and a scripting surface for the project format.
+A headless harness for Phases 1–3 and a scripting surface for the project format.
 It generates deterministic test audio, decodes and inspects files, builds and
-reopens peak caches, imports media into projects, renders projects to WAV, and
+reopens peak caches, imports and converts media, applies a range edit to
+autosave, recovers autosaves, renders WAV/FLAC, null-tests exports, and
 lists/plays/records audio devices.
 
 ## Public API
@@ -19,21 +20,28 @@ Binary `alp-cli` with subcommands:
 | `new` | Create a project directory with one track |
 | `import` | Copy media into a project and add a clip |
 | `info` | Print project metadata |
-| `render` | Offline-mix a project to WAV |
+| `render` | Offline-mix a project to WAV or FLAC with tags and dither |
 | `play` | Play a project on the default output device |
 | `devices` | List output and input devices |
-| `record` | Record the default input device to WAV |
+| `record` | Record an input device to a crash-safe WAV |
+| `recover` | Finish a capture left behind by a forced kill |
+| `delete-range` | Delete a range on the first track into autosave only |
+| `autosave` | Write a recovery copy without replacing `project.json` |
+| `recover-project` | Restore the latest autosave over `project.json` |
+| `null-test` | Compare an export with a reference render |
 
-`--json` is available on `decode`, `peaks`, `info` and `devices`. `--log` sets
-the tracing filter.
+`--json` is available on `decode`, `peaks`, `info`, `devices`, `recover`,
+`recover-project` and `null-test`. `--log` sets the tracing filter.
 
 ## Data flow
 
 `cli.rs` parses arguments with clap. `commands::dispatch` routes to
 `commands::media`, `commands::project` or `commands::device`. Project commands
 load through `ProjectPaths`, decode sources through `alp-media`, build a
-`MixScene` and call `alp-engine`. Import writes the media copy first, then
-applies `AddSource` and `AddClip` through a `CommandStack` and saves atomically.
+`MixScene` and call `alp-engine`. Import converts non-project sample rates to
+WAV first, then applies `AddSource` and `AddClip` through a `CommandStack` and
+saves atomically. `delete-range` applies `DeleteRange` and writes autosave only,
+which is how the Phase 3 harness models an edit that survives a forced kill.
 
 ## Allowed dependencies
 
@@ -58,13 +66,14 @@ printed after the operation succeeds.
 CI runs `cargo test --workspace` and the guard scripts. `scripts/phase1-demo.sh`
 exercises generation, decode, peaks, project creation, import, info and render
 end to end, including a one-hour fixture peak-cache miss/hit and an eight-clip
-render. `--play` and `--record` add the hardware paths; `devices` is listed by
-the CLI but not part of the demo.
+render. `scripts/phase3-demo.sh` covers import conversion, autosave recovery,
+WAV/FLAC export and null tests; `--record` and `--soak` add the hardware paths.
 
 ## Known limits
 
-- `play` and `record` use only the default device.
+- `play` uses the default output; `record` accepts one named input.
 - `record` writes float32 WAV and does not resample.
 - `render` holds the whole mix in memory.
-- Import copies media and appends one clip; trimming and track creation beyond
-  the first track are GUI/Phase 2 work.
+- `delete-range` is the only headless edit command; the rest of the edit set is
+  exercised through `alp-core` and the desktop inspector.
+- Import decodes synchronously.

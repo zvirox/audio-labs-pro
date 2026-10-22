@@ -15,6 +15,9 @@ The UI and engine never parse media containers themselves.
 - `resample`
 - `PeakBuilder`, `PeakPyramid`, `PeakLevel`, `PeakCache`, `CacheStatus`
 - `write_wav`, `WavBitDepth` (`Int16`, `Int24`, `Float32`)
+- `ExportFormat`, `AudioMetadata`, `ExportSettings`, `ExportReport`, `export`
+- `DitherMode`, `Quantizer` (internal)
+- `NullReport`, `compare`
 - `write_test_tone`
 - Constants `BASE_BUCKET`, `LEVEL_COUNT`, `CACHE_MAGIC`, `CACHE_VERSION`,
   `PEAKS_DIR`
@@ -31,7 +34,9 @@ The UI and engine never parse media containers themselves.
    1,024 and 4,096 frames per bucket.
 5. `PeakCache::load_or_build` validates a cache header, sample count and bucket
    geometry; on a miss it decodes, builds and atomically commits the cache.
-6. `write_wav` writes a sibling temp file and renames it into place.
+6. `export` resamples, quantizes with optional TPDF dither, writes WAV or FLAC
+   with metadata and renames a sibling temp file into place.
+7. `compare` subtracts an export from a reference for a null test.
 
 ## Allowed dependencies
 
@@ -57,13 +62,15 @@ leaves either the old cache or no cache.
 Tests cover PCM dimension validation and peak/RMS, WAV header writing at
 16-bit and float32 plus bit-depth parsing, resampling identity and duration,
 synthetic tone generation and argument rejection, peak-pyramid geometry and
-level selection, and a peak-cache hit plus corrupt-cache rebuild. Decode is
-exercised by a generated WAV. FLAC/MP3/OGG paths are compiled but not tested
-yet.
+level selection, a peak-cache hit plus corrupt-cache rebuild, dither, WAV tags,
+a FLAC export round-trip through Symphonia, and null-test comparison. Decode is
+exercised by generated WAV and FLAC files.
 
 ## Known limits
 
-- Encoding is WAV-only; FLAC/MP3/OGG export arrives in a later phase.
+- Encoding is WAV and FLAC; MP3/OGG export arrives in a later phase.
+- FLAC STREAMINFO min/max block sizes are both set to the encoder block size to
+  work around a Symphonia 0.6.1 short-final-block rejection.
 - Resampling is offline only; the engine resamples a prepared scene before
   playback rather than streaming.
 - Media is decoded fully into memory. A one-hour stereo float buffer is about

@@ -1,6 +1,6 @@
 [package]
 name = "alp-cli"
-description = "Headless decode, peaks, render and device tools for Audio Lab Pro"
+description = "Headless decode, peaks, render and device tools for Audio Labs Pro"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

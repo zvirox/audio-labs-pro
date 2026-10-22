@@ -1,6 +1,6 @@
 [package]
 name = "alp-infer"
-description = "Out-of-process inference worker for Audio Lab Pro"
+description = "Out-of-process inference worker for Audio Labs Pro"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

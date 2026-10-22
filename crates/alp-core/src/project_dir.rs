@@ -61,6 +61,18 @@ impl ProjectPaths {
         self.root.join("renders")
     }
 
+    /// Recovery copy written after edits but before a clean save.
+    #[must_use]
+    pub fn autosave_file(&self) -> PathBuf {
+        self.root.join("autosave").join("project.json")
+    }
+
+    /// Whether an interrupted session left a recovery copy.
+    #[must_use]
+    pub fn has_autosave(&self) -> bool {
+        self.autosave_file().is_file()
+    }
+
     /// Resolve a project-relative media path without allowing escapes.
     pub fn resolve_relative(&self, relative: &str) -> Result<PathBuf, CoreError> {
         let candidate = Path::new(relative);
@@ -116,11 +128,50 @@ impl ProjectPaths {
         schema::from_json(&text)
     }
 
-    /// Atomically write `project.json`.
+    /// Atomically write `project.json` and discard any recovery copy.
     pub fn save(&self, project: &Project) -> Result<(), CoreError> {
         self.ensure_layout()?;
         let text = schema::to_json(project)?;
-        write_atomic(&self.project_file(), text.as_bytes())
+        write_atomic(&self.project_file(), text.as_bytes())?;
+        self.discard_autosave();
+        Ok(())
+    }
+
+    /// Atomically write a recovery copy without replacing `project.json`.
+    ///
+    /// The editor calls this after edits so a forced kill cannot lose more than
+    /// the last autosave interval. A normal save removes it.
+    pub fn autosave(&self, project: &Project) -> Result<(), CoreError> {
+        let file = self.autosave_file();
+        if let Some(parent) = file.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let text = schema::to_json(project)?;
+        write_atomic(&file, text.as_bytes())
+    }
+
+    /// Restore a recovery copy into `project.json`.
+    ///
+    /// Returns `false` when no recovery copy exists. The recovery copy is
+    /// validated before it can replace the current project file; a corrupt copy
+    /// is left in place for inspection and reported as an error.
+    pub fn recover_autosave(&self) -> Result<bool, CoreError> {
+        let file = self.autosave_file();
+        if !file.is_file() {
+            return Ok(false);
+        }
+        let text = fs::read_to_string(&file)?;
+        let project = schema::from_json(&text)?;
+        self.save(&project)?;
+        Ok(true)
+    }
+
+    /// Remove a recovery copy after a clean save or explicit discard.
+    pub fn discard_autosave(&self) {
+        let file = self.autosave_file();
+        if file.is_file() {
+            let _ = fs::remove_file(file);
+        }
     }
 }
 
@@ -142,6 +193,43 @@ mod tests {
         paths.save(&project).expect("save");
         let (_, loaded) = ProjectPaths::open(&root).expect("open");
         assert_eq!(loaded.name, "renamed");
+    }
+
+    #[test]
+    fn autosave_recovers_unsaved_edits_and_is_cleared_by_save() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let root = dir.path().join("demo.alp");
+        let paths = ProjectPaths::new(&root);
+        let project = Project::new("before").expect("project");
+        paths.create(&project).expect("create");
+
+        let mut edited = project.clone();
+        edited.name = "after crash".into();
+        paths.autosave(&edited).expect("autosave");
+        assert!(paths.has_autosave());
+        assert_eq!(paths.load().expect("load").name, "before");
+
+        assert!(paths.recover_autosave().expect("recover"));
+        assert!(!paths.has_autosave());
+        assert_eq!(paths.load().expect("load").name, "after crash");
+
+        let mut clean = paths.load().expect("load");
+        clean.name = "clean".into();
+        paths.save(&clean).expect("save");
+        assert!(!paths.has_autosave());
+    }
+
+    #[test]
+    fn a_corrupt_autosave_is_kept_and_reported() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let paths = ProjectPaths::new(dir.path().join("demo.alp"));
+        let project = Project::new("demo").expect("project");
+        paths.create(&project).expect("create");
+        let file = paths.autosave_file();
+        std::fs::create_dir_all(file.parent().expect("parent")).expect("autosave dir");
+        std::fs::write(&file, "{not json").expect("write corrupt");
+        assert!(paths.recover_autosave().is_err());
+        assert!(paths.has_autosave());
     }
 
     #[test]

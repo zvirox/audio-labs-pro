@@ -1,6 +1,6 @@
 [package]
 name = "alp-ui"
-description = "Desktop application shell for Audio Lab Pro"
+description = "Desktop application shell for Audio Labs Pro"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
