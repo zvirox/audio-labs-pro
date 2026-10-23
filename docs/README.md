@@ -26,6 +26,7 @@ profiles. Licensed Apache-2.0.
 | 1 — foundation | complete: workspace, core model, media, engine, CLI, guards, CI |
 | 2 — UI shell and glass system | complete on this machine; KDE/GNOME matrix limitations documented |
 | 3 — recording and single-track editing | complete on this machine: edits, capture, export and shell controls; hardware soak and forced-kill recovery pass |
+| 4 — multitrack timeline and mixing | in progress: track arm/colour, markers/regions/loop range and engine pan; mixer UI, multitrack recording and mixdown pending |
 
 ## Phase 3 acceptance
 
