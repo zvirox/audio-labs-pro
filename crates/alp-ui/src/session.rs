@@ -867,10 +867,14 @@ impl EditSession {
         inserted
     }
 
-    /// Add decoded audio at the end of the timeline and select the new clip.
+    /// Add decoded audio at the end of the timeline.
+    ///
+    /// A take is imported once. When one or more tracks are armed it lands on
+    /// every armed track at the same position, which gives sequential overdub
+    /// capture a consistent destination. With no armed tracks it falls back to
+    /// the primary editing track.
     pub fn import_buffer(&mut self, buffer: PcmBuffer, name: &str, fallback_path: &str) {
         let source_id = SourceId::new();
-        let clip_id = ClipId::new();
         let relative_path = match self.store_audio(&buffer, name, source_id) {
             Ok(Some(path)) => path,
             Ok(None) => fallback_path.to_owned(),
@@ -893,14 +897,21 @@ impl EditSession {
                 return;
             }
         };
-        let start = self.project.duration_frames();
-        let clip = match FrameRange::new(0, buffer.frames()) {
-            Ok(range) => Clip::new(clip_id, source_id, range, start),
-            Err(error) => {
-                self.status = format!("Import failed: {error}");
-                return;
-            }
+
+        let target_tracks: Vec<TrackId> = self
+            .project
+            .tracks
+            .iter()
+            .filter(|track| track.armed)
+            .map(|track| track.id)
+            .collect();
+        let target_tracks = if target_tracks.is_empty() {
+            vec![self.track_id]
+        } else {
+            target_tracks
         };
+
+        let history_before = self.stack.undo_len();
         let source_index = self.project.sources.len();
         if let Err(error) = self.stack.execute(
             &mut self.project,
@@ -909,31 +920,78 @@ impl EditSession {
             self.status = format!("Import failed: {error}");
             return;
         }
-        let clip_index = self
-            .project
-            .track(self.track_id)
-            .map_or(0, |track| track.clips.len());
-        if let Err(error) = self.stack.execute(
-            &mut self.project,
-            Box::new(AddClip::new(self.track_id, clip.clone(), clip_index)),
-        ) {
-            let _ = self.stack.undo(&mut self.project);
-            self.status = format!("Import failed: {error}");
+
+        let start = self.project.duration_frames();
+        let range = match FrameRange::new(0, buffer.frames()) {
+            Ok(range) => range,
+            Err(error) => {
+                while self.stack.undo_len() > history_before {
+                    let _ = self.stack.undo(&mut self.project);
+                }
+                self.status = format!("Import failed: {error}");
+                return;
+            }
+        };
+
+        let target_clip_indexes = target_tracks
+            .iter()
+            .map(|track_id| {
+                self.project
+                    .track(*track_id)
+                    .map_or(0, |track| track.clips.len())
+            })
+            .collect::<Vec<_>>();
+
+        let mut first_clip = None;
+        let mut first_track = self.track_id;
+        let mut import_failed: Option<String> = None;
+        for (index, track_id) in target_tracks.iter().enumerate() {
+            let clip_id = ClipId::new();
+            let clip = Clip::new(clip_id, source_id, range, start);
+            let clip_index = target_clip_indexes[index];
+            match self.stack.execute(
+                &mut self.project,
+                Box::new(AddClip::new(*track_id, clip.clone(), clip_index)),
+            ) {
+                Ok(()) => {
+                    if first_clip.is_none() {
+                        first_clip = Some(clip);
+                        first_track = *track_id;
+                    }
+                }
+                Err(error) => {
+                    import_failed = Some(format!("Import failed: {error}"));
+                    break;
+                }
+            }
+        }
+
+        if let Some(error) = import_failed {
+            while self.stack.undo_len() > history_before {
+                let _ = self.stack.undo(&mut self.project);
+            }
+            self.status = error;
             return;
         }
+
         self.audio
             .insert(source_id, Arc::new(SourceAudio::from_pcm(&buffer)));
-        self.selected_clip = Some(clip_id);
-        self.selection = Selection::between(
-            self.track_id,
-            clip.timeline_start,
-            self.project.clip_timeline_end(&clip),
-            1,
-        );
+        if let Some(clip) = first_clip {
+            self.selected_clip = Some(clip.id);
+            if let Some((_, clip)) = self.project.clip(clip.id) {
+                let end = self.project.clip_timeline_end(clip);
+                self.selection = Selection::between(first_track, clip.timeline_start, end, 1);
+            }
+        }
         self.status = format!(
-            "Imported {} · {:.2}s",
+            "Imported {} · {:.2}s{}",
             name,
-            frames_to_secs(buffer.frames(), buffer.sample_rate())
+            frames_to_secs(buffer.frames(), buffer.sample_rate()),
+            if target_tracks.len() > 1 {
+                format!(" · {} tracks", target_tracks.len())
+            } else {
+                String::new()
+            }
         );
         self.dirty = true;
     }
