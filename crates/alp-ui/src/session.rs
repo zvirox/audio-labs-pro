@@ -596,7 +596,7 @@ impl EditSession {
     }
 
     /// Delete the selection, or the selected clip when the range is collapsed.
-    pub fn delete(&mut self) {
+    pub fn delete(&mut self, ripple: bool) {
         if self.selection.is_empty()
             && let Some(id) = self.selected_clip
         {
@@ -606,7 +606,7 @@ impl EditSession {
         }
         let range = self.selection.range();
         self.run(
-            Box::new(DeleteRange::new(self.track_id, range, true)),
+            Box::new(DeleteRange::new(self.track_id, range, ripple)),
             "Delete selection",
         );
     }

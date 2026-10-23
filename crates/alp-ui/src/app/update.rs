@@ -318,8 +318,17 @@ impl App {
                 Task::none()
             }
             Message::DeleteSelection => {
-                self.session.delete();
+                self.session.delete(self.ripple);
                 self.sync_edit_fields();
+                Task::none()
+            }
+            Message::ToggleRipple => {
+                self.ripple = !self.ripple;
+                self.show_toast(if self.ripple {
+                    "Ripple deletes enabled"
+                } else {
+                    "Deletes leave gaps"
+                });
                 Task::none()
             }
             Message::SilenceSelection => {

@@ -345,6 +345,7 @@ impl App {
                 )),
                 colors,
             ),
+            components::toggle("Ripple delete", self.ripple, colors, Message::ToggleRipple),
             components::progress(self.record_peak, colors),
         ]
         .spacing(f32::from(Spacing::XXS));

@@ -121,6 +121,8 @@ pub enum Message {
     PasteClipboard,
     /// Delete the selection or selected clip.
     DeleteSelection,
+    /// Toggle ripple deletes.
+    ToggleRipple,
     /// Silence the selection.
     SilenceSelection,
     /// Lower the clip envelope over the selection.
@@ -269,6 +271,7 @@ pub struct App {
     selected_effect: usize,
     selected_voice: String,
     selected_track: usize,
+    ripple: bool,
 
     jobs: JobQueue,
     layout_restored: bool,
@@ -472,6 +475,7 @@ impl App {
             selected_effect: 0,
             selected_voice: "Narrator (neutral)".into(),
             selected_track: 0,
+            ripple: true,
             jobs: JobQueue::new(),
             layout_restored,
             bounds_initialized: false,
