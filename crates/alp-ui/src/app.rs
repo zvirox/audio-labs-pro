@@ -169,6 +169,10 @@ pub enum Message {
     SelectTrack(usize),
     /// Crossfade the selected clip with the following clip.
     CrossfadeSelection(f32),
+    /// Move the selected clip to the previous track.
+    MoveSelectedClipToPrevTrack,
+    /// Move the selected clip to the next track.
+    MoveSelectedClipToNextTrack,
     /// Set the master bus gain.
     SetMasterGain(f32),
     /// Set a track's linear gain.

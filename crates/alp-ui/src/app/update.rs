@@ -430,6 +430,16 @@ impl App {
                 self.sync_edit_fields();
                 Task::none()
             }
+            Message::MoveSelectedClipToPrevTrack => {
+                self.session.move_selected_clip_to_prev_track();
+                self.sync_edit_fields();
+                Task::none()
+            }
+            Message::MoveSelectedClipToNextTrack => {
+                self.session.move_selected_clip_to_next_track();
+                self.sync_edit_fields();
+                Task::none()
+            }
             Message::SetMasterGain(gain) => {
                 self.session.set_master_gain(gain);
                 self.gain = self.session.master_gain();

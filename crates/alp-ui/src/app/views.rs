@@ -610,6 +610,21 @@ impl App {
                 .spacing(f32::from(Spacing::XXS)),
                 row![
                     components::button(
+                        "Move up a track",
+                        ButtonKind::Ghost,
+                        colors,
+                        Some(Message::MoveSelectedClipToPrevTrack)
+                    ),
+                    components::button(
+                        "Move down a track",
+                        ButtonKind::Ghost,
+                        colors,
+                        Some(Message::MoveSelectedClipToNextTrack)
+                    ),
+                ]
+                .spacing(f32::from(Spacing::XXS)),
+                row![
+                    components::button(
                         "Normalize",
                         ButtonKind::Ghost,
                         colors,

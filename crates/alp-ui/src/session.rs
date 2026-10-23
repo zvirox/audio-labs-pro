@@ -301,6 +301,73 @@ impl EditSession {
         &self.project
     }
 
+    pub fn move_selected_clip_to_next_track(&mut self) -> bool {
+        let Some(id) = self.selected_clip else {
+            self.status = "Select a clip first".into();
+            return false;
+        };
+        let Some((track, clip)) = self.project.clip(id) else {
+            return false;
+        };
+        let source_track_id = track.id;
+        let Some(source_index) = self
+            .project
+            .tracks
+            .iter()
+            .position(|track| track.id == source_track_id)
+        else {
+            return false;
+        };
+        let target_index = source_index + 1;
+        if target_index >= self.project.tracks.len() {
+            self.status = "Selected clip is already on the last track".into();
+            return false;
+        }
+        let target_track = self.project.tracks[target_index].id;
+        self.run(
+            Box::new(alp_core::MoveClip::new(
+                id,
+                target_track,
+                0,
+                clip.timeline_start,
+            )),
+            "Move clip",
+        )
+    }
+
+    pub fn move_selected_clip_to_prev_track(&mut self) -> bool {
+        let Some(id) = self.selected_clip else {
+            self.status = "Select a clip first".into();
+            return false;
+        };
+        let Some((track, clip)) = self.project.clip(id) else {
+            return false;
+        };
+        let source_track_id = track.id;
+        let Some(source_index) = self
+            .project
+            .tracks
+            .iter()
+            .position(|track| track.id == source_track_id)
+        else {
+            return false;
+        };
+        if source_index == 0 {
+            self.status = "Selected clip is already on the first track".into();
+            return false;
+        }
+        let target_track = self.project.tracks[source_index - 1].id;
+        self.run(
+            Box::new(alp_core::MoveClip::new(
+                id,
+                target_track,
+                0,
+                clip.timeline_start,
+            )),
+            "Move clip",
+        )
+    }
+
     pub fn crossfade_selected(&mut self, overlap_seconds: f32) -> bool {
         let Some(clip_id) = self.selected_clip else {
             self.status = "Select a clip first".into();
