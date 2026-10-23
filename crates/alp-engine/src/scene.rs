@@ -288,6 +288,19 @@ impl MixScene {
         Self::new(project.sample_rate, 2, clips)
     }
 
+    /// Sorted, unique timeline-track ids represented by this scene.
+    #[must_use]
+    pub fn tracks(&self) -> Vec<alp_core::TrackId> {
+        let mut ids: Vec<_> = self
+            .clips()
+            .iter()
+            .filter_map(|clip| clip.track_id)
+            .collect();
+        ids.sort();
+        ids.dedup();
+        ids
+    }
+
     /// Sample rate of the scene.
     #[must_use]
     pub fn sample_rate(&self) -> u32 {

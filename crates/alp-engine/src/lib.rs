@@ -20,7 +20,7 @@ pub use capture::{
 pub use command::{CommandReceiver, CommandSender, EngineCommand, command_channel};
 pub use device::{DeviceDirection, DeviceInfo, PlaybackReport, list_devices, play_scene};
 pub use error::EngineError;
-pub use mixer::Mixer;
+pub use mixer::{Mixer, TrackMeter, TrackMeterBank};
 pub use render::{DEFAULT_BLOCK_FRAMES, RenderReport, render_scene, render_scene_to_wav};
 pub use scene::{MixScene, SceneClip, SourceAudio};
 pub use transport::{Transport, TransportState};

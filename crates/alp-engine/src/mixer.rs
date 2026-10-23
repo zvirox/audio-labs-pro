@@ -4,9 +4,9 @@
 //! It performs no allocation, takes no locks, does no logging and never touches
 //! the filesystem. All buffers and cursors are allocated by [`Mixer::new`].
 
-use alp_core::EnvelopePoint;
-
 use crate::scene::MixScene;
+use alp_core::EnvelopePoint;
+use std::sync::Arc;
 
 /// Master bus peak limiter used by offline and live mixing.
 #[derive(Debug, Clone)]
@@ -68,14 +68,79 @@ impl MasterLimiter {
     }
 }
 
+/// A per-track level meter with relaxed atomics suitable for the UI thread.
+#[derive(Clone)]
+pub struct TrackMeter {
+    peak: std::sync::Arc<std::sync::atomic::AtomicU32>,
+    rms: std::sync::Arc<std::sync::atomic::AtomicU32>,
+}
+
+impl TrackMeter {
+    #[must_use]
+    fn new() -> Self {
+        Self {
+            peak: std::sync::Arc::new(std::sync::atomic::AtomicU32::new(0)),
+            rms: std::sync::Arc::new(std::sync::atomic::AtomicU32::new(0)),
+        }
+    }
+
+    #[must_use]
+    pub fn peak(&self) -> f32 {
+        f32::from_bits(self.peak.load(std::sync::atomic::Ordering::Relaxed))
+    }
+
+    #[must_use]
+    pub fn rms(&self) -> f32 {
+        f32::from_bits(self.rms.load(std::sync::atomic::Ordering::Relaxed))
+    }
+
+    fn update(&self, peak: f32, rms: f32) {
+        let peak = peak.clamp(0.0, 1.0);
+        let rms = rms.clamp(0.0, 1.0);
+        self.peak
+            .store(peak.to_bits(), std::sync::atomic::Ordering::Relaxed);
+        self.rms
+            .store(rms.to_bits(), std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
+/// Ordered per-track meters plus the master meter.
+#[derive(Clone)]
+pub struct TrackMeterBank {
+    /// Track ids in mixer order.
+    pub track_ids: std::vec::Vec<alp_core::TrackId>,
+    /// Per-track meters.
+    pub track_meters: std::vec::Vec<std::sync::Arc<TrackMeter>>,
+    /// Master bus meter.
+    pub master: std::sync::Arc<TrackMeter>,
+}
+
+impl TrackMeterBank {
+    fn new(track_ids: std::vec::Vec<alp_core::TrackId>) -> Self {
+        let mut meters = Vec::with_capacity(track_ids.len());
+        for _ in &track_ids {
+            meters.push(std::sync::Arc::new(TrackMeter::new()));
+        }
+        Self {
+            track_ids,
+            track_meters: meters,
+            master: std::sync::Arc::new(TrackMeter::new()),
+        }
+    }
+}
+
 /// Mixes a prepared [`MixScene`] into interleaved output.
-#[derive(Debug)]
 pub struct Mixer {
     scene: MixScene,
     position: u64,
     envelope_cursors: Vec<usize>,
     master_gain: f32,
     master_limiter: Option<MasterLimiter>,
+    track_meter_indices: Vec<Option<usize>>,
+    track_meter_bank: Arc<TrackMeterBank>,
+    track_peak: Vec<f32>,
+    track_sum: Vec<f64>,
+    track_samples: Vec<u64>,
 }
 
 impl Mixer {
@@ -106,13 +171,35 @@ impl Mixer {
             limiter.prepare(scene.sample_rate(), scene.channels());
             master_limiter = Some(limiter);
         }
+        let track_ids = scene.tracks();
+        let track_meter_bank = Arc::new(TrackMeterBank::new(track_ids));
+        let track_meter_indices = scene
+            .clips()
+            .iter()
+            .map(|clip| {
+                clip.track_id
+                    .and_then(|tid| track_meter_bank.track_ids.iter().position(|id| tid == *id))
+            })
+            .collect();
+        let track_count = track_meter_bank.track_ids.len();
         Self {
             scene,
             position: 0,
             envelope_cursors,
             master_gain,
             master_limiter,
+            track_meter_indices,
+            track_meter_bank,
+            track_peak: vec![0.0; track_count],
+            track_sum: vec![0.0; track_count],
+            track_samples: vec![0; track_count],
         }
+    }
+
+    /// Track and master level meters.
+    #[must_use]
+    pub fn track_meters(&self) -> Arc<TrackMeterBank> {
+        Arc::clone(&self.track_meter_bank)
     }
 
     /// Current timeline position in frames.
@@ -168,13 +255,15 @@ impl Mixer {
         if frames == 0 {
             return 0;
         }
-
+        self.track_peak.fill(0.0);
+        self.track_sum.fill(0.0);
         let start = self.position;
         let end = start
             .saturating_add(frames as u64)
             .min(self.scene.total_frames());
 
         for (clip_index, clip) in self.scene.clips().iter().enumerate() {
+            let meter_index = self.track_meter_indices[clip_index];
             let clip_start = clip.timeline_start;
             let clip_end = clip.timeline_end();
             let overlap_start = start.max(clip_start);
@@ -217,28 +306,67 @@ impl Mixer {
                     for channel in 0..channels {
                         out[destination + channel] += value * pan_gain(clip.pan, channel, channels);
                     }
+                    if let Some(meter_index) = meter_index {
+                        let channel_value = (value * pan_gain(clip.pan, 0, channels)).abs();
+                        self.track_peak[meter_index] =
+                            self.track_peak[meter_index].max(channel_value);
+                        self.track_sum[meter_index] += f64::from(value) * f64::from(value);
+                        self.track_samples[meter_index] += 1;
+                    }
                 } else {
                     for channel in 0..channels.min(source_channels) {
-                        out[destination + channel] += source_samples[source_index + channel]
+                        let value = source_samples[source_index + channel]
                             * gain
                             * polarity
                             * pan_gain(clip.pan, channel, channels);
+                        out[destination + channel] += value;
+                        if let Some(meter_index) = meter_index {
+                            self.track_peak[meter_index] =
+                                self.track_peak[meter_index].max(value.abs());
+                            self.track_sum[meter_index] += f64::from(value) * f64::from(value);
+                            self.track_samples[meter_index] += 1;
+                        }
                     }
                 }
             }
         }
 
+        let written_frames = end.saturating_sub(start) as usize;
+        let written_samples = written_frames * channels;
         if self.master_gain != 1.0 {
-            for sample in &mut out[..(end as usize - start as usize) * channels] {
+            for sample in &mut out[..written_samples] {
                 *sample *= self.master_gain;
             }
         }
         if let Some(limiter) = &mut self.master_limiter {
-            // Only process the just-written region of `out`.
-            let written_samples = (end as usize - start as usize) * channels;
             limiter.process(&mut out[..written_samples]);
         }
 
+        for (clip_index, track_meter_index) in self.track_meter_indices.iter().enumerate() {
+            if let Some(meter_index) = track_meter_index {
+                let peak = self.track_peak[*meter_index];
+                let frame_count = written_frames.max(1) as u64;
+                let rms = (self.track_sum[*meter_index] / frame_count as f64).sqrt() as f32;
+                let _ = clip_index;
+                self.track_meter_bank.track_meters[*meter_index].update(peak, rms.clamp(0.0, 1.0));
+            }
+        }
+        let (master_peak, master_rms) = if written_samples == 0 {
+            (0.0, 0.0)
+        } else {
+            let mut peak = 0.0f32;
+            let mut sum = 0.0f64;
+            for sample in &out[..written_samples] {
+                peak = peak.max(sample.abs());
+                sum += f64::from(*sample) * f64::from(*sample);
+            }
+            let rms = (sum / written_samples as f64).sqrt() as f32;
+            (peak, rms)
+        };
+        self.track_meter_bank.master.update(master_peak, master_rms);
+
+        self.track_peak.fill(0.0);
+        self.track_sum.fill(0.0);
         self.position = end;
         frames
     }
