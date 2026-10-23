@@ -435,3 +435,105 @@ fn load_scene(project_path: &Path) -> Result<(ProjectPaths, Project, MixScene)> 
 pub fn default_render_path(project: &ProjectPaths, name: &str) -> PathBuf {
     project.renders_dir().join(name)
 }
+
+/// Render each track as its own stem file.
+pub fn render_stems(
+    project_path: &Path,
+    output_dir: Option<&Path>,
+    format: &str,
+    bit_depth: &str,
+    sample_rate: Option<u32>,
+    dither: &str,
+    metadata: alp_media::AudioMetadata,
+) -> Result<()> {
+    let format: alp_media::ExportFormat =
+        format.parse().map_err(|error| anyhow::anyhow!("{error}"))?;
+    let depth: alp_media::WavBitDepth = bit_depth
+        .parse()
+        .map_err(|error| anyhow::anyhow!("{error}"))?;
+    let dither: alp_media::DitherMode =
+        dither.parse().map_err(|error| anyhow::anyhow!("{error}"))?;
+    let settings = alp_media::ExportSettings {
+        format,
+        bit_depth: depth,
+        sample_rate,
+        dither,
+        metadata: metadata.clone(),
+    };
+
+    let (paths, project) = ProjectPaths::open(project_path)
+        .with_context(|| format!("open {}", project_path.display()))?;
+    paths.ensure_layout()?;
+    let output_dir = match output_dir {
+        Some(path) => path.to_path_buf(),
+        None => paths.renders_dir().join("stems"),
+    };
+    std::fs::create_dir_all(&output_dir)
+        .with_context(|| format!("create {}", output_dir.display()))?;
+
+    let mut sources = HashMap::new();
+    for source in &project.sources {
+        let path = paths.resolve_relative(&source.relative_path)?;
+        let buffer = decode(&path)
+            .with_context(|| format!("decode source {} ({})", source.name, path.display()))?;
+        sources.insert(source.id, Arc::new(SourceAudio::from_pcm(&buffer)));
+    }
+
+    let mut rendered = 0usize;
+    let total = project.tracks.len();
+    for (index, track) in project.tracks.iter().enumerate() {
+        if track.clips.is_empty() {
+            continue;
+        }
+        let scene = alp_engine::MixScene::track_scene(&project, track.id, &sources)
+            .with_context(|| format!("build scene for {}", track.name))?;
+        if scene.total_frames() == 0 {
+            continue;
+        }
+        let buffer = render_scene(&scene, alp_engine::DEFAULT_BLOCK_FRAMES)
+            .with_context(|| format!("render {}", track.name))?;
+        let slug: String = track
+            .name
+            .chars()
+            .map(|character| {
+                if character.is_alphanumeric() {
+                    character
+                } else {
+                    '-'
+                }
+            })
+            .collect();
+        let slug = slug.trim_matches('-');
+        let slug = if slug.is_empty() {
+            format!("track-{}", index + 1)
+        } else {
+            slug.to_owned()
+        };
+        let file_name = format!("{slug}.{}", format.label());
+        let output = output_dir.join(file_name);
+        let mut track_metadata = metadata.clone();
+        if track_metadata.title.is_none() {
+            track_metadata.title = Some(track.name.clone());
+        }
+        let report = alp_media::export(&output, &buffer, &settings).context("export audio")?;
+        println!(
+            "stem {} · {} · {} frames · {} bit",
+            track.name,
+            output.display(),
+            report.frames,
+            report.bits_per_sample
+        );
+        rendered += 1;
+    }
+
+    if rendered == 0 {
+        bail!("no non-empty tracks to render");
+    }
+    println!(
+        "rendered {} of {} track stems into {}",
+        rendered,
+        total,
+        output_dir.display()
+    );
+    Ok(())
+}

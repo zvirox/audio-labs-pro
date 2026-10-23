@@ -21,6 +21,7 @@ Binary `alp-cli` with subcommands:
 | `import` | Copy media into a project and add a clip |
 | `info` | Print project metadata |
 | `render` | Offline-mix a project to WAV or FLAC with tags and dither |
+| `render-stems` | Render each track to its own WAV or FLAC stem |
 | `play` | Play a project on the default output device |
 | `devices` | List output and input devices |
 | `record` | Record an input device to a crash-safe WAV |

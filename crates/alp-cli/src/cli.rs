@@ -136,6 +136,36 @@ pub enum Command {
         comment: Option<String>,
     },
 
+    /// Render each track as a separate stem.
+    RenderStems {
+        /// Project directory or `project.json`.
+        project: PathBuf,
+        /// Output directory for stem files.
+        #[arg(long)]
+        output_dir: Option<PathBuf>,
+        /// Container: `wav` or `flac`.
+        #[arg(long, default_value = "wav")]
+        format: String,
+        /// Bit depth: `int16`, `int24` or `float32` (WAV only).
+        #[arg(long, default_value = "int16")]
+        bit_depth: String,
+        /// Dither: `none` or `triangular`.
+        #[arg(long, default_value = "none")]
+        dither: String,
+        /// Title tag prefix.
+        #[arg(long)]
+        title: Option<String>,
+        /// Artist tag.
+        #[arg(long)]
+        artist: Option<String>,
+        /// Album tag.
+        #[arg(long)]
+        album: Option<String>,
+        /// Comment tag.
+        #[arg(long)]
+        comment: Option<String>,
+    },
+
     /// Play a project on the default output device.
     Play {
         /// Project directory or `project.json`.

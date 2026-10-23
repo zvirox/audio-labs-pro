@@ -184,16 +184,38 @@ impl MixScene {
     /// Build a scene from a project and preloaded sources.
     ///
     /// Muted tracks are skipped; if any track is soloed only soloed tracks are
-    /// included. Pan is applied by the effect chain in Phase 5, not here.
+    /// included.
     pub fn from_project(
         project: &Project,
         sources: &HashMap<SourceId, Arc<SourceAudio>>,
+    ) -> Result<Self, EngineError> {
+        Self::from_tracks(project, sources, None)
+    }
+
+    /// Build a scene for one track only.
+    pub fn track_scene(
+        project: &Project,
+        track_id: alp_core::TrackId,
+        sources: &HashMap<SourceId, Arc<SourceAudio>>,
+    ) -> Result<Self, EngineError> {
+        Self::from_tracks(project, sources, Some(track_id))
+    }
+
+    fn from_tracks(
+        project: &Project,
+        sources: &HashMap<SourceId, Arc<SourceAudio>>,
+        track_filter: Option<alp_core::TrackId>,
     ) -> Result<Self, EngineError> {
         let any_solo = project.tracks.iter().any(|track| track.solo);
         let mut clips = Vec::new();
         let mut resampled_cache: HashMap<SourceId, Arc<SourceAudio>> = HashMap::new();
 
         for track in &project.tracks {
+            if let Some(track_id) = track_filter
+                && track.id != track_id
+            {
+                continue;
+            }
             if track.muted || (any_solo && !track.solo) {
                 continue;
             }
