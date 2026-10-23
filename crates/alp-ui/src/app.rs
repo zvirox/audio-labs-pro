@@ -20,7 +20,7 @@ use iced::{
 };
 
 use alp_core::{ClipId, frames_to_secs, now_ms};
-use alp_engine::{CaptureConfig, Recording, list_devices, start_recording};
+use alp_engine::{CaptureConfig, PlaybackHandle, Recording, list_devices, play_scene_live, start_recording};
 use alp_media::ExportSettings;
 
 use crate::commands::{self, CommandEntry, CommandId, PaletteState};
@@ -270,6 +270,7 @@ pub struct App {
     save_path: Option<PathBuf>,
     last_save_error: Option<String>,
 
+    playback: Option<PlaybackHandle>,
     last_frame: Option<Instant>,
     frame_ms: f32,
     metrics: bool,
@@ -455,7 +456,8 @@ impl App {
             bounds_initialized: false,
             save_path,
             last_save_error: None,
-            last_frame: None,
+            playback: None,
+    last_frame: None,
             frame_ms: 16.7,
             metrics,
             metrics_frames: 0,

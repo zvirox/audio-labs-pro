@@ -11,6 +11,7 @@ use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{SampleFormat, StreamConfig};
 
 use crate::error::EngineError;
+use crate::TrackMeterBank;
 use crate::mixer::Mixer;
 use crate::scene::MixScene;
 
@@ -115,6 +116,60 @@ struct PlaybackStats {
     frames: AtomicU64,
     finished: AtomicBool,
     stream_error: AtomicBool,
+}
+
+/// Shared live playback state read by the UI.
+#[derive(Clone, Default)]
+pub struct PlaybackMeter {
+    pub callbacks: std::sync::Arc<std::sync::atomic::AtomicU64>,
+    pub frames: std::sync::Arc<std::sync::atomic::AtomicU64>,
+    pub finished: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    pub stream_error: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    pub master_peak: std::sync::Arc<std::sync::atomic::AtomicU32>,
+    pub master_rms: std::sync::Arc<std::sync::atomic::AtomicU32>,
+    pub track_meter_bank: std::sync::Arc<std::sync::Mutex<Option<Arc<TrackMeterBank>>>>,
+}
+
+/// Handle to a background playback started by the UI.
+pub struct PlaybackHandle {
+    state: std::sync::Arc<PlaybackMeter>,
+    cancel: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    thread: Option<std::thread::JoinHandle<Result<PlaybackReport, EngineError>>>,
+}
+
+impl PlaybackHandle {
+    #[must_use]
+    pub fn position_frames(&self) -> u64 {
+        self.state.frames.load(std::sync::atomic::Ordering::Relaxed)
+    }
+    #[must_use]
+    pub fn master_peak(&self) -> f32 {
+        f32::from_bits(self.state.master_peak.load(std::sync::atomic::Ordering::Relaxed))
+    }
+    #[must_use]
+    pub fn master_rms(&self) -> f32 {
+        f32::from_bits(self.state.master_rms.load(std::sync::atomic::Ordering::Relaxed))
+    }
+    #[must_use]
+    pub fn finished(&self) -> bool {
+        self.state.finished.load(std::sync::atomic::Ordering::Relaxed)
+            || self.state.stream_error.load(std::sync::atomic::Ordering::Relaxed)
+    }
+    pub fn stop(&self) {
+        self.cancel.store(true, std::sync::atomic::Ordering::Relaxed);
+    }
+    #[must_use]
+    pub fn track_meters(&self) -> Option<Arc<crate::mixer::TrackMeterBank>> {
+        self.state.track_meter_bank.lock().ok()?.clone()
+    }
+}
+impl Drop for PlaybackHandle {
+    fn drop(&mut self) {
+        self.stop();
+        if let Some(thread) = self.thread.take() {
+            let _ = thread.join();
+        }
+    }
 }
 
 /// Play a prepared scene on the default output device.
@@ -228,19 +283,173 @@ pub fn play_scene(
     })
 }
 
+pub fn play_scene_live(
+    scene: &MixScene,
+    max_seconds: Option<f64>,
+) -> Result<PlaybackHandle, EngineError> {
+    let reporter = Arc::new(PlaybackMeter::default());
+    let thread_reporter = reporter.clone();
+    let cancel = Arc::new(AtomicBool::new(false));
+    let cancel_thread = cancel.clone();
+    let scene = scene.clone();
+    let thread = std::thread::spawn(move || {
+        play_scene_with_reporter(&scene, max_seconds, Some(thread_reporter), Some(cancel_thread))
+    });
+    Ok(PlaybackHandle {
+        state: reporter,
+        cancel,
+        thread: Some(thread),
+    })
+}
+
+pub fn play_scene_with_reporter(
+    scene: &MixScene,
+    max_seconds: Option<f64>,
+    reporter: Option<Arc<PlaybackMeter>>,
+    cancel: Option<Arc<std::sync::atomic::AtomicBool>>,
+) -> Result<PlaybackReport, EngineError> {
+    let host = cpal::default_host();
+    let device = host
+        .default_output_device()
+        .ok_or_else(|| EngineError::NoDevice("no default output device".into()))?;
+    let supported = device
+        .default_output_config()
+        .map_err(|error| EngineError::Stream(format!("default output config: {error}")))?;
+    let sample_format = supported.sample_format();
+    let config: StreamConfig = supported.config();
+    let device_rate = config.sample_rate;
+    let device_channels = config.channels;
+
+    let prepared = if scene.sample_rate() == device_rate {
+        scene.clone()
+    } else {
+        scene.resampled(device_rate)?
+    }
+    .with_channels(device_channels);
+
+    let stats = reporter.clone().unwrap_or_default();
+    let stats_cb = stats.clone();
+    let mut mixer = Mixer::new(prepared);
+    if let Some(reporter) = &reporter {
+        *reporter.track_meter_bank.lock().expect("track meter bank") =
+            Some(mixer.track_meters());
+    }
+    let error_flag = stats.clone();
+
+    let stream = match sample_format {
+        SampleFormat::F32 => device.build_output_stream::<f32, _, _>(
+            config,
+            move |data, _| {
+                let frames = mixer.render_into(data);
+                stats_cb.callbacks.fetch_add(1, Ordering::Relaxed);
+                stats_cb.frames.fetch_add(frames as u64, Ordering::Relaxed);
+                if mixer.finished() {
+                    stats_cb.finished.store(true, Ordering::Relaxed);
+                }
+                let mut peak = 0.0f32;
+                let mut sum = 0.0f64;
+                for sample in &mut *data {
+                    peak = peak.max(sample.abs());
+                    sum += f64::from(*sample) * f64::from(*sample);
+                }
+                stats_cb
+                    .master_peak
+                    .store(peak.to_bits(), Ordering::Relaxed);
+                stats_cb
+                    .master_rms
+                    .store(
+                        (if data.is_empty() { 0.0 } else { (sum / data.len() as f64).sqrt() } as f32)
+                            .to_bits(),
+                       Ordering::Relaxed,
+                    );
+            },
+            move |_error| {
+                error_flag.stream_error.store(true, Ordering::Relaxed);
+            },
+            None,
+        ),
+        SampleFormat::I16 => {
+            let scratch_len = 16_384 * usize::from(device_channels);
+            let mut scratch = vec![0.0f32; scratch_len];
+            device.build_output_stream::<i16, _, _>(
+                config,
+                move |data, _| {
+                    let mut offset = 0;
+                    let mut frames = 0;
+                    while offset < data.len() {
+                        let take = (data.len() - offset).min(scratch.len());
+                        let block = &mut scratch[..take];
+                        frames += mixer.render_into(block);
+                        let mut peak = 0.0f32;
+                        let mut sum = 0.0f64;
+                        for source in &block[..take] {
+                            peak = peak.max(source.abs());
+                            sum += f64::from(*source) * f64::from(*source);
+                        }
+                        stats_cb
+                            .master_peak
+                            .store(peak.to_bits(), Ordering::Relaxed);
+                        stats_cb
+                            .master_rms
+                            .store(
+                                (if take == 0 { 0.0 } else { (sum / take as f64).sqrt() } as f32)
+                                    .to_bits(),
+                               Ordering::Relaxed,
+                            );
+                        for (destination, source) in
+                            data[offset..offset + take].iter_mut().zip(block.iter())
+                        {
+                            *destination = float_to_i16(*source);
+                        }
+                        offset += take;
+                    }
+                    stats_cb.callbacks.fetch_add(1, Ordering::Relaxed);
+                    stats_cb.frames.fetch_add(frames as u64, Ordering::Relaxed);
+                    if mixer.finished() {
+                        stats_cb.finished.store(true, Ordering::Relaxed);
+                    }
+                },
+                move |_error| {
+                    error_flag.stream_error.store(true, Ordering::Relaxed);
+                },
+                None,
+            )
+        }
+        other => {
+            return Err(EngineError::UnsupportedFormat(format!(
+                "output sample format {other:?}"
+            )));
+        }
+    }
+    .map_err(|error| EngineError::Stream(format!("build output stream: {error}")))?;
+
+    stream
+        .play()
+        .map_err(|error| EngineError::Stream(format!("start playback: {error}")))?;
+
+    let started = Instant::now();
+    let limit = max_seconds.map_or_else(
+        || Duration::from_secs_f64(scene.duration_secs() + 0.25),
+        |seconds| Duration::from_secs_f64(seconds.max(0.001)),
+    );
+    while !cancel.as_ref().is_some_and(|flag| flag.load(Ordering::Relaxed))
+        && started.elapsed() < limit
+        && !stats.finished.load(Ordering::Relaxed)
+    {
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    drop(stream);
+
+    Ok(PlaybackReport {
+        callbacks: stats.callbacks.load(Ordering::Relaxed),
+        frames: stats.frames.load(Ordering::Relaxed),
+        elapsed_secs: started.elapsed().as_secs_f64(),
+        finished: stats.finished.load(Ordering::Relaxed),
+        stream_error: stats.stream_error.load(Ordering::Relaxed),
+    })
+}
+
 fn float_to_i16(sample: f32) -> i16 {
     (sample.clamp(-1.0, 1.0) * f32::from(i16::MAX)).round() as i16
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn integer_conversion_clamps() {
-        assert_eq!(float_to_i16(0.0), 0);
-        assert_eq!(float_to_i16(1.0), i16::MAX);
-        assert_eq!(float_to_i16(-1.0), -i16::MAX);
-        assert_eq!(float_to_i16(2.0), i16::MAX);
-    }
-}

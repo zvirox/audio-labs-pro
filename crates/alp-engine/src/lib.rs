@@ -18,7 +18,7 @@ pub use capture::{
     start_recording,
 };
 pub use command::{CommandReceiver, CommandSender, EngineCommand, command_channel};
-pub use device::{DeviceDirection, DeviceInfo, PlaybackReport, list_devices, play_scene};
+pub use device::{DeviceDirection, DeviceInfo, PlaybackHandle, PlaybackMeter, PlaybackReport, list_devices, play_scene, play_scene_live};
 pub use error::EngineError;
 pub use mixer::{Mixer, TrackMeter, TrackMeterBank};
 pub use render::{DEFAULT_BLOCK_FRAMES, RenderReport, render_scene, render_scene_to_wav};

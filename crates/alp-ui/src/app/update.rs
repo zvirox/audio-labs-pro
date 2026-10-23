@@ -79,6 +79,19 @@ impl App {
                         .clamp(0.0, 1.0);
                     self.record_rms = recording.meter().rms().clamp(0.0, 1.0);
                 }
+                if let Some(playback) = &self.playback {
+                    let total = self.media_duration.max(1.0);
+                    let frames = playback.position_frames();
+                    self.position_secs = (frames as f32 / 48_000.0).clamp(0.0, total);
+                    self.waveform.set_playhead(self.position_secs);
+                    self.record_peak = playback.master_peak().clamp(0.0, 1.0);
+                    self.record_rms = playback.master_rms().clamp(0.0, 1.0);
+                    if playback.finished() {
+                        let done = self.playback.take();
+                        drop(done);
+                        self.playing = false;
+                    }
+                }
                 self.last_frame = Some(now);
                 for toggle in self.panel_motion.values_mut() {
                     toggle.tick(now);
@@ -160,14 +173,37 @@ impl App {
                 Task::none()
             }
             Message::PlayPause => {
-                self.playing = !self.playing;
                 if self.playing {
-                    self.last_frame = None;
-                    self.waveform.set_playhead(self.position_secs);
+                    self.playing = false;
+                    if let Some(playback) = self.playback.take() {
+                        playback.stop();
+                    }
+                    Task::none()
+                } else {
+                    let scene = match self.session.scene() {
+                        Ok(scene) => scene,
+                        Err(error) => {
+                            self.show_toast(format!("Cannot play: {error}"));
+                            return Task::none();
+                        }
+                    };
+                    let media_duration = scene.duration_secs() as f32;
+                    match play_scene_live(&scene, None) {
+                        Ok(handle) => {
+                            self.playback = Some(handle);
+                            self.playing = true;
+                            self.media_duration = media_duration.max(1.0);
+                            self.waveform.set_playhead(self.position_secs);
+                        }
+                        Err(error) => self.show_toast(format!("Cannot play: {error}")),
+                    }
+                    Task::none()
                 }
-                Task::none()
             }
             Message::Stop => {
+                if let Some(playback) = self.playback.take() {
+                    playback.stop();
+                }
                 self.playing = false;
                 self.position_secs = 0.0;
                 self.waveform.set_playhead(0.0);
