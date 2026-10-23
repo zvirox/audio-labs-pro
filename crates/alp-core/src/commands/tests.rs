@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
-    Clip, CommandStack, FrameRange, MarkerId, Project, ProjectId, RegionId, Source, SourceId,
-    Track, TrackId,
+    Clip, CommandStack, CrossfadeClips, FrameRange, MarkerId, Project, ProjectId, RegionId, Source,
+    SourceId, Track, TrackId,
 };
 
 fn fixture() -> (Project, TrackId, SourceId) {
@@ -213,5 +213,38 @@ fn track_color_and_arm_round_trip() {
     assert_eq!(project.tracks[0].color, [12, 34, 56]);
 
     stack.undo(&mut project).expect("undo color");
+    assert_eq!(serde_json::to_string(&project).expect("json"), initial);
+}
+
+#[test]
+fn crossfade_adjacent_clips_is_undoable() {
+    let (mut project, _track_id, _) = fixture();
+    project.tracks[0].clips.push(Clip::new(
+        ClipId::from_u128(10),
+        SourceId::from_u128(2),
+        FrameRange::new(0, 4_800).expect("range"),
+        0,
+    ));
+    project.tracks[0].clips.push(Clip::new(
+        ClipId::from_u128(11),
+        SourceId::from_u128(2),
+        FrameRange::new(0, 4_800).expect("range"),
+        4_800,
+    ));
+    let initial = serde_json::to_string(&project).expect("json");
+    let mut stack = CommandStack::new();
+    stack
+        .execute(
+            &mut project,
+            Box::new(CrossfadeClips::new(
+                ClipId::from_u128(10),
+                ClipId::from_u128(11),
+                1_000,
+            )),
+        )
+        .expect("crossfade");
+    assert_eq!(project.tracks[0].clips[0].fade_out_frames, 1_000);
+    assert_eq!(project.tracks[0].clips[1].fade_in_frames, 1_000);
+    stack.undo(&mut project).expect("undo");
     assert_eq!(serde_json::to_string(&project).expect("json"), initial);
 }
