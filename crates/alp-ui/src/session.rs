@@ -16,8 +16,8 @@ use alp_core::{
     AddClip, AddSource, Clip, ClipFragment, ClipId, Clipboard, Command, CommandStack, DeleteRange,
     DuplicateClip, EnvelopePoint, FrameRange, NormalizeClip, PasteClips, Project, ProjectPaths,
     PunchIn, RemoveClip, Selection, SetClipEnvelope, SetClipFades, SetClipGain, SetClipInverted,
-    SetClipReversed, SetTrackArm, SetTrackGain, SetTrackMuted, SetTrackPan, SetTrackSolo,
-    SilenceRange, Source, SourceId, SplitClip, Track, TrackId, TrimClip, copy_range,
+    SetClipReversed, SetMasterGain, SetTrackArm, SetTrackGain, SetTrackMuted, SetTrackPan,
+    SetTrackSolo, SilenceRange, Source, SourceId, SplitClip, Track, TrackId, TrimClip, copy_range,
     frames_to_secs, secs_to_frames,
 };
 use alp_engine::{MixScene, SourceAudio};
@@ -369,6 +369,17 @@ impl EditSession {
 
     pub fn tracks(&self) -> &[Track] {
         &self.project.tracks
+    }
+
+    pub fn master_gain(&self) -> f32 {
+        self.project.master_gain.clamp(0.0, 4.0)
+    }
+
+    pub fn set_master_gain(&mut self, gain: f32) {
+        self.run(
+            Box::new(SetMasterGain::new(gain.clamp(0.0, 4.0))),
+            "Set master gain",
+        );
     }
 
     pub fn set_track_gain(&mut self, track_index: usize, gain: f32) {

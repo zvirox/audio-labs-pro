@@ -340,7 +340,9 @@ impl App {
                 .color(colors.text),
             overlays::property_row(
                 "Bus",
-                components::muted(format!("{:.0}% gain", self.gain * 100.0), colors),
+                components::slider_control(self.gain / 4.0, |value| Message::SetMasterGain(
+                    value * 4.0
+                )),
                 colors,
             ),
             components::progress(self.record_peak, colors),

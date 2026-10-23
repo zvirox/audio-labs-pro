@@ -386,6 +386,11 @@ impl App {
                 self.selected_track = index.min(self.session.track_count().saturating_sub(1));
                 Task::none()
             }
+            Message::SetMasterGain(gain) => {
+                self.session.set_master_gain(gain);
+                self.gain = self.session.master_gain();
+                Task::none()
+            }
             Message::SetTrackGain(index, gain) => {
                 self.session.set_track_gain(index, gain);
                 Task::none()
@@ -536,12 +541,22 @@ impl App {
         let path = directory.join(format!("mix-{}.wav", now_ms()));
         let display = path.display().to_string();
         let settings: ExportSettings = EditSession::export_settings();
+        let master_gain = self.session.master_gain();
         self.session.set_export_queued(&path);
         self.jobs.spawn("Export mix", move |reporter| {
             reporter.progress(0.05);
             reporter.detail("Rendering edited timeline");
-            let buffer = render_scene(&scene, alp_engine::DEFAULT_BLOCK_FRAMES)
-                .map_err(|error| error.to_string())?;
+            let mut buffer = alp_media::PcmBuffer::silence(
+                scene.sample_rate(),
+                scene.channels(),
+                scene.total_frames(),
+            )
+            .map_err(|error| error.to_string())?;
+            let mut mixer = alp_engine::Mixer::with_master(scene, master_gain, None, 0.0, 0.0);
+            let blocksamples = alp_engine::DEFAULT_BLOCK_FRAMES * usize::from(buffer.channels());
+            for block in buffer.samples_mut().chunks_mut(blocksamples) {
+                mixer.render_into(block);
+            }
             reporter.progress(0.65);
             reporter.detail("Quantizing and writing WAV");
             alp_media::export(&path, &buffer, &settings).map_err(|error| error.to_string())?;

@@ -544,6 +544,48 @@ fn validate_fragment_clip(project: &Project, clip: &Clip) -> Result<(), CommandE
     Ok(())
 }
 
+/// Set the master bus gain.
+#[derive(Debug)]
+pub struct SetMasterGain {
+    gain: f32,
+    previous: Option<f32>,
+}
+
+impl SetMasterGain {
+    /// Build the command.
+    #[must_use]
+    pub fn new(gain: f32) -> Self {
+        Self {
+            gain,
+            previous: None,
+        }
+    }
+}
+
+impl Command for SetMasterGain {
+    fn label(&self) -> &'static str {
+        "Set master gain"
+    }
+
+    fn apply(&mut self, project: &mut Project) -> Result<(), CommandError> {
+        if !self.gain.is_finite() || self.gain < 0.0 {
+            return Err(CommandError::Invalid(
+                "master gain must be finite and non-negative".into(),
+            ));
+        }
+        self.previous = Some(std::mem::replace(&mut project.master_gain, self.gain));
+        Ok(())
+    }
+
+    fn revert(&mut self, project: &mut Project) -> Result<(), CommandError> {
+        let previous = self.previous.take().ok_or(CommandError::InconsistentState(
+            "master gain was not changed",
+        ))?;
+        project.master_gain = previous;
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

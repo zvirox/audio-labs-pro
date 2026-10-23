@@ -45,6 +45,9 @@ pub struct Project {
     pub sources: Vec<Source>,
     /// Tracks in display order.
     pub tracks: Vec<Track>,
+    /// Master bus gain (`1.0` is unity).
+    #[serde(default)]
+    pub master_gain: f32,
     /// Timeline markers in frame order.
     #[serde(default)]
     pub markers: Vec<Marker>,
@@ -85,6 +88,7 @@ impl Project {
             updated_at_ms: now,
             sources: Vec::new(),
             tracks: Vec::new(),
+            master_gain: 1.0,
             markers: Vec::new(),
             regions: Vec::new(),
             loop_range: None,
@@ -238,6 +242,9 @@ impl Project {
                 )));
             }
             track.validate(&source_ids, &source_frames, &mut clip_ids)?;
+        }
+        if !self.master_gain.is_finite() || self.master_gain < 0.0 {
+            return Err(CoreError::validation("master gain is invalid"));
         }
 
         let mut marker_ids = HashSet::new();

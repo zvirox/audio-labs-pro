@@ -20,7 +20,7 @@ use iced::{
 };
 
 use alp_core::{ClipId, frames_to_secs, now_ms};
-use alp_engine::{CaptureConfig, Recording, list_devices, render_scene, start_recording};
+use alp_engine::{CaptureConfig, Recording, list_devices, start_recording};
 use alp_media::ExportSettings;
 
 use crate::commands::{self, CommandEntry, CommandId, PaletteState};
@@ -165,6 +165,8 @@ pub enum Message {
     SelectVoice(String),
     /// Select a track.
     SelectTrack(usize),
+    /// Set the master bus gain.
+    SetMasterGain(f32),
     /// Set a track's linear gain.
     SetTrackGain(usize, f32),
     /// Set a track's pan position.
@@ -386,7 +388,7 @@ impl App {
             media_duration,
             playing: false,
             position_secs: 0.0,
-            gain: 0.82,
+            gain: 1.0,
             session,
             selection_start,
             selection_end,
