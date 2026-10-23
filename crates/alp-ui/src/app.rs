@@ -20,7 +20,9 @@ use iced::{
 };
 
 use alp_core::{ClipId, frames_to_secs, now_ms};
-use alp_engine::{CaptureConfig, PlaybackHandle, Recording, list_devices, play_scene_live, start_recording};
+use alp_engine::{
+    CaptureConfig, PlaybackHandle, Recording, list_devices, play_scene_live, start_recording,
+};
 use alp_media::ExportSettings;
 
 use crate::commands::{self, CommandEntry, CommandId, PaletteState};
@@ -282,6 +284,20 @@ pub struct App {
 }
 
 impl App {
+    fn live_track_peak(&self, track_index: usize) -> f32 {
+        let Some(meters) = self.playback_meters.as_ref() else {
+            return self.record_peak;
+        };
+        let Some(track) = self.session.tracks().get(track_index) else {
+            return 0.0;
+        };
+        meters
+            .track_ids
+            .iter()
+            .position(|id| id == &track.id)
+            .map(|index| meters.track_meters[index].peak().clamp(0.0, 1.0))
+            .unwrap_or(0.0)
+    }
     /// Boot the shell and restore the last workspace.
     pub fn boot() -> (Self, Task<Message>) {
         let dirs = alp_core::AppDirs::discover().ok();
@@ -458,8 +474,8 @@ impl App {
             save_path,
             last_save_error: None,
             playback: None,
-    playback_meters: None,
-    last_frame: None,
+            playback_meters: None,
+            last_frame: None,
             frame_ms: 16.7,
             metrics,
             metrics_frames: 0,

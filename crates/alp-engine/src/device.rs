@@ -10,8 +10,8 @@ use std::time::{Duration, Instant};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{SampleFormat, StreamConfig};
 
-use crate::error::EngineError;
 use crate::TrackMeterBank;
+use crate::error::EngineError;
 use crate::mixer::Mixer;
 use crate::scene::MixScene;
 
@@ -144,19 +144,33 @@ impl PlaybackHandle {
     }
     #[must_use]
     pub fn master_peak(&self) -> f32 {
-        f32::from_bits(self.state.master_peak.load(std::sync::atomic::Ordering::Relaxed))
+        f32::from_bits(
+            self.state
+                .master_peak
+                .load(std::sync::atomic::Ordering::Relaxed),
+        )
     }
     #[must_use]
     pub fn master_rms(&self) -> f32 {
-        f32::from_bits(self.state.master_rms.load(std::sync::atomic::Ordering::Relaxed))
+        f32::from_bits(
+            self.state
+                .master_rms
+                .load(std::sync::atomic::Ordering::Relaxed),
+        )
     }
     #[must_use]
     pub fn finished(&self) -> bool {
-        self.state.finished.load(std::sync::atomic::Ordering::Relaxed)
-            || self.state.stream_error.load(std::sync::atomic::Ordering::Relaxed)
+        self.state
+            .finished
+            .load(std::sync::atomic::Ordering::Relaxed)
+            || self
+                .state
+                .stream_error
+                .load(std::sync::atomic::Ordering::Relaxed)
     }
     pub fn stop(&self) {
-        self.cancel.store(true, std::sync::atomic::Ordering::Relaxed);
+        self.cancel
+            .store(true, std::sync::atomic::Ordering::Relaxed);
     }
     #[must_use]
     pub fn track_meters(&self) -> Option<Arc<crate::mixer::TrackMeterBank>> {
@@ -293,7 +307,12 @@ pub fn play_scene_live(
     let cancel_thread = cancel.clone();
     let scene = scene.clone();
     let thread = std::thread::spawn(move || {
-        play_scene_with_reporter(&scene, max_seconds, Some(thread_reporter), Some(cancel_thread))
+        play_scene_with_reporter(
+            &scene,
+            max_seconds,
+            Some(thread_reporter),
+            Some(cancel_thread),
+        )
     });
     Ok(PlaybackHandle {
         state: reporter,
@@ -331,8 +350,7 @@ pub fn play_scene_with_reporter(
     let stats_cb = stats.clone();
     let mut mixer = Mixer::new(prepared);
     if let Some(reporter) = &reporter {
-        *reporter.track_meter_bank.lock().expect("track meter bank") =
-            Some(mixer.track_meters());
+        *reporter.track_meter_bank.lock().expect("track meter bank") = Some(mixer.track_meters());
     }
     let error_flag = stats.clone();
 
@@ -355,13 +373,15 @@ pub fn play_scene_with_reporter(
                 stats_cb
                     .master_peak
                     .store(peak.to_bits(), Ordering::Relaxed);
-                stats_cb
-                    .master_rms
-                    .store(
-                        (if data.is_empty() { 0.0 } else { (sum / data.len() as f64).sqrt() } as f32)
-                            .to_bits(),
-                       Ordering::Relaxed,
-                    );
+                stats_cb.master_rms.store(
+                    (if data.is_empty() {
+                        0.0
+                    } else {
+                        (sum / data.len() as f64).sqrt()
+                    } as f32)
+                        .to_bits(),
+                    Ordering::Relaxed,
+                );
             },
             move |_error| {
                 error_flag.stream_error.store(true, Ordering::Relaxed);
@@ -389,13 +409,15 @@ pub fn play_scene_with_reporter(
                         stats_cb
                             .master_peak
                             .store(peak.to_bits(), Ordering::Relaxed);
-                        stats_cb
-                            .master_rms
-                            .store(
-                                (if take == 0 { 0.0 } else { (sum / take as f64).sqrt() } as f32)
-                                    .to_bits(),
-                               Ordering::Relaxed,
-                            );
+                        stats_cb.master_rms.store(
+                            (if take == 0 {
+                                0.0
+                            } else {
+                                (sum / take as f64).sqrt()
+                            } as f32)
+                                .to_bits(),
+                            Ordering::Relaxed,
+                        );
                         for (destination, source) in
                             data[offset..offset + take].iter_mut().zip(block.iter())
                         {
@@ -432,7 +454,9 @@ pub fn play_scene_with_reporter(
         || Duration::from_secs_f64(scene.duration_secs() + 0.25),
         |seconds| Duration::from_secs_f64(seconds.max(0.001)),
     );
-    while !cancel.as_ref().is_some_and(|flag| flag.load(Ordering::Relaxed))
+    while !cancel
+        .as_ref()
+        .is_some_and(|flag| flag.load(Ordering::Relaxed))
         && started.elapsed() < limit
         && !stats.finished.load(Ordering::Relaxed)
     {
@@ -452,4 +476,3 @@ pub fn play_scene_with_reporter(
 fn float_to_i16(sample: f32) -> i16 {
     (sample.clamp(-1.0, 1.0) * f32::from(i16::MAX)).round() as i16
 }
-

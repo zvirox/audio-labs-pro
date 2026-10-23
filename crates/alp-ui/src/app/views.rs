@@ -284,7 +284,7 @@ impl App {
                 .color(colors.text),
         );
         for (index, track) in self.session.tracks().iter().enumerate() {
-            let meter = self.record_peak;
+            let meter = self.live_track_peak(index);
             let gain = track.gain;
             let pan = track.pan;
             rows = rows.push(
