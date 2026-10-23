@@ -13,12 +13,12 @@ use std::sync::mpsc::{self, Receiver, TryRecvError};
 use std::time::{Duration, Instant};
 
 use alp_core::{
-    AddClip, AddSource, Clip, ClipFragment, ClipId, Clipboard, Command, CommandStack, DeleteRange,
-    DuplicateClip, EnvelopePoint, FrameRange, NormalizeClip, PasteClips, Project, ProjectPaths,
-    PunchIn, RemoveClip, Selection, SetClipEnvelope, SetClipFades, SetClipGain, SetClipInverted,
-    SetClipReversed, SetMasterGain, SetTrackArm, SetTrackGain, SetTrackMuted, SetTrackPan,
-    SetTrackSolo, SilenceRange, Source, SourceId, SplitClip, Track, TrackId, TrimClip, copy_range,
-    frames_to_secs, secs_to_frames,
+    AddClip, AddSource, Clip, ClipFragment, ClipId, Clipboard, Command, CommandStack,
+    CrossfadeClips, DeleteRange, DuplicateClip, EnvelopePoint, FrameRange, NormalizeClip,
+    PasteClips, Project, ProjectPaths, PunchIn, RemoveClip, Selection, SetClipEnvelope,
+    SetClipFades, SetClipGain, SetClipInverted, SetClipReversed, SetMasterGain, SetTrackArm,
+    SetTrackGain, SetTrackMuted, SetTrackPan, SetTrackSolo, SilenceRange, Source, SourceId,
+    SplitClip, Track, TrackId, TrimClip, copy_range, frames_to_secs, secs_to_frames,
 };
 use alp_engine::{MixScene, SourceAudio};
 use alp_media::{AudioMetadata, ExportSettings, PcmBuffer, WavBitDepth, decode, write_wav};
@@ -299,6 +299,32 @@ impl EditSession {
     #[must_use]
     pub fn project(&self) -> &Project {
         &self.project
+    }
+
+    pub fn crossfade_selected(&mut self, overlap_seconds: f32) -> bool {
+        let Some(clip_id) = self.selected_clip else {
+            self.status = "Select a clip first".into();
+            return false;
+        };
+        let Some(track) = self.project.track_of_clip(clip_id).cloned() else {
+            return false;
+        };
+        let clips = track.clips.clone();
+        let Some(index) = clips.iter().position(|clip| clip.id == clip_id) else {
+            return false;
+        };
+        let Some(right) = clips.get(index + 1) else {
+            self.status = "Selected clip needs a following clip".into();
+            return false;
+        };
+        let left = &clips[index];
+        let overlap = (overlap_seconds * self.project.sample_rate as f32)
+            .round()
+            .clamp(1.0, (left.len() as f32).min(right.len() as f32)) as u64;
+        self.run(
+            Box::new(CrossfadeClips::new(clip_id, right.id, overlap)),
+            "Crossfade",
+        )
     }
 
     /// Timeline selection.

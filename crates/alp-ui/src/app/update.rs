@@ -386,6 +386,11 @@ impl App {
                 self.selected_track = index.min(self.session.track_count().saturating_sub(1));
                 Task::none()
             }
+            Message::CrossfadeSelection(overlap) => {
+                self.session.crossfade_selected(overlap);
+                self.sync_edit_fields();
+                Task::none()
+            }
             Message::SetMasterGain(gain) => {
                 self.session.set_master_gain(gain);
                 self.gain = self.session.master_gain();

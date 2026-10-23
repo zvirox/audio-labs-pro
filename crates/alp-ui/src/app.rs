@@ -165,6 +165,8 @@ pub enum Message {
     SelectVoice(String),
     /// Select a track.
     SelectTrack(usize),
+    /// Crossfade the selected clip with the following clip.
+    CrossfadeSelection(f32),
     /// Set the master bus gain.
     SetMasterGain(f32),
     /// Set a track's linear gain.

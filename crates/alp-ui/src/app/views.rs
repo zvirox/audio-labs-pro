@@ -595,6 +595,12 @@ impl App {
                         Some(Message::SplitSelection)
                     ),
                     components::button(
+                        "Crossfade",
+                        ButtonKind::Secondary,
+                        colors,
+                        Some(Message::CrossfadeSelection(1.0))
+                    ),
+                    components::button(
                         "Duplicate",
                         ButtonKind::Ghost,
                         colors,
