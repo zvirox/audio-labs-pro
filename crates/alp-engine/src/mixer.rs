@@ -313,6 +313,7 @@ mod tests {
             reversed: false,
             inverted: false,
             pan: 0.0,
+            track_id: None,
         }
     }
 

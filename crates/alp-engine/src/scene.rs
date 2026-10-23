@@ -97,6 +97,8 @@ pub struct SceneClip {
     pub inverted: bool,
     /// Track pan position, `-1.0` left to `1.0` right.
     pub pan: f32,
+    /// Owning track id, if this clip belongs to a timeline track.
+    pub track_id: Option<alp_core::TrackId>,
 }
 
 impl SceneClip {
@@ -278,6 +280,7 @@ impl MixScene {
                     reversed: clip.reversed,
                     inverted: clip.inverted,
                     pan: track.pan,
+                    track_id: Some(track.id),
                 });
             }
         }
@@ -370,6 +373,7 @@ impl MixScene {
                 reversed: clip.reversed,
                 inverted: clip.inverted,
                 pan: clip.pan,
+                track_id: clip.track_id,
             });
         }
         Self::new(target_rate, self.channels, clips)
@@ -443,6 +447,7 @@ mod tests {
             reversed: false,
             inverted: false,
             pan: 0.0,
+            track_id: None,
         };
         let scene = MixScene::new(48_000, 2, vec![clip]).expect("scene");
         let converted = scene.resampled(96_000).expect("resample");
@@ -464,6 +469,7 @@ mod tests {
             reversed: false,
             inverted: false,
             pan: 0.0,
+            track_id: None,
         };
         clip.envelope = vec![EnvelopePoint {
             frame: 4_800,
@@ -526,6 +532,7 @@ mod tests {
             reversed: false,
             inverted: false,
             pan: 0.0,
+            track_id: None,
         };
         assert!(MixScene::new(48_000, 2, vec![clip]).is_err());
     }
