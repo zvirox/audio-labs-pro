@@ -78,6 +78,7 @@ mod tests {
             envelope: Vec::new(),
             reversed: false,
             inverted: false,
+            pan: 0.0,
         };
         MixScene::new(48_000, 2, vec![clip]).expect("scene")
     }

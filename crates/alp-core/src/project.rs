@@ -8,8 +8,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 
+use super::markers::{Marker, Region};
 use crate::error::CoreError;
-use crate::ids::{ClipId, ProjectId, SourceId, TrackId};
+use crate::ids::{ClipId, MarkerId, ProjectId, RegionId, SourceId, TrackId};
 use crate::time::{FrameRange, frames_to_secs, secs_to_frames};
 
 /// Default project sample rate (ADR 0004).
@@ -44,6 +45,15 @@ pub struct Project {
     pub sources: Vec<Source>,
     /// Tracks in display order.
     pub tracks: Vec<Track>,
+    /// Timeline markers in frame order.
+    #[serde(default)]
+    pub markers: Vec<Marker>,
+    /// Named timeline ranges in start-frame order.
+    #[serde(default)]
+    pub regions: Vec<Region>,
+    /// Optional loop range on the project timeline.
+    #[serde(default)]
+    pub loop_range: Option<FrameRange>,
 }
 
 impl Project {
@@ -75,6 +85,9 @@ impl Project {
             updated_at_ms: now,
             sources: Vec::new(),
             tracks: Vec::new(),
+            markers: Vec::new(),
+            regions: Vec::new(),
+            loop_range: None,
         })
     }
 
@@ -131,6 +144,18 @@ impl Project {
         self.tracks
             .iter()
             .find(|track| track.clips.iter().any(|clip| clip.id == id))
+    }
+
+    /// Find a marker by id.
+    #[must_use]
+    pub fn marker(&self, id: MarkerId) -> Option<&Marker> {
+        self.markers.iter().find(|marker| marker.id == id)
+    }
+
+    /// Find a region by id.
+    #[must_use]
+    pub fn region(&self, id: RegionId) -> Option<&Region> {
+        self.regions.iter().find(|region| region.id == id)
     }
 
     /// Last frame occupied by any clip, in project frames.
@@ -213,6 +238,46 @@ impl Project {
                 )));
             }
             track.validate(&source_ids, &source_frames, &mut clip_ids)?;
+        }
+
+        let mut marker_ids = HashSet::new();
+        for marker in &self.markers {
+            if !marker_ids.insert(marker.id) {
+                return Err(CoreError::validation(format!(
+                    "duplicate marker id {}",
+                    marker.id
+                )));
+            }
+            if marker.label.trim().is_empty() {
+                return Err(CoreError::validation(format!(
+                    "marker {} has an empty label",
+                    marker.id
+                )));
+            }
+        }
+
+        let mut region_ids = HashSet::new();
+        for region in &self.regions {
+            if !region_ids.insert(region.id) {
+                return Err(CoreError::validation(format!(
+                    "duplicate region id {}",
+                    region.id
+                )));
+            }
+            if region.label.trim().is_empty() {
+                return Err(CoreError::validation(format!(
+                    "region {} has an empty label",
+                    region.id
+                )));
+            }
+        }
+
+        if let Some(range) = self.loop_range
+            && range.start >= range.end
+        {
+            return Err(CoreError::validation(
+                "loop range start must be before its end",
+            ));
         }
         Ok(())
     }
@@ -309,12 +374,15 @@ pub struct Track {
     pub solo: bool,
     /// Display colour as sRGB bytes.
     pub color: [u8; 3],
+    /// Whether the track is armed for recording.
+    #[serde(default)]
+    pub armed: bool,
     /// Clips in timeline order.
     pub clips: Vec<Clip>,
 }
 
 impl Track {
-    /// Create an empty track with default settings.
+    /// Create a track with default settings.
     #[must_use]
     pub fn new(id: TrackId, name: impl Into<String>) -> Self {
         Self {
@@ -325,6 +393,7 @@ impl Track {
             muted: false,
             solo: false,
             color: [86, 132, 196],
+            armed: false,
             clips: Vec::new(),
         }
     }

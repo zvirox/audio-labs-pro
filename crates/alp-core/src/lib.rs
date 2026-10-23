@@ -29,6 +29,7 @@ mod error;
 mod files;
 mod ids;
 mod logging;
+mod markers;
 mod project;
 mod project_dir;
 mod schema;
@@ -38,9 +39,11 @@ mod time;
 pub use clipboard::{ClipFragment, Clipboard, copy_range};
 pub use command::{Command, CommandError, CommandStack};
 pub use commands::{
-    AddClip, AddSource, AddTrack, MoveClip, MoveTrack, RemoveClip, RemoveSource, RemoveTrack,
-    RenameProject, RenameTrack, SetClipEffects, SetClipEnvelope, SetClipFades, SetClipGain,
-    SetTrackGain, SetTrackMuted, SetTrackPan, SetTrackSolo, SplitClip, TrimClip,
+    AddClip, AddMarker, AddRegion, AddSource, AddTrack, MoveClip, MoveTrack, RemoveClip,
+    RemoveMarker, RemoveRegion, RemoveSource, RemoveTrack, RenameMarker, RenameProject,
+    RenameRegion, RenameTrack, SetClipEffects, SetClipEnvelope, SetClipFades, SetClipGain,
+    SetLoopRange, SetTrackArm, SetTrackColor, SetTrackGain, SetTrackMuted, SetTrackPan,
+    SetTrackSolo, SplitClip, TrimClip,
 };
 pub use config::AppDirs;
 pub use edit_commands::{
@@ -49,8 +52,9 @@ pub use edit_commands::{
 };
 pub use error::CoreError;
 pub use files::{commit_temp, create_temp_sibling, write_atomic};
-pub use ids::{ClipId, ProjectId, SourceId, TrackId};
+pub use ids::{ClipId, MarkerId, ProjectId, RegionId, SourceId, TrackId};
 pub use logging::{DEFAULT_FILTER, init as init_logging};
+pub use markers::{Marker, Region};
 pub use project::{
     Clip, DEFAULT_SAMPLE_RATE, EffectRef, EnvelopePoint, MAX_SAMPLE_RATE, MIN_SAMPLE_RATE, Project,
     Source, Track, now_ms,

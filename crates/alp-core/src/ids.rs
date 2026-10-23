@@ -75,6 +75,16 @@ id_type! {
     ClipId
 }
 
+id_type! {
+    /// Identifies a timeline marker.
+    MarkerId
+}
+
+id_type! {
+    /// Identifies a timeline region.
+    RegionId
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

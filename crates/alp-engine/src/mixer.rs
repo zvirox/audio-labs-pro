@@ -132,12 +132,14 @@ impl Mixer {
                 if source_channels == 1 {
                     let value = source_samples[source_index] * gain * polarity;
                     for channel in 0..channels {
-                        out[destination + channel] += value;
+                        out[destination + channel] += value * pan_gain(clip.pan, channel, channels);
                     }
                 } else {
                     for channel in 0..channels.min(source_channels) {
-                        out[destination + channel] +=
-                            source_samples[source_index + channel] * gain * polarity;
+                        out[destination + channel] += source_samples[source_index + channel]
+                            * gain
+                            * polarity
+                            * pan_gain(clip.pan, channel, channels);
                     }
                 }
             }
@@ -152,6 +154,24 @@ fn cursor_at(points: &[EnvelopePoint], frame: u64) -> usize {
     points
         .partition_point(|point| point.frame <= frame)
         .saturating_sub(1)
+}
+
+/// Linear balance gain for one output channel.
+///
+/// `pan` is `-1.0` left, `0.0` center and `1.0` right. Channels beyond a stereo
+/// pair are left unpanned until a surround effect chain exists.
+#[must_use]
+fn pan_gain(pan: f32, channel: usize, channels: usize) -> f32 {
+    if channels <= 1 || channel > 1 {
+        return 1.0;
+    }
+    if channel == 0 {
+        if pan <= 0.0 { 1.0 } else { 1.0 - pan }
+    } else if pan >= 0.0 {
+        1.0
+    } else {
+        1.0 + pan
+    }
 }
 
 fn envelope_gain(points: &[EnvelopePoint], cursor: &mut usize, frame: u64) -> f32 {
@@ -198,6 +218,7 @@ mod tests {
             envelope: Vec::new(),
             reversed: false,
             inverted: false,
+            pan: 0.0,
         }
     }
 
@@ -300,5 +321,46 @@ mod tests {
             blocked.render_into(block);
         }
         assert_eq!(whole, output);
+    }
+
+    #[test]
+    fn pan_follows_a_balance_law() {
+        let mut left = clip(0, 1, 0, 1.0);
+        left.pan = -1.0;
+        let scene = MixScene::new(48_000, 2, vec![left]).expect("scene");
+        let mut mixer = Mixer::new(scene);
+        let mut output = vec![0.0f32; 2];
+        mixer.render_into(&mut output);
+        assert!((output[0] - 1.0).abs() < 1e-6);
+        assert!(output[1].abs() < 1e-6);
+
+        let mut right = clip(0, 1, 0, 1.0);
+        right.pan = 1.0;
+        let scene = MixScene::new(48_000, 2, vec![right]).expect("scene");
+        let mut mixer = Mixer::new(scene);
+        let mut output = vec![0.0f32; 2];
+        mixer.render_into(&mut output);
+        assert!(output[0].abs() < 1e-6);
+        assert!((output[1] - 1.0).abs() < 1e-6);
+
+        let mut center = clip(0, 1, 0, 1.0);
+        center.pan = 0.0;
+        let scene = MixScene::new(48_000, 2, vec![center]).expect("scene");
+        let mut mixer = Mixer::new(scene);
+        let mut output = vec![0.0f32; 2];
+        mixer.render_into(&mut output);
+        assert!((output[0] - 1.0).abs() < 1e-6);
+        assert!((output[1] - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn pan_is_ignored_for_mono_output() {
+        let mut panned = clip(0, 1, 0, 1.0);
+        panned.pan = 1.0;
+        let scene = MixScene::new(48_000, 1, vec![panned]).expect("scene");
+        let mut mixer = Mixer::new(scene);
+        let mut output = vec![0.0f32; 1];
+        mixer.render_into(&mut output);
+        assert!((output[0] - 1.0).abs() < 1e-6);
     }
 }

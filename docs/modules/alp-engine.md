@@ -64,7 +64,8 @@ device.
 
 Unit tests cover sample-accurate mixing, overlapping clips, fades, envelope
 interpolation, block-size invariance, transport transitions and loop wrapping,
-scene validation and resampling length. Device tests are intentionally omitted
+scene validation and resampling length. New tests cover the track pan
+balance law and mono-output passthrough. Device tests are intentionally omitted
 from CI because hosted runners have no sound card; acceptance playback is run on
 a real machine with `scripts/phase1-demo.sh --play`. Capture acceptance used
 `scripts/phase3-demo.sh --record --soak --minutes 30`: 0 dropped samples and a
@@ -79,5 +80,5 @@ recovered forced-kill take.
 - Only f32 and i16 device formats are supported.
 - Capture writes float32 WAV and does not resample. Monitoring is a simple
   nearest-frame copy, not a filtered resampler.
-- A 30-minute stereo capture needs about 1.5 GB free for the spool and final WAV.
-  The Phase 3 harness workspace follows `TMPDIR`.
+- Hardware acceptance on the development machine recorded 30 minutes (86,401,536 frames)
+  with zero dropped samples and recovered 379,904 frames after SIGKILL.

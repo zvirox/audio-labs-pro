@@ -95,6 +95,8 @@ pub struct SceneClip {
     pub reversed: bool,
     /// Flip the sample sign during playback.
     pub inverted: bool,
+    /// Track pan position, `-1.0` left to `1.0` right.
+    pub pan: f32,
 }
 
 impl SceneClip {
@@ -158,6 +160,9 @@ impl MixScene {
             }
             if !clip.gain.is_finite() || clip.gain < 0.0 {
                 return Err(EngineError::InvalidScene("clip gain is invalid".into()));
+            }
+            if !clip.pan.is_finite() || !(-1.0..=1.0).contains(&clip.pan) {
+                return Err(EngineError::InvalidScene("clip pan is invalid".into()));
             }
             if clip.fade_in_frames.saturating_add(clip.fade_out_frames) > clip.len() {
                 return Err(EngineError::InvalidScene(
@@ -272,6 +277,7 @@ impl MixScene {
                     envelope,
                     reversed: clip.reversed,
                     inverted: clip.inverted,
+                    pan: track.pan,
                 });
             }
         }
@@ -363,6 +369,7 @@ impl MixScene {
                 envelope,
                 reversed: clip.reversed,
                 inverted: clip.inverted,
+                pan: clip.pan,
             });
         }
         Self::new(target_rate, self.channels, clips)
@@ -435,6 +442,7 @@ mod tests {
             envelope: Vec::new(),
             reversed: false,
             inverted: false,
+            pan: 0.0,
         };
         let scene = MixScene::new(48_000, 2, vec![clip]).expect("scene");
         let converted = scene.resampled(96_000).expect("resample");
@@ -455,6 +463,7 @@ mod tests {
             envelope: Vec::new(),
             reversed: false,
             inverted: false,
+            pan: 0.0,
         };
         clip.envelope = vec![EnvelopePoint {
             frame: 4_800,
@@ -516,6 +525,7 @@ mod tests {
             envelope: Vec::new(),
             reversed: false,
             inverted: false,
+            pan: 0.0,
         };
         assert!(MixScene::new(48_000, 2, vec![clip]).is_err());
     }

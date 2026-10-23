@@ -10,9 +10,11 @@ their positions.
 
 - Sources: `AddSource`, `RemoveSource`
 - Tracks: `AddTrack`, `RemoveTrack`, `MoveTrack`, `RenameTrack`, `SetTrackGain`,
-  `SetTrackPan`, `SetTrackMuted`, `SetTrackSolo`
+  `SetTrackPan`, `SetTrackMuted`, `SetTrackSolo`, `SetTrackColor`, `SetTrackArm`
 - Clips: `AddClip`, `RemoveClip`, `MoveClip`, `TrimClip`, `SplitClip`,
   `SetClipGain`, `SetClipFades`, `SetClipEnvelope`, `SetClipEffects`
+- Markers/loop: `AddMarker`, `RenameMarker`, `RemoveMarker`, `AddRegion`,
+  `RenameRegion`, `RemoveRegion`, `SetLoopRange`
 - Project: `RenameProject`
 
 Constructors take the target ids and new values. `SplitClip` is a single
