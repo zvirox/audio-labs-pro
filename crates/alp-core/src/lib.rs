@@ -47,8 +47,8 @@ pub use commands::{
 };
 pub use config::AppDirs;
 pub use edit_commands::{
-    DeleteRange, DuplicateClip, NormalizeClip, PasteClips, PunchIn, SetClipInverted,
-    SetClipReversed, SetMasterGain, SilenceRange,
+    CrossfadeClips, DeleteRange, DuplicateClip, NormalizeClip, PasteClips, PunchIn,
+    SetClipInverted, SetClipReversed, SetMasterGain, SilenceRange,
 };
 pub use error::CoreError;
 pub use files::{commit_temp, create_temp_sibling, write_atomic};

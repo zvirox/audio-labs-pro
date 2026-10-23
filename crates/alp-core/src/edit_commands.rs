@@ -586,6 +586,102 @@ impl Command for SetMasterGain {
     }
 }
 
+/// Apply a simple fade-in/fade-out crossfade between two adjacent clips.
+#[derive(Debug)]
+pub struct CrossfadeClips {
+    left: ClipId,
+    right: ClipId,
+    overlap_frames: u64,
+    previous: Option<(u64, u64, u64, u64)>,
+}
+
+impl CrossfadeClips {
+    /// Build a crossfade command.
+    #[must_use]
+    pub fn new(left: ClipId, right: ClipId, overlap_frames: u64) -> Self {
+        Self {
+            left,
+            right,
+            overlap_frames,
+            previous: None,
+        }
+    }
+}
+
+impl Command for CrossfadeClips {
+    fn label(&self) -> &'static str {
+        "Crossfade clips"
+    }
+
+    fn apply(&mut self, project: &mut Project) -> Result<(), CommandError> {
+        if self.overlap_frames == 0 {
+            return Err(CommandError::Invalid(
+                "crossfade overlap must be greater than zero".into(),
+            ));
+        }
+        let (left_track_index, left_index) = clip_location(project, self.left)?;
+        let (right_track_index, right_index) = clip_location(project, self.right)?;
+        if left_track_index != right_track_index {
+            return Err(CommandError::Invalid(
+                "crossfade clips must share a track".into(),
+            ));
+        }
+        let track_index = left_track_index;
+        if left_index + 1 != right_index {
+            return Err(CommandError::Invalid(
+                "crossfade clips must be adjacent".into(),
+            ));
+        }
+        let left_clip = project.tracks[track_index].clips[left_index].clone();
+        let right_clip = project.tracks[track_index].clips[right_index].clone();
+        let overlap = self
+            .overlap_frames
+            .min(left_clip.len())
+            .min(right_clip.len());
+        if overlap == 0 {
+            return Err(CommandError::Invalid(
+                "the clipped crossfade overlap is empty".into(),
+            ));
+        }
+        let left_old_fade = left_clip.fade_out_frames;
+        let right_old_fade = right_clip.fade_in_frames;
+        let right_old_start = right_clip.timeline_start;
+        let right_new_start = left_clip
+            .timeline_start
+            .saturating_add(left_clip.len())
+            .saturating_sub(overlap);
+
+        let left = &mut project.tracks[track_index].clips[left_index];
+        left.fade_out_frames = overlap;
+        let right = &mut project.tracks[track_index].clips[right_index];
+        right.timeline_start = right_new_start;
+        right.fade_in_frames = overlap;
+
+        self.overlap_frames = overlap;
+        self.previous = Some((left_old_fade, right_old_fade, right_old_start, 0));
+        Ok(())
+    }
+
+    fn revert(&mut self, project: &mut Project) -> Result<(), CommandError> {
+        let (left_old_fade, right_old_fade, right_old_start, _) = self
+            .previous
+            .take()
+            .ok_or(CommandError::InconsistentState("crossfade was not applied"))?;
+        let (left_track_index, left_index) = clip_location(project, self.left)?;
+        let (right_track_index, right_index) = clip_location(project, self.right)?;
+        if left_track_index != right_track_index {
+            return Err(CommandError::InconsistentState(
+                "crossfade clips moved apart",
+            ));
+        }
+        let track_index = left_track_index;
+        project.tracks[track_index].clips[left_index].fade_out_frames = left_old_fade;
+        project.tracks[track_index].clips[right_index].timeline_start = right_old_start;
+        project.tracks[track_index].clips[right_index].fade_in_frames = right_old_fade;
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
