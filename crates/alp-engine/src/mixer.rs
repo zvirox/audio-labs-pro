@@ -8,27 +8,110 @@ use alp_core::EnvelopePoint;
 
 use crate::scene::MixScene;
 
+/// Master bus peak limiter used by offline and live mixing.
+#[derive(Debug, Clone)]
+pub(crate) struct MasterLimiter {
+    threshold: f32,
+    release_ms: f32,
+    sample_rate: u32,
+    channels: u16,
+    gain: f32,
+}
+
+impl MasterLimiter {
+    pub(crate) fn new(threshold_db: f32, release_ms: f32) -> Self {
+        Self {
+            threshold: 10f32.powf(threshold_db / 20.0),
+            release_ms,
+            sample_rate: 0,
+            channels: 0,
+            gain: 1.0,
+        }
+    }
+
+    pub(crate) fn prepare(&mut self, sample_rate: u32, channels: u16) {
+        self.sample_rate = sample_rate;
+        self.channels = channels.max(1);
+        self.gain = 1.0;
+    }
+
+    pub(crate) fn process(&mut self, buffer: &mut [f32]) {
+        let channels = self.channels.max(1) as usize;
+        let mut index = 0;
+        while index < buffer.len() {
+            let mut peak = 0.0f32;
+            for channel in 0..channels {
+                if index + channel < buffer.len() {
+                    peak = peak.max(buffer[index + channel].abs());
+                }
+            }
+            let target_gain = if peak > self.threshold {
+                self.threshold / peak
+            } else {
+                1.0
+            };
+            if target_gain < self.gain {
+                self.gain = target_gain;
+            } else {
+                let coeff = (1.0
+                    - (-1.0 / (self.release_ms * 0.001 * self.sample_rate as f32)).exp())
+                .clamp(0.0, 1.0);
+                self.gain = target_gain * coeff + self.gain * (1.0 - coeff);
+            }
+            for channel in 0..channels {
+                if index + channel < buffer.len() {
+                    buffer[index + channel] *= self.gain;
+                }
+            }
+            index += channels;
+        }
+    }
+}
+
 /// Mixes a prepared [`MixScene`] into interleaved output.
 #[derive(Debug)]
 pub struct Mixer {
     scene: MixScene,
     position: u64,
     envelope_cursors: Vec<usize>,
+    master_gain: f32,
+    master_limiter: Option<MasterLimiter>,
 }
 
 impl Mixer {
     /// Prepare cursors for a scene. Allocation happens here, not in the callback.
     #[must_use]
     pub fn new(scene: MixScene) -> Self {
+        Self::with_master(scene, 1.0, None, 1.0, 100.0)
+    }
+
+    /// Prepare a scene with a master gain and an optional limiter. The limiter is
+    /// specified as a threshold in dB FS plus attack and release in milliseconds.
+    #[must_use]
+    pub fn with_master(
+        scene: MixScene,
+        master_gain: f32,
+        limiter_threshold_db: Option<f32>,
+        _attack_ms: f32,
+        release_ms: f32,
+    ) -> Self {
         let envelope_cursors = scene
             .clips()
             .iter()
             .map(|clip| cursor_at(&clip.envelope, 0))
             .collect();
+        let mut master_limiter = None;
+        if let Some(threshold_db) = limiter_threshold_db {
+            let mut limiter = MasterLimiter::new(threshold_db, release_ms);
+            limiter.prepare(scene.sample_rate(), scene.channels());
+            master_limiter = Some(limiter);
+        }
         Self {
             scene,
             position: 0,
             envelope_cursors,
+            master_gain,
+            master_limiter,
         }
     }
 
@@ -143,6 +226,17 @@ impl Mixer {
                     }
                 }
             }
+        }
+
+        if self.master_gain != 1.0 {
+            for sample in &mut out[..(end as usize - start as usize) * channels] {
+                *sample *= self.master_gain;
+            }
+        }
+        if let Some(limiter) = &mut self.master_limiter {
+            // Only process the just-written region of `out`.
+            let written_samples = (end as usize - start as usize) * channels;
+            limiter.process(&mut out[..written_samples]);
         }
 
         self.position = end;
@@ -362,5 +456,18 @@ mod tests {
         let mut output = vec![0.0f32; 1];
         mixer.render_into(&mut output);
         assert!((output[0] - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn master_gain_and_limiter_cap_output() {
+        let sound = Arc::new(SourceAudio::from_samples(48_000, 1, vec![1.0]).expect("source"));
+        let mut loud = clip(0, 1, 0, 1.0);
+        loud.source = sound;
+        let scene = MixScene::new(48_000, 1, vec![loud]).expect("scene");
+        let mut mixer = Mixer::with_master(scene, 0.5, Some(-12.0), 1.0, 50.0);
+        let mut output = vec![0.0f32; 1];
+        mixer.render_into(&mut output);
+        assert!(output[0].abs() <= 0.252, "output {}", output[0]);
+        assert!(output[0] >= 0.0);
     }
 }
