@@ -383,7 +383,27 @@ impl App {
                 Task::none()
             }
             Message::SelectTrack(index) => {
-                self.selected_track = index.min(2);
+                self.selected_track = index.min(self.session.track_count().saturating_sub(1));
+                Task::none()
+            }
+            Message::SetTrackGain(index, gain) => {
+                self.session.set_track_gain(index, gain);
+                Task::none()
+            }
+            Message::SetTrackPan(index, pan) => {
+                self.session.set_track_pan(index, pan);
+                Task::none()
+            }
+            Message::ToggleTrackMute(index) => {
+                self.session.toggle_track_mute(index);
+                Task::none()
+            }
+            Message::ToggleTrackSolo(index) => {
+                self.session.toggle_track_solo(index);
+                Task::none()
+            }
+            Message::ToggleTrackArm(index) => {
+                self.session.toggle_track_arm(index);
                 Task::none()
             }
             Message::ZoomWaveform(factor) => {

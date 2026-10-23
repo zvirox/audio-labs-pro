@@ -66,7 +66,8 @@ impl CommandEntry {
     }
 }
 
-const PANELS: [(PanelKind, &str); 8] = [
+const PANELS: [(PanelKind, &str); 9] = [
+    (PanelKind::Mixer, "Open Mixer"),
     (PanelKind::Transport, "Open Transport"),
     (PanelKind::Timeline, "Open Tracks / Timeline"),
     (PanelKind::Inspector, "Open Inspector"),
@@ -122,6 +123,7 @@ pub fn registry() -> Vec<CommandEntry> {
         entries.push(CommandEntry::new(
             CommandId::ClosePanel(kind),
             match kind {
+                PanelKind::Mixer => "Close Mixer",
                 PanelKind::Transport => "Close Transport",
                 PanelKind::Timeline => "Close Tracks / Timeline",
                 PanelKind::Inspector => "Close Inspector",

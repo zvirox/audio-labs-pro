@@ -165,6 +165,16 @@ pub enum Message {
     SelectVoice(String),
     /// Select a track.
     SelectTrack(usize),
+    /// Set a track's linear gain.
+    SetTrackGain(usize, f32),
+    /// Set a track's pan position.
+    SetTrackPan(usize, f32),
+    /// Toggle a track's mute state.
+    ToggleTrackMute(usize),
+    /// Toggle a track's solo state.
+    ToggleTrackSolo(usize),
+    /// Toggle a track's record-arm state.
+    ToggleTrackArm(usize),
     /// Zoom waveform in/out.
     ZoomWaveform(f32),
     /// Seek waveform.

@@ -16,8 +16,9 @@ use alp_core::{
     AddClip, AddSource, Clip, ClipFragment, ClipId, Clipboard, Command, CommandStack, DeleteRange,
     DuplicateClip, EnvelopePoint, FrameRange, NormalizeClip, PasteClips, Project, ProjectPaths,
     PunchIn, RemoveClip, Selection, SetClipEnvelope, SetClipFades, SetClipGain, SetClipInverted,
-    SetClipReversed, SilenceRange, Source, SourceId, SplitClip, Track, TrackId, TrimClip,
-    copy_range, frames_to_secs, secs_to_frames,
+    SetClipReversed, SetTrackArm, SetTrackGain, SetTrackMuted, SetTrackPan, SetTrackSolo,
+    SilenceRange, Source, SourceId, SplitClip, Track, TrackId, TrimClip, copy_range,
+    frames_to_secs, secs_to_frames,
 };
 use alp_engine::{MixScene, SourceAudio};
 use alp_media::{AudioMetadata, ExportSettings, PcmBuffer, WavBitDepth, decode, write_wav};
@@ -360,6 +361,58 @@ impl EditSession {
         self.project
             .track(self.track_id)
             .map_or(0, |track| track.clips.len())
+    }
+
+    pub fn track_count(&self) -> usize {
+        self.project.tracks.len()
+    }
+
+    pub fn tracks(&self) -> &[Track] {
+        &self.project.tracks
+    }
+
+    pub fn set_track_gain(&mut self, track_index: usize, gain: f32) {
+        if let Some(track) = self.project.tracks.get(track_index) {
+            let id = track.id;
+            self.run(
+                Box::new(SetTrackGain::new(id, gain.clamp(0.0, 2.0))),
+                "Set track gain",
+            );
+        }
+    }
+
+    pub fn set_track_pan(&mut self, track_index: usize, pan: f32) {
+        if let Some(track) = self.project.tracks.get(track_index) {
+            let id = track.id;
+            self.run(
+                Box::new(SetTrackPan::new(id, pan.clamp(-1.0, 1.0))),
+                "Set track pan",
+            );
+        }
+    }
+
+    pub fn toggle_track_mute(&mut self, track_index: usize) {
+        if let Some(track) = self.project.tracks.get(track_index) {
+            let id = track.id;
+            self.run(
+                Box::new(SetTrackMuted::new(id, !track.muted)),
+                "Toggle mute",
+            );
+        }
+    }
+
+    pub fn toggle_track_solo(&mut self, track_index: usize) {
+        if let Some(track) = self.project.tracks.get(track_index) {
+            let id = track.id;
+            self.run(Box::new(SetTrackSolo::new(id, !track.solo)), "Toggle solo");
+        }
+    }
+
+    pub fn toggle_track_arm(&mut self, track_index: usize) {
+        if let Some(track) = self.project.tracks.get(track_index) {
+            let id = track.id;
+            self.run(Box::new(SetTrackArm::new(id, !track.armed)), "Toggle arm");
+        }
     }
 
     /// Select a clip and make its timeline range the edit selection.

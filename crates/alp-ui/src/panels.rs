@@ -20,6 +20,8 @@ pub const SNAP_PX: f32 = 22.0;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PanelKind {
+    /// Mixer and master bus.
+    Mixer,
     /// Transport controls.
     Transport,
     /// Tracks and timeline.
@@ -40,8 +42,9 @@ pub enum PanelKind {
 
 impl PanelKind {
     /// Stable order used for defaults and menus.
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 9] = [
         Self::Transport,
+        Self::Mixer,
         Self::Timeline,
         Self::Inspector,
         Self::MediaBin,
@@ -55,6 +58,7 @@ impl PanelKind {
     #[must_use]
     pub fn id(self) -> &'static str {
         match self {
+            Self::Mixer => "mixer",
             Self::Transport => "transport",
             Self::Timeline => "timeline",
             Self::Inspector => "inspector",
@@ -70,6 +74,7 @@ impl PanelKind {
     #[must_use]
     pub fn title(self) -> &'static str {
         match self {
+            Self::Mixer => "Mixer",
             Self::Transport => "Transport",
             Self::Timeline => "Tracks / Timeline",
             Self::Inspector => "Inspector",
@@ -85,6 +90,7 @@ impl PanelKind {
     #[must_use]
     pub fn glyph(self) -> &'static str {
         match self {
+            Self::Mixer => "∑",
             Self::Transport => "▶",
             Self::Timeline => "▤",
             Self::Inspector => "⚙",
@@ -107,6 +113,7 @@ impl PanelKind {
                 PanelRect::new(left + (available - width) / 2.0, 72.0, width, 150.0)
             }
             Self::Timeline => PanelRect::new(32.0, h - 382.0, w - 64.0, 330.0),
+            Self::Mixer => PanelRect::new(w - 684.0, 72.0, 320.0, 390.0),
             Self::Inspector => PanelRect::new(w - 332.0, 72.0, 300.0, 340.0),
             Self::MediaBin => PanelRect::new(32.0, 72.0, 320.0, 340.0),
             Self::VoiceLab => PanelRect::new(w / 2.0 - 280.0, h / 2.0 - 220.0, 560.0, 440.0),
@@ -255,6 +262,7 @@ impl PanelManager {
             panel.open = matches!(
                 kind,
                 PanelKind::Transport
+                    | PanelKind::Mixer
                     | PanelKind::Timeline
                     | PanelKind::Inspector
                     | PanelKind::MediaBin
@@ -476,10 +484,10 @@ mod tests {
     #[test]
     fn every_core_panel_exists_with_four_visible() {
         let manager = manager();
-        assert_eq!(manager.panels().len(), 8);
+        assert_eq!(manager.panels().len(), 9);
         assert_eq!(
             manager.panels().iter().filter(|panel| panel.open).count(),
-            4
+            5
         );
         assert_eq!(manager.active(), Some(PanelKind::Timeline));
     }

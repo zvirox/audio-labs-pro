@@ -266,6 +266,7 @@ impl App {
     fn panel_body(&self, kind: PanelKind, colors: ThemeColors) -> Element<'_, Message> {
         match kind {
             PanelKind::Transport => self.transport_view(colors),
+            PanelKind::Mixer => self.mixer_view(colors),
             PanelKind::Timeline => self.timeline_view(colors),
             PanelKind::Inspector => self.inspector_view(colors),
             PanelKind::MediaBin => self.media_view(colors),
@@ -274,6 +275,85 @@ impl App {
             PanelKind::Models => self.models_view(colors),
             PanelKind::ExportQueue => self.export_view(colors),
         }
+    }
+
+    fn mixer_view(&self, colors: ThemeColors) -> Element<'_, Message> {
+        let mut rows = column!().spacing(f32::from(Spacing::XS)).push(
+            text("TRACKS")
+                .size(f32::from(TypeScale::CAPTION))
+                .color(colors.text),
+        );
+        for (index, track) in self.session.tracks().iter().enumerate() {
+            let meter = self.record_peak;
+            let gain = track.gain;
+            let pan = track.pan;
+            rows = rows.push(
+                column![
+                    row![
+                        text(track.name.clone())
+                            .size(f32::from(TypeScale::CAPTION))
+                            .font(fonts::semibold())
+                            .color(colors.text),
+                        Space::new().width(Length::Fill),
+                        components::toggle(
+                            "M",
+                            track.muted,
+                            colors,
+                            Message::ToggleTrackMute(index)
+                        ),
+                        components::toggle(
+                            "S",
+                            track.solo,
+                            colors,
+                            Message::ToggleTrackSolo(index)
+                        ),
+                        components::toggle(
+                            "R",
+                            track.armed,
+                            colors,
+                            Message::ToggleTrackArm(index)
+                        ),
+                    ]
+                    .spacing(f32::from(Spacing::XXS)),
+                    row![
+                        components::muted(format!("trim {:.0}%", pan * 100.0), colors),
+                        components::progress(meter, colors),
+                        components::slider_control(gain / 2.0, move |value| {
+                            Message::SetTrackGain(index, value * 2.0)
+                        }),
+                    ]
+                    .spacing(f32::from(Spacing::XXS)),
+                    overlays::property_row(
+                        "Pan",
+                        components::slider_control((pan + 1.0) / 2.0, move |value| {
+                            Message::SetTrackPan(index, value * 2.0 - 1.0)
+                        }),
+                        colors,
+                    ),
+                ]
+                .spacing(f32::from(Spacing::XXS)),
+            );
+        }
+        let master = column![
+            text("MASTER")
+                .size(f32::from(TypeScale::CAPTION))
+                .color(colors.text),
+            overlays::property_row(
+                "Bus",
+                components::muted(format!("{:.0}% gain", self.gain * 100.0), colors),
+                colors,
+            ),
+            components::progress(self.record_peak, colors),
+        ]
+        .spacing(f32::from(Spacing::XXS));
+
+        let content = column![rows, master]
+            .spacing(f32::from(Spacing::SM))
+            .padding(f32::from(Spacing::SM))
+            .width(Length::Fill)
+            .height(Length::Fill);
+
+        scrollable(content).into()
     }
 
     fn transport_view(&self, colors: ThemeColors) -> Element<'_, Message> {
