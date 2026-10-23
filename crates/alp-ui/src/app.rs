@@ -271,6 +271,7 @@ pub struct App {
     last_save_error: Option<String>,
 
     playback: Option<PlaybackHandle>,
+    playback_meters: Option<std::sync::Arc<alp_engine::TrackMeterBank>>,
     last_frame: Option<Instant>,
     frame_ms: f32,
     metrics: bool,
@@ -457,6 +458,7 @@ impl App {
             save_path,
             last_save_error: None,
             playback: None,
+    playback_meters: None,
     last_frame: None,
             frame_ms: 16.7,
             metrics,

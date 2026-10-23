@@ -86,6 +86,9 @@ impl App {
                     self.waveform.set_playhead(self.position_secs);
                     self.record_peak = playback.master_peak().clamp(0.0, 1.0);
                     self.record_rms = playback.master_rms().clamp(0.0, 1.0);
+                    if let Some(meters) = playback.track_meters() {
+                        self.playback_meters = Some(meters);
+                    }
                     if playback.finished() {
                         let done = self.playback.take();
                         drop(done);
