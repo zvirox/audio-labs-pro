@@ -93,6 +93,37 @@ mod tests {
     }
 
     #[test]
+    fn renders_ten_tracks() {
+        use alp_core::{Clip, FrameRange, Project, Source, SourceId, Track, TrackId};
+        use std::collections::HashMap;
+        let mut project = Project::new("ten-track").expect("project");
+        let source_id = SourceId::from_u128(1);
+        project.sources.push(
+            Source::new(source_id, "tone", "media/tone.wav", 48_000, 1, 4_800).expect("source"),
+        );
+        for index in 0..10 {
+            let mut track = Track::new(TrackId::from_u128(index + 10), "Track");
+            track.gain = 0.1;
+            track.clips.push(Clip::new(
+                alp_core::ClipId::from_u128(index + 100),
+                source_id,
+                FrameRange::new(0, 4_800).expect("range"),
+                0,
+            ));
+            project.tracks.push(track);
+        }
+        let mut sources = HashMap::new();
+        sources.insert(
+            source_id,
+            Arc::new(SourceAudio::from_samples(48_000, 1, vec![0.5; 4_800]).expect("audio")),
+        );
+        let scene = MixScene::from_project(&project, &sources).expect("scene");
+        let buffer = render_scene(&scene, 1_024).expect("render");
+        assert_eq!(buffer.frames(), 4_800);
+        assert!(buffer.peak() > 0.0);
+    }
+
+    #[test]
     fn render_reports_audio() {
         let scene = scene();
         let buffer = render_scene(&scene, DEFAULT_BLOCK_FRAMES).expect("render");
