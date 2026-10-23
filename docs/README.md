@@ -14,6 +14,7 @@ profiles. Licensed Apache-2.0.
 | [spikes/PHASE1-RESULTS.md](spikes/PHASE1-RESULTS.md) | Phase 1 acceptance measurements and soak results |
 | [spikes/PHASE2-RESULTS.md](spikes/PHASE2-RESULTS.md) | Phase 2 shell, waveform, persistence and glass results |
 | [spikes/PHASE3-RESULTS.md](spikes/PHASE3-RESULTS.md) | Phase 3 edit, export and autosave results; hardware gate status |
+| [spikes/PHASE4-RESULTS.md](spikes/PHASE4-RESULTS.md) | Phase 4 multitrack results and known limits |
 | [adr/](adr/) | Architecture Decision Records |
 | [../THIRD_PARTY.md](../THIRD_PARTY.md) | Every crate, model and asset with its license |
 | [../CHANGELOG.md](../CHANGELOG.md) | Release history |
@@ -26,7 +27,7 @@ profiles. Licensed Apache-2.0.
 | 1 — foundation | complete: workspace, core model, media, engine, CLI, guards, CI |
 | 2 — UI shell and glass system | complete on this machine; KDE/GNOME matrix limitations documented |
 | 3 — recording and single-track editing | complete on this machine: edits, capture, export and shell controls; hardware soak and forced-kill recovery pass |
-| 4 — multitrack timeline and mixing | in progress: track arm/colour, markers/regions/loop range and engine pan; mixer UI, multitrack recording and mixdown pending |
+| 4 — multitrack timeline and mixing | in progress: engine pan, master bus, mixer UI, armed imports, crossfade and stems working; capture live and crossfade UI polish pending |
 
 ## Phase 3 acceptance
 
