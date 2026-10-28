@@ -7,23 +7,25 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use alp_ui_kit::components;
-use alp_ui_kit::motion::{PanelMotion, Toggle};
+use alp_ui_kit::motion::Toggle;
 use alp_ui_kit::overlays::{self, CommandItem};
 use alp_ui_kit::tokens::{Control, Duration as MotionDuration, Spacing, TypeScale};
 use alp_ui_kit::{ButtonKind, ThemeColors, ThemeMode, WaveformWidget, fonts};
 use iced::{
-    Alignment, Background, Border, Color, Element, Length, Padding, Point, Size, Subscription,
-    Task, Theme, mouse, window,
+    Alignment, Background, Border, Color, Element, Length, Point, Size, Subscription, Task, Theme,
+    mouse, window,
 };
 
 use alp_core::{ClipId, frames_to_secs, now_ms};
 use alp_engine::{
     CaptureConfig, PlaybackHandle, Recording, list_devices, play_scene_live, start_recording,
 };
-use alp_media::ExportSettings;
+use alp_media::PcmBuffer;
+use alp_voice::{ModelManager, ProfileStore, Script, VoiceProfile};
 
 use crate::commands::{self, CommandEntry, CommandId, PaletteState};
 use crate::demo;
@@ -33,8 +35,21 @@ use crate::panels::{DockSide, PanelKind, PanelManager};
 use crate::session::EditSession;
 use crate::workspace::PersistedWorkspace;
 
+mod ai_views;
+mod capture_views;
+mod effects_views;
+mod export_handlers;
+mod generate_views;
+mod settings_views;
+mod stories_views;
+mod studio;
 mod update;
 mod views;
+mod voice_views;
+mod wizard_views;
+mod workspace_layout;
+
+pub use workspace_layout::WorkflowTab;
 
 /// Top-level shell messages.
 #[derive(Debug, Clone)]
@@ -54,16 +69,22 @@ pub enum Message {
     /// Animation frame.
     Frame(Instant),
     /// Start dragging a panel.
+    #[allow(dead_code)]
     DragPanel(PanelKind),
     /// Start resizing a panel.
+    #[allow(dead_code)]
     ResizePanel(PanelKind),
     /// Toggle a panel.
+    #[allow(dead_code)]
     TogglePanel(PanelKind),
     /// Close a panel.
+    #[allow(dead_code)]
     ClosePanel(PanelKind),
     /// Toggle collapse.
+    #[allow(dead_code)]
     CollapsePanel(PanelKind),
     /// Dock or undock a panel.
+    #[allow(dead_code)]
     ToggleDock(PanelKind),
     /// Palette text changed.
     PaletteInput(String),
@@ -161,10 +182,14 @@ pub enum Message {
     ToggleRecord,
     /// Export the current mix.
     ExportMix,
-    /// Select a media row.
-    SelectMedia(usize),
+    /// Export using an industry preset.
+    ExportPreset(alp_media::ExportPreset),
     /// Select an effect row.
     SelectEffect(usize),
+    /// Toggle an effect's enabled state.
+    ToggleEffect(usize),
+    /// Apply voice cleanup preset across effects chain.
+    ApplyVoiceCleanupPreset,
     /// Select a voice row.
     SelectVoice(String),
     /// Select a track.
@@ -191,6 +216,100 @@ pub enum Message {
     ZoomWaveform(f32),
     /// Seek waveform.
     SeekWaveform(f32),
+    /// Toggle live dictation.
+    ToggleDictation,
+    /// Select and seek to a transcript segment.
+    SelectTranscriptSegment(usize),
+    /// Delete a transcript segment and ripple cut from timeline.
+    DeleteTranscriptSegment(usize),
+    /// Transcribe speech audio in the active track.
+    TranscribeActiveTrack,
+    /// Audit selected reference audio for cloning quality.
+    AuditReferenceAudio,
+    /// Open the human consent attestation dialog.
+    OpenConsentDialog,
+    /// Confirm and store human consent attestation.
+    ConfirmConsent,
+    /// Close the human consent dialog.
+    CloseConsentDialog,
+    /// Consent speaker-name field.
+    ConsentSpeakerInput(String),
+    /// Consent attester-name field.
+    ConsentAttesterInput(String),
+    /// Open first-run configuration wizard.
+    OpenFirstRunWizard,
+    /// Finish and dismiss first-run configuration wizard.
+    FinishFirstRunWizard,
+    /// Open keyboard shortcuts help modal.
+    OpenShortcutsHelp,
+    /// Close keyboard shortcuts help modal.
+    CloseShortcutsHelp,
+    /// Toggle AI automation master switch.
+    ToggleAiControl,
+    /// Set the permission tier for AI clients.
+    SetAiPermissionTier(alp_api::PermissionTier),
+    /// Immediately stop all AI automation and cancel running jobs.
+    StopAi,
+    /// Roll back all changes made by AI automation in the current session.
+    UndoAiChanges,
+    /// Switch active workflow workspace tab.
+    SelectWorkflowTab(WorkflowTab),
+    /// Update the Generate tab prompt.
+    GenerateTextInput(String),
+    /// Queue speech generation for the selected profile.
+    GenerateSpeech,
+    /// Play a generated take from history.
+    PlayHistory(usize),
+    /// Insert a generated take into the timeline.
+    InsertHistory(usize),
+    /// Remove a generated take from history.
+    DeleteHistory(usize),
+    /// Clear all generated takes.
+    ClearHistory,
+    /// Select a voice profile by id.
+    SelectProfile(String),
+    /// Voice profile display-name field.
+    ProfileNameInput(String),
+    /// Voice profile description/tags field.
+    ProfileTagsInput(String),
+    /// Create a designed voice profile from the description.
+    CreateDesignedProfile,
+    /// Delete a voice profile from the library.
+    DeleteProfile(String),
+    /// Export a profile as a `.alpvoice` bundle.
+    ExportProfile(String),
+    /// Story line text field.
+    StoryLineInput(String),
+    /// Append the typed line to the current story.
+    AddStoryLine,
+    /// Select a story line for editing.
+    SelectStoryLine(usize),
+    /// Delete a story line.
+    DeleteStoryLine(usize),
+    /// Create a new empty story.
+    NewStory,
+    /// Save the current story as JSON.
+    SaveStory,
+    /// Render every pending story line into one take.
+    RenderStory,
+    /// Select a story by index.
+    SelectStory(usize),
+    /// Select a capture row.
+    SelectCapture(usize),
+    /// Export the transcript as SRT.
+    ExportTranscriptSrt,
+    /// Export the transcript as plain text.
+    ExportTranscriptTxt,
+    /// Accept a model license.
+    AcceptModelLicense(String),
+    /// Remove an installed model from disk.
+    RemoveModel(String),
+    /// Toggle offline-only model mode.
+    ToggleOfflineModels,
+    /// Rescan available CLAP and LV2 audio plugins.
+    RescanPlugins,
+    /// Insert a discovered plugin onto the active track's effect chain.
+    InsertPlugin(String),
     /// No-op task result.
     Noop,
 }
@@ -201,28 +320,66 @@ enum Drag {
     Resize { kind: PanelKind },
 }
 
-/// One media-row stub.
-#[derive(Debug, Clone)]
-struct MediaItem {
-    name: String,
-    duration_secs: f32,
-    channels: u16,
-}
-
-/// One effect stub.
+/// One effect item.
 #[derive(Debug, Clone)]
 struct EffectItem {
     name: String,
     enabled: bool,
+    params: String,
 }
 
-/// One model stub.
+/// A finished speech generation shown in the history feed.
 #[derive(Debug, Clone)]
-struct ModelItem {
+struct HistoryItem {
+    text: String,
+    voice_id: String,
+    voice_name: String,
+    path: PathBuf,
+    duration_secs: f32,
+    created: String,
+    kind: &'static str,
+}
+
+/// A captured recording available in the Captures workspace.
+#[derive(Debug, Clone)]
+struct CaptureItem {
     name: String,
-    purpose: String,
-    installed: bool,
-    size: String,
+    path: Option<PathBuf>,
+    duration_secs: f32,
+    transcript: String,
+    peak: f32,
+}
+
+/// Which background render the generation slot belongs to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum GenerationKind {
+    /// A single spoken take.
+    Take,
+    /// A stitched story render.
+    Story,
+}
+
+/// Output produced by a background TTS worker.
+#[derive(Debug, Clone)]
+struct GeneratedTake {
+    text: String,
+    voice_id: String,
+    voice_name: String,
+    path: PathBuf,
+    duration_secs: f32,
+    kind: &'static str,
+}
+
+/// Output produced by a background render.
+#[derive(Debug, Clone)]
+enum RenderOutput {
+    /// One spoken take.
+    Take(GeneratedTake),
+    /// A stitched story plus each line's audio.
+    Story {
+        take: GeneratedTake,
+        lines: Vec<(usize, PcmBuffer)>,
+    },
 }
 
 /// The application.
@@ -263,15 +420,51 @@ pub struct App {
     record_peak: f32,
     record_rms: f32,
 
-    media: Vec<MediaItem>,
     effects: Vec<EffectItem>,
-    models: Vec<ModelItem>,
-    voices: Vec<String>,
-    selected_media: usize,
+    discovered_plugins: Vec<alp_plugin::PluginDescriptor>,
+    models_offline: bool,
+    model_manager: ModelManager,
+    profiles: Vec<VoiceProfile>,
+    profile_store: Option<ProfileStore>,
+    selected_profile: String,
+    profile_name: String,
+    profile_tags: String,
+    history: Vec<HistoryItem>,
+    media_root: PathBuf,
+    generation_slot: Arc<Mutex<Option<Result<RenderOutput, String>>>>,
+    generation_kind: GenerationKind,
+    generating: bool,
+    pending_story: Option<usize>,
+    stories: Vec<Script>,
+    selected_story: usize,
+    selected_story_line: Option<usize>,
+    story_dir: PathBuf,
+    story_text: String,
+    captures: Vec<CaptureItem>,
+    selected_capture: usize,
+    voice_text: String,
+    voice_status: String,
+    dictating: bool,
+    dictation_preview: String,
+    transcript: alp_voice::Transcript,
+    selected_segment: Option<usize>,
     selected_effect: usize,
-    selected_voice: String,
+    reference_audit_status: Option<String>,
+    consent_dialog_open: bool,
+    consent_speaker: String,
+    consent_attester: String,
+    hardware_summary: String,
     selected_track: usize,
     ripple: bool,
+    first_run_open: bool,
+    shortcuts_help_open: bool,
+
+    workflow_tab: WorkflowTab,
+
+    ai_enabled: bool,
+    ai_tier: alp_api::PermissionTier,
+    ai_status: String,
+    ai_activity_log: Vec<String>,
 
     jobs: JobQueue,
     layout_restored: bool,
@@ -280,6 +473,7 @@ pub struct App {
     last_save_error: Option<String>,
 
     playback: Option<PlaybackHandle>,
+    playback_rate: u32,
     playback_meters: Option<std::sync::Arc<alp_engine::TrackMeterBank>>,
     last_frame: Option<Instant>,
     frame_ms: f32,
@@ -313,6 +507,10 @@ impl App {
             .as_ref()
             .and_then(|path| PersistedWorkspace::load(path));
         let layout_restored = restored.is_some();
+        let first_run_completed = restored
+            .as_ref()
+            .is_some_and(|layout| layout.first_run_completed);
+        let first_run_open = !first_run_completed;
 
         let theme_mode = restored
             .as_ref()
@@ -348,19 +546,46 @@ impl App {
             .ok()
             .and_then(|value| value.parse::<u64>().ok())
             .map(|seconds| Instant::now() + Duration::from_secs(seconds));
+        // Smoke runs can pin a workspace so each tab can be screenshotted.
+        let start_tab = std::env::var("ALP_START_TAB")
+            .ok()
+            .and_then(|value| WorkflowTab::from_slug(&value))
+            .unwrap_or(WorkflowTab::Generate);
 
-        let media = vec![
-            MediaItem {
-                name: "demo-session.wav".into(),
-                duration_secs: media_duration,
-                channels: 1,
-            },
-            MediaItem {
-                name: "voice-take-01.wav".into(),
-                duration_secs: 42.8,
-                channels: 1,
-            },
-        ];
+        let data_root = dirs
+            .as_ref()
+            .map_or_else(|| PathBuf::from("."), |dirs| dirs.data.clone());
+        let media_root = data_root.join("generated");
+        let story_dir = data_root.join("stories");
+        let _ = std::fs::create_dir_all(&media_root);
+        let _ = std::fs::create_dir_all(&story_dir);
+
+        let (profile_store, profiles) = match ProfileStore::default_store() {
+            Ok(store) => {
+                let mut list = store.list_profiles();
+                if list.is_empty() {
+                    list = default_profiles();
+                }
+                (Some(store), list)
+            }
+            Err(_) => (None, default_profiles()),
+        };
+        let selected_profile = profiles
+            .first()
+            .map_or_else(|| "aura".to_owned(), |profile| profile.id.clone());
+
+        let mut stories = load_stories(&story_dir);
+        if stories.is_empty() {
+            let mut script = Script::new("First Story", &selected_profile);
+            script.add_line("Welcome to Audio Labs Pro, a local voice studio.");
+            script.add_line("Every take is rendered on this machine.");
+            stories.push(script);
+        }
+
+        let model_manager = ModelManager::with_config(alp_voice::manager::ModelManagerConfig {
+            storage_dir: data_root.join("models"),
+            offline_mode: true,
+        });
 
         let session = dirs.as_ref().map_or_else(EditSession::demo, |dirs| {
             EditSession::open_or_demo(dirs.projects_dir().join("ui-demo"))
@@ -385,12 +610,15 @@ impl App {
                 clip.fade_out_frames as f32 / clip.len() as f32
             }
         });
-        let input_devices: Vec<String> = list_devices()
+        let mut input_devices: Vec<String> = list_devices()
             .unwrap_or_default()
             .into_iter()
             .filter(|device| device.direction == alp_engine::DeviceDirection::Input)
             .map(|device| device.name)
+            .filter(|name| !is_placeholder_device(name))
             .collect();
+        input_devices.sort();
+        input_devices.dedup();
         let record_device = input_devices.first().cloned();
 
         let app = Self {
@@ -431,57 +659,98 @@ impl App {
             record_started: None,
             record_peak: 0.0,
             record_rms: 0.0,
-            media,
             effects: vec![
                 EffectItem {
-                    name: "Noise gate".into(),
+                    name: "De-Hum".into(),
                     enabled: true,
+                    params: "50/60 Hz notch cascade".into(),
                 },
                 EffectItem {
-                    name: "De-esser".into(),
-                    enabled: false,
+                    name: "De-Click".into(),
+                    enabled: true,
+                    params: "Transient click repair".into(),
                 },
                 EffectItem {
-                    name: "Studio EQ".into(),
+                    name: "Voice EQ".into(),
                     enabled: true,
+                    params: "5-band parametric (HPF 80Hz)".into(),
+                },
+                EffectItem {
+                    name: "De-Esser".into(),
+                    enabled: true,
+                    params: "6.0 kHz sibilance detector".into(),
+                },
+                EffectItem {
+                    name: "Compressor".into(),
+                    enabled: true,
+                    params: "Soft-knee vocal leveller".into(),
+                },
+                EffectItem {
+                    name: "Peak Limiter".into(),
+                    enabled: true,
+                    params: "Ceiling -1.0 dBFS".into(),
                 },
             ],
-            models: vec![
-                ModelItem {
-                    name: "Kokoro 82M".into(),
-                    purpose: "Speech synthesis".into(),
-                    installed: true,
-                    size: "340 MB".into(),
-                },
-                ModelItem {
-                    name: "Whisper Small".into(),
-                    purpose: "Transcription".into(),
-                    installed: true,
-                    size: "466 MB".into(),
-                },
-                ModelItem {
-                    name: "RVC Base".into(),
-                    purpose: "Voice cloning".into(),
-                    installed: false,
-                    size: "1.1 GB".into(),
-                },
-            ],
-            voices: vec![
-                "Narrator (neutral)".into(),
-                "Studio alto".into(),
-                "Documentary warm".into(),
-            ],
-            selected_media: 0,
+            discovered_plugins: alp_plugin::PluginHost::new().list_plugins(),
+            models_offline: true,
+            model_manager,
+            profiles,
+            profile_store,
+            selected_profile,
+            profile_name: "Studio Voice".into(),
+            profile_tags: "warm documentary narration".into(),
+            history: Vec::new(),
+            media_root,
+            generation_slot: Arc::new(Mutex::new(None)),
+            generation_kind: GenerationKind::Take,
+            generating: false,
+            pending_story: None,
+            stories,
+            selected_story: 0,
+            selected_story_line: None,
+            story_dir,
+            story_text: String::new(),
+            captures: Vec::new(),
+            selected_capture: 0,
             selected_effect: 0,
-            selected_voice: "Narrator (neutral)".into(),
+            voice_text: "Hello from Audio Labs Pro.".into(),
+            voice_status: "Ready".into(),
+            dictating: false,
+            dictation_preview: String::new(),
+            transcript: alp_voice::Transcript::new(),
+            selected_segment: None,
+            reference_audit_status: None,
+            consent_dialog_open: false,
+            consent_speaker: "Speaker Name".into(),
+            consent_attester: "Audio Engineer".into(),
+            hardware_summary: {
+                let hw = alp_voice::HardwareProfile::probe();
+                format!(
+                    "{:.1} GB RAM · {} cores · {}",
+                    hw.total_ram_gb(),
+                    hw.cpu_cores,
+                    hw.recommended_tier.as_str()
+                )
+            },
             selected_track: 0,
             ripple: true,
+            first_run_open,
+            shortcuts_help_open: false,
+            workflow_tab: start_tab,
+            ai_enabled: false,
+            ai_tier: alp_api::PermissionTier::Edit,
+            ai_status: "AI Control Standby ($XDG_RUNTIME_DIR/alp/control.sock)".into(),
+            ai_activity_log: vec![
+                "Session checkpoint created: Session Start".into(),
+                "Listening for MCP clients on stdio & control.sock".into(),
+            ],
             jobs: JobQueue::new(),
             layout_restored,
             bounds_initialized: false,
             save_path,
             last_save_error: None,
             playback: None,
+            playback_rate: 48_000,
             playback_meters: None,
             last_frame: None,
             frame_ms: 16.7,
@@ -509,6 +778,7 @@ impl App {
             || self.demo_autoscroll
             || self.autoclose.is_some()
             || self.recording.is_some()
+            || self.generating
             || self.session.is_importing()
             || self.session.needs_autosave()
         {
@@ -529,6 +799,57 @@ impl App {
     fn colors(&self) -> ThemeColors {
         theme_colors(self.theme_mode, self.system_dark)
     }
+}
+
+/// ALSA exposes a "null" device with a long explanatory name on machines
+/// without a real input; hide it rather than showing it as a microphone.
+fn is_placeholder_device(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    lower.contains("discard all samples")
+        || lower.contains("generate zero samples")
+        || lower.starts_with("null")
+}
+
+fn default_profiles() -> Vec<VoiceProfile> {
+    ["aura", "atlas", "echo", "sol"]
+        .into_iter()
+        .map(|id| {
+            let name = match id {
+                "atlas" => "Atlas",
+                "echo" => "Echo",
+                "sol" => "Sol",
+                _ => "Aura",
+            };
+            VoiceProfile::builtin(id, name, vec!["builtin".into(), "english".into()])
+        })
+        .collect()
+}
+
+/// Load saved story scripts from `dir`, newest title first.
+fn load_stories(dir: &std::path::Path) -> Vec<Script> {
+    let mut paths: Vec<PathBuf> = std::fs::read_dir(dir)
+        .map(|entries| {
+            entries
+                .flatten()
+                .map(|entry| entry.path())
+                .filter(|path| path.extension().is_some_and(|ext| ext == "json"))
+                .collect()
+        })
+        .unwrap_or_default();
+    paths.sort();
+
+    paths
+        .into_iter()
+        .filter_map(|path| {
+            let text = std::fs::read_to_string(path).ok()?;
+            let mut script: Script = serde_json::from_str(&text).ok()?;
+            for line in &mut script.lines {
+                line.audio = None;
+                line.status = alp_voice::LineStatus::Pending;
+            }
+            Some(script)
+        })
+        .collect()
 }
 
 fn theme_colors(mode: ThemeMode, system_dark: bool) -> ThemeColors {

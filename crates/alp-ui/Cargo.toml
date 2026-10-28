@@ -9,9 +9,11 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
+alp-api.workspace = true
 alp-core.workspace = true
 alp-engine.workspace = true
 alp-media.workspace = true
+alp-plugin.workspace = true
 alp-ui-kit.workspace = true
 alp-voice.workspace = true
 iced.workspace = true

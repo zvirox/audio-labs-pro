@@ -38,11 +38,13 @@ pub enum PanelKind {
     Models,
     /// Export queue.
     ExportQueue,
+    /// AI activity and live attach control.
+    AiActivity,
 }
 
 impl PanelKind {
     /// Stable order used for defaults and menus.
-    pub const ALL: [Self; 9] = [
+    pub const ALL: [Self; 10] = [
         Self::Transport,
         Self::Mixer,
         Self::Timeline,
@@ -52,10 +54,12 @@ impl PanelKind {
         Self::Effects,
         Self::Models,
         Self::ExportQueue,
+        Self::AiActivity,
     ];
 
     /// Stable persisted id.
     #[must_use]
+    #[allow(dead_code)]
     pub fn id(self) -> &'static str {
         match self {
             Self::Mixer => "mixer",
@@ -67,6 +71,7 @@ impl PanelKind {
             Self::Effects => "effects",
             Self::Models => "models",
             Self::ExportQueue => "export_queue",
+            Self::AiActivity => "ai_activity",
         }
     }
 
@@ -83,6 +88,7 @@ impl PanelKind {
             Self::Effects => "Effects",
             Self::Models => "Models",
             Self::ExportQueue => "Export Queue",
+            Self::AiActivity => "AI Activity & Control",
         }
     }
 
@@ -99,6 +105,7 @@ impl PanelKind {
             Self::Effects => "✦",
             Self::Models => "◇",
             Self::ExportQueue => "⇩",
+            Self::AiActivity => "⚡",
         }
     }
 
@@ -120,6 +127,7 @@ impl PanelKind {
             Self::Effects => PanelRect::new(w - 332.0, 430.0, 300.0, 260.0),
             Self::Models => PanelRect::new(w / 2.0 - 250.0, h / 2.0 - 190.0, 500.0, 380.0),
             Self::ExportQueue => PanelRect::new(w - 452.0, h - 332.0, 420.0, 260.0),
+            Self::AiActivity => PanelRect::new(w - 452.0, 72.0, 420.0, 360.0),
         }
     }
 }
@@ -290,6 +298,7 @@ impl PanelManager {
 
     /// All panel states in stable kind order.
     #[must_use]
+    #[allow(dead_code)]
     pub fn panels(&self) -> &[PanelState] {
         &self.panels
     }
@@ -313,6 +322,7 @@ impl PanelManager {
 
     /// The focused panel.
     #[must_use]
+    #[allow(dead_code)]
     pub fn active(&self) -> Option<PanelKind> {
         self.active
     }
@@ -328,6 +338,7 @@ impl PanelManager {
     }
 
     /// Toggle visibility.
+    #[allow(dead_code)]
     pub fn toggle_open(&mut self, kind: PanelKind) {
         let open = !self.panel(kind).open;
         self.set_open(kind, open);
@@ -423,6 +434,7 @@ impl PanelManager {
 
     /// Panels sorted painter-first (lowest z first).
     #[must_use]
+    #[allow(dead_code)]
     pub fn painter_order(&self) -> Vec<PanelKind> {
         let mut panels: Vec<&PanelState> = self.panels.iter().filter(|panel| panel.open).collect();
         panels.sort_by_key(|panel| (panel.z, panel.kind));
@@ -484,7 +496,7 @@ mod tests {
     #[test]
     fn every_core_panel_exists_with_four_visible() {
         let manager = manager();
-        assert_eq!(manager.panels().len(), 9);
+        assert_eq!(manager.panels().len(), PanelKind::ALL.len());
         assert_eq!(
             manager.panels().iter().filter(|panel| panel.open).count(),
             5

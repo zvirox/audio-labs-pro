@@ -39,6 +39,7 @@ impl App {
             }
             Message::Frame(now) => {
                 self.jobs.poll();
+                self.poll_generation();
                 self.session.poll_autosave();
                 if self.session.poll_import() {
                     self.sync_edit_fields();
@@ -81,8 +82,9 @@ impl App {
                 }
                 if let Some(playback) = &self.playback {
                     let total = self.media_duration.max(1.0);
+                    let rate = self.playback_rate.max(1) as f32;
                     let frames = playback.position_frames();
-                    self.position_secs = (frames as f32 / 48_000.0).clamp(0.0, total);
+                    self.position_secs = (frames as f32 / rate).clamp(0.0, total);
                     self.waveform.set_playhead(self.position_secs);
                     self.record_peak = playback.master_peak().clamp(0.0, 1.0);
                     self.record_rms = playback.master_rms().clamp(0.0, 1.0);
@@ -116,9 +118,19 @@ impl App {
                 Task::none()
             }
             Message::TogglePanel(kind) => {
-                self.panels.toggle_open(kind);
-                let open = self.panels.panel(kind).open;
-                self.set_panel_open(kind, open);
+                self.workflow_tab = match kind {
+                    PanelKind::VoiceLab => WorkflowTab::Voices,
+                    PanelKind::Models => WorkflowTab::Models,
+                    PanelKind::MediaBin => WorkflowTab::Captures,
+                    PanelKind::Transport => WorkflowTab::Captures,
+                    PanelKind::Effects => WorkflowTab::Effects,
+                    PanelKind::Mixer
+                    | PanelKind::Inspector
+                    | PanelKind::AiActivity
+                    | PanelKind::Timeline => WorkflowTab::Stories,
+                    PanelKind::ExportQueue => WorkflowTab::Generate,
+                };
+                self.panels.set_open(kind, true);
                 Task::none()
             }
             Message::ClosePanel(kind) => {
@@ -194,6 +206,7 @@ impl App {
                     match play_scene_live(&scene, None) {
                         Ok(handle) => {
                             self.playback = Some(handle);
+                            self.playback_rate = scene.sample_rate();
                             self.playing = true;
                             self.media_duration = media_duration.max(1.0);
                             self.waveform.set_playhead(self.position_secs);
@@ -236,6 +249,10 @@ impl App {
             }
             Message::QueueExport | Message::ExportMix => {
                 self.export_mix();
+                Task::none()
+            }
+            Message::ExportPreset(preset) => {
+                self.export_with_preset(preset);
                 Task::none()
             }
             Message::CancelJob(id) => {
@@ -418,16 +435,222 @@ impl App {
                 self.toggle_recording();
                 Task::none()
             }
-            Message::SelectMedia(index) => {
-                self.selected_media = index.min(self.media.len().saturating_sub(1));
-                Task::none()
-            }
             Message::SelectEffect(index) => {
                 self.selected_effect = index.min(self.effects.len().saturating_sub(1));
                 Task::none()
             }
+            Message::ToggleEffect(index) => {
+                if let Some(effect) = self.effects.get_mut(index) {
+                    effect.enabled = !effect.enabled;
+                }
+                Task::none()
+            }
+            Message::ApplyVoiceCleanupPreset => {
+                for effect in &mut self.effects {
+                    effect.enabled = true;
+                }
+                Task::none()
+            }
+            Message::RescanPlugins => {
+                let scanner = alp_plugin::PluginScanner::new();
+                let _ = scanner.scan();
+                self.discovered_plugins = alp_plugin::PluginHost::new().list_plugins();
+                self.show_toast(format!(
+                    "Discovered {} plugins",
+                    self.discovered_plugins.len()
+                ));
+                Task::none()
+            }
+            Message::InsertPlugin(id) => {
+                if let Some(desc) = self.discovered_plugins.iter().find(|p| p.id == id).cloned() {
+                    self.effects.push(EffectItem {
+                        name: desc.name.clone(),
+                        enabled: true,
+                        params: format!("{:?} · {}", desc.format, desc.vendor),
+                    });
+                    self.selected_effect = self.effects.len().saturating_sub(1);
+                    self.show_toast(format!("Inserted plugin {}", desc.name));
+                }
+                Task::none()
+            }
             Message::SelectVoice(voice) => {
-                self.selected_voice = voice;
+                let id = self
+                    .profiles
+                    .iter()
+                    .find(|profile| profile.name == voice || profile.id == voice)
+                    .map_or(voice, |profile| profile.id.clone());
+                self.select_profile(&id);
+                Task::none()
+            }
+            Message::GenerateTextInput(text) => {
+                self.voice_text = text;
+                Task::none()
+            }
+            Message::GenerateSpeech => {
+                self.start_generation();
+                Task::none()
+            }
+            Message::PlayHistory(index) => {
+                self.play_history(index);
+                Task::none()
+            }
+            Message::InsertHistory(index) => {
+                self.insert_history(index);
+                Task::none()
+            }
+            Message::DeleteHistory(index) => {
+                self.delete_history(index);
+                Task::none()
+            }
+            Message::ClearHistory => {
+                self.history.clear();
+                self.show_toast("History cleared");
+                Task::none()
+            }
+            Message::SelectProfile(id) => {
+                self.select_profile(&id);
+                Task::none()
+            }
+            Message::ProfileNameInput(text) => {
+                self.profile_name = text;
+                Task::none()
+            }
+            Message::ProfileTagsInput(text) => {
+                self.profile_tags = text;
+                Task::none()
+            }
+            Message::CreateDesignedProfile => {
+                self.create_designed_profile();
+                Task::none()
+            }
+            Message::DeleteProfile(id) => {
+                self.delete_profile(&id);
+                Task::none()
+            }
+            Message::ExportProfile(id) => {
+                self.export_profile(&id);
+                Task::none()
+            }
+            Message::StoryLineInput(text) => {
+                self.story_text = text;
+                Task::none()
+            }
+            Message::AddStoryLine => {
+                self.story_add_line();
+                Task::none()
+            }
+            Message::SelectStoryLine(index) => {
+                self.selected_story_line = Some(index);
+                Task::none()
+            }
+            Message::DeleteStoryLine(index) => {
+                self.story_delete_line(index);
+                Task::none()
+            }
+            Message::NewStory => {
+                self.story_new();
+                Task::none()
+            }
+            Message::SaveStory => {
+                self.story_save();
+                Task::none()
+            }
+            Message::RenderStory => {
+                self.story_render();
+                Task::none()
+            }
+            Message::SelectStory(index) => {
+                self.selected_story = index.min(self.stories.len().saturating_sub(1));
+                self.selected_story_line = None;
+                Task::none()
+            }
+            Message::SelectCapture(index) => {
+                self.selected_capture = index.min(self.captures.len().saturating_sub(1));
+                Task::none()
+            }
+            Message::ExportTranscriptSrt => {
+                self.export_transcript(true);
+                Task::none()
+            }
+            Message::ExportTranscriptTxt => {
+                self.export_transcript(false);
+                Task::none()
+            }
+            Message::AcceptModelLicense(id) => {
+                self.accept_model_license(&id);
+                Task::none()
+            }
+            Message::RemoveModel(id) => {
+                self.remove_model(&id);
+                Task::none()
+            }
+            Message::ToggleOfflineModels => {
+                self.toggle_offline_models();
+                Task::none()
+            }
+            Message::ToggleDictation => {
+                self.dictating = !self.dictating;
+                if self.dictating {
+                    self.dictation_preview = "Listening (built-in VAD)".into();
+                    self.show_toast("Dictation armed · stop to segment the selected capture");
+                } else {
+                    self.dictation_preview.clear();
+                    self.transcribe_capture();
+                }
+                Task::none()
+            }
+            Message::SelectTranscriptSegment(index) => {
+                if let Some(segment) = self.transcript.segments.get(index) {
+                    let rate = self.session.project().sample_rate.max(1);
+                    let secs = segment.start_frame as f32 / rate as f32;
+                    self.position_secs = secs;
+                    self.waveform.set_playhead(secs);
+                    self.selected_segment = Some(index);
+                    self.show_toast(format!("Seek to segment {index} at {secs:.2}s"));
+                }
+                Task::none()
+            }
+            Message::DeleteTranscriptSegment(index) => {
+                if let Some(range) = self.transcript.cut_range_for_segment(index) {
+                    if index < self.transcript.segments.len() {
+                        self.transcript.segments.remove(index);
+                    }
+                    self.session.delete_range(range, self.ripple);
+                    self.sync_edit_fields();
+                    self.show_toast(format!(
+                        "Ripple deleted segment {index} ({:.2}s)",
+                        (range.end - range.start) as f64 / 48_000.0
+                    ));
+                }
+                Task::none()
+            }
+            Message::TranscribeActiveTrack => {
+                self.transcribe_capture();
+                Task::none()
+            }
+            Message::AuditReferenceAudio => {
+                self.audit_reference();
+                Task::none()
+            }
+            Message::OpenConsentDialog => {
+                self.consent_dialog_open = true;
+                self.show_toast("Human consent attestation required for cloning");
+                Task::none()
+            }
+            Message::ConfirmConsent => {
+                self.create_cloned_profile();
+                Task::none()
+            }
+            Message::CloseConsentDialog => {
+                self.consent_dialog_open = false;
+                Task::none()
+            }
+            Message::ConsentSpeakerInput(text) => {
+                self.consent_speaker = text;
+                Task::none()
+            }
+            Message::ConsentAttesterInput(text) => {
+                self.consent_attester = text;
                 Task::none()
             }
             Message::SelectTrack(index) => {
@@ -483,18 +706,84 @@ impl App {
                 self.waveform.set_playhead(self.position_secs);
                 Task::none()
             }
+            Message::OpenFirstRunWizard => {
+                self.first_run_open = true;
+                Task::none()
+            }
+            Message::FinishFirstRunWizard => {
+                self.first_run_open = false;
+                self.save_workspace();
+                self.show_toast("First-run configuration completed");
+                Task::none()
+            }
+            Message::OpenShortcutsHelp => {
+                self.shortcuts_help_open = true;
+                Task::none()
+            }
+            Message::CloseShortcutsHelp => {
+                self.shortcuts_help_open = false;
+                Task::none()
+            }
+            Message::ToggleAiControl => {
+                self.ai_enabled = !self.ai_enabled;
+                self.ai_status = if self.ai_enabled {
+                    "AI Control Active (Listening on control.sock)".into()
+                } else {
+                    "AI Control Standby".into()
+                };
+                self.show_toast(if self.ai_enabled {
+                    "AI Control enabled (Tier: Edit)"
+                } else {
+                    "AI Control disabled"
+                });
+                Task::none()
+            }
+            Message::SetAiPermissionTier(tier) => {
+                self.ai_tier = tier;
+                self.show_toast(format!("AI Permission Tier updated to {tier:?}"));
+                Task::none()
+            }
+            Message::StopAi => {
+                self.ai_enabled = false;
+                self.ai_status = "AI Session Stopped / Revoked".into();
+                self.ai_activity_log
+                    .push("EMERGENCY STOP: AI session revoked and active tasks cancelled".into());
+                self.show_toast("AI activity stopped and jobs cancelled");
+                Task::none()
+            }
+            Message::UndoAiChanges => {
+                self.session.undo();
+                self.ai_activity_log
+                    .push("Rollback executed: Restored session checkpoint".into());
+                self.sync_edit_fields();
+                self.show_toast("Rolled back all AI changes to session start");
+                Task::none()
+            }
+            Message::SelectWorkflowTab(tab) => {
+                self.workflow_tab = tab;
+                Task::none()
+            }
             Message::Noop => Task::none(),
         }
     }
 
     fn import_path(&mut self, path: PathBuf) {
+        let extension = path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .unwrap_or_default()
+            .to_ascii_lowercase();
+        if extension == "alpvoice" {
+            self.import_profile(path);
+            return;
+        }
         match self.session.begin_import(path) {
             Ok(()) => self.show_toast("Import started in the background"),
             Err(error) => self.show_toast(error),
         }
     }
 
-    fn sync_edit_fields(&mut self) {
+    pub(crate) fn sync_edit_fields(&mut self) {
         let selection = self.session.selection();
         let rate = self.session.project().sample_rate;
         self.selection_start = format!("{:.2}", frames_to_secs(selection.range().start, rate));
@@ -519,11 +808,14 @@ impl App {
     fn toggle_recording(&mut self) {
         if let Some(recording) = self.recording.take() {
             let path = self.record_path.clone();
+            let peak = self.record_peak;
             match recording.stop() {
                 Ok(report) => {
+                    let seconds = report.frames as f32 / report.sample_rate.max(1) as f32;
                     self.record_peak = 0.0;
                     self.record_rms = 0.0;
                     if let Some(path) = path {
+                        self.record_capture(&path, seconds, peak);
                         let punched = if self.punch_in {
                             self.session.punch_in_file(&path)
                         } else {
@@ -580,55 +872,6 @@ impl App {
         }
     }
 
-    fn export_mix(&mut self) {
-        let scene = match self.session.scene() {
-            Ok(scene) => scene,
-            Err(error) => {
-                self.show_toast(format!("Export failed: {error}"));
-                return;
-            }
-        };
-        if self.punch_in && self.session.selection().is_empty() {
-            self.show_toast("Select a range before punch-in");
-            return;
-        }
-        let Some(dirs) = alp_core::AppDirs::discover().ok() else {
-            self.show_toast("No application data directory");
-            return;
-        };
-        let directory = dirs.projects_dir().join("ui-demo").join("renders");
-        if let Err(error) = std::fs::create_dir_all(&directory) {
-            self.show_toast(format!("Cannot create render folder: {error}"));
-            return;
-        }
-        let path = directory.join(format!("mix-{}.wav", now_ms()));
-        let display = path.display().to_string();
-        let settings: ExportSettings = EditSession::export_settings();
-        let master_gain = self.session.master_gain();
-        self.session.set_export_queued(&path);
-        self.jobs.spawn("Export mix", move |reporter| {
-            reporter.progress(0.05);
-            reporter.detail("Rendering edited timeline");
-            let mut buffer = alp_media::PcmBuffer::silence(
-                scene.sample_rate(),
-                scene.channels(),
-                scene.total_frames(),
-            )
-            .map_err(|error| error.to_string())?;
-            let mut mixer = alp_engine::Mixer::with_master(scene, master_gain, None, 0.0, 0.0);
-            let blocksamples = alp_engine::DEFAULT_BLOCK_FRAMES * usize::from(buffer.channels());
-            for block in buffer.samples_mut().chunks_mut(blocksamples) {
-                mixer.render_into(block);
-            }
-            reporter.progress(0.65);
-            reporter.detail("Quantizing and writing WAV");
-            alp_media::export(&path, &buffer, &settings).map_err(|error| error.to_string())?;
-            reporter.progress(1.0);
-            Ok(format!("24-bit WAV · {display}"))
-        });
-        self.show_toast("Export queued in the background");
-    }
-
     fn run_command(&mut self, id: CommandId) -> Task<Message> {
         if self.palette.open && id != CommandId::TogglePalette {
             self.palette.hide();
@@ -660,12 +903,26 @@ impl App {
             CommandId::PlayPause => self.update(Message::PlayPause),
             CommandId::Stop => self.update(Message::Stop),
             CommandId::QueueExport => self.update(Message::QueueExport),
+            CommandId::OpenShortcutsHelp => self.update(Message::OpenShortcutsHelp),
+            CommandId::OpenFirstRunWizard => self.update(Message::OpenFirstRunWizard),
         }
     }
 
     fn handle_event(&mut self, event: iced::Event) -> Task<Message> {
         match event {
             iced::Event::Keyboard(iced::keyboard::Event::KeyPressed { key, modifiers, .. }) => {
+                if self.shortcuts_help_open {
+                    if let iced::keyboard::Key::Named(iced::keyboard::key::Named::Escape) = key {
+                        self.shortcuts_help_open = false;
+                    }
+                    return Task::none();
+                }
+                if self.first_run_open {
+                    if let iced::keyboard::Key::Named(iced::keyboard::key::Named::Escape) = key {
+                        self.first_run_open = false;
+                    }
+                    return Task::none();
+                }
                 if self.palette.open {
                     match key {
                         iced::keyboard::Key::Named(iced::keyboard::key::Named::Escape) => {
@@ -774,7 +1031,8 @@ impl App {
             self.reduce_motion,
             self.glass.mode.as_str(),
             self.panels.snapshots(),
-        );
+        )
+        .with_first_run_completed(!self.first_run_open);
         if let Err(error) = layout.save(path) {
             self.last_save_error = Some(error.to_string());
         } else {
@@ -782,7 +1040,7 @@ impl App {
         }
     }
 
-    fn show_toast(&mut self, message: impl Into<String>) {
+    pub(crate) fn show_toast(&mut self, message: impl Into<String>) {
         self.toast = Some((message.into(), Instant::now()));
     }
 }

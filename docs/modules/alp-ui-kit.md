@@ -2,11 +2,17 @@
 
 ## Purpose
 
-The in-house design system for Audio Labs Pro: design tokens, bundled Inter,
-dark/light glass palettes, semantic controls, overlay builders, motion
-primitives and the peak-pyramid waveform canvas. Screens consume these modules
-instead of raw iced widgets, which is how the shell keeps one visual language and
-how the no-raw-button rule stays enforceable.
+The in-house design system for Audio Labs Pro: design tokens, bundled Inter, the
+retro "midnight walnut" dark palette and "aged paper" light palette, semantic
+controls, overlay builders, motion primitives and the peak-pyramid waveform
+canvas. Screens consume these modules instead of raw iced widgets, which is how
+the shell keeps one visual language and how the no-raw-button rule stays
+enforceable.
+
+The retro language is deliberately restrained: espresso and cream surfaces, a
+burnt-orange accent with a teal secondary, 3/7/11 px radii, 1 px ink borders and
+soft card shadows. Buttons carry ink-on-accent text; glyph buttons render
+single-character monochrome symbols rather than an icon font.
 
 ## Public API
 
@@ -16,8 +22,8 @@ how the no-raw-button rule stays enforceable.
   `bold`.
 - `theme` — `ThemeColors` (`DARK`, `LIGHT`), `for_mode`, `to_theme`,
   `panel_style`, `card_style`, `plain_style`.
-- `components` — `ButtonKind`, buttons, icon buttons, toggle, slider, dropdown,
-  tabs, tooltip, progress and text helpers.
+- `components` — `ButtonKind`, buttons, icon/glyph buttons, toggle, slider,
+  dropdown, tabs, tooltip, progress and text helpers.
 - `overlays` — cards, modal, toast, command palette, property row, empty state.
 - `motion` — `Toggle`, `PanelMotion`, overlay/panel constructors and duration
   scaling.
@@ -60,10 +66,10 @@ dark; tooltips and overlays accept empty content without panicking.
 
 ## Testing
 
-Eighteen tests cover token/theme parsing and reduce motion, bundled font family
-and size, button/toggle/slider/tab construction, modal/toast/palette building,
-panel motion, and waveform validation, level selection, aggregation and
-scroll/zoom clamping. `scripts/check-ui.sh` additionally enforces that
+Eighteen tests cover token/theme parsing and reduce motion, the retro palette
+roles, bundled font family and size, button/glyph-button/toggle/slider/tab
+construction, modal/toast/palette building, panel motion, and waveform
+validation, level selection, aggregation and scroll/zoom clamping. `scripts/check-ui.sh` additionally enforces that
 `crates/alp-ui/src` never calls a raw iced button.
 
 ## Known limits

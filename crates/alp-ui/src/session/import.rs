@@ -1,11 +1,13 @@
 //! Background import worker for the editing session.
 
+use std::sync::mpsc::{self, TryRecvError};
+
 use super::*;
 
-pub(super) struct ImportedAudio {
-    pub(super) buffer: PcmBuffer,
-    pub(super) name: String,
-    pub(super) path: String,
+pub struct ImportedAudio {
+    pub buffer: PcmBuffer,
+    pub name: String,
+    pub path: String,
 }
 
 impl EditSession {

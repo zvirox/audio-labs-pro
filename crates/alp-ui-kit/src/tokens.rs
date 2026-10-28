@@ -30,11 +30,11 @@ pub struct Radius;
 
 impl Radius {
     /// Small control radius.
-    pub const SM: u16 = 6;
+    pub const SM: u16 = 3;
     /// Default panel radius.
-    pub const MD: u16 = 12;
+    pub const MD: u16 = 7;
     /// Floating panel radius.
-    pub const LG: u16 = 18;
+    pub const LG: u16 = 11;
     /// Pill radius for toggles and tags.
     pub const PILL: u16 = 999;
 }

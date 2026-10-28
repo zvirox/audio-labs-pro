@@ -30,6 +30,8 @@ pub struct ThemeColors {
     pub accent_hover: Color,
     /// Accent pressed.
     pub accent_pressed: Color,
+    /// Secondary accent for tags, links and alternate meters.
+    pub accent_secondary: Color,
     /// Hairline border.
     pub border: Color,
     /// Strong border for a focused panel.
@@ -53,50 +55,52 @@ pub struct ThemeColors {
 }
 
 impl ThemeColors {
-    /// Dark glass palette.
+    /// Retro dark palette: walnut cabinet, cream lettering, burnt-orange accent.
     pub const DARK: Self = Self {
-        background: Color::from_rgba(0.035, 0.040, 0.055, 0.92),
-        glass: Color::from_rgba(0.055, 0.062, 0.080, 0.72),
-        glass_strong: Color::from_rgba(0.075, 0.082, 0.105, 0.94),
-        text: Color::from_rgba(0.95, 0.96, 1.0, 0.95),
-        muted: Color::from_rgba(0.72, 0.75, 0.84, 0.78),
-        faint: Color::from_rgba(0.62, 0.66, 0.76, 0.45),
-        accent: Color::from_rgb(0.40, 0.54, 0.95),
-        accent_hover: Color::from_rgb(0.46, 0.60, 1.0),
-        accent_pressed: Color::from_rgb(0.34, 0.47, 0.86),
-        border: Color::from_rgba(1.0, 1.0, 1.0, 0.12),
-        border_strong: Color::from_rgba(0.52, 0.64, 1.0, 0.55),
-        shadow: Color::from_rgba(0.0, 0.0, 0.0, 0.48),
-        success: Color::from_rgb(0.42, 0.86, 0.66),
-        warning: Color::from_rgb(0.96, 0.76, 0.38),
-        danger: Color::from_rgb(0.94, 0.42, 0.46),
-        wave: Color::from_rgb(0.38, 0.72, 0.95),
-        wave_hot: Color::from_rgb(0.96, 0.54, 0.42),
-        grid: Color::from_rgba(1.0, 1.0, 1.0, 0.07),
-        playhead: Color::from_rgb(1.0, 0.42, 0.42),
+        background: Color::from_rgba(0.075, 0.062, 0.051, 0.98),
+        glass: Color::from_rgba(0.106, 0.086, 0.067, 0.92),
+        glass_strong: Color::from_rgba(0.137, 0.110, 0.086, 0.98),
+        text: Color::from_rgba(0.949, 0.902, 0.812, 0.97),
+        muted: Color::from_rgba(0.706, 0.639, 0.522, 0.90),
+        faint: Color::from_rgba(0.478, 0.424, 0.341, 0.75),
+        accent: Color::from_rgb(0.847, 0.514, 0.235),
+        accent_hover: Color::from_rgb(0.925, 0.616, 0.314),
+        accent_pressed: Color::from_rgb(0.702, 0.396, 0.157),
+        accent_secondary: Color::from_rgb(0.373, 0.612, 0.573),
+        border: Color::from_rgba(0.949, 0.902, 0.812, 0.11),
+        border_strong: Color::from_rgba(0.847, 0.514, 0.235, 0.55),
+        shadow: Color::from_rgba(0.0, 0.0, 0.0, 0.55),
+        success: Color::from_rgb(0.545, 0.671, 0.400),
+        warning: Color::from_rgb(0.890, 0.706, 0.267),
+        danger: Color::from_rgb(0.769, 0.322, 0.243),
+        wave: Color::from_rgb(0.847, 0.514, 0.235),
+        wave_hot: Color::from_rgb(0.949, 0.741, 0.404),
+        grid: Color::from_rgba(0.949, 0.902, 0.812, 0.07),
+        playhead: Color::from_rgb(0.949, 0.741, 0.404),
     };
 
-    /// Light glass palette.
+    /// Retro light palette: aged paper, ink lettering, oxblood accent.
     pub const LIGHT: Self = Self {
-        background: Color::from_rgba(0.90, 0.92, 0.96, 0.94),
-        glass: Color::from_rgba(1.0, 1.0, 1.0, 0.72),
-        glass_strong: Color::from_rgba(1.0, 1.0, 1.0, 0.94),
-        text: Color::from_rgba(0.08, 0.10, 0.14, 0.96),
-        muted: Color::from_rgba(0.25, 0.29, 0.38, 0.75),
-        faint: Color::from_rgba(0.30, 0.34, 0.42, 0.45),
-        accent: Color::from_rgb(0.20, 0.36, 0.82),
-        accent_hover: Color::from_rgb(0.26, 0.43, 0.92),
-        accent_pressed: Color::from_rgb(0.16, 0.30, 0.72),
-        border: Color::from_rgba(0.08, 0.10, 0.16, 0.14),
-        border_strong: Color::from_rgba(0.20, 0.36, 0.82, 0.55),
-        shadow: Color::from_rgba(0.05, 0.08, 0.16, 0.20),
-        success: Color::from_rgb(0.10, 0.52, 0.36),
-        warning: Color::from_rgb(0.66, 0.42, 0.06),
-        danger: Color::from_rgb(0.72, 0.18, 0.22),
-        wave: Color::from_rgb(0.18, 0.44, 0.80),
-        wave_hot: Color::from_rgb(0.78, 0.30, 0.20),
-        grid: Color::from_rgba(0.08, 0.10, 0.16, 0.08),
-        playhead: Color::from_rgb(0.82, 0.16, 0.20),
+        background: Color::from_rgba(0.910, 0.867, 0.776, 0.97),
+        glass: Color::from_rgba(0.965, 0.937, 0.875, 0.94),
+        glass_strong: Color::from_rgba(0.984, 0.961, 0.910, 0.99),
+        text: Color::from_rgba(0.180, 0.145, 0.106, 0.97),
+        muted: Color::from_rgba(0.376, 0.325, 0.255, 0.85),
+        faint: Color::from_rgba(0.541, 0.482, 0.388, 0.70),
+        accent: Color::from_rgb(0.663, 0.278, 0.129),
+        accent_hover: Color::from_rgb(0.749, 0.341, 0.161),
+        accent_pressed: Color::from_rgb(0.549, 0.216, 0.094),
+        accent_secondary: Color::from_rgb(0.184, 0.435, 0.412),
+        border: Color::from_rgba(0.180, 0.145, 0.106, 0.18),
+        border_strong: Color::from_rgba(0.663, 0.278, 0.129, 0.55),
+        shadow: Color::from_rgba(0.200, 0.150, 0.100, 0.20),
+        success: Color::from_rgb(0.247, 0.463, 0.259),
+        warning: Color::from_rgb(0.706, 0.494, 0.086),
+        danger: Color::from_rgb(0.659, 0.212, 0.161),
+        wave: Color::from_rgb(0.663, 0.278, 0.129),
+        wave_hot: Color::from_rgb(0.788, 0.427, 0.180),
+        grid: Color::from_rgba(0.180, 0.145, 0.106, 0.10),
+        playhead: Color::from_rgb(0.788, 0.427, 0.180),
     };
 
     /// Resolve a theme mode, including the desktop preference.
@@ -141,8 +145,8 @@ impl ThemeColors {
             },
             shadow: Shadow {
                 color: self.shadow,
-                offset: Vector::new(0.0, 18.0),
-                blur_radius: 48.0,
+                offset: Vector::new(0.0, 6.0),
+                blur_radius: 18.0,
             },
             snap: true,
         }

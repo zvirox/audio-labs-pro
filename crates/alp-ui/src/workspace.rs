@@ -27,6 +27,9 @@ pub struct PersistedWorkspace {
     pub glass: String,
     /// Panel geometry in painter-independent order.
     pub panels: Vec<PanelState>,
+    /// Whether first-run configuration wizard has been completed.
+    #[serde(default)]
+    pub first_run_completed: bool,
 }
 
 impl PersistedWorkspace {
@@ -44,7 +47,15 @@ impl PersistedWorkspace {
             reduce_motion,
             glass: glass.into(),
             panels,
+            first_run_completed: false,
         }
+    }
+
+    /// Mark first-run completion flag.
+    #[must_use]
+    pub fn with_first_run_completed(mut self, completed: bool) -> Self {
+        self.first_run_completed = completed;
+        self
     }
 
     /// Path of the workspace file.
@@ -86,10 +97,24 @@ mod tests {
     fn save_and_load_round_trip() {
         let dir = tempfile::tempdir().expect("tempdir");
         let path = dir.path().join("nested").join("workspace.json");
-        let expected = layout();
+        let expected = layout().with_first_run_completed(true);
         expected.save(&path).expect("save");
         let actual = PersistedWorkspace::load(&path).expect("load");
         assert_eq!(actual, expected);
+        assert!(actual.first_run_completed);
+    }
+
+    #[test]
+    fn legacy_workspace_defaults_first_run_to_false() {
+        let json = r#"{
+            "version": 1,
+            "theme": "dark",
+            "reduce_motion": false,
+            "glass": "tint_fallback",
+            "panels": []
+        }"#;
+        let ws: PersistedWorkspace = serde_json::from_str(json).expect("parse");
+        assert!(!ws.first_run_completed);
     }
 
     #[test]

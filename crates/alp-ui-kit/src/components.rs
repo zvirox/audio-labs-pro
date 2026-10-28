@@ -62,6 +62,26 @@ pub fn icon_button<'a, Message: Clone + 'a>(
     button(glyph, ButtonKind::Icon, colors, on_press)
 }
 
+/// A square glyph button with a caller-chosen glyph size.
+///
+/// The navigation rail uses this so single-character glyphs stay legible
+/// without a label.
+pub fn glyph_button<'a, Message: Clone + 'a>(
+    glyph: impl Into<String>,
+    size: f32,
+    kind: ButtonKind,
+    colors: ThemeColors,
+    on_press: Option<Message>,
+) -> Element<'a, Message> {
+    raw_button(text(glyph.into()).size(size).font(fonts::regular()))
+        .padding(Spacing::XS)
+        .width(Length::Fixed(40.0))
+        .height(Length::Fixed(40.0))
+        .style(move |_theme, status| button_style(kind, colors, status))
+        .on_press_maybe(on_press)
+        .into()
+}
+
 /// A labelled toggle switch.
 pub fn toggle<'a, Message: Clone + 'a>(
     label: impl Into<String>,
@@ -163,7 +183,10 @@ pub fn progress<'a, Message: 'a>(value: f32, colors: ThemeColors) -> Element<'a,
         .length(Length::Fill)
         .girth(Length::Fixed(6.0))
         .style(move |_theme| progress_bar::Style {
-            background: Background::Color(colors.glass_strong),
+            background: Background::Color(Color {
+                a: 0.30,
+                ..colors.muted
+            }),
             bar: Background::Color(colors.accent),
             border: Border {
                 radius: f32::from(Radius::PILL).into(),
@@ -205,16 +228,20 @@ pub fn kicker<'a, Message: 'a>(
     text(label.into().to_uppercase())
         .size(f32::from(TypeScale::CAPTION))
         .font(fonts::semibold())
-        .color(colors.faint)
+        .color(colors.accent_secondary)
         .into()
 }
 
 fn button_style(kind: ButtonKind, colors: ThemeColors, status: ButtonStatus) -> ButtonStyle {
     let (background, text_color, border_color) = match kind {
         ButtonKind::Primary => match status {
-            ButtonStatus::Hovered => (colors.accent_hover, colors.text, colors.accent_hover),
-            ButtonStatus::Pressed => (colors.accent_pressed, colors.text, colors.accent_pressed),
-            _ => (colors.accent, colors.text, colors.accent),
+            ButtonStatus::Hovered => (colors.accent_hover, colors.background, colors.accent_hover),
+            ButtonStatus::Pressed => (
+                colors.accent_pressed,
+                colors.background,
+                colors.accent_pressed,
+            ),
+            _ => (colors.accent, colors.background, colors.accent),
         },
         ButtonKind::Secondary => match status {
             ButtonStatus::Hovered | ButtonStatus::Pressed => {
@@ -230,7 +257,7 @@ fn button_style(kind: ButtonKind, colors: ThemeColors, status: ButtonStatus) -> 
         },
         ButtonKind::Danger => match status {
             ButtonStatus::Hovered | ButtonStatus::Pressed => {
-                (colors.danger, colors.text, colors.danger)
+                (colors.danger, colors.background, colors.danger)
             }
             _ => (colors.glass_strong, colors.danger, colors.danger),
         },

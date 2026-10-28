@@ -35,6 +35,10 @@ pub enum CommandId {
     Stop,
     /// Queue a demo export worker.
     QueueExport,
+    /// Open keyboard shortcuts help modal.
+    OpenShortcutsHelp,
+    /// Open first-run configuration wizard.
+    OpenFirstRunWizard,
 }
 
 /// A palette entry plus its shortcut hint.
@@ -66,7 +70,7 @@ impl CommandEntry {
     }
 }
 
-const PANELS: [(PanelKind, &str); 9] = [
+const PANELS: [(PanelKind, &str); 10] = [
     (PanelKind::Mixer, "Open Mixer"),
     (PanelKind::Transport, "Open Transport"),
     (PanelKind::Timeline, "Open Tracks / Timeline"),
@@ -76,6 +80,7 @@ const PANELS: [(PanelKind, &str); 9] = [
     (PanelKind::Effects, "Open Effects"),
     (PanelKind::Models, "Open Models"),
     (PanelKind::ExportQueue, "Open Export Queue"),
+    (PanelKind::AiActivity, "Open AI Activity & Control"),
 ];
 
 /// The static command list.
@@ -112,6 +117,18 @@ pub fn registry() -> Vec<CommandEntry> {
         CommandEntry::new(CommandId::PlayPause, "Play / pause", "Transport", "Space"),
         CommandEntry::new(CommandId::Stop, "Stop and rewind", "Transport", ""),
         CommandEntry::new(CommandId::QueueExport, "Queue demo export", "Export", ""),
+        CommandEntry::new(
+            CommandId::OpenShortcutsHelp,
+            "Keyboard shortcuts help",
+            "Help",
+            "F1",
+        ),
+        CommandEntry::new(
+            CommandId::OpenFirstRunWizard,
+            "Setup wizard (First run)",
+            "Help",
+            "",
+        ),
     ];
     for (kind, title) in PANELS {
         entries.push(CommandEntry::new(
@@ -132,6 +149,7 @@ pub fn registry() -> Vec<CommandEntry> {
                 PanelKind::Effects => "Close Effects",
                 PanelKind::Models => "Close Models",
                 PanelKind::ExportQueue => "Close Export Queue",
+                PanelKind::AiActivity => "Close AI Activity & Control",
             },
             "Panels",
             "",
@@ -194,6 +212,7 @@ impl Shortcut {
             Key::Named(Named::ArrowDown) => "down".into(),
             Key::Named(Named::Backspace) => "backspace".into(),
             Key::Named(Named::Delete) => "delete".into(),
+            Key::Named(Named::F1) => "f1".into(),
             _ => return false,
         };
         self.ctrl == modifiers.control()
@@ -219,6 +238,7 @@ impl Shortcut {
             "space" => "Space",
             "escape" => "Esc",
             "enter" => "Enter",
+            "f1" => "F1",
             "up" => "↑",
             "down" => "↓",
             other => other,
@@ -238,6 +258,7 @@ pub fn shortcut(id: CommandId) -> Option<Shortcut> {
         CommandId::SaveLayout => Shortcut::new("s", true, false, false),
         CommandId::ImportMedia => Shortcut::new("o", true, false, false),
         CommandId::PlayPause => Shortcut::new("space", false, false, false),
+        CommandId::OpenShortcutsHelp => Shortcut::new("f1", false, false, false),
         _ => return None,
     })
 }
@@ -370,6 +391,13 @@ mod tests {
         let shortcut = shortcut(CommandId::PlayPause).expect("shortcut");
         assert!(shortcut.matches(Modifiers::NONE, &Key::Named(Named::Space)));
         assert!(!shortcut.matches(Modifiers::CTRL, &Key::Named(Named::Space)));
+    }
+
+    #[test]
+    fn f1_shortcut_matches_help_key() {
+        let sc = shortcut(CommandId::OpenShortcutsHelp).expect("shortcut");
+        assert!(sc.matches(Modifiers::NONE, &Key::Named(Named::F1)));
+        assert_eq!(sc.label(), "F1");
     }
 
     #[test]

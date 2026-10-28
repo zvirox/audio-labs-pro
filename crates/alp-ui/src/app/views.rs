@@ -10,6 +10,15 @@ use iced::widget::{
 use super::*;
 
 impl App {
+    pub(super) fn action_btn<'a>(
+        &self,
+        label: impl Into<String>,
+        kind: ButtonKind,
+        msg: Message,
+    ) -> Element<'a, Message> {
+        components::button(label, kind, self.colors(), Some(msg))
+    }
+
     /// Render the whole shell.
     pub fn view(&self) -> Element<'_, Message> {
         let colors = self.colors();
@@ -28,11 +37,29 @@ impl App {
                 .into(),
         );
 
-        for kind in self.visible_panels() {
-            layers.push(self.panel_view(kind, colors));
-        }
+        let main_layout = column![
+            self.chrome_view(colors),
+            row![
+                self.sidebar_view(colors),
+                container(column![
+                    container(self.workspace_view(colors))
+                        .width(Length::Fill)
+                        .height(Length::Fill),
+                    container(self.docked_player_view(colors))
+                        .padding([Spacing::SM, Spacing::XS])
+                        .width(Length::Fill),
+                ])
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .padding(Spacing::XS),
+            ]
+            .spacing(0.0)
+            .width(Length::Fill)
+            .height(Length::Fill),
+        ]
+        .spacing(0.0);
 
-        layers.push(self.chrome_view(colors));
+        layers.push(main_layout.into());
 
         if self.palette.open {
             let items: Vec<CommandItem<Message>> = self
@@ -78,28 +105,25 @@ impl App {
             );
         }
 
+        if self.shortcuts_help_open {
+            layers.push(self.shortcuts_help_modal_view(colors));
+        }
+
+        if self.consent_dialog_open {
+            layers.push(self.consent_modal_view(colors));
+        }
+
+        if self.first_run_open {
+            layers.push(self.first_run_wizard_view(colors));
+        }
+
         stack(layers)
             .width(Length::Fill)
             .height(Length::Fill)
             .into()
     }
 
-    fn visible_panels(&self) -> Vec<PanelKind> {
-        let mut kinds = self.panels.painter_order();
-        for panel in self.panels.panels() {
-            if !panel.open
-                && self
-                    .panel_motion
-                    .get(&panel.kind)
-                    .is_some_and(|toggle| toggle.value() > 0.01)
-            {
-                kinds.push(panel.kind);
-            }
-        }
-        kinds
-    }
-
-    fn chrome_view(&self, colors: ThemeColors) -> Element<'_, Message> {
+    pub(super) fn chrome_view(&self, colors: ThemeColors) -> Element<'_, Message> {
         let drag = mouse_area(
             row![
                 text("◈").size(15.0).color(colors.accent),
@@ -121,24 +145,54 @@ impl App {
         )
         .on_press(Message::WindowDrag);
 
-        let mut panel_buttons = row![].spacing(f32::from(Spacing::XXS));
-        for kind in PanelKind::ALL {
-            panel_buttons = panel_buttons.push(components::with_tooltip(
-                components::icon_button(kind.glyph(), colors, Some(Message::TogglePanel(kind))),
-                kind.id(),
+        let play_glyph = if self.playing { "⏸" } else { "▶" };
+        let quick_transport = row![
+            components::icon_button("⏮", colors, Some(Message::Stop)),
+            components::icon_button(play_glyph, colors, Some(Message::PlayPause)),
+            text(format_time(self.position_secs))
+                .size(f32::from(TypeScale::CAPTION))
+                .font(fonts::semibold())
+                .color(colors.text),
+            components::muted(format!("/ {}", format_time(self.media_duration)), colors),
+        ]
+        .spacing(f32::from(Spacing::XS))
+        .align_y(Alignment::Center);
+
+        let ai_indicator = components::with_tooltip(
+            components::button(
+                if self.ai_enabled {
+                    "⚡ AI Active"
+                } else {
+                    "⚡ AI"
+                },
+                if self.ai_enabled {
+                    ButtonKind::Primary
+                } else {
+                    ButtonKind::Ghost
+                },
                 colors,
-            ));
-        }
+                Some(Message::SelectWorkflowTab(WorkflowTab::Stories)),
+            ),
+            if self.ai_enabled {
+                "AI Control: Active (Click to open AI Control in Voice Editing)".to_string()
+            } else {
+                "AI Control: Standby (Click to configure in Voice Editing)".to_string()
+            },
+            colors,
+        );
 
         let chrome = row![
             drag,
+            Space::new().width(Length::Fixed(f32::from(Spacing::MD))),
+            quick_transport,
             Space::new().width(Length::Fill),
-            panel_buttons,
+            ai_indicator,
             components::with_tooltip(
                 components::button(self.glass.badge(), ButtonKind::Ghost, colors, None),
                 self.glass.detail.clone(),
                 colors,
             ),
+            components::icon_button("?", colors, Some(Message::OpenShortcutsHelp)),
             components::icon_button("◐", colors, Some(Message::ToggleTheme)),
             components::icon_button("≈", colors, Some(Message::ToggleReduceMotion)),
             components::icon_button("⌄", colors, Some(Message::WindowMinimize)),
@@ -166,118 +220,7 @@ impl App {
             .into()
     }
 
-    fn panel_view(&self, kind: PanelKind, colors: ThemeColors) -> Element<'_, Message> {
-        let panel = self.panels.panel(kind);
-        let motion = self.panel_motion.get(&kind).map_or(
-            PanelMotion {
-                open: 1.0,
-                offset: 0.0,
-            },
-            PanelMotion::from_open,
-        );
-        let focused = self.panels.active() == Some(kind);
-        let offset = motion.offset;
-        let height = if panel.collapsed {
-            f32::from(Control::TITLE_BAR)
-        } else {
-            panel.rect.height
-        };
-
-        let drag = mouse_area(
-            row![
-                text(kind.glyph()).size(12.0).color(colors.faint),
-                text(kind.title())
-                    .size(f32::from(TypeScale::BODY_STRONG))
-                    .font(fonts::semibold())
-                    .color(colors.text),
-            ]
-            .spacing(f32::from(Spacing::XS))
-            .align_y(Alignment::Center)
-            .width(Length::Fill),
-        )
-        .on_press(Message::DragPanel(kind));
-
-        let dock_glyph = if panel.docked.is_some() { "⇤" } else { "⇥" };
-        let header = row![
-            drag,
-            components::icon_button(dock_glyph, colors, Some(Message::ToggleDock(kind))),
-            components::icon_button(
-                if panel.collapsed { "⌄" } else { "⌃" },
-                colors,
-                Some(Message::CollapsePanel(kind))
-            ),
-            components::icon_button("×", colors, Some(Message::ClosePanel(kind))),
-        ]
-        .spacing(f32::from(Spacing::XXS))
-        .align_y(Alignment::Center)
-        .padding([Spacing::XXS, Spacing::SM]);
-
-        let body: Element<'_, Message> = if panel.collapsed {
-            Space::new().height(Length::Fixed(0.0)).into()
-        } else {
-            container(self.panel_body(kind, colors))
-                .padding([Spacing::XS, Spacing::MD])
-                .height(Length::Fill)
-                .clip(true)
-                .into()
-        };
-
-        let panel_container = container(column![header, body].spacing(0.0))
-            .width(Length::Fixed(panel.rect.width))
-            .height(Length::Fixed(height))
-            .style(move |_theme| colors.panel_style(focused));
-
-        let content: Element<'_, Message> = if panel.collapsed || panel.docked.is_some() {
-            panel_container.into()
-        } else {
-            stack![
-                panel_container,
-                container(
-                    mouse_area(
-                        container(text("◢").size(10.0).color(colors.faint))
-                            .width(Length::Fixed(f32::from(Control::GRIP)))
-                            .height(Length::Fixed(f32::from(Control::GRIP)))
-                            .align_x(Alignment::Center)
-                            .align_y(Alignment::Center),
-                    )
-                    .on_press(Message::ResizePanel(kind)),
-                )
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .align_x(Alignment::End)
-                .align_y(Alignment::End)
-                .padding(Spacing::XXS),
-            ]
-            .into()
-        };
-
-        container(content)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .padding(Padding {
-                top: panel.rect.y + offset,
-                left: panel.rect.x,
-                right: 0.0,
-                bottom: 0.0,
-            })
-            .into()
-    }
-
-    fn panel_body(&self, kind: PanelKind, colors: ThemeColors) -> Element<'_, Message> {
-        match kind {
-            PanelKind::Transport => self.transport_view(colors),
-            PanelKind::Mixer => self.mixer_view(colors),
-            PanelKind::Timeline => self.timeline_view(colors),
-            PanelKind::Inspector => self.inspector_view(colors),
-            PanelKind::MediaBin => self.media_view(colors),
-            PanelKind::VoiceLab => self.voice_view(colors),
-            PanelKind::Effects => self.effects_view(colors),
-            PanelKind::Models => self.models_view(colors),
-            PanelKind::ExportQueue => self.export_view(colors),
-        }
-    }
-
-    fn mixer_view(&self, colors: ThemeColors) -> Element<'_, Message> {
+    pub(super) fn mixer_view(&self, colors: ThemeColors) -> Element<'_, Message> {
         let mut rows = column!().spacing(f32::from(Spacing::XS)).push(
             text("TRACKS")
                 .size(f32::from(TypeScale::CAPTION))
@@ -359,28 +302,8 @@ impl App {
         scrollable(content).into()
     }
 
-    fn transport_view(&self, colors: ThemeColors) -> Element<'_, Message> {
+    pub(super) fn transport_view(&self, colors: ThemeColors) -> Element<'_, Message> {
         let play_glyph = if self.playing { "⏸" } else { "▶" };
-        let recording = self.recording.is_some();
-        let record_label = if recording {
-            if self.punch_in {
-                "Stop & punch"
-            } else {
-                "Stop & import"
-            }
-        } else if self.punch_in {
-            "Punch in"
-        } else {
-            "Record"
-        };
-        let record_kind = if recording {
-            ButtonKind::Danger
-        } else {
-            ButtonKind::Primary
-        };
-        let elapsed = self
-            .record_started
-            .map_or(0.0, |started| started.elapsed().as_secs_f64());
         column![
             row![
                 components::icon_button("⏮", colors, Some(Message::Stop)),
@@ -404,49 +327,18 @@ impl App {
                 colors
             ),
             row![
-                components::dropdown(
-                    self.input_devices.clone(),
-                    self.record_device.clone(),
-                    Message::SelectInput
-                ),
-                components::toggle(
-                    "Monitor",
-                    self.record_monitor,
-                    colors,
-                    Message::ToggleMonitor
-                ),
-                components::toggle("Punch", self.punch_in, colors, Message::TogglePunchIn),
-                components::button(
-                    record_label,
-                    record_kind,
-                    colors,
-                    Some(Message::ToggleRecord)
-                ),
-            ]
-            .spacing(f32::from(Spacing::XS))
-            .align_y(Alignment::Center),
-            row![
-                components::muted(format!("peak {:>5.1}%", self.record_peak * 100.0), colors),
-                components::progress(self.record_peak, colors),
-                components::muted(format!("rms {:>5.1}%", self.record_rms * 100.0), colors),
-                components::progress(self.record_rms, colors),
-                components::muted(
-                    if recording {
-                        format!("● {elapsed:.1}s")
-                    } else {
-                        "ready".into()
-                    },
-                    colors
-                ),
+                components::muted("Recording and dictation live in Captures.", colors),
+                Space::new().width(Length::Fill),
+                components::toggle("Ripple deletes", self.ripple, colors, Message::ToggleRipple),
             ]
             .spacing(f32::from(Spacing::XS))
             .align_y(Alignment::Center),
         ]
-        .spacing(f32::from(Spacing::MD))
+        .spacing(f32::from(Spacing::SM))
         .into()
     }
 
-    fn timeline_view(&self, colors: ThemeColors) -> Element<'_, Message> {
+    pub(super) fn timeline_view(&self, colors: ThemeColors) -> Element<'_, Message> {
         let x = self.waveform.visible();
         let waveform = container(self.waveform.view())
             .width(Length::Fill)
@@ -454,10 +346,12 @@ impl App {
             .style(move |_theme| colors.card_style());
 
         let mut tracks = column![].spacing(f32::from(Spacing::XXS));
-        for (index, name) in ["Voice", "Music", "SFX"].iter().enumerate() {
+        for (index, track) in self.session.tracks().iter().enumerate() {
             let selected = index == self.selected_track;
+            let name = &track.name;
+            let clips_count = track.clips.len();
             let row = components::button(
-                format!("{index:02}  {name}"),
+                format!("{index:02}  {name} ({clips_count} clips)"),
                 if selected {
                     ButtonKind::Secondary
                 } else {
@@ -467,6 +361,30 @@ impl App {
                 Some(Message::SelectTrack(index)),
             );
             tracks = tracks.push(row);
+        }
+        if !self.session.markers().is_empty() {
+            let marker_text = self
+                .session
+                .markers()
+                .iter()
+                .map(|m| {
+                    format!(
+                        "{} ({:.1}s)",
+                        m.label,
+                        frames_to_secs(m.frame, self.session.project().sample_rate)
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(" · ");
+            tracks = tracks.push(components::muted(format!("Markers: {marker_text}"), colors));
+        }
+        if let Some(loop_range) = self.session.loop_range() {
+            let loop_text = format!(
+                "Loop: {:.2}s → {:.2}s",
+                frames_to_secs(loop_range.start, self.session.project().sample_rate),
+                frames_to_secs(loop_range.end, self.session.project().sample_rate),
+            );
+            tracks = tracks.push(components::muted(loop_text, colors));
         }
 
         column![
@@ -487,7 +405,7 @@ impl App {
         .into()
     }
 
-    fn inspector_view(&self, colors: ThemeColors) -> Element<'_, Message> {
+    pub(super) fn inspector_view(&self, colors: ThemeColors) -> Element<'_, Message> {
         let mut clips = column![].spacing(f32::from(Spacing::XXS));
         if let Some(track) = self.session.project().track(self.session.track_id()) {
             for clip in &track.clips {
@@ -513,7 +431,7 @@ impl App {
         let redo = self.session.can_redo().then_some(Message::RedoEdit);
         scrollable(
             column![
-                components::section_title("Single-track edit", colors),
+                components::kicker("Track edit", colors),
                 components::muted(self.session.status(), colors),
                 row![
                     components::button("Undo", ButtonKind::Ghost, colors, undo),
@@ -545,119 +463,56 @@ impl App {
                         "Apply",
                         ButtonKind::Secondary,
                         colors,
-                        Some(Message::ApplySelection)
+                        Some(Message::ApplySelection),
                     ),
                 ]
                 .spacing(f32::from(Spacing::XS)),
                 row![
-                    components::button(
-                        "Cut",
-                        ButtonKind::Secondary,
-                        colors,
-                        Some(Message::CutSelection)
-                    ),
-                    components::button(
-                        "Copy",
-                        ButtonKind::Ghost,
-                        colors,
-                        Some(Message::CopySelection)
-                    ),
-                    components::button(
-                        "Paste",
-                        ButtonKind::Ghost,
-                        colors,
-                        Some(Message::PasteClipboard)
-                    ),
-                    components::button(
-                        "Delete",
-                        ButtonKind::Danger,
-                        colors,
-                        Some(Message::DeleteSelection)
-                    ),
+                    self.action_btn("Cut", ButtonKind::Secondary, Message::CutSelection),
+                    self.action_btn("Copy", ButtonKind::Ghost, Message::CopySelection),
+                    self.action_btn("Paste", ButtonKind::Ghost, Message::PasteClipboard),
+                    self.action_btn("Delete", ButtonKind::Danger, Message::DeleteSelection),
                 ]
                 .spacing(f32::from(Spacing::XXS)),
                 row![
-                    components::button(
-                        "Silence",
+                    self.action_btn("Silence", ButtonKind::Secondary, Message::SilenceSelection),
+                    self.action_btn("Trim", ButtonKind::Secondary, Message::TrimSelection),
+                    self.action_btn("Split", ButtonKind::Secondary, Message::SplitSelection),
+                    self.action_btn(
+                        "XFade 0.5s",
                         ButtonKind::Secondary,
-                        colors,
-                        Some(Message::SilenceSelection)
+                        Message::CrossfadeSelection(0.5)
                     ),
-                    components::button(
-                        "Trim",
+                    self.action_btn(
+                        "XFade 1.0s",
                         ButtonKind::Secondary,
-                        colors,
-                        Some(Message::TrimSelection)
+                        Message::CrossfadeSelection(1.0)
                     ),
-                    components::button(
-                        "Split",
-                        ButtonKind::Secondary,
-                        colors,
-                        Some(Message::SplitSelection)
-                    ),
-                    components::button(
-                        "Crossfade",
-                        ButtonKind::Secondary,
-                        colors,
-                        Some(Message::CrossfadeSelection(1.0))
-                    ),
-                    components::button(
-                        "Duplicate",
-                        ButtonKind::Ghost,
-                        colors,
-                        Some(Message::DuplicateSelection)
-                    ),
+                    self.action_btn("Duplicate", ButtonKind::Ghost, Message::DuplicateSelection),
                 ]
                 .spacing(f32::from(Spacing::XXS)),
                 row![
-                    components::button(
+                    self.action_btn(
                         "Move up a track",
                         ButtonKind::Ghost,
-                        colors,
-                        Some(Message::MoveSelectedClipToPrevTrack)
+                        Message::MoveSelectedClipToPrevTrack
                     ),
-                    components::button(
+                    self.action_btn(
                         "Move down a track",
                         ButtonKind::Ghost,
-                        colors,
-                        Some(Message::MoveSelectedClipToNextTrack)
+                        Message::MoveSelectedClipToNextTrack
                     ),
                 ]
                 .spacing(f32::from(Spacing::XXS)),
                 row![
-                    components::button(
-                        "Normalize",
-                        ButtonKind::Ghost,
-                        colors,
-                        Some(Message::NormalizeSelection)
-                    ),
-                    components::button(
-                        "Reverse",
-                        ButtonKind::Ghost,
-                        colors,
-                        Some(Message::ToggleReverse)
-                    ),
-                    components::button(
-                        "Invert",
-                        ButtonKind::Ghost,
-                        colors,
-                        Some(Message::ToggleInvert)
-                    ),
+                    self.action_btn("Normalize", ButtonKind::Ghost, Message::NormalizeSelection),
+                    self.action_btn("Reverse", ButtonKind::Ghost, Message::ToggleReverse),
+                    self.action_btn("Invert", ButtonKind::Ghost, Message::ToggleInvert),
                 ]
                 .spacing(f32::from(Spacing::XXS)),
                 row![
-                    components::button(
-                        "Dip envelope",
-                        ButtonKind::Ghost,
-                        colors,
-                        Some(Message::DipEnvelope)
-                    ),
-                    components::button(
-                        "Flat envelope",
-                        ButtonKind::Ghost,
-                        colors,
-                        Some(Message::ResetEnvelope)
-                    ),
+                    self.action_btn("Dip envelope", ButtonKind::Ghost, Message::DipEnvelope),
+                    self.action_btn("Flat envelope", ButtonKind::Ghost, Message::ResetEnvelope),
                 ]
                 .spacing(f32::from(Spacing::XXS)),
                 overlays::property_row(
@@ -684,184 +539,104 @@ impl App {
         .into()
     }
 
-    fn media_view(&self, colors: ThemeColors) -> Element<'_, Message> {
-        let mut rows = column![].spacing(f32::from(Spacing::XXS));
-        for (index, item) in self.media.iter().enumerate() {
-            let selected = index == self.selected_media;
-            rows = rows.push(components::button(
-                format!(
-                    "{}  ·  {}  ·  {} ch",
-                    item.name,
-                    format_time(item.duration_secs),
-                    item.channels
-                ),
-                if selected {
-                    ButtonKind::Secondary
-                } else {
-                    ButtonKind::Ghost
-                },
-                colors,
-                Some(Message::SelectMedia(index)),
-            ));
-        }
-        column![
-            row![
-                components::button(
-                    "Import",
-                    ButtonKind::Primary,
-                    colors,
-                    Some(Message::ImportMedia)
-                ),
-                components::button(
-                    "Rebuild peaks",
-                    ButtonKind::Secondary,
-                    colors,
-                    Some(Message::BuildPeaks)
-                ),
-            ]
-            .spacing(f32::from(Spacing::XS)),
-            scrollable(rows).height(Length::Fill),
-            components::muted(
-                format!(
-                    "{} source(s) · 48 kHz · {:.1}s",
-                    self.media.len(),
-                    self.media_duration
-                ),
-                colors
-            ),
-        ]
-        .spacing(f32::from(Spacing::SM))
-        .into()
-    }
-
-    fn voice_view(&self, colors: ThemeColors) -> Element<'_, Message> {
-        column![
-            components::section_title("Voice Lab", colors),
-            components::muted("Local synthesis and cloning stubs", colors),
-            components::dropdown(
-                self.voices.clone(),
-                Some(self.selected_voice.clone()),
-                Message::SelectVoice
-            ),
-            components::button("Synthesize line", ButtonKind::Primary, colors, None),
-            overlays::card(
-                components::muted(
-                    "The editor, transcript import and streaming preview land in Phase 3. This panel proves the glass, focus and dock behaviour.",
-                    colors
-                ),
-                colors
-            ),
-        ]
-        .spacing(f32::from(Spacing::SM))
-        .into()
-    }
-
-    fn effects_view(&self, colors: ThemeColors) -> Element<'_, Message> {
-        let mut rows = column![].spacing(f32::from(Spacing::XXS));
-        for (index, effect) in self.effects.iter().enumerate() {
-            let selected = index == self.selected_effect;
-            rows = rows.push(components::button(
-                format!(
-                    "{}  {}",
-                    if effect.enabled { "●" } else { "○" },
-                    effect.name
-                ),
-                if selected {
-                    ButtonKind::Secondary
-                } else {
-                    ButtonKind::Ghost
-                },
-                colors,
-                Some(Message::SelectEffect(index)),
-            ));
-        }
-        column![
-            row![
-                components::section_title("Effects", colors),
-                Space::new().width(Length::Fill),
-                components::button("Add", ButtonKind::Secondary, colors, None),
-            ]
-            .align_y(Alignment::Center),
-            scrollable(rows).height(Length::Fill),
-            components::muted("Chain state is a Phase 2 stub.", colors),
-        ]
-        .spacing(f32::from(Spacing::SM))
-        .into()
-    }
-
-    fn models_view(&self, colors: ThemeColors) -> Element<'_, Message> {
-        let mut rows = column![].spacing(f32::from(Spacing::SM));
-        for model in &self.models {
-            rows = rows.push(overlays::card(
+    pub(super) fn effects_view(&self, colors: ThemeColors) -> Element<'_, Message> {
+        let mut rows = column![].spacing(f32::from(Spacing::XS));
+        for (index, eff) in self.effects.iter().enumerate() {
+            let (glyph, kind) = if eff.enabled {
+                ("●", ButtonKind::Primary)
+            } else {
+                ("○", ButtonKind::Ghost)
+            };
+            let sel_kind = if index == self.selected_effect {
+                ButtonKind::Secondary
+            } else {
+                ButtonKind::Ghost
+            };
+            rows = rows.push(
                 row![
-                    column![
-                        text(model.name.clone())
-                            .size(f32::from(TypeScale::BODY_STRONG))
-                            .font(fonts::semibold())
-                            .color(colors.text),
-                        components::muted(format!("{} · {}", model.purpose, model.size), colors),
-                    ]
-                    .spacing(f32::from(Spacing::XXS)),
+                    components::button(glyph, kind, colors, Some(Message::ToggleEffect(index))),
+                    components::button(
+                        eff.name.clone(),
+                        sel_kind,
+                        colors,
+                        Some(Message::SelectEffect(index)),
+                    ),
                     Space::new().width(Length::Fill),
-                    components::muted(
-                        if model.installed {
-                            "Installed"
-                        } else {
-                            "Available"
-                        },
-                        colors
+                    components::muted(eff.params.clone(), colors),
+                ]
+                .align_y(Alignment::Center)
+                .spacing(f32::from(Spacing::XS)),
+            );
+        }
+
+        let detail = self.effects.get(self.selected_effect).map_or_else(
+            || "Select an effect stage to inspect parameters".into(),
+            |e| {
+                let s = if e.enabled { "ACTIVE" } else { "BYPASSED" };
+                format!("{}: {} [{s}]", e.name, e.params)
+            },
+        );
+
+        column![
+            rows,
+            components::muted(detail, colors),
+            components::muted("Master Target: -16.0 LUFS · Ceiling: -1.0 dBFS", colors),
+        ]
+        .spacing(f32::from(Spacing::SM))
+        .into()
+    }
+
+    /// Discovered CLAP/LV2 plugins with an insert action per row.
+    pub(super) fn plugin_list_view(&self, colors: ThemeColors) -> Element<'_, Message> {
+        if self.discovered_plugins.is_empty() {
+            return components::muted(
+                "No plugins discovered. Set CLAP_PATH or LV2_PATH and rescan.",
+                colors,
+            );
+        }
+        let mut plugin_rows = column![].spacing(f32::from(Spacing::XS));
+        for p in self.discovered_plugins.iter().take(8) {
+            let fmt_str = match p.format {
+                alp_plugin::PluginFormat::Clap => "CLAP",
+                alp_plugin::PluginFormat::Lv2 => "LV2",
+            };
+            plugin_rows = plugin_rows.push(
+                row![
+                    components::kicker(fmt_str, colors),
+                    components::muted(p.name.clone(), colors),
+                    Space::new().width(Length::Fill),
+                    components::button(
+                        "+ Insert",
+                        ButtonKind::Secondary,
+                        colors,
+                        Some(Message::InsertPlugin(p.id.clone())),
                     ),
                 ]
-                .align_y(Alignment::Center),
-                colors,
-            ));
+                .align_y(Alignment::Center)
+                .spacing(f32::from(Spacing::XS)),
+            );
         }
-        column![
-            row![
-                components::section_title("Models", colors),
-                Space::new().width(Length::Fill),
-                components::muted("Local only", colors),
-            ],
-            scrollable(rows).height(Length::Fill),
-            components::muted(self.glass.detail.clone(), colors),
-            row![
-                components::toggle(
-                    "Reduce motion",
-                    self.reduce_motion,
-                    colors,
-                    Message::ToggleReduceMotion
-                ),
-                components::button(
-                    "Cycle theme",
-                    ButtonKind::Secondary,
-                    colors,
-                    Some(Message::ToggleTheme)
-                ),
-            ]
-            .spacing(f32::from(Spacing::MD))
-            .align_y(Alignment::Center),
-            components::muted(
-                self.last_save_error
-                    .clone()
-                    .unwrap_or_else(|| "Workspace saves automatically".into()),
-                colors
-            ),
-        ]
-        .spacing(f32::from(Spacing::SM))
-        .into()
+        scrollable(plugin_rows).height(Length::Fill).into()
     }
 
-    fn export_view(&self, colors: ThemeColors) -> Element<'_, Message> {
+    pub(super) fn export_view(&self, colors: ThemeColors) -> Element<'_, Message> {
         let mut rows = column![].spacing(f32::from(Spacing::SM));
-        if self.jobs.jobs().is_empty() {
-            rows = rows.push(components::muted("No export jobs yet.", colors));
-        }
         for job in self.jobs.jobs() {
             let status = match job.status {
                 JobStatus::Running => format!("{:.0}%", job.progress * 100.0),
                 JobStatus::Completed => "Done".into(),
                 JobStatus::Cancelled => "Cancelled".into(),
                 JobStatus::Failed => "Failed".into(),
+            };
+            let cancel_btn = if job.status.is_running() {
+                components::button(
+                    "Cancel",
+                    ButtonKind::Ghost,
+                    colors,
+                    Some(Message::CancelJob(job.id)),
+                )
+            } else {
+                Space::new().width(Length::Fixed(0.0)).into()
             };
             rows = rows.push(overlays::card(
                 column![
@@ -872,16 +647,7 @@ impl App {
                             .color(colors.text),
                         Space::new().width(Length::Fill),
                         components::muted(status, colors),
-                        if job.status.is_running() {
-                            components::button(
-                                "Cancel",
-                                ButtonKind::Ghost,
-                                colors,
-                                Some(Message::CancelJob(job.id)),
-                            )
-                        } else {
-                            Space::new().width(Length::Fixed(0.0)).into()
-                        },
+                        cancel_btn,
                     ]
                     .align_y(Alignment::Center)
                     .spacing(f32::from(Spacing::XS)),
@@ -892,44 +658,34 @@ impl App {
                 colors,
             ));
         }
+        let running_label = if self.jobs.running_count() > 0 {
+            format!("{} running", self.jobs.running_count())
+        } else {
+            "idle".into()
+        };
+        let status_label = self.session.last_export().unwrap_or_else(|| {
+            if self.jobs.has_running() {
+                "A worker is running; the UI stays responsive."
+            } else {
+                "24-bit WAV · background render"
+            }
+        });
+        let queue: Element<'_, Message> = if self.jobs.jobs().is_empty() {
+            components::muted("No export jobs yet.", colors)
+        } else {
+            scrollable(rows).height(Length::Fixed(150.0)).into()
+        };
         column![
             row![
-                components::section_title("Export Queue", colors),
-                components::muted(
-                    if self.jobs.running_count() > 0 {
-                        format!("{} running", self.jobs.running_count())
-                    } else {
-                        "idle".into()
-                    },
-                    colors
-                ),
+                self.action_btn("Export mix", ButtonKind::Primary, Message::ExportMix),
+                self.action_btn("Clear done", ButtonKind::Ghost, Message::ClearJobs),
                 Space::new().width(Length::Fill),
-                components::button(
-                    "Export mix",
-                    ButtonKind::Primary,
-                    colors,
-                    Some(Message::ExportMix)
-                ),
-                components::button(
-                    "Clear done",
-                    ButtonKind::Ghost,
-                    colors,
-                    Some(Message::ClearJobs)
-                ),
+                components::muted(running_label, colors),
             ]
             .spacing(f32::from(Spacing::XS))
             .align_y(Alignment::Center),
-            scrollable(rows).height(Length::Fill),
-            components::muted(
-                self.session.last_export().unwrap_or_else(|| {
-                    if self.jobs.has_running() {
-                        "A worker is running; the UI stays responsive."
-                    } else {
-                        "24-bit WAV · background render"
-                    }
-                }),
-                colors
-            ),
+            queue,
+            components::muted(status_label, colors),
         ]
         .spacing(f32::from(Spacing::SM))
         .into()

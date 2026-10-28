@@ -49,6 +49,12 @@ pub fn bold() -> Font {
     }
 }
 
+/// Monospaced face for timecodes, meters and numeric readouts.
+#[must_use]
+pub fn mono() -> Font {
+    Font::MONOSPACE
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

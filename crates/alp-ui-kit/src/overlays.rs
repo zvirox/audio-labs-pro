@@ -56,17 +56,20 @@ pub fn modal<'a, Message: Clone + 'a>(
         ));
     }
 
-    let dialog = column![
-        text(title.into())
-            .size(f32::from(TypeScale::TITLE))
-            .font(fonts::semibold())
-            .color(colors.text),
-        body.into(),
-        buttons,
-    ]
-    .spacing(f32::from(Spacing::MD))
+    let dialog = container(
+        column![
+            text(title.into())
+                .size(f32::from(TypeScale::TITLE))
+                .font(fonts::semibold())
+                .color(colors.text),
+            body.into(),
+            buttons,
+        ]
+        .spacing(f32::from(Spacing::MD)),
+    )
     .padding(Spacing::XL)
-    .width(Length::Fixed(520.0));
+    .width(Length::Fixed(560.0))
+    .style(move |_theme| colors.panel_style(true));
 
     container(dialog)
         .padding(Spacing::XXL)
@@ -76,7 +79,7 @@ pub fn modal<'a, Message: Clone + 'a>(
         .align_y(Alignment::Center)
         .style(move |_theme| container::Style {
             background: Some(iced::Background::Color(iced::Color::from_rgba(
-                0.0, 0.0, 0.0, 0.42,
+                0.0, 0.0, 0.0, 0.55,
             ))),
             ..container::Style::default()
         })

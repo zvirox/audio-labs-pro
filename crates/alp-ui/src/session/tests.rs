@@ -132,3 +132,26 @@ fn recorded_style_buffer_can_be_imported() {
     assert!(session.selected_clip().is_some());
     session.project().validate().expect("valid");
 }
+
+#[test]
+fn markers_and_loop_range_are_managed() {
+    let mut session = EditSession::demo();
+    assert!(session.set_loop_range(1.0, 5.0));
+    assert!(session.loop_range().is_some());
+    assert!(session.clear_loop_range());
+    assert!(session.loop_range().is_none());
+
+    assert!(session.add_marker(2.5, "Chorus"));
+    assert_eq!(session.markers().len(), 1);
+    assert_eq!(session.markers()[0].label, "Chorus");
+    let marker_id = session.markers()[0].id;
+    assert!(session.remove_marker(marker_id));
+    assert_eq!(session.markers().len(), 0);
+}
+
+#[test]
+fn export_presets_are_accessible() {
+    let settings = EditSession::export_preset_settings(alp_media::ExportPreset::Podcast);
+    assert_eq!(settings.format, alp_media::ExportFormat::Flac);
+    assert_eq!(settings.sample_rate, Some(44_100));
+}
