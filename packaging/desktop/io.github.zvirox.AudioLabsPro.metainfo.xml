@@ -2,7 +2,7 @@
 <component type="desktop-application">
   <id>io.github.zvirox.AudioLabsPro</id>
   <metadata_license>CC0-1.0</metadata_license>
-  <project_license>MIT</project_license>
+  <project_license>Apache-2.0</project_license>
   <name>Audio Labs Pro</name>
   <summary>Professional Voice Audio Workstation</summary>
   <description>
@@ -33,6 +33,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.0.1-alpha.1" date="2026-10-28">
+      <description>
+        <p>First published GitHub release: seven-workspace studio shell with
+        per-workspace cyberpunk neon accents, rectangular buttons, GPU
+        waveform, and Linux packaging (deb, rpm, AppImage, Flatpak).</p>
+      </description>
+    </release>
     <release version="1.0.0" date="2026-10-27">
       <description>
         <p>Audio Labs Pro 1.0.0 release: production-ready multitrack editing, complete voice DSP chain, TTS, STT dictation, voice profiles, and packaging.</p>

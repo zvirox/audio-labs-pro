@@ -1,0 +1,249 @@
+name: Release
+
+# Produces Debian (.deb), RPM, and Flatpak bundles for tagged releases and
+# publishes them as a GitHub release. Tags containing a dash (semver
+# pre-releases, e.g. v0.0.1-alpha.1) are marked pre-release.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version stamp when run manually (defaults to the workspace Cargo version)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  packages:
+    name: Build .deb and .rpm
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            libasound2-dev pkg-config \
+            libxkbcommon-dev libwayland-dev wayland-protocols \
+            libx11-dev libxcursor-dev libxrandr-dev libxi-dev \
+            libgl1-mesa-dev libegl1-mesa-dev libfontconfig1-dev \
+            libxcb1-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev \
+            rpm
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Resolve version
+        id: version
+        run: |
+          set -euo pipefail
+          REF="${GITHUB_REF_NAME}"
+          if [[ "$REF" == v* ]]; then
+            VERSION="${REF#v}"
+          else
+            fallback=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+            VERSION="${{ inputs.version }}"
+            VERSION="${VERSION:-$fallback}"
+          fi
+          RPM_VERSION="${VERSION//-/~}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "rpm_version=$RPM_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Resolved version: $VERSION (rpm: $RPM_VERSION)"
+
+      - name: Test (release gate)
+        run: cargo test --workspace --locked
+
+      - name: Build release binaries
+        run: cargo build --release --locked
+
+      - name: Stage /usr tree
+        run: |
+          set -euo pipefail
+          STAGE=target/stage
+          mkdir -p "$STAGE/usr/bin" \
+                   "$STAGE/usr/share/applications" \
+                   "$STAGE/usr/share/metainfo" \
+                   "$STAGE/usr/share/mime/packages" \
+                   "$STAGE/usr/share/icons/hicolor/scalable/apps"
+          cp target/release/alp-ui "$STAGE/usr/bin/audio-labs-pro"
+          cp target/release/alp-cli "$STAGE/usr/bin/alp-cli"
+          cp target/release/alp-infer "$STAGE/usr/bin/alp-infer"
+          chmod +x "$STAGE/usr/bin/"*
+          cp packaging/desktop/io.github.zvirox.AudioLabsPro.desktop \
+             "$STAGE/usr/share/applications/"
+          cp packaging/desktop/io.github.zvirox.AudioLabsPro.metainfo.xml \
+             "$STAGE/usr/share/metainfo/"
+          cp packaging/mime/io.github.zvirox.AudioLabsPro.xml \
+             "$STAGE/usr/share/mime/packages/"
+          cp packaging/icons/hicolor/scalable/apps/io.github.zvirox.AudioLabsPro.svg \
+             "$STAGE/usr/share/icons/hicolor/scalable/apps/"
+          echo "== Staged tree =="
+          find "$STAGE" -type f | sort
+
+      - name: Build .deb
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          PKG=target/deb-root
+          mkdir -p "$PKG/DEBIAN"
+          cp -r target/stage/usr "$PKG/"
+          sed "s/^Version:.*/Version: $VERSION/" packaging/deb/control > "$PKG/DEBIAN/control"
+          grep -q "^Version: $VERSION$" "$PKG/DEBIAN/control"
+          dpkg-deb --root-owner-group --build "$PKG" \
+            "audio-labs-pro_${VERSION}_amd64.deb"
+          dpkg-deb --info "audio-labs-pro_${VERSION}_amd64.deb"
+
+      - name: Build .rpm
+        run: |
+          set -euo pipefail
+          RPM_VERSION="${{ steps.version.outputs.rpm_version }}"
+          TOP=target/rpmbuild
+          mkdir -p "$TOP"/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+          cp packaging/rpm/audio-labs-pro.spec "$TOP/SPECS/"
+          tar -czf "$TOP/SOURCES/audio-labs-pro-bin.tar.gz" -C target/stage usr
+          rpmbuild -bb --define "_topdir $PWD/$TOP" \
+            --define "alp_version $RPM_VERSION" "$TOP/SPECS/audio-labs-pro.spec"
+          find "$TOP/RPMS" -name '*.rpm' -print -exec rpmlint {} \; || true
+          cp "$TOP/RPMS/x86_64/audio-labs-pro-${RPM_VERSION}-1.x86_64.rpm" \
+            "audio-labs-pro-${RPM_VERSION}-1.x86_64.rpm"
+
+      - name: Upload .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb
+          path: audio-labs-pro_*_amd64.deb
+          if-no-files-found: error
+
+      - name: Upload .rpm artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm
+          path: audio-labs-pro-*.x86_64.rpm
+          if-no-files-found: error
+
+  flatpak:
+    name: Build Flatpak bundle
+    # The manifest compiles the workspace inside the Freedesktop SDK with the
+    # Rust toolchain extension; this validates the sandboxed build from scratch.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Flatpak tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            flatpak flatpak-builder
+
+      - name: Resolve version
+        id: version
+        run: |
+          set -euo pipefail
+          REF="${GITHUB_REF_NAME}"
+          if [[ "$REF" == v* ]]; then
+            VERSION="${REF#v}"
+          else
+            fallback=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+            VERSION="${{ inputs.version }}"
+            VERSION="${VERSION:-$fallback}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Flathub and SDK
+        run: |
+          set -euo pipefail
+          flatpak --user remote-add --if-not-exists flathub \
+            https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak --user install --noninteractive flathub \
+            org.freedesktop.Platform//24.08 \
+            org.freedesktop.Sdk//24.08 \
+            org.freedesktop.Sdk.Extension.rust-stable//24.08
+
+      - name: Flatpak build
+        run: |
+          set -euo pipefail
+          flatpak-builder --user --repo=target/flatpak-repo --force-clean \
+            target/flatpak-build packaging/flatpak/io.github.zvirox.AudioLabsPro.yaml
+
+      - name: Build bundle
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          flatpak build-bundle target/flatpak-repo \
+            "Audio-Labs-Pro-${VERSION}-x86_64.flatpak" io.github.zvirox.AudioLabsPro
+          flatpak info "Audio-Labs-Pro-${VERSION}-x86_64.flatpak"
+
+      - name: Upload Flatpak artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: flatpak
+          path: Audio-Labs-Pro-*-x86_64.flatpak
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub release
+    needs: [packages, flatpak]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Checksums
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum *.deb *.rpm *.flatpak > ../sha256sums.txt
+          cat ../sha256sums.txt
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          FLAGS=()
+          # Semver pre-release tags (e.g. v0.0.1-alpha.1) become pre-releases.
+          if [[ "$TAG" == *-* ]]; then
+            FLAGS+=(--prerelease)
+          fi
+          {
+            echo "Audio Labs Pro ${TAG} — voice audio workstation for Linux."
+            echo
+            echo "## Packages"
+            echo "- \`.deb\` — Debian/Ubuntu (amd64)"
+            echo "- \`.rpm\` — Fedora/openSUSE (x86_64)"
+            echo "- \`.flatpak\` — any distribution (Freedesktop 24.08 runtime)"
+            echo
+            echo "Verify with \`sha256sums.txt\`. See CHANGELOG.md for details."
+          } > release-notes.md
+          gh release create "$TAG" dist/* sha256sums.txt \
+            --title "Audio Labs Pro ${TAG}" \
+            --notes-file release-notes.md \
+            "${FLAGS[@]}"

@@ -5,6 +5,24 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+### Added (release engineering)
+
+- **GitHub release pipeline:** new `.github/workflows/release.yml` builds
+  tagged releases (`v*`) on Ubuntu 24.04 and publishes Debian (`.deb`), RPM
+  and Flatpak bundles plus a `sha256sums.txt` checksum manifest to GitHub
+  Releases. Semver pre-release tags (a dash in the tag, e.g.
+  `v0.0.1-alpha.1`) are published as pre-releases.
+- **RPM packaging:** new `packaging/rpm/audio-labs-pro.spec`; the workflow
+  stamps the version from the tag (dashes map to RPM `~` pre-release
+  ordering) and packs the staged `/usr` tree (workstation, CLI, inference
+  runner, desktop file, AppStream metainfo, icon, MIME types).
+- **Flatpak:** the existing Freedesktop 24.08 manifest now builds in CI
+  inside the sandboxed SDK (Rust extension) and ships as a single-file
+  bundle; metainfo gains the first published release entry and the licence
+  field now matches the repository (Apache-2.0).
+- **Build parity:** the release build runs the full workspace test gate with
+  `--locked` before packaging, mirroring CI.
+
 ### Changed (cyberpunk neon accents)
 
 - **Cyberpunk accent system:** the warm gold accent is replaced by a
