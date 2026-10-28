@@ -63,7 +63,9 @@ jobs:
             VERSION="${{ inputs.version }}"
             VERSION="${VERSION:-$fallback}"
           fi
-          RPM_VERSION="${VERSION//-/~}"
+          # `tr` instead of ${var//-/~}: a literal `~` in the replacement
+          # would undergo bash tilde expansion on the runner.
+          RPM_VERSION=$(printf '%s' "$VERSION" | tr '-' '~')
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "rpm_version=$RPM_VERSION" >> "$GITHUB_OUTPUT"
           echo "Resolved version: $VERSION (rpm: $RPM_VERSION)"

@@ -20,10 +20,14 @@ modules:
     buildsystem: simple
     build-options:
       append-path: /usr/lib/sdk/rust-stable/bin
+      # Cargo downloads its crates.io dependencies during the module build;
+      # the flatpak-builder sandbox has no network by default.
+      build-args:
+        - --share=network
       env:
         CARGO_HOME: /run/build/audio-labs-pro/cargo
     build-commands:
-      - cargo build --release --workspace
+      - cargo build --release --locked --workspace
       - install -Dm755 target/release/alp-ui /app/bin/audio-labs-pro
       - install -Dm755 target/release/alp-cli /app/bin/alp-cli
       - install -Dm755 target/release/alp-infer /app/bin/alp-infer
