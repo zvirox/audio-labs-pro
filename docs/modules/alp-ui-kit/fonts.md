@@ -12,6 +12,10 @@ makes the "all text renders in Inter" acceptance check meaningful.
 - `FAMILY` — the exact family name, `"Inter Variable"`.
 - `regular()`, `medium()`, `semibold()`, `bold()` returning `iced::Font` with the
   matching weight.
+- `mono()` — the platform monospace handle for timecodes and meters.
+- `register_with_cube()` — registers the bundled family with `iced-cube` so its
+  labelled controls and emphasised text match the interface; returns whether
+  the font was newly registered.
 
 The OFL text is shipped next to the font as `LICENSE-Inter.txt` and listed in
 `THIRD_PARTY.md`.
@@ -19,9 +23,10 @@ The OFL text is shipped next to the font as `LICENSE-Inter.txt` and listed in
 ## Data flow
 
 The crate compiles the font bytes into the binary. `alp-ui::main` registers
-`INTER_BYTES` with the iced application builder and sets `fonts::regular()` as
-the default. Every kit component and canvas text asks for one of the helpers, so
-weight selection does not depend on widget defaults.
+`INTER_BYTES` with the iced application builder, sets `fonts::regular()` as the
+default, and calls `register_with_cube()` before the first view so iced-cube's
+own text helpers request Inter too. Every kit component and canvas text asks
+for one of the helpers, so weight selection does not depend on widget defaults.
 
 The actual family name was verified with `fc-scan`; the variable font reports
 `Inter Variable`, not `Inter`. Using the wrong name silently falls back to a

@@ -6,6 +6,7 @@
 //! block carries the same selection message the inspector uses.
 
 use alp_ui_kit::components;
+use alp_ui_kit::icons;
 use alp_ui_kit::tokens::{Spacing, TypeScale};
 use alp_ui_kit::{ButtonKind, ThemeColors, fonts};
 use iced::widget::{Space, column, container, mouse_area, row, text};
@@ -20,16 +21,20 @@ impl App {
     /// The docked track editor used by the Stories workspace.
     pub(super) fn track_editor_view(&self, colors: ThemeColors) -> Element<'_, Message> {
         let total_secs = self.session.duration_secs().max(1.0);
-        let play_glyph = if self.playing { "❚❚" } else { "▶" };
+        let play_icon = if self.playing {
+            icons::PAUSE
+        } else {
+            icons::PLAY
+        };
 
         let toolbar = row![
-            components::button(
-                play_glyph,
+            components::glyph_button(
+                play_icon,
+                15.0,
                 ButtonKind::Primary,
-                colors,
                 Some(Message::PlayPause)
             ),
-            components::glyph_button("⏹", 13.0, ButtonKind::Ghost, colors, Some(Message::Stop)),
+            components::glyph_button(icons::STOP, 13.0, ButtonKind::Ghost, Some(Message::Stop)),
             text(format!(
                 "{} / {}",
                 format_time(self.position_secs),
@@ -41,33 +46,30 @@ impl App {
             Space::new().width(Length::Fill),
             components::with_tooltip(
                 components::glyph_button(
-                    "✂",
+                    icons::TRIM,
                     14.0,
                     ButtonKind::Ghost,
-                    colors,
-                    Some(Message::SplitSelection),
+                    Some(Message::SplitSelection)
                 ),
                 "Split at the selection".to_string(),
                 colors,
             ),
             components::with_tooltip(
                 components::glyph_button(
-                    "⧉",
+                    icons::COPY,
                     14.0,
                     ButtonKind::Ghost,
-                    colors,
-                    Some(Message::CopySelection),
+                    Some(Message::CopySelection)
                 ),
                 "Copy the selection".to_string(),
                 colors,
             ),
             components::with_tooltip(
                 components::glyph_button(
-                    "⌫",
+                    icons::DELETE_KEY,
                     14.0,
                     ButtonKind::Ghost,
-                    colors,
-                    Some(Message::DeleteSelection),
+                    Some(Message::DeleteSelection)
                 ),
                 "Delete the selection".to_string(),
                 colors,
@@ -85,8 +87,7 @@ impl App {
                     } else {
                         ButtonKind::Ghost
                     },
-                    colors,
-                    Some(Message::ToggleStoriesTools),
+                    Some(Message::ToggleStoriesTools)
                 ),
                 "Mixer and inspector".to_string(),
                 colors,

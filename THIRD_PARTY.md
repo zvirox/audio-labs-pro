@@ -13,7 +13,9 @@ editing, **P4-P8** used by multitrack, DSP, TTS, dictation, and voice profiles,
 
 | Crate | Version | License | Status | Purpose |
 |---|---|---|---|---|
-| iced | 0.14.0 | MIT | P2 | UI toolkit, pinned exactly; wgpu, canvas, advanced |
+| iced | 0.14.0 | MIT | P2 | UI toolkit, pinned exactly; wgpu, canvas, svg, advanced |
+| iced-cube | 0.0.6 | MIT OR Apache-2.0 | P2 | themed buttons/switches/checkboxes + Lucide icon embedding |
+| lucide-static-svg | 1.62.0 | ISC | P2 | Lucide icon SVGs embedded at compile time by iced-cube |
 | lilt | 0.8.2 | MIT | P2 | time-based panel transitions |
 | x11rb | 0.13.2 | MIT OR Apache-2.0 | P2 | KWin X11 blur property; safe Rust |
 | cpal | 0.18.2 | Apache-2.0 | P1 | audio I/O |
@@ -68,7 +70,7 @@ F5-TTS weights (CC-BY-NC), XTTS-v2 (CPML), KittenTTS 2 (custom license + AUP).
 | Inter variable (`InterVariable.ttf`, family “Inter Variable”) | SIL OFL-1.1 | P2, bundled in `crates/alp-ui-kit/assets/fonts/` with `LICENSE-Inter.txt` |
 | Application Brand & Scalable Icon (`io.github.zvirox.AudioLabsPro.svg`) | CC0-1.0 / MIT | P9, bundled in `packaging/icons/` |
 | AppStream metadata & MIME spec (`io.github.zvirox.AudioLabsPro.*`) | CC0-1.0 | P9, desktop integration |
-| Icons | — | no icon font in Phase 2; Unicode text glyphs render through Inter or the system fallback |
+| Lucide icons (embedded via `lucide-static-svg`, accessed as `alp_ui_kit::icons`) | ISC | P2, SVG paths embedded at compile time by iced-cube; ship the ISC notice with the app |
 
 ## Distribution obligations
 

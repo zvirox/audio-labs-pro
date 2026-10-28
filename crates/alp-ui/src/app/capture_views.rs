@@ -1,6 +1,7 @@
 //! Captures workspace: recordings, input health and transcript editing.
 
 use alp_ui_kit::components;
+use alp_ui_kit::icons;
 use alp_ui_kit::tokens::{Radius, Spacing, TypeScale};
 use alp_ui_kit::{ButtonKind, ThemeColors, fonts};
 use iced::widget::{Space, column, container, mouse_area, row, text};
@@ -33,22 +34,25 @@ impl App {
                     components::button(
                         "Open Stories",
                         ButtonKind::Secondary,
-                        colors,
-                        Some(Message::SelectWorkflowTab(super::WorkflowTab::Stories)),
+                        Some(Message::SelectWorkflowTab(super::WorkflowTab::Stories))
                     ),
-                    components::button(
+                    components::button_icon(
                         if self.recording.is_some() {
-                            "■  Stop"
+                            "Stop"
                         } else {
-                            "●  Record"
+                            "Record"
+                        },
+                        if self.recording.is_some() {
+                            icons::STOP
+                        } else {
+                            icons::RECORD
                         },
                         if self.recording.is_some() {
                             ButtonKind::Danger
                         } else {
                             ButtonKind::Primary
                         },
-                        colors,
-                        Some(Message::ToggleRecord),
+                        Some(Message::ToggleRecord)
                     ),
                 ],
                 colors,
@@ -114,15 +118,14 @@ impl App {
                     Space::new().width(Length::Fill),
                     components::with_tooltip(
                         components::glyph_button(
-                            "▣",
+                            icons::GRID,
                             13.0,
                             if selected {
                                 ButtonKind::Secondary
                             } else {
                                 ButtonKind::Ghost
                             },
-                            colors,
-                            Some(Message::SelectCapture(index)),
+                            Some(Message::SelectCapture(index))
                         ),
                         "Select this capture".to_string(),
                         colors,
@@ -170,8 +173,7 @@ impl App {
                 } else {
                     ButtonKind::Ghost
                 },
-                colors,
-                Some(Message::TogglePunchIn),
+                Some(Message::TogglePunchIn)
             ),
             Space::new().width(Length::Fill),
             components::button(
@@ -185,8 +187,7 @@ impl App {
                 } else {
                     ButtonKind::Ghost
                 },
-                colors,
-                Some(Message::ToggleMonitor),
+                Some(Message::ToggleMonitor)
             ),
         ]
         .spacing(f32::from(Spacing::XS))
@@ -194,7 +195,7 @@ impl App {
 
         card(
             "Recordings",
-            "▣",
+            icons::CAPTURES,
             column![controls, self.scroll(rows, colors).height(Length::Fill)]
                 .spacing(f32::from(Spacing::SM))
                 .into(),
@@ -246,22 +247,20 @@ impl App {
                 components::chip(format!("{:.2}s", (end - start).max(0.0)), colors),
                 components::with_tooltip(
                     components::glyph_button(
-                        "▶",
+                        icons::PLAY,
                         12.0,
                         ButtonKind::Ghost,
-                        colors,
-                        Some(Message::SelectTranscriptSegment(index)),
+                        Some(Message::SelectTranscriptSegment(index))
                     ),
                     "Seek here".to_string(),
                     colors,
                 ),
                 components::with_tooltip(
                     components::glyph_button(
-                        "⌫",
+                        icons::DELETE_KEY,
                         12.0,
                         ButtonKind::Ghost,
-                        colors,
-                        Some(Message::DeleteTranscriptSegment(index)),
+                        Some(Message::DeleteTranscriptSegment(index))
                     ),
                     "Remove segment".to_string(),
                     colors,
@@ -298,8 +297,7 @@ impl App {
             components::button(
                 "Transcribe capture",
                 ButtonKind::Primary,
-                colors,
-                Some(Message::TranscribeActiveTrack),
+                Some(Message::TranscribeActiveTrack)
             ),
             components::button(
                 if self.dictating {
@@ -312,21 +310,18 @@ impl App {
                 } else {
                     ButtonKind::Secondary
                 },
-                colors,
-                Some(Message::ToggleDictation),
+                Some(Message::ToggleDictation)
             ),
             Space::new().width(Length::Fill),
             components::button(
                 "Export SRT",
                 ButtonKind::Ghost,
-                colors,
-                Some(Message::ExportTranscriptSrt),
+                Some(Message::ExportTranscriptSrt)
             ),
             components::button(
                 "Export TXT",
                 ButtonKind::Ghost,
-                colors,
-                Some(Message::ExportTranscriptTxt),
+                Some(Message::ExportTranscriptTxt)
             ),
         ]
         .spacing(f32::from(Spacing::XS))
@@ -334,7 +329,7 @@ impl App {
 
         card(
             "Transcript",
-            "≋",
+            icons::FILE_TEXT,
             column![
                 toolbar,
                 components::muted(
@@ -356,7 +351,7 @@ impl App {
             .unwrap_or_else(|| "Default input".to_owned());
         card_auto(
             "Input",
-            "◉",
+            icons::MIC,
             column![
                 components::field_label("Recording device", colors),
                 components::dropdown(

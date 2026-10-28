@@ -1,6 +1,7 @@
 //! Effects workspace: cleanup chain, hosted plugins and signal path notes.
 
 use alp_ui_kit::components;
+use alp_ui_kit::icons;
 use alp_ui_kit::tokens::Spacing;
 use alp_ui_kit::{ButtonKind, ThemeColors};
 use iced::widget::{Space, column, container, row};
@@ -13,11 +14,16 @@ impl App {
     /// Voice cleanup chain, plugin browser and mastering targets.
     pub(super) fn effects_workspace(&self, colors: ThemeColors) -> Element<'_, Message> {
         let enabled = self.effects.iter().filter(|effect| effect.enabled).count();
-        let chain = card("Cleanup Chain", "≋", self.effects_view(colors), colors);
+        let chain = card(
+            "Cleanup Chain",
+            icons::WAVEFORM,
+            self.effects_view(colors),
+            colors,
+        );
 
         let path = card_auto(
             "Signal Path",
-            "∑",
+            icons::SIGMA,
             column![
                 row![
                     metric_badge(
@@ -42,7 +48,7 @@ impl App {
         let plugin_count = self.discovered_plugins.len();
         let plugins = card(
             "Hosted Plugins",
-            "◈",
+            icons::LAYERS,
             column![
                 row![
                     components::muted(
@@ -53,9 +59,7 @@ impl App {
                     components::button(
                         "Rescan",
                         ButtonKind::Secondary,
-                        colors,
-                        Some(Message::RescanPlugins),
-                    ),
+                        Some(Message::RescanPlugins)),
                 ]
                 .align_y(Alignment::Center),
                 components::muted(
@@ -87,8 +91,7 @@ impl App {
                 vec![components::button(
                     "Apply cleanup preset",
                     ButtonKind::Primary,
-                    colors,
-                    Some(Message::ApplyVoiceCleanupPreset),
+                    Some(Message::ApplyVoiceCleanupPreset)
                 )],
                 colors,
             ),

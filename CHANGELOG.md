@@ -59,6 +59,49 @@ versions follow the release milestones in the build plan.
   - Built-in TTS ignores pitch/energy/emotion, STT emits placeholder segments,
     no model downloader exists, and MP3/OGG export stay disabled or deferred.
 
+### Changed (iced-cube components and Lucide icons)
+
+- **`alp-ui-kit` engine swap to iced-cube 0.0.6:**
+  - Buttons, switches and checkboxes are now styled by
+    [`iced-cube`](https://crates.io/crates/iced-cube) style functions resolved
+    from the active `iced::Theme`; the kit keeps its own geometry (pill radius,
+    control heights, rail targets).
+  - `ThemeColors::to_theme()` builds the iced theme through
+    `iced_cube::theme::Config` (gold → cube primary, raised surface →
+    secondary/accent), so every cube control and the studio palette stay in
+    sync in dark and light mode.
+  - Secondary/ghost hover now uses cube's `accent` fill; dark-theme primary
+    hovers darken (cube emphasis) instead of lightening. Danger is now a
+    filled red Destructive pill.
+  - Button variants map `Primary→Primary, Secondary→Outline, Ghost|Icon→Ghost,
+    Danger→Destructive`.
+- **Lucide icon set (`alp_ui_kit::icons`):**
+  - New compile-time icon vocabulary (about 70 constants) embedded through
+    `iced-cube`'s `lucide!` and `lucide-static-svg`; icons are tinted from the
+    active theme on every draw.
+  - Every Unicode glyph in the shell (transport symbols, rail glyphs, card
+    headers, editor tools, chrome buttons) is replaced with a Lucide icon;
+    `WorkflowTab::glyph()`, `PanelKind::glyph()`, workspace card headers and
+    the app logo return `Glyph` values now.
+  - New `button_icon(label, Glyph, kind, on_press)` for labelled pills with a
+    leading icon; icon tint does not change on hover (iced `Svg` has no hover
+    status).
+- **Create Voice consent declaration:**
+  - The dialog gains an iced-cube checkbox — "The speaker gave permission to
+    clone this voice" — required before `Create Profile` proceeds to the
+    signed consent dialog; the declaration resets when the dialog opens.
+- **`alp-api`/call-site cleanup:**
+  - Cube-backed controls no longer take a `ThemeColors` argument (the theme is
+    read once); token-styled surfaces (sliders, inputs, dropdowns, chips,
+    segmented control, scroll rails, progress) keep it.
+  - `fonts::register_with_cube()` registers bundled Inter with iced-cube at
+    boot.
+- **Docs and inventory:**
+  - New `docs/modules/alp-ui-kit/icons.md`; `components`, `theme`, `fonts`
+    pages updated; `THIRD_PARTY.md` lists `iced-cube` and Lucide (ISC).
+  - Note: `iced-cube` 0.0.6 is an early-stage library (pre-1.0, API may change);
+    it is pinned and consumed only through `alp-ui-kit`.
+
 ## [1.2.0] - 2026-10-27
 
 ### Added (Phase 11 — CLAP & LV2 Audio Plugin Hosting, Release v1.2 "Plugins")

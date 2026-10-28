@@ -15,13 +15,15 @@ sample or a description into a stored voice profile. It is a pure view over
 ## Data flow
 
 1. Reads `create_voice_open`, `create_voice_tab`, `create_voice_reference`,
-   `create_voice_language`, `profile_name`, `profile_tags`, `recording` and
-   `record_started`.
-2. Emits `CreateVoiceTab`, `CreateVoiceReferenceInput`, `ProfileNameInput`,
-   `ProfileTagsInput`, `CreateVoiceLanguage`, `ToggleRecord`,
-   `CreateDesignedVoice`, `CloseCreateVoice` and `CreateVoiceSubmit`.
-3. `CreateVoiceSubmit` validates the draft and opens the consent dialog; only
-   `ConfirmConsent` writes a profile through `ProfileStore`.
+   `create_voice_consent`, `create_voice_language`, `profile_name`,
+   `profile_tags`, `recording` and `record_started`.
+2. Emits `CreateVoiceTab`, `CreateVoiceReferenceInput`, `CreateVoiceConsent`,
+   `ProfileNameInput`, `ProfileTagsInput`, `CreateVoiceLanguage`,
+   `ToggleRecord`, `CreateDesignedVoice`, `CloseCreateVoice` and
+   `CreateVoiceSubmit`.
+3. `CreateVoiceSubmit` requires the recorded sample and the speaker-permission
+   checkbox, then opens the consent dialog; only `ConfirmConsent` writes a
+   profile through `ProfileStore`.
 4. The dialog is layered by `App::view` after the workspace and before the
    consent modal, so consent always appears on top.
 

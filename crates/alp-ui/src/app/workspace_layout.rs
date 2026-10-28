@@ -5,6 +5,7 @@
 //! sends [`Message`] values, so no view mutates the project directly.
 
 use alp_ui_kit::components;
+use alp_ui_kit::icons;
 use alp_ui_kit::tokens::{Control, Radius, Rail, Spacing, TypeScale};
 use alp_ui_kit::{ButtonKind, ThemeColors, fonts};
 use iced::widget::{Scrollable, Space, column, container, mouse_area, row, scrollable, text};
@@ -74,17 +75,18 @@ impl WorkflowTab {
         }
     }
 
-    /// Short icon glyph for the navigation rail.
+    /// Short icon for the navigation rail.
     #[must_use]
-    pub fn glyph(self) -> &'static str {
+    pub fn glyph(self) -> alp_ui_kit::icons::Glyph {
+        use alp_ui_kit::icons;
         match self {
-            Self::Generate => "◉",
-            Self::Stories => "▤",
-            Self::Captures => "▣",
-            Self::Voices => "◇",
-            Self::Effects => "≋",
-            Self::Models => "◈",
-            Self::Settings => "⚙",
+            Self::Generate => icons::GENERATE,
+            Self::Stories => icons::STORIES,
+            Self::Captures => icons::CAPTURES,
+            Self::Voices => icons::VOICES,
+            Self::Effects => icons::EFFECTS,
+            Self::Models => icons::MODELS,
+            Self::Settings => icons::SETTINGS,
         }
     }
 }
@@ -92,32 +94,32 @@ impl WorkflowTab {
 /// A flat studio card with a heading and body.
 pub(super) fn card<'a>(
     title: impl Into<String>,
-    glyph: &'static str,
+    icon: alp_ui_kit::icons::Glyph,
     body: Element<'a, Message>,
     colors: ThemeColors,
 ) -> Element<'a, Message> {
-    card_sized(title, glyph, body, colors, Length::Fill)
+    card_sized(title, icon, body, colors, Length::Fill)
 }
 
 /// A card that only takes the height its contents need.
 pub(super) fn card_auto<'a>(
     title: impl Into<String>,
-    glyph: &'static str,
+    icon: alp_ui_kit::icons::Glyph,
     body: Element<'a, Message>,
     colors: ThemeColors,
 ) -> Element<'a, Message> {
-    card_sized(title, glyph, body, colors, Length::Shrink)
+    card_sized(title, icon, body, colors, Length::Shrink)
 }
 
 fn card_sized<'a>(
     title: impl Into<String>,
-    glyph: &'static str,
+    icon: alp_ui_kit::icons::Glyph,
     body: Element<'a, Message>,
     colors: ThemeColors,
     height: Length,
 ) -> Element<'a, Message> {
     let header = row![
-        text(glyph).size(12.0).color(colors.accent),
+        alp_ui_kit::icons::tinted(icon, 13.0, Some(colors.accent)),
         text(title.into())
             .size(f32::from(TypeScale::HEADING))
             .font(fonts::semibold())
@@ -196,12 +198,11 @@ pub(super) fn header<'a>(
 impl App {
     /// Fixed left navigation rail.
     pub(super) fn sidebar_view(&self, colors: ThemeColors) -> Element<'_, Message> {
-        let logo = container(
-            text("◈")
-                .size(22.0)
-                .font(fonts::bold())
-                .color(colors.accent_text),
-        )
+        let logo = container(icons::tinted(
+            icons::WAVEFORM,
+            22.0,
+            Some(colors.accent_text),
+        ))
         .width(Length::Fixed(f32::from(Rail::LOGO)))
         .height(Length::Fixed(f32::from(Rail::LOGO)))
         .align_x(Alignment::Center)
@@ -222,24 +223,14 @@ impl App {
         for tab in WorkflowTab::ALL {
             let active = self.workflow_tab == tab;
             nav = nav.push(components::with_tooltip(
-                components::rail_button(
-                    tab.glyph(),
-                    active,
-                    colors,
-                    Some(Message::SelectWorkflowTab(tab)),
-                ),
+                components::rail_button(tab.glyph(), active, Some(Message::SelectWorkflowTab(tab))),
                 tab.title().to_string(),
                 colors,
             ));
         }
 
         let ai = components::with_tooltip(
-            components::rail_button(
-                if self.ai_enabled { "⚡" } else { "○" },
-                self.ai_enabled,
-                colors,
-                Some(Message::ToggleAiControl),
-            ),
+            components::rail_button(icons::AI, self.ai_enabled, Some(Message::ToggleAiControl)),
             if self.ai_enabled {
                 "AI control: active".to_string()
             } else {
@@ -256,7 +247,11 @@ impl App {
                 Space::new().height(Length::Fill),
                 ai,
                 components::with_tooltip(
-                    components::rail_button("?", false, colors, Some(Message::OpenShortcutsHelp),),
+                    components::rail_button(
+                        icons::KEYBOARD,
+                        false,
+                        Some(Message::OpenShortcutsHelp)
+                    ),
                     "Keyboard shortcuts".to_string(),
                     colors,
                 ),
@@ -328,22 +323,20 @@ impl App {
                 Space::new().width(Length::Fill),
                 components::with_tooltip(
                     components::glyph_button_compact(
-                        "▶",
+                        icons::PLAY,
                         12.0,
                         ButtonKind::Ghost,
-                        colors,
-                        Some(Message::SelectProfile(id.clone())),
+                        Some(Message::SelectProfile(id.clone()))
                     ),
                     "Use this voice".to_string(),
                     colors,
                 ),
                 components::with_tooltip(
                     components::glyph_button_compact(
-                        "↓",
+                        icons::ARROW_DOWN,
                         12.0,
                         ButtonKind::Ghost,
-                        colors,
-                        Some(Message::ExportProfile(id.clone())),
+                        Some(Message::ExportProfile(id.clone()))
                     ),
                     "Export bundle".to_string(),
                     colors,
@@ -353,10 +346,9 @@ impl App {
                 } else {
                     components::with_tooltip(
                         components::glyph_button_compact(
-                            "⌫",
+                            icons::DELETE_KEY,
                             12.0,
                             ButtonKind::Ghost,
-                            colors,
                             Some(Message::DeleteProfile(id)),
                         ),
                         "Delete profile".to_string(),
@@ -415,7 +407,11 @@ impl App {
 
     /// Bottom docked player, present on every workspace except Stories.
     pub(super) fn docked_player_view(&self, colors: ThemeColors) -> Element<'_, Message> {
-        let play_glyph = if self.playing { "❚❚" } else { "▶" };
+        let play_icon = if self.playing {
+            icons::PAUSE
+        } else {
+            icons::PLAY
+        };
         let progress = (self.position_secs / self.media_duration.max(1.0)).clamp(0.0, 1.0);
         let waveform = container(self.waveform.view())
             .width(Length::Fill)
@@ -424,13 +420,13 @@ impl App {
 
         container(
             row![
-                components::button(
-                    play_glyph,
+                components::glyph_button(
+                    play_icon,
+                    16.0,
                     ButtonKind::Primary,
-                    colors,
-                    Some(Message::PlayPause),
+                    Some(Message::PlayPause)
                 ),
-                components::icon_button("⏮", colors, Some(Message::Stop)),
+                components::icon_button(icons::SKIP_BACK, Some(Message::Stop)),
                 column![
                     row![
                         text(self.player_title.clone())

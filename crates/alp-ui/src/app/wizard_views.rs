@@ -95,15 +95,11 @@ impl App {
                         components::button(
                             "Toggle theme",
                             ButtonKind::Secondary,
-                            colors,
-                            Some(Message::ToggleTheme),
-                        ),
+                            Some(Message::ToggleTheme)),
                         components::button(
                             "Toggle motion",
                             ButtonKind::Ghost,
-                            colors,
-                            Some(Message::ToggleReduceMotion),
-                        ),
+                            Some(Message::ToggleReduceMotion)),
                     ]
                     .spacing(f32::from(Spacing::SM)),
                 ]
@@ -122,8 +118,7 @@ impl App {
                 components::button(
                     "Start working",
                     ButtonKind::Primary,
-                    colors,
-                    Some(Message::FinishFirstRunWizard),
+                    Some(Message::FinishFirstRunWizard)
                 ),
             ]
             .align_y(Alignment::Center),
@@ -213,14 +208,12 @@ impl App {
                 components::button(
                     "Cancel",
                     ButtonKind::Secondary,
-                    colors,
-                    Some(Message::CloseConsentDialog),
+                    Some(Message::CloseConsentDialog)
                 ),
                 components::button(
                     "Confirm consent",
                     ButtonKind::Primary,
-                    colors,
-                    Some(Message::ConfirmConsent),
+                    Some(Message::ConfirmConsent)
                 ),
             ]
             .spacing(f32::from(Spacing::SM))
@@ -316,8 +309,7 @@ impl App {
                 components::button(
                     "Close",
                     ButtonKind::Secondary,
-                    colors,
-                    Some(Message::CloseShortcutsHelp),
+                    Some(Message::CloseShortcutsHelp)
                 ),
             ]
             .align_y(Alignment::Center),

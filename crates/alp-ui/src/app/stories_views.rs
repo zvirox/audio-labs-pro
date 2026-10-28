@@ -1,6 +1,7 @@
 //! Stories workspace: story list, line editor and the shared track editor.
 
 use alp_ui_kit::components;
+use alp_ui_kit::icons;
 use alp_ui_kit::tokens::{Radius, Spacing, TypeScale};
 use alp_ui_kit::{ButtonKind, ThemeColors, fonts};
 use iced::widget::{Space, column, container, mouse_area, row, stack, text};
@@ -24,41 +25,30 @@ impl App {
         let list = self.story_list(colors);
         let detail = self.story_detail(colors);
 
-        let content =
-            column![
-                header(
-                    "Stories",
-                    "Narrate a script, then shape it on the track editor",
-                    vec![
-                        components::button(
-                            "New Story",
-                            ButtonKind::Primary,
-                            colors,
-                            Some(Message::NewStory),
-                        ),
-                        components::button(
-                            "Save",
-                            ButtonKind::Ghost,
-                            colors,
-                            Some(Message::SaveStory),
-                        ),
-                    ],
-                    colors,
-                ),
-                row![
-                    column![list]
-                        .width(Length::FillPortion(5))
-                        .height(Length::Fill),
-                    column![detail]
-                        .width(Length::FillPortion(12))
-                        .height(Length::Fill),
-                ]
-                .spacing(f32::from(Spacing::XL))
-                .width(Length::Fill)
-                .height(Length::Fill),
+        let content = column![
+            header(
+                "Stories",
+                "Narrate a script, then shape it on the track editor",
+                vec![
+                    components::button("New Story", ButtonKind::Primary, Some(Message::NewStory)),
+                    components::button("Save", ButtonKind::Ghost, Some(Message::SaveStory)),
+                ],
+                colors,
+            ),
+            row![
+                column![list]
+                    .width(Length::FillPortion(5))
+                    .height(Length::Fill),
+                column![detail]
+                    .width(Length::FillPortion(12))
+                    .height(Length::Fill),
             ]
-            .spacing(f32::from(Spacing::LG))
-            .height(Length::Fill);
+            .spacing(f32::from(Spacing::XL))
+            .width(Length::Fill)
+            .height(Length::Fill),
+        ]
+        .spacing(f32::from(Spacing::LG))
+        .height(Length::Fill);
 
         if self.stories_tools_open {
             stack![content, self.stories_tools_overlay(colors)]
@@ -139,11 +129,11 @@ impl App {
                         Message::SelectVoice,
                     ))
                     .width(Length::FillPortion(1)),
-                    components::button(
-                        "✦",
+                    components::glyph_button(
+                        icons::GENERATE,
+                        14.0,
                         ButtonKind::Primary,
-                        colors,
-                        Some(Message::AddStoryLine),
+                        Some(Message::AddStoryLine)
                     ),
                 ]
                 .spacing(f32::from(Spacing::XS))
@@ -190,21 +180,21 @@ impl App {
             ]
             .spacing(f32::from(Spacing::XXS)),
             Space::new().width(Length::Fill),
-            components::button(
-                "+  Add",
+            components::button_icon(
+                "Add",
+                icons::PLUS,
                 ButtonKind::Secondary,
-                colors,
-                Some(Message::AddStoryLine),
+                Some(Message::AddStoryLine)
             ),
-            components::button(
+            components::button_icon(
                 if self.generating {
                     "Rendering…"
                 } else {
-                    "↓  Render Audio"
+                    "Render Audio"
                 },
+                icons::ARROW_DOWN,
                 ButtonKind::Primary,
-                colors,
-                Some(Message::RenderStory),
+                Some(Message::RenderStory)
             ),
         ]
         .spacing(f32::from(Spacing::SM))
@@ -249,22 +239,20 @@ impl App {
                         ),
                         components::with_tooltip(
                             components::glyph_button(
-                                "⋯",
+                                icons::MORE,
                                 16.0,
                                 ButtonKind::Ghost,
-                                colors,
-                                Some(Message::SelectStoryLine(index)),
+                                Some(Message::SelectStoryLine(index))
                             ),
                             "Select this line".to_string(),
                             colors,
                         ),
                         components::with_tooltip(
                             components::glyph_button(
-                                "⌫",
+                                icons::DELETE_KEY,
                                 12.0,
                                 ButtonKind::Ghost,
-                                colors,
-                                Some(Message::DeleteStoryLine(index)),
+                                Some(Message::DeleteStoryLine(index))
                             ),
                             "Delete this line".to_string(),
                             colors,
@@ -317,17 +305,21 @@ impl App {
                     components::card_title("Mixer & Inspector", colors),
                     Space::new().width(Length::Fill),
                     components::glyph_button(
-                        "✕",
+                        icons::CLOSE,
                         13.0,
                         ButtonKind::Ghost,
-                        colors,
-                        Some(Message::ToggleStoriesTools),
+                        Some(Message::ToggleStoriesTools)
                     ),
                 ]
                 .align_y(Alignment::Center),
-                card("Timeline", "▤", self.timeline_view(colors), colors),
-                card("Mixer", "∑", self.mixer_view(colors), colors),
-                card("Inspector", "▥", self.inspector_view(colors), colors),
+                card("Timeline", icons::ROWS, self.timeline_view(colors), colors),
+                card("Mixer", icons::MIXER, self.mixer_view(colors), colors),
+                card(
+                    "Inspector",
+                    icons::TARGET,
+                    self.inspector_view(colors),
+                    colors
+                ),
             ]
             .spacing(f32::from(Spacing::MD)),
         )

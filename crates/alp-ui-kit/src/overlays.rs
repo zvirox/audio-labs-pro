@@ -9,6 +9,7 @@ use iced::{Alignment, Background, Border, Element, Length, Shadow};
 
 use crate::components::{self, ButtonKind};
 use crate::fonts;
+use crate::icons;
 use crate::theme::ThemeColors;
 use crate::tokens::{Radius, Spacing, TypeScale};
 
@@ -47,7 +48,6 @@ pub fn modal<'a, Message: Clone + 'a>(
         buttons = buttons.push(components::button(
             label,
             ButtonKind::Primary,
-            colors,
             Some(message),
         ));
     }
@@ -96,7 +96,7 @@ pub fn dialog<'a, Message: Clone + 'a>(
         ]
         .spacing(f32::from(Spacing::XXS)),
         Space::new().width(Length::Fill),
-        components::glyph_button("✕", 14.0, ButtonKind::Ghost, colors, Some(on_close)),
+        components::glyph_button(icons::CLOSE, 14.0, ButtonKind::Ghost, Some(on_close)),
     ]
     .align_y(Alignment::Start);
 
@@ -152,7 +152,7 @@ pub fn toast<'a, Message: Clone + 'a>(
             .size(f32::from(TypeScale::LABEL))
             .font(fonts::regular())
             .color(colors.text),
-        components::button("Dismiss", ButtonKind::Ghost, colors, Some(on_dismiss)),
+        components::button("Dismiss", ButtonKind::Ghost, Some(on_dismiss)),
     ]
     .spacing(f32::from(Spacing::MD))
     .align_y(Alignment::Center);
@@ -194,12 +194,7 @@ pub fn command_palette<'a, Message: Clone + 'a>(
         } else {
             ButtonKind::Ghost
         };
-        list = list.push(components::button(
-            label,
-            kind,
-            colors,
-            Some(item.message.clone()),
-        ));
+        list = list.push(components::button(label, kind, Some(item.message.clone())));
     }
     if items.is_empty() {
         list = list.push(components::muted("No matching command.", colors));
@@ -349,12 +344,7 @@ mod tests {
             "Clone voice",
             "Create a new voice profile with an audio sample.",
             components::muted("Body", ThemeColors::DARK),
-            components::button(
-                "Create",
-                ButtonKind::Primary,
-                ThemeColors::DARK,
-                None::<Msg>,
-            ),
+            components::button("Create", ButtonKind::Primary, None::<Msg>),
             960.0,
             ThemeColors::DARK,
             Msg::Dismiss,

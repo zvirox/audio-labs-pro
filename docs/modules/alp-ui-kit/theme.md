@@ -14,7 +14,8 @@ defines a literal colour; everything reads a `ThemeColors` value.
   danger, wave, wave_hot, grid, playhead.
 - `ThemeColors::DARK` and `LIGHT`.
 - `for_mode(ThemeMode)` — resolves system preference at call time.
-- `to_theme()` — iced palette for built-in widgets.
+- `to_theme()` — builds the iced `Theme` through `iced_cube::theme::Config` so
+  both built-in widgets and iced-cube controls resolve the studio palette.
 - `frame_style()`, `rail_style()`, `panel_style(focused)`, `card_style()`,
   `well_style()`, `plain_style()`.
 
@@ -23,7 +24,13 @@ defines a literal colour; everything reads a `ThemeColors` value.
 `App::colors()` resolves the stored `ThemeMode` against `system_is_dark()` and
 returns a copy. The view passes that value to kit builders, which close over it
 in style callbacks. The same value feeds the waveform's grid/wave/playhead
-colours and the iced `Theme` used by standard widgets.
+colours and `to_theme()`, which maps it onto an iced-cube `Config`: the gold
+accent becomes the cube `primary`, raised surfaces become its secondary and
+hover accent, danger/success/warning pass through, and the studio hairline
+becomes the cube border. Dark or light is chosen by background luminance, and
+derived cube tokens (foreground-on-primary and friends) are computed from that
+mapping, so switches, checkboxes and buttons recolour on the same theme switch
+that flips `ThemeColors`.
 
 The dark palette uses near-black surfaces (background 0.039, glass 0.055, cards
 0.078, inputs 0.106), text at 0.96/0.62/0.40 and a warm gold accent
@@ -62,3 +69,6 @@ theme cycling and parsing.
 - Blur strength cannot be controlled by the app; only tint opacity is ours.
 - Colour contrast has not been audited against WCAG text thresholds for every
   state.
+- The iced-cube mapping is fixed: gold → cube primary, raised surface →
+  secondary/accent. Cube-derived hovers (dark-theme primary darkens) follow
+  iced-cube's emphasis convention rather than a per-token ALP choice.

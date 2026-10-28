@@ -4,17 +4,29 @@
 //! through this module so variants, padding, focus and motion stay consistent.
 //! Components are stateless; the application owns values and messages.
 //!
+//! The controls are powered by [`iced-cube`](https://crates.io/crates/iced-cube):
+//! buttons, switches, checkboxes and Lucide icons resolve their colours from
+//! the active [`iced::Theme`], which [`ThemeColors::to_theme`] builds from the
+//! studio palette. Token-styled surfaces such as chips, inputs, sliders and
+//! scroll rails still take an explicit [`ThemeColors`] so they can draw on any
+//! panel.
+//!
 //! The language is a studio one: pill buttons, circular rail glyphs, graphite
-//! cards with hairline borders and one warm gold accent. Text helpers expose the
-//! type scale so views never pick their own sizes.
+//! cards with hairline borders and one warm gold accent. Text helpers expose
+//! the type scale so views never pick their own sizes.
 
 use iced::widget::{
     button as raw_button, button::Status as ButtonStatus, button::Style as ButtonStyle, pick_list,
-    progress_bar, row, slider, text, text_editor, text_input, toggler, tooltip,
+    progress_bar, row, slider, text, text_editor, text_input, tooltip,
 };
 use iced::{Background, Border, Color, Element, Length, Shadow};
+use iced_cube::primitives::button as cube_button;
+use iced_cube::primitives::checkbox as cube_checkbox;
+use iced_cube::primitives::switch as cube_switch;
+use iced_cube::theme::Tokens as CubeTokens;
 
 use crate::fonts;
+use crate::icons::{self, Glyph};
 use crate::theme::ThemeColors;
 use crate::tokens::{Control, Radius, Rail, Spacing, TypeScale};
 
@@ -33,196 +45,222 @@ pub enum ButtonKind {
     Icon,
 }
 
+impl ButtonKind {
+    /// The matching iced-cube variant used for colours.
+    #[must_use]
+    pub fn cube_variant(self) -> cube_button::Variant {
+        match self {
+            Self::Primary => cube_button::Variant::Primary,
+            Self::Secondary => cube_button::Variant::Outline,
+            Self::Ghost | Self::Icon => cube_button::Variant::Ghost,
+            Self::Danger => cube_button::Variant::Destructive,
+        }
+    }
+}
+
 /// A labelled pill button.
 pub fn button<'a, Message: Clone + 'a>(
     label: impl Into<String>,
     kind: ButtonKind,
-    colors: ThemeColors,
     on_press: Option<Message>,
 ) -> Element<'a, Message> {
-    sized_button(label, kind, colors, on_press, None, Control::MD)
+    sized_button(label.into(), None, kind, on_press, None, Control::MD)
 }
 
 /// A labelled pill button that fills its parent width.
 pub fn button_fill<'a, Message: Clone + 'a>(
     label: impl Into<String>,
     kind: ButtonKind,
-    colors: ThemeColors,
     on_press: Option<Message>,
 ) -> Element<'a, Message> {
     sized_button(
-        label,
+        label.into(),
+        None,
         kind,
-        colors,
         on_press,
         Some(Length::Fill),
         Control::MD,
     )
 }
 
+/// A large pill button with a leading Lucide icon, for page-level actions.
+pub fn button_large_icon<'a, Message: Clone + 'a>(
+    label: impl Into<String>,
+    icon: Glyph,
+    kind: ButtonKind,
+    on_press: Option<Message>,
+) -> Element<'a, Message> {
+    sized_button(label.into(), Some(icon), kind, on_press, None, Control::LG)
+}
+
 /// A large pill button for page-level actions.
 pub fn button_large<'a, Message: Clone + 'a>(
     label: impl Into<String>,
     kind: ButtonKind,
-    colors: ThemeColors,
     on_press: Option<Message>,
 ) -> Element<'a, Message> {
-    sized_button(label, kind, colors, on_press, None, Control::LG)
+    sized_button(label.into(), None, kind, on_press, None, Control::LG)
+}
+
+/// A labelled pill button with a leading Lucide icon.
+pub fn button_icon<'a, Message: Clone + 'a>(
+    label: impl Into<String>,
+    icon: Glyph,
+    kind: ButtonKind,
+    on_press: Option<Message>,
+) -> Element<'a, Message> {
+    sized_button(label.into(), Some(icon), kind, on_press, None, Control::MD)
 }
 
 fn sized_button<'a, Message: Clone + 'a>(
-    label: impl Into<String>,
+    label: String,
+    icon: Option<Glyph>,
     kind: ButtonKind,
-    colors: ThemeColors,
     on_press: Option<Message>,
     width: Option<Length>,
     height: u16,
 ) -> Element<'a, Message> {
-    let label = label.into();
-    let padding = if kind == ButtonKind::Icon {
-        [0.0, Spacing::SM as f32]
-    } else {
-        [0.0, Spacing::LG as f32]
-    };
-    let mut widget = raw_button(
-        text(label)
+    let styled_text = |value: String| {
+        text(value)
             .size(f32::from(TypeScale::LABEL))
             .font(fonts::medium())
-            .line_height(1.2),
-    )
-    .padding(padding)
-    .height(Length::Fixed(f32::from(height)))
-    .style(move |_theme, status| button_style(kind, colors, status))
-    .on_press_maybe(on_press);
+            .line_height(1.2)
+    };
+    let content: Element<'a, Message> = if let Some(icon) = icon {
+        row![icon_view::<Message>(icon, 14.0, kind), styled_text(label)]
+            .spacing(f32::from(Spacing::XS))
+            .align_y(iced::Alignment::Center)
+            .into()
+    } else {
+        styled_text(label).into()
+    };
+    let mut widget = raw_button(content)
+        .padding([0.0, Spacing::LG as f32])
+        .height(Length::Fixed(f32::from(height)))
+        .style(move |theme, status| cube_style(kind, theme, status))
+        .on_press_maybe(on_press);
     if let Some(width) = width {
         widget = widget.width(width);
     }
     widget.into()
 }
 
-/// A compact glyph button; the glyph is text so it inherits the bundled font.
+/// A compact icon button for toolbars and card actions.
 pub fn icon_button<'a, Message: Clone + 'a>(
-    glyph: impl Into<String>,
-    colors: ThemeColors,
+    glyph: Glyph,
     on_press: Option<Message>,
 ) -> Element<'a, Message> {
-    button(glyph, ButtonKind::Icon, colors, on_press)
+    glyph_button(glyph, 16.0, ButtonKind::Icon, on_press)
 }
 
-/// A circular glyph button used by the navigation rail.
+/// A circular icon button used by the navigation rail.
 pub fn rail_button<'a, Message: Clone + 'a>(
-    glyph: impl Into<String>,
+    glyph: Glyph,
     active: bool,
-    colors: ThemeColors,
     on_press: Option<Message>,
 ) -> Element<'a, Message> {
-    let glyph = glyph.into();
-    raw_button(
-        text(glyph)
-            .size(18.0)
-            .font(fonts::regular())
-            .color(if active { colors.accent } else { colors.muted }),
-    )
-    .width(Length::Fixed(f32::from(Rail::BUTTON)))
-    .height(Length::Fixed(f32::from(Rail::BUTTON)))
-    .padding(0.0)
-    .style(move |_theme, status| rail_button_style(active, colors, status))
-    .on_press_maybe(on_press)
-    .into()
-}
-
-/// A square glyph button with a caller-chosen glyph size.
-pub fn glyph_button<'a, Message: Clone + 'a>(
-    glyph: impl Into<String>,
-    size: f32,
-    kind: ButtonKind,
-    colors: ThemeColors,
-    on_press: Option<Message>,
-) -> Element<'a, Message> {
-    sized_glyph(glyph, size, kind, colors, on_press, 38.0)
-}
-
-/// A compact glyph button for dense cards, history rows and timelines.
-pub fn glyph_button_compact<'a, Message: Clone + 'a>(
-    glyph: impl Into<String>,
-    size: f32,
-    kind: ButtonKind,
-    colors: ThemeColors,
-    on_press: Option<Message>,
-) -> Element<'a, Message> {
-    sized_glyph(glyph, size, kind, colors, on_press, 28.0)
-}
-
-fn sized_glyph<'a, Message: Clone + 'a>(
-    glyph: impl Into<String>,
-    size: f32,
-    kind: ButtonKind,
-    colors: ThemeColors,
-    on_press: Option<Message>,
-    side: f32,
-) -> Element<'a, Message> {
-    raw_button(text(glyph.into()).size(size).font(fonts::regular()))
+    let tint = move |theme: &iced::Theme| {
+        let tokens = CubeTokens::of(theme);
+        if active {
+            tokens.primary
+        } else {
+            tokens.muted_foreground
+        }
+    };
+    raw_button(icons::themed(glyph, 18.0, 1.0, tint))
+        .width(Length::Fixed(f32::from(Rail::BUTTON)))
+        .height(Length::Fixed(f32::from(Rail::BUTTON)))
         .padding(0.0)
-        .width(Length::Fixed(side))
-        .height(Length::Fixed(side))
-        .style(move |_theme, status| button_style(kind, colors, status))
+        .style(move |_theme, status| rail_button_style(active, status))
         .on_press_maybe(on_press)
         .into()
 }
 
+/// A square icon button with a caller-chosen icon size.
+pub fn glyph_button<'a, Message: Clone + 'a>(
+    glyph: Glyph,
+    size: f32,
+    kind: ButtonKind,
+    on_press: Option<Message>,
+) -> Element<'a, Message> {
+    sized_glyph(glyph, size, kind, on_press, 38.0)
+}
+
+/// A compact icon button for dense cards, history rows and timelines.
+pub fn glyph_button_compact<'a, Message: Clone + 'a>(
+    glyph: Glyph,
+    size: f32,
+    kind: ButtonKind,
+    on_press: Option<Message>,
+) -> Element<'a, Message> {
+    sized_glyph(glyph, size, kind, on_press, 28.0)
+}
+
+fn sized_glyph<'a, Message: Clone + 'a>(
+    glyph: Glyph,
+    size: f32,
+    kind: ButtonKind,
+    on_press: Option<Message>,
+    side: f32,
+) -> Element<'a, Message> {
+    raw_button(icon_view(glyph, size, kind))
+        .padding(0.0)
+        .width(Length::Fixed(side))
+        .height(Length::Fixed(side))
+        .style(move |theme, status| cube_style(kind, theme, status))
+        .on_press_maybe(on_press)
+        .into()
+}
+
+/// Draws a Lucide icon tinted with the rest colour of a button variant.
+#[must_use]
+pub fn icon_view<'a, Message: 'a>(
+    glyph: Glyph,
+    size: f32,
+    kind: ButtonKind,
+) -> Element<'a, Message> {
+    icons::themed(glyph, size, 1.0, move |theme| {
+        let tokens = CubeTokens::of(theme);
+        match kind {
+            ButtonKind::Primary => tokens.primary_foreground,
+            ButtonKind::Danger => tokens.destructive_foreground,
+            ButtonKind::Secondary => tokens.foreground,
+            ButtonKind::Ghost | ButtonKind::Icon => tokens.muted_foreground,
+        }
+    })
+    .into()
+}
+
 /// A labelled toggle switch.
 pub fn toggle<'a, Message: Clone + 'a>(
-    label: impl Into<String>,
+    label: impl iced::widget::text::IntoFragment<'a>,
     value: bool,
-    colors: ThemeColors,
     on_toggle: Message,
 ) -> Element<'a, Message> {
-    styled_toggler(label.into(), value, colors)
+    cube_switch::switch(value)
+        .label(label)
         .on_toggle(move |_| on_toggle.clone())
         .into()
 }
 
 /// A switch without a label, for dense rows that already describe themselves.
-pub fn switch<'a, Message: Clone + 'a>(
-    value: bool,
-    colors: ThemeColors,
-    on_toggle: Message,
-) -> Element<'a, Message> {
-    styled_toggler(String::new(), value, colors)
-        .on_toggle(move |_| on_toggle.clone())
-        .into()
+pub fn switch<'a, Message: Clone + 'a>(value: bool, on_toggle: Message) -> Element<'a, Message> {
+    toggle(String::new(), value, on_toggle)
 }
 
-fn styled_toggler<'a, Message: Clone + 'a>(
-    label: String,
-    value: bool,
-    colors: ThemeColors,
-) -> iced::widget::Toggler<'a, Message> {
-    toggler(value)
+/// A labelled checkbox. Use it for confirmations and selectable options;
+/// use [`switch`] for on/off settings.
+///
+/// `on_toggle` receives the new checked state.
+pub fn checkbox<'a, Message: Clone + 'a>(
+    label: impl iced::widget::text::IntoFragment<'a>,
+    checked: bool,
+    on_toggle: impl Fn(bool) -> Message + 'a,
+) -> Element<'a, Message> {
+    cube_checkbox::checkbox(checked)
         .label(label)
-        .size(34.0)
-        .text_size(f32::from(TypeScale::LABEL))
-        .font(fonts::medium())
-        .spacing(f32::from(Spacing::SM))
-        .style(move |_theme, _status| toggler::Style {
-            background: Background::Color(if value {
-                colors.accent
-            } else {
-                colors.surface_raised
-            }),
-            background_border_width: 1.0,
-            background_border_color: if value { colors.accent } else { colors.border },
-            foreground: Background::Color(if value {
-                colors.accent_text
-            } else {
-                colors.muted
-            }),
-            foreground_border_width: 0.0,
-            foreground_border_color: Color::TRANSPARENT,
-            text_color: Some(colors.text),
-            border_radius: Some(f32::from(Radius::PILL).into()),
-            padding_ratio: 0.16,
-        })
+        .on_toggle(on_toggle)
+        .into()
 }
 
 /// A horizontal slider that reads the active palette.
@@ -323,7 +361,6 @@ pub fn dropdown<'a, Message: Clone + 'a>(
 pub fn tabs<'a, Message: Clone + 'a>(
     labels: &[&str],
     active: usize,
-    colors: ThemeColors,
     on_select: impl Fn(usize) -> Message + 'a,
 ) -> Element<'a, Message> {
     let mut strip = row![].spacing(f32::from(Spacing::XS));
@@ -333,7 +370,7 @@ pub fn tabs<'a, Message: Clone + 'a>(
         } else {
             ButtonKind::Ghost
         };
-        strip = strip.push(button(*label, kind, colors, Some(on_select(index))));
+        strip = strip.push(button(*label, kind, Some(on_select(index))));
     }
     strip.into()
 }
@@ -597,78 +634,15 @@ pub fn kicker<'a, Message: 'a>(
         .into()
 }
 
-fn button_style(kind: ButtonKind, colors: ThemeColors, status: ButtonStatus) -> ButtonStyle {
-    let hovered = matches!(status, ButtonStatus::Hovered | ButtonStatus::Pressed);
-    let (background, text_color, border_color) = match kind {
-        ButtonKind::Primary => match status {
-            ButtonStatus::Hovered => (colors.accent_hover, colors.accent_text, colors.accent_hover),
-            ButtonStatus::Pressed => (
-                colors.accent_pressed,
-                colors.accent_text,
-                colors.accent_pressed,
-            ),
-            _ => (colors.accent, colors.accent_text, colors.accent),
-        },
-        ButtonKind::Secondary => (
-            if hovered {
-                colors.surface_raised
-            } else {
-                Color::TRANSPARENT
-            },
-            colors.text,
-            if hovered {
-                colors.border_strong
-            } else {
-                colors.border
-            },
-        ),
-        ButtonKind::Ghost => (
-            if hovered {
-                colors.surface_raised
-            } else {
-                Color::TRANSPARENT
-            },
-            if hovered { colors.text } else { colors.muted },
-            Color::TRANSPARENT,
-        ),
-        ButtonKind::Danger => (
-            if hovered {
-                colors.danger
-            } else {
-                Color::TRANSPARENT
-            },
-            if hovered { colors.text } else { colors.danger },
-            colors.danger,
-        ),
-        ButtonKind::Icon => (
-            if hovered {
-                colors.surface_raised
-            } else {
-                Color::TRANSPARENT
-            },
-            if hovered { colors.text } else { colors.muted },
-            Color::TRANSPARENT,
-        ),
-    };
-    let (border_width, border_color) = if border_color == Color::TRANSPARENT {
-        (0.0, Color::TRANSPARENT)
-    } else {
-        (1.0, border_color)
-    };
-    ButtonStyle {
-        background: Some(Background::Color(background)),
-        text_color,
-        border: Border {
-            radius: f32::from(Radius::PILL).into(),
-            width: border_width,
-            color: border_color,
-        },
-        shadow: Shadow::default(),
-        snap: true,
-    }
+/// Button colours borrowed from iced-cube, with the studio pill radius.
+fn cube_style(kind: ButtonKind, theme: &iced::Theme, status: ButtonStatus) -> ButtonStyle {
+    let tokens = CubeTokens::of(theme);
+    let mut style = cube_button::style(&tokens, kind.cube_variant(), status);
+    style.border.radius = f32::from(Radius::PILL).into();
+    style
 }
 
-fn rail_button_style(active: bool, colors: ThemeColors, status: ButtonStatus) -> ButtonStyle {
+fn rail_button_style(active: bool, status: ButtonStatus) -> ButtonStyle {
     let hovered = matches!(status, ButtonStatus::Hovered | ButtonStatus::Pressed);
     let background = if active {
         Background::Color(Color::from_rgba(1.0, 1.0, 1.0, 0.07))
@@ -679,7 +653,7 @@ fn rail_button_style(active: bool, colors: ThemeColors, status: ButtonStatus) ->
     };
     ButtonStyle {
         background: Some(background),
-        text_color: if active { colors.accent } else { colors.muted },
+        text_color: Color::TRANSPARENT,
         border: Border {
             radius: f32::from(Radius::PILL).into(),
             width: if active { 1.0 } else { 0.0 },
@@ -781,12 +755,14 @@ fn pick_list_style(colors: ThemeColors, status: pick_list::Status) -> pick_list:
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::icons;
 
     #[allow(dead_code)]
     #[derive(Clone, Debug)]
     enum Msg {
         Press,
         Toggle,
+        Check,
         Slide(f32),
         Field(String),
         Segment(usize),
@@ -794,29 +770,36 @@ mod tests {
 
     #[test]
     fn buttons_build_with_and_without_messages() {
-        let _ = button(
-            "Play",
-            ButtonKind::Primary,
-            ThemeColors::DARK,
-            Some(Msg::Press),
-        );
-        let _ = button::<Msg>("Disabled", ButtonKind::Ghost, ThemeColors::DARK, None);
+        let _ = button("Play", ButtonKind::Primary, Some(Msg::Press));
+        let _ = button::<Msg>("Disabled", ButtonKind::Ghost, None);
+        let _: Element<'_, Msg> = button_fill("Full", ButtonKind::Secondary, None);
+        let _: Element<'_, Msg> = button_large("Large", ButtonKind::Primary, None);
         let _: Element<'_, Msg> =
-            button_fill("Full", ButtonKind::Secondary, ThemeColors::DARK, None);
-        let _: Element<'_, Msg> =
-            button_large("Large", ButtonKind::Primary, ThemeColors::DARK, None);
+            button_icon("Create Voice", icons::GENERATE, ButtonKind::Primary, None);
     }
 
     #[test]
     fn rail_and_segment_build() {
-        let _ = rail_button("✦", true, ThemeColors::DARK, Some(Msg::Press));
-        let _ = rail_button("▤", false, ThemeColors::DARK, Some(Msg::Press));
+        let _ = rail_button(icons::GENERATE, true, Some(Msg::Press));
+        let _ = rail_button(icons::LIBRARY, false, Some(Msg::Press));
         let _ = segmented(&["Upload", "Record"], 1, ThemeColors::DARK, Msg::Segment);
     }
 
     #[test]
-    fn toggle_and_slider_accept_messages() {
-        let _ = toggle("Reduce motion", true, ThemeColors::DARK, Msg::Toggle);
+    fn icon_variants_build() {
+        let _: Element<'_, Msg> = icon_button(icons::PLAY, Some(Msg::Press));
+        let _: Element<'_, Msg> =
+            glyph_button(icons::PLAY, 18.0, ButtonKind::Icon, Some(Msg::Press));
+        let _: Element<'_, Msg> = glyph_button_compact(icons::TRIM, 14.0, ButtonKind::Ghost, None);
+    }
+
+    #[test]
+    fn toggle_switch_and_checkbox_accept_messages() {
+        let _ = toggle("Reduce motion", true, Msg::Toggle);
+        let _: Element<'_, Msg> = switch(false, Msg::Toggle);
+        let _: Element<'_, Msg> = checkbox("Export selection", false, |checked| {
+            Msg::Slide(checked as u32 as f32)
+        });
         let _ = slider_control(0.5, Msg::Slide);
         let _ = themed_slider(0.5, ThemeColors::DARK, Msg::Slide);
     }
@@ -834,8 +817,6 @@ mod tests {
 
     #[test]
     fn tabs_build_for_each_item() {
-        let _ = tabs(&["A", "B", "C"], 1, ThemeColors::DARK, |index| {
-            Msg::Slide(index as f32)
-        });
+        let _ = tabs(&["A", "B", "C"], 1, |index| Msg::Slide(index as f32));
     }
 }

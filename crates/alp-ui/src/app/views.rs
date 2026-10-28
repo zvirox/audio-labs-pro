@@ -3,6 +3,7 @@
 //! Views are pure: they read [`App`](super::App) state and return iced elements.
 //! They never mutate the project or the panel model directly.
 
+use alp_ui_kit::icons;
 use iced::widget::{Space, column, container, mouse_area, row, stack, text};
 
 use super::*;
@@ -14,7 +15,7 @@ impl App {
         kind: ButtonKind,
         msg: Message,
     ) -> Element<'a, Message> {
-        components::button(label, kind, self.colors(), Some(msg))
+        components::button(label, kind, Some(msg))
     }
 
     /// Render the whole shell.
@@ -147,33 +148,34 @@ impl App {
             Space::new().width(Length::Fill),
             components::with_tooltip(
                 components::glyph_button(
-                    if self.reduce_motion { "≈" } else { "~" },
+                    if self.reduce_motion {
+                        icons::PAUSE
+                    } else {
+                        icons::ACTIVITY
+                    },
                     13.0,
                     ButtonKind::Ghost,
-                    colors,
-                    Some(Message::ToggleReduceMotion),
+                    Some(Message::ToggleReduceMotion)
                 ),
                 "Reduce motion".to_string(),
                 colors,
             ),
             components::with_tooltip(
                 components::glyph_button(
-                    "◐",
+                    icons::THEME,
                     14.0,
                     ButtonKind::Ghost,
-                    colors,
-                    Some(Message::ToggleTheme),
+                    Some(Message::ToggleTheme)
                 ),
                 self.theme_mode.as_str().to_string(),
                 colors,
             ),
             components::with_tooltip(
                 components::glyph_button(
-                    "?",
+                    icons::KEYBOARD,
                     13.0,
                     ButtonKind::Ghost,
-                    colors,
-                    Some(Message::OpenShortcutsHelp),
+                    Some(Message::OpenShortcutsHelp)
                 ),
                 "Keyboard shortcuts".to_string(),
                 colors,
@@ -215,9 +217,9 @@ impl App {
                         .font(fonts::semibold())
                         .color(colors.text),
                     Space::new().width(Length::Fill),
-                    components::toggle("M", track.muted, colors, Message::ToggleTrackMute(index)),
-                    components::toggle("S", track.solo, colors, Message::ToggleTrackSolo(index)),
-                    components::toggle("R", track.armed, colors, Message::ToggleTrackArm(index)),
+                    components::toggle("M", track.muted, Message::ToggleTrackMute(index)),
+                    components::toggle("S", track.solo, Message::ToggleTrackSolo(index)),
+                    components::toggle("R", track.armed, Message::ToggleTrackArm(index)),
                 ]
                 .spacing(f32::from(Spacing::XXS))
                 .align_y(Alignment::Center),
@@ -255,7 +257,7 @@ impl App {
                 )),
                 colors,
             ),
-            components::toggle("Ripple delete", self.ripple, colors, Message::ToggleRipple),
+            components::toggle("Ripple delete", self.ripple, Message::ToggleRipple),
             components::progress(self.record_peak, colors),
         ]
         .spacing(f32::from(Spacing::XS))
@@ -294,7 +296,6 @@ impl App {
                 } else {
                     ButtonKind::Ghost
                 },
-                colors,
                 Some(Message::SelectTrack(index)),
             );
             tracks = tracks.push(row);
@@ -326,9 +327,9 @@ impl App {
 
         column![
             row![
-                components::icon_button("−", colors, Some(Message::ZoomWaveform(1.25))),
-                components::icon_button("+", colors, Some(Message::ZoomWaveform(0.8))),
-                components::icon_button("⟲", colors, Some(Message::SeekWaveform(0.0))),
+                components::icon_button(icons::MINUS, Some(Message::ZoomWaveform(1.25))),
+                components::icon_button(icons::PLUS, Some(Message::ZoomWaveform(0.8))),
+                components::icon_button(icons::RESET, Some(Message::SeekWaveform(0.0))),
                 components::muted(format!("view {:.1}s → {:.1}s", x.0, x.1), colors),
                 Space::new().width(Length::Fill),
                 components::muted("Scroll over waveform to zoom", colors),
@@ -359,7 +360,6 @@ impl App {
                     } else {
                         ButtonKind::Ghost
                     },
-                    colors,
                     Some(Message::SelectClip(clip.id)),
                 ));
             }
@@ -371,8 +371,8 @@ impl App {
                 components::kicker("Track edit", colors),
                 components::muted(self.session.status(), colors),
                 row![
-                    components::button("Undo", ButtonKind::Ghost, colors, undo),
-                    components::button("Redo", ButtonKind::Ghost, colors, redo),
+                    components::button("Undo", ButtonKind::Ghost, undo),
+                    components::button("Redo", ButtonKind::Ghost, redo),
                     components::muted(
                         format!(
                             "{} clips · {:.1}s",
@@ -403,8 +403,7 @@ impl App {
                     components::button(
                         "Apply",
                         ButtonKind::Secondary,
-                        colors,
-                        Some(Message::ApplySelection),
+                        Some(Message::ApplySelection)
                     ),
                 ]
                 .spacing(f32::from(Spacing::XS)),
@@ -503,7 +502,7 @@ impl App {
                 ]
                 .spacing(f32::from(Spacing::XXS)),
                 Space::new().width(Length::Fill),
-                components::switch(eff.enabled, colors, Message::ToggleEffect(index)),
+                components::switch(eff.enabled, Message::ToggleEffect(index)),
             ]
             .spacing(f32::from(Spacing::MD))
             .align_y(Alignment::Center)
@@ -573,11 +572,11 @@ impl App {
                     .font(fonts::regular())
                     .color(colors.text),
                 Space::new().width(Length::Fill),
-                components::button(
-                    "+  Insert",
+                components::button_icon(
+                    "Insert",
+                    icons::PLUS,
                     ButtonKind::Secondary,
-                    colors,
-                    Some(Message::InsertPlugin(p.id.clone())),
+                    Some(Message::InsertPlugin(p.id.clone()))
                 ),
             ]
             .align_y(Alignment::Center)
@@ -606,7 +605,6 @@ impl App {
                 components::button(
                     "Cancel",
                     ButtonKind::Ghost,
-                    colors,
                     Some(Message::CancelJob(job.id)),
                 )
             } else {

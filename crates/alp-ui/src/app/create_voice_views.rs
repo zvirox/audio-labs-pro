@@ -5,6 +5,7 @@
 //! record before a cloned profile is stored.
 
 use alp_ui_kit::components;
+use alp_ui_kit::icons;
 use alp_ui_kit::overlays;
 use alp_ui_kit::tokens::{Radius, Spacing, TypeScale};
 use alp_ui_kit::{ButtonKind, ThemeColors, fonts};
@@ -54,6 +55,15 @@ impl App {
                 colors,
                 Message::CreateVoiceReferenceInput,
             ),
+            components::checkbox(
+                "The speaker gave permission to clone this voice",
+                self.create_voice_consent,
+                Message::CreateVoiceConsent,
+            ),
+            components::muted(
+                "A consent record is signed on the next step and stored with the profile.",
+                colors,
+            ),
         ]
         .spacing(f32::from(Spacing::SM))
         .width(Length::FillPortion(3));
@@ -97,21 +107,18 @@ impl App {
             components::button(
                 "Design from description",
                 ButtonKind::Ghost,
-                colors,
-                Some(Message::CreateDesignedVoice),
+                Some(Message::CreateDesignedVoice)
             ),
             Space::new().width(Length::Fill),
             components::button(
                 "Cancel",
                 ButtonKind::Secondary,
-                colors,
-                Some(Message::CloseCreateVoice),
+                Some(Message::CloseCreateVoice)
             ),
             components::button(
                 "Create Profile",
                 ButtonKind::Primary,
-                colors,
-                Some(Message::CreateVoiceSubmit),
+                Some(Message::CreateVoiceSubmit)
             ),
         ]
         .spacing(f32::from(Spacing::SM))
@@ -164,15 +171,19 @@ impl App {
                     .size(f32::from(TypeScale::TITLE))
                     .font(fonts::semibold())
                     .color(colors.text),
-                components::button(
+                components::button_icon(
                     if recording {
-                        "■  Stop Recording"
+                        "Stop Recording"
                     } else {
-                        "●  Start Recording"
+                        "Start Recording"
+                    },
+                    if recording {
+                        icons::STOP
+                    } else {
+                        icons::RECORD
                     },
                     ButtonKind::Primary,
-                    colors,
-                    Some(Message::ToggleRecord),
+                    Some(Message::ToggleRecord)
                 ),
                 components::muted(
                     if recording {

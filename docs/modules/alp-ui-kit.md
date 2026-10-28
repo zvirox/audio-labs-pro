@@ -10,22 +10,27 @@ visual language and how the no-raw-button rule stays enforceable.
 
 The studio language is deliberately restrained: near-black surfaces, graphite
 cards, a single warm gold accent with dark ink on filled buttons, 6/10/14/18 px
-radii and pill controls, hairline white borders at 10% and soft shadows. Glyph
-buttons render single-character monochrome symbols rather than an icon font.
+radii and pill controls, hairline white borders at 10% and soft shadows. Icons
+are embedded Lucide SVGs rendered through iced-cube; buttons, switches,
+checkboxes and icon tints borrow iced-cube's style functions, resolved from the
+`iced::Theme` that `theme::ThemeColors::to_theme` builds from the studio
+palette.
 
 ## Public API
 
 - `tokens` — `Spacing`, `Radius`, `Control`, `Rail`, `TypeScale`, `Motion`,
   `ThemeMode`, `Duration`, `system_is_dark`.
 - `fonts` — bundled `INTER_BYTES`, `FAMILY`, `regular`, `medium`, `semibold`,
-  `bold`, `mono`.
+  `bold`, `mono`, `register_with_cube`.
 - `theme` — `ThemeColors` (`DARK`, `LIGHT`), `for_mode`, `to_theme`,
   `frame_style`, `rail_style`, `panel_style`, `card_style`, `well_style`,
   `plain_style`.
-- `components` — `ButtonKind`, pill and fill buttons, rail/glyph/compact
-  buttons, toggle and switch, sliders, text fields and areas, dropdowns,
-  segmented control, tabs, chips, avatar, tooltip, progress, scrolling style and
-  the page/card/section/field text helpers.
+- `icons` — `Glyph`, `themed`, `tinted` and the Lucide constant vocabulary
+  (`PLAY`, `GENERATE`, `WAVEFORM`, `TRIM`, …).
+- `components` — `ButtonKind`, pill and icon-labelled buttons, rail/glyph/
+  compact buttons, iced-cube-powered toggle/switch/checkbox, sliders, text
+  fields and areas, dropdowns, segmented control, tabs, chips, avatar, tooltip,
+  progress, scrolling style and the page/card/section/field text helpers.
 - `overlays` — cards, dialog, toast, command palette, property row, empty state.
 - `motion` — `Toggle`, `PanelMotion`, overlay/panel constructors and duration
   scaling.
@@ -48,8 +53,9 @@ state (scroll, zoom, playhead, selection).
 
 ## Allowed dependencies
 
-Only external presentation crates: `iced` 0.14 (canvas/advanced) and `lilt` 0.8.2.
-No ALP crate is allowed. `alp-media` data is converted by `alp-ui` into
+Only external presentation crates: `iced` 0.14 (canvas/svg/advanced),
+`iced-cube` 0.0.6 (components + Lucide icons) and `lilt` 0.8.2. No ALP crate is
+allowed. `alp-media` data is converted by `alp-ui` into
 `waveform::WaveformPeaks`; the kit never parses a project or peak cache.
 
 ## Threading / real-time notes
@@ -69,16 +75,17 @@ dark; tooltips and overlays accept empty content without panicking.
 ## Testing
 
 Unit tests cover token/theme parsing and reduce motion, the studio palette roles
-and tint alpha, the bundled font family and size, button/glyph/rail/toggle/
-switch/slider/segmented construction, dialog/toast/palette building, panel
-motion, and waveform validation, level selection, aggregation and scroll/zoom
-clamping. `scripts/check-ui.sh` additionally enforces that
+and tint alpha, the bundled font family and size, button/icon-button/rail/
+toggle/switch/checkbox/slider/segmented construction, dialog/toast/palette
+building, panel motion, and waveform validation, level selection, aggregation
+and scroll/zoom clamping. `scripts/check-ui.sh` additionally enforces that
 `crates/alp-ui/src` never calls a raw iced button.
 
 ## Known limits
 
 - The component set does not yet include a standalone popover or a spinner.
-- Icons are text glyphs, not a dedicated icon font.
+- Glyph buttons cannot retint their icon on hover (iced `Svg` has no hover
+  status).
 - Button state changes are immediate; only panels animate.
 - The waveform is display-only and supports i16 peaks up to one hour.
 - There is no component gallery, visual regression suite or accessibility audit

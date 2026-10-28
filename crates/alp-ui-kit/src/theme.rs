@@ -6,7 +6,7 @@
 //! paper surfaces and the same gold, so one component set serves both.
 
 use iced::widget::container;
-use iced::{Background, Border, Color, Shadow, Theme, Vector, theme};
+use iced::{Background, Border, Color, Shadow, Theme, Vector};
 
 use crate::tokens::{Radius, ThemeMode};
 
@@ -125,20 +125,33 @@ impl ThemeColors {
         }
     }
 
-    /// iced theme handed to built-in widgets.
+    /// iced theme handed to built-in widgets and to `iced-cube` controls.
+    ///
+    /// The palette is built through `iced_cube::theme::Config` so every
+    /// iced-cube component resolves the same graphite and gold tokens from
+    /// the active theme: the gold accent becomes the cube `primary`,
+    /// raised surfaces become its secondary and hover accents, and the
+    /// studio border hairline becomes its edge colour.
     #[must_use]
     pub fn to_theme(self) -> Theme {
-        Theme::custom(
-            "Audio Labs Pro",
-            theme::Palette {
-                background: self.background,
-                text: self.text,
-                primary: self.accent,
-                success: self.success,
-                warning: self.warning,
-                danger: self.danger,
-            },
-        )
+        let luminance =
+            0.2126 * self.background.r + 0.7152 * self.background.g + 0.0722 * self.background.b;
+        let base = if luminance > 0.5 {
+            iced_cube::theme::Config::light()
+        } else {
+            iced_cube::theme::Config::dark()
+        };
+        base.name("Audio Labs Pro")
+            .background(self.background)
+            .foreground(self.text)
+            .primary(self.accent)
+            .secondary(self.surface_raised)
+            .accent(self.surface_raised)
+            .destructive(self.danger)
+            .success(self.success)
+            .warning(self.warning)
+            .border(self.border)
+            .build()
     }
 
     /// The rounded application frame.

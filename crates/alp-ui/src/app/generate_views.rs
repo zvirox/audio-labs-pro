@@ -1,6 +1,7 @@
 //! Generate workspace: voice card grid, the generate box and the take history.
 
 use alp_ui_kit::components;
+use alp_ui_kit::icons;
 use alp_ui_kit::tokens::{Spacing, TypeScale};
 use alp_ui_kit::{ButtonKind, ThemeColors, fonts};
 use iced::widget::{Space, column, container, row, text};
@@ -31,17 +32,17 @@ impl App {
                 "Audio Labs Pro",
                 "Local speech, cloned voices and every take on this machine",
                 vec![
-                    components::button(
-                        "↑  Import Voice",
+                    components::button_icon(
+                        "Import Voice",
+                        icons::ARROW_UP,
                         ButtonKind::Secondary,
-                        colors,
-                        Some(Message::ImportVoice),
+                        Some(Message::ImportVoice)
                     ),
-                    components::button(
-                        "✦  Create Voice",
+                    components::button_icon(
+                        "Create Voice",
+                        icons::GENERATE,
                         ButtonKind::Primary,
-                        colors,
-                        Some(Message::OpenCreateVoice),
+                        Some(Message::OpenCreateVoice)
                     ),
                 ],
                 colors,
@@ -85,21 +86,20 @@ impl App {
                     Message::GenerateEditor,
                 ),
                 row![
-                    components::button_large(
+                    components::button_large_icon(
                         if self.generating {
                             "Rendering…"
                         } else {
-                            "✦  Generate"
+                            "Generate"
                         },
+                        icons::GENERATE,
                         ButtonKind::Primary,
-                        colors,
-                        Some(Message::GenerateSpeech),
+                        Some(Message::GenerateSpeech)
                     ),
                     components::button(
                         "Play last",
                         ButtonKind::Ghost,
-                        colors,
-                        Some(Message::PlayHistory(0)),
+                        Some(Message::PlayHistory(0))
                     ),
                     Space::new().width(Length::Fill),
                     components::muted(self.voice_status.clone(), colors),
@@ -142,12 +142,7 @@ impl App {
             components::card_title("History", colors),
             Space::new().width(Length::Fill),
             components::muted(format!("{} take(s)", self.history.len()), colors),
-            components::button(
-                "Clear",
-                ButtonKind::Ghost,
-                colors,
-                Some(Message::ClearHistory),
-            ),
+            components::button("Clear", ButtonKind::Ghost, Some(Message::ClearHistory)),
         ]
         .spacing(f32::from(Spacing::XS))
         .align_y(Alignment::Center);
@@ -173,10 +168,7 @@ impl App {
 
         container(
             row![
-                text("≋")
-                    .size(18.0)
-                    .font(fonts::regular())
-                    .color(colors.muted),
+                icons::tinted(icons::WAVEFORM, 18.0, Some(colors.muted)),
                 column![
                     text(item.voice_name.clone())
                         .size(f32::from(TypeScale::BODY_STRONG))
@@ -204,33 +196,30 @@ impl App {
                 column![
                     components::with_tooltip(
                         components::glyph_button(
-                            "▶",
+                            icons::PLAY,
                             12.0,
                             ButtonKind::Ghost,
-                            colors,
-                            Some(Message::PlayHistory(index)),
+                            Some(Message::PlayHistory(index))
                         ),
                         "Play take".to_string(),
                         colors,
                     ),
                     components::with_tooltip(
                         components::glyph_button(
-                            "+",
+                            icons::PLUS,
                             13.0,
                             ButtonKind::Ghost,
-                            colors,
-                            Some(Message::InsertHistory(index)),
+                            Some(Message::InsertHistory(index))
                         ),
                         "Insert into timeline".to_string(),
                         colors,
                     ),
                     components::with_tooltip(
                         components::glyph_button(
-                            "⌫",
+                            icons::DELETE_KEY,
                             12.0,
                             ButtonKind::Ghost,
-                            colors,
-                            Some(Message::DeleteHistory(index)),
+                            Some(Message::DeleteHistory(index))
                         ),
                         "Delete take".to_string(),
                         colors,

@@ -55,6 +55,16 @@ pub fn mono() -> Font {
     Font::MONOSPACE
 }
 
+/// Registers the bundled family with `iced-cube` so its labelled controls and
+/// emphasised text match the rest of the interface.
+///
+/// Call once at boot, before the first view; reports whether the font was
+/// newly registered.
+#[must_use]
+pub fn register_with_cube() -> bool {
+    iced_cube::theme::set_font(regular())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

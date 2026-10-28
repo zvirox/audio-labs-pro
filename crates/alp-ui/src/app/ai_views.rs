@@ -19,14 +19,12 @@ impl App {
             components::button(
                 "Stop MCP",
                 ButtonKind::Danger,
-                colors,
                 Some(Message::ToggleAiControl),
             )
         } else {
             components::button(
                 "Allow MCP",
                 ButtonKind::Secondary,
-                colors,
                 Some(Message::ToggleAiControl),
             )
         };
@@ -75,11 +73,10 @@ impl App {
         };
 
         let safety_actions = row![
-            components::button("Stop AI", ButtonKind::Danger, colors, Some(Message::StopAi)),
+            components::button("Stop AI", ButtonKind::Danger, Some(Message::StopAi)),
             components::button(
                 "Undo AI changes",
                 ButtonKind::Secondary,
-                colors,
                 Some(Message::UndoAiChanges)
             ),
             Space::new().width(Length::Fill),

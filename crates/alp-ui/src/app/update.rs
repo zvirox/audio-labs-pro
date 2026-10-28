@@ -491,14 +491,20 @@ impl App {
                 self.create_voice_open = true;
                 self.create_voice_tab = CreateVoiceTab::Record;
                 self.create_voice_reference.clear();
+                self.create_voice_consent = false;
                 Task::none()
             }
             Message::CloseCreateVoice => {
                 self.create_voice_open = false;
+                self.create_voice_consent = false;
                 Task::none()
             }
             Message::CreateVoiceTab(tab) => {
                 self.create_voice_tab = tab;
+                Task::none()
+            }
+            Message::CreateVoiceConsent(granted) => {
+                self.create_voice_consent = granted;
                 Task::none()
             }
             Message::CreateVoiceReferenceInput(text) => {

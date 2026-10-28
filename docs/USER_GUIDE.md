@@ -27,15 +27,15 @@ On first launch, Audio Labs Pro displays an interactive setup wizard:
 A round-icon rail on the left switches between workspaces. A player is docked at
 the bottom of every screen; Stories replaces it with a track editor.
 
-| Glyph | Workspace | What it holds |
+| Icon | Workspace | What it holds |
 |---|---|---|
-| ◉ | Generate | Voice cards, prompt editor, generate/play controls and take history |
-| ▤ | Stories | Multi-line scripts, per-line render, stitch and the docked track editor |
-| ▣ | Captures | Recording, dictation, VAD transcription, input meters and transcript |
-| ◇ | Voices | Profile library, inspector, designed voices and the cloning gate |
-| ≋ | Effects | Cleanup chain, signal path and hosted CLAP/LV2 plugins |
-| ◈ | Models | Model catalogue, licences, offline policy and storage |
-| ⚙ | Settings | Appearance, motion, AI control, storage, delivery and panels |
+| ✨ Sparkles | Generate | Voice cards, prompt editor, generate/play controls and take history |
+| 🎬 Clapperboard | Stories | Multi-line scripts, per-line render, stitch and the docked track editor |
+| 💿 Disc | Captures | Recording, dictation, VAD transcription, input meters and transcript |
+| 👥 Users | Voices | Profile library, inspector, designed voices and the cloning gate |
+| ⚡ Zap | Effects | Cleanup chain, signal path and hosted CLAP/LV2 plugins |
+| 📦 Boxes | Models | Model catalogue, licences, offline policy and storage |
+| ⚙ Gear | Settings | Appearance, motion, AI control, storage, delivery and panels |
 
 The **timeline**, **mixer** and **inspector** remain available to the palette and
 AI clients. In Stories, the **Mixer** button opens them over the line cards; close
@@ -43,9 +43,10 @@ it with the same button. Ripple delete lives in the mixer; recording and
 dictation live in Captures.
 
 **Create Voice** opens a modal with Upload, Record and System Audio tabs. Record
-captures up to 30 seconds, then **Create Profile** asks for the human consent
-attestation. Upload and System Audio state plainly that they are not wired in
-this build. **Import Voice** accepts `.alpvoice` bundles dropped on the window.
+captures up to 30 seconds. **Create Profile** first asks you to tick the
+speaker-permission declaration, then presents the human consent attestation.
+Upload and System Audio state plainly that they are not wired in this build.
+**Import Voice** accepts `.alpvoice` bundles dropped on the window.
 
 ---
 
@@ -121,7 +122,7 @@ Before creating a cloned voice profile, reference audio must pass an objective a
 - Silence Ratio: $\le 60\%$ speech activity.
 
 ### Human Consent Attestation Gate
-In strict compliance with ethics and safety rules, creating a cloned voice requires a human consent attestation. The speaker's name and attester's signature are permanently stored in the profile metadata. Automation, headless scripts, and AI agents cannot bypass this human-only gate.
+In strict compliance with ethics and safety rules, creating a cloned voice requires two human steps: a speaker-permission declaration checkbox in the Create Voice dialog, and a human consent attestation with the speaker's and attester's names. Both are permanently stored in the profile metadata. Automation, headless scripts, and AI agents cannot bypass this human-only gate.
 
 ### Prompt-Based Voice Design
 Create synthetic voices by entering a natural language description (e.g. *"Warm, deep British documentary narrator with calm cadence"*). The profile records the description and tags; timbre matching is not implemented yet.

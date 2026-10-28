@@ -9,7 +9,8 @@ testable without a display.
 
 ## Public API
 
-- `PanelKind::ALL`, `id`, `title`, `glyph`; serialized as `snake_case`.
+- `PanelKind::ALL`, `id`, `title`, `glyph` (an `alp-ui-kit` Lucide `Glyph` for
+  compact menus); serialized as `snake_case`.
 - `PanelRect { x, y, width, height }` with `right`, `bottom`, `clamp` and
   `snapped`; `MIN_WIDTH`, `MIN_HEIGHT`, `SNAP_PX`.
 - `DockSide { Left, Right }`.

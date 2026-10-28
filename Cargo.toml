@@ -26,7 +26,8 @@ clap = { version = "4.5", features = ["derive"] }
 cpal = "0.18.2"
 dirs = "7.0.0"
 flacenc = { version = "0.5.1", default-features = false }
-iced = { version = "=0.14.0", features = ["canvas", "advanced"] }
+iced = { version = "=0.14.0", features = ["canvas", "svg", "advanced"] }
+iced-cube = { version = "0.0.6", default-features = false, features = ["full"] }
 libloading = "0.8.9"
 lilt = "=0.8.2"
 hound = "3.5.1"

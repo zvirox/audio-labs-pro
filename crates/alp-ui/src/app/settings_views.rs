@@ -2,6 +2,7 @@
 
 use alp_media::ExportPreset;
 use alp_ui_kit::components;
+use alp_ui_kit::icons;
 use alp_ui_kit::tokens::{Spacing, TypeScale};
 use alp_ui_kit::{ButtonKind, ThemeColors, fonts};
 use iced::widget::{Space, column, container, row, text};
@@ -147,7 +148,7 @@ impl App {
 
         let catalogue = card(
             "Model Catalogue",
-            "◈",
+            icons::MODELS,
             column![
                 row![
                     metric_badge(
@@ -181,12 +182,11 @@ impl App {
 
         let policy = card_auto(
             "Download Policy",
-            "⊙",
+            icons::DOWNLOAD,
             column![
                 components::toggle(
                     "Offline only (no outbound traffic)",
                     self.models_offline,
-                    colors,
                     Message::ToggleOfflineModels
                 ),
                 components::muted(
@@ -205,7 +205,7 @@ impl App {
 
         let verification = card_auto(
             "Verification & Storage",
-            "⌕",
+            icons::SEARCH,
             column![
                 path_row(
                     "Folder",
@@ -254,13 +254,12 @@ impl App {
     pub(super) fn settings_workspace(&self, colors: ThemeColors) -> Element<'_, Message> {
         let appearance = card_auto(
             "Appearance",
-            "◐",
+            icons::THEME,
             column![
                 row![
                     components::toggle(
                         "Reduce motion",
                         self.reduce_motion,
-                        colors,
                         Message::ToggleReduceMotion
                     ),
                     Space::new().width(Length::Fill),
@@ -289,11 +288,16 @@ impl App {
             colors,
         );
 
-        let ai = card_auto("AI Control", "⚡", self.ai_activity_view(colors), colors);
+        let ai = card_auto(
+            "AI Control",
+            icons::AI,
+            self.ai_activity_view(colors),
+            colors,
+        );
 
         let storage = card_auto(
             "Storage",
-            "▤",
+            icons::STORAGE,
             column![
                 path_row("Data", self.media_root.display().to_string(), colors),
                 path_row("Stories", self.story_dir.display().to_string(), colors),
@@ -319,7 +323,7 @@ impl App {
 
         let delivery = card_auto(
             "Delivery",
-            "⇲",
+            icons::UPLOAD,
             column![
                 row![
                     self.action_btn(
@@ -351,11 +355,16 @@ impl App {
             colors,
         );
 
-        let export_queue = card_auto("Export Queue", "⇲", self.export_view(colors), colors);
+        let export_queue = card_auto(
+            "Export Queue",
+            icons::DOWNLOAD,
+            self.export_view(colors),
+            colors,
+        );
 
         let session = card_auto(
             "Session",
-            "◈",
+            icons::CLOCK,
             column![
                 row![
                     self.action_btn("Save layout", ButtonKind::Secondary, Message::SaveLayout),
@@ -384,9 +393,11 @@ impl App {
         for kind in crate::panels::PanelKind::ALL {
             let open = self.panels.panel(kind).open;
             let body = row![
-                text(kind.glyph())
-                    .size(f32::from(TypeScale::LABEL))
-                    .color(colors.accent),
+                icons::tinted(
+                    kind.glyph(),
+                    f32::from(TypeScale::LABEL),
+                    Some(colors.accent)
+                ),
                 text(kind.title())
                     .size(f32::from(TypeScale::LABEL))
                     .font(fonts::regular())
@@ -396,7 +407,6 @@ impl App {
                 components::button(
                     if open { "Hide" } else { "Show" },
                     ButtonKind::Ghost,
-                    colors,
                     Some(Message::TogglePanel(kind))
                 ),
             ]
@@ -411,7 +421,7 @@ impl App {
         }
         let panels = card_auto(
             "Workspace Panels",
-            "▤",
+            icons::GRID,
             column![
                 components::muted(
                     "Panels stay available to the palette and AI clients even when a workspace hides them.",

@@ -6,6 +6,7 @@
 
 pub mod components;
 pub mod fonts;
+pub mod icons;
 pub mod motion;
 pub mod overlays;
 pub mod theme;

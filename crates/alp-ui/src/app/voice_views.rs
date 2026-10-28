@@ -1,6 +1,7 @@
 //! Voices workspace: the profile library, inspector and cloning gate.
 
 use alp_ui_kit::components;
+use alp_ui_kit::icons;
 use alp_ui_kit::tokens::{Spacing, TypeScale};
 use alp_ui_kit::{ButtonKind, ThemeColors, fonts};
 use iced::widget::{Space, column, row, text};
@@ -27,7 +28,7 @@ impl App {
         let inspector = self.voice_inspector(colors);
         let gate = card_auto(
             "Cloning Gate",
-            "⚖",
+            icons::HEART,
             column![
                 components::muted(
                     "Audio Labs Pro never ships a cloned profile without a consent record from a human. The record is stored inside the profile bundle.",
@@ -49,7 +50,7 @@ impl App {
         );
         let storage = card_auto(
             "Profile Storage",
-            "▤",
+            icons::STORAGE,
             column![
                 components::muted(
                     self.profile_store.as_ref().map_or_else(
@@ -87,17 +88,17 @@ impl App {
                 "Voices",
                 "A local library of built-in, designed and cloned profiles",
                 vec![
-                    components::button(
-                        "↑  Import Voice",
+                    components::button_icon(
+                        "Import Voice",
+                        icons::ARROW_UP,
                         ButtonKind::Secondary,
-                        colors,
-                        Some(Message::ImportVoice),
+                        Some(Message::ImportVoice)
                     ),
-                    components::button(
-                        "✦  Create Voice",
+                    components::button_icon(
+                        "Create Voice",
+                        icons::GENERATE,
                         ButtonKind::Primary,
-                        colors,
-                        Some(Message::OpenCreateVoice),
+                        Some(Message::OpenCreateVoice)
                     ),
                 ],
                 colors,
@@ -116,7 +117,7 @@ impl App {
         let Some(profile) = self.profile().cloned() else {
             return card_auto(
                 "Voice Profile",
-                "◇",
+                icons::VOICES,
                 components::muted("Select a profile to inspect it.", colors),
                 colors,
             );
@@ -141,7 +142,7 @@ impl App {
 
         card_auto(
             "Voice Profile",
-            "◇",
+            icons::VOICES,
             column![
                 row![
                     components::avatar(&profile.name, 56.0, colors),
@@ -181,14 +182,12 @@ impl App {
                     components::button(
                         "Use in Generate",
                         ButtonKind::Primary,
-                        colors,
-                        Some(Message::SelectProfile(id.clone())),
+                        Some(Message::SelectProfile(id.clone()))
                     ),
                     components::button(
                         "Export",
                         ButtonKind::Secondary,
-                        colors,
-                        Some(Message::ExportProfile(id.clone())),
+                        Some(Message::ExportProfile(id.clone()))
                     ),
                     if is_builtin {
                         Space::new().width(Length::Fixed(0.0)).into()
@@ -196,7 +195,6 @@ impl App {
                         components::button(
                             "Delete",
                             ButtonKind::Ghost,
-                            colors,
                             Some(Message::DeleteProfile(id)),
                         )
                     },
@@ -206,14 +204,12 @@ impl App {
                     components::button(
                         "Clone last take",
                         ButtonKind::Secondary,
-                        colors,
-                        Some(Message::OpenConsentDialog),
+                        Some(Message::OpenConsentDialog)
                     ),
                     components::button(
                         "Audit sample",
                         ButtonKind::Ghost,
-                        colors,
-                        Some(Message::AuditReferenceAudio),
+                        Some(Message::AuditReferenceAudio)
                     ),
                     Space::new().width(Length::Fill),
                 ]

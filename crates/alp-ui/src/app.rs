@@ -291,6 +291,8 @@ pub enum Message {
     CreateVoiceTab(CreateVoiceTab),
     /// Reference transcript typed into the Create Voice dialog.
     CreateVoiceReferenceInput(String),
+    /// Speaker-permission declaration toggled in the Create Voice dialog.
+    CreateVoiceConsent(bool),
     /// Target language chosen in the Create Voice dialog.
     CreateVoiceLanguage(String),
     /// Create the profile described by the dialog.
@@ -490,6 +492,8 @@ pub struct App {
     create_voice_open: bool,
     create_voice_tab: CreateVoiceTab,
     create_voice_reference: String,
+    /// Speaker-permission declaration, required before the consent record.
+    create_voice_consent: bool,
     create_voice_language: String,
     stories_tools_open: bool,
     dictating: bool,
@@ -768,6 +772,7 @@ impl App {
             create_voice_open: false,
             create_voice_tab: CreateVoiceTab::Record,
             create_voice_reference: String::new(),
+            create_voice_consent: false,
             create_voice_language: "English".into(),
             stories_tools_open: false,
             dictating: false,

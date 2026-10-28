@@ -16,6 +16,7 @@ mod workspace;
 use iced::{Size, window};
 
 fn main() -> iced::Result {
+    let _ = alp_ui_kit::fonts::register_with_cube();
     iced::application(app::App::boot, app::App::update, app::App::view)
         .title("Audio Labs Pro")
         .window(window::Settings {

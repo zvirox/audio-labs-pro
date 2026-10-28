@@ -92,20 +92,21 @@ impl PanelKind {
         }
     }
 
-    /// Short glyph used in compact menus.
+    /// Short icon used in compact menus.
     #[must_use]
-    pub fn glyph(self) -> &'static str {
+    pub fn glyph(self) -> alp_ui_kit::icons::Glyph {
+        use alp_ui_kit::icons;
         match self {
-            Self::Mixer => "∑",
-            Self::Transport => "▶",
-            Self::Timeline => "▤",
-            Self::Inspector => "⚙",
-            Self::MediaBin => "▣",
-            Self::VoiceLab => "◉",
-            Self::Effects => "✦",
-            Self::Models => "◇",
-            Self::ExportQueue => "⇩",
-            Self::AiActivity => "⚡",
+            Self::Mixer => icons::MIXER,
+            Self::Transport => icons::PLAY,
+            Self::Timeline => icons::ROWS,
+            Self::Inspector => icons::TARGET,
+            Self::MediaBin => icons::GRID,
+            Self::VoiceLab => icons::MIC,
+            Self::Effects => icons::EFFECTS,
+            Self::Models => icons::MODELS,
+            Self::ExportQueue => icons::DOWNLOAD,
+            Self::AiActivity => icons::AI,
         }
     }
 

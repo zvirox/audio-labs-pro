@@ -341,6 +341,10 @@ impl App {
                     self.show_toast("Record a reference sample first");
                     return;
                 }
+                if !self.create_voice_consent {
+                    self.show_toast("Declare the speaker's permission to continue");
+                    return;
+                }
                 self.consent_dialog_open = true;
                 self.show_toast("Confirm the consent record to finish this voice");
             }
