@@ -1,8 +1,8 @@
 //! Studio shell: navigation rail, docked player and workspace dispatch.
 //!
-//! The navigation model follows the Voicebox studio layout while the contents
-//! stay native Audio Labs Pro: every workspace reads the same [`App`] state and
-//! sends [`Message`] values, so no view mutates the project directly.
+//! The navigation model follows a studio rail-and-dock layout while the
+//! contents stay native Audio Labs Pro: every workspace reads the same [`App`]
+//! state and sends [`Message`] values, so no view mutates the project directly.
 
 use alp_ui_kit::components;
 use alp_ui_kit::icons;
