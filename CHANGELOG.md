@@ -5,6 +5,247 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+### Changed (Seven-workspace retro shell)
+
+- **Workspace shell:**
+  - Replaced the four workflow tabs with seven workspaces in a glyph navigation
+    rail: Generate, Stories, Captures, Voices, Effects, Models, Settings.
+  - The docked player is shared by every workspace; timeline, mixer and
+    inspector stay available to the palette and AI clients.
+  - `ALP_START_TAB=<slug>` pins the boot workspace for smoke screenshots.
+- **Visual language:**
+  - Retro “midnight walnut” dark palette (espresso surfaces, cream text,
+    burnt-orange accent, teal secondary) plus an “aged paper” light palette.
+  - Radii tokenised at 3/7/11, soft card shadows and letterpress-style headers.
+  - Cards gain a shrink-to-fit variant so Settings, Models, Effects and Voices
+    no longer stretch short content to the window height.
+- **Generate:**
+  - Text-to-speech prompt, voice selection, engine tier and prompt starters.
+  - Generation runs on a worker; history rows play, insert into the edit
+    session, or delete the cached render.
+- **Stories:**
+  - Multi-line script editor with per-line voice, render/stitch and export of
+    the assembled timeline; lines reload as `Pending` because audio is skipped
+    by the script serialiser.
+- **Captures:**
+  - Record and dictate from the workspace, device picker filtered to real
+    inputs, VAD transcription and SRT/TXT transcript export.
+- **Voices:**
+  - Real `alp_voice::ProfileStore` library with designed and cloned profiles,
+    consent gate, reference quality audit, `.alpvoice` import/export and
+    per-row export of the correct profile.
+- **Effects:**
+  - Cleanup chain, signal-path summary, plugin browser with per-row insert and
+    rescan. DSP application is still pending wiring through `alp-api`.
+- **Models and Settings:**
+  - Model catalogue with license acceptance, SHA-256 verification notes and an
+    offline-only policy; settings for appearance, motion, AI control tier,
+    storage paths, delivery presets, export queue and workspace panels.
+- **Honesty about limits:**
+  - Built-in TTS ignores pitch/energy/emotion, STT emits placeholder segments,
+    no model downloader exists, and MP3/OGG export stay disabled or deferred.
+
+## [1.2.0] - 2026-10-27
+
+### Added (Phase 11 — CLAP & LV2 Audio Plugin Hosting, Release v1.2 "Plugins")
+
+- **Decisions & Architecture:**
+  - Resolved Decision in `docs/adr/0021-phase11-clap-and-lv2-plugin-hosting.md`.
+  - Native Linux audio plugin hosting supporting modern open standards: CLAP 1.2+ (`clap.h`) and LV2 (`lv2.h`).
+  - Safe Rust isolation boundaries around dynamic C ABI loading with zero unsafe code leaks outside `alp-plugin`.
+  - Real-time audio callback safety: preallocated stereo scratch buffers and zero heap allocations inside the processing loop.
+- **`alp-plugin` Hosting Engine:**
+  - `clap`: Host descriptor negotiation, factory querying, stereo audio block routing, parameter querying, and thread-safe activation.
+  - `lv2`: C ABI execution, Turtle manifest (`manifest.ttl`) parsing, dynamic `.so` discovery, audio port binding, and lifecycle controls.
+  - `instance`: `ActivePlugin` providing unified interface for CLAP, LV2, and built-in virtual fallbacks with parameter normalization and JSON state serialization.
+  - `scanner`: Filesystem discovery over standard paths (`~/.clap`, `/usr/lib/clap`, `~/.lv2`, `/usr/lib/lv2`, and `CLAP_PATH`/`LV2_PATH`), caching in `$XDG_CACHE_HOME/alp/plugins.json`.
+  - `host`: `PluginHost` discovery coordinator and `TrackPluginChain` serial effect processor.
+- **Engine & Project Integration:**
+  - Integrated `TrackPluginChain` with `alp-engine`'s `Mixer` for real-time master and track bus processing.
+  - Extended `alp-core`'s `EffectRef` with optional `state` payload to persist plugin settings in `.alp` project files.
+- **CLI Commands (`alp-cli`):**
+  - `alp-cli plugin scan`: Scan standard and custom directories for installed plugins and update cache.
+  - `alp-cli plugin list`: List discovered plugins with format, category, vendor, and paths (text and JSON).
+  - `alp-cli plugin inspect <id>`: Inspect plugin metadata and exposed automation parameters with value ranges and defaults.
+- **Automation & MCP Tools (`alp-api` & `alp-mcp`):**
+  - Added tools: `plugin_list`, `plugin_insert`, and `plugin_param_set`.
+  - Direct parameter automation and plugin chaining via JSON-RPC.
+- **Desktop UI Integration (`alp-ui`):**
+  - Added "Hosted Plugins (CLAP & LV2)" card to the Effects workspace.
+  - Rescan and one-click plugin insertion onto active tracks.
+- **Fixed Layout Workspace Tabs (`alp-ui`):**
+  - Replaced the floating window layout with four fixed workflow tabs: `Voice Studio`, `Voice Recording`, `Voice Editing`, and `Export Workflow`; the Unreleased shell supersedes this with seven workspaces.
+  - Fixed-layout floating card design with subtle shadows and borders, removing closable/minimizable buttons.
+  - Horizontal timeline anchored across the bottom of all editing workflows.
+- **Documentation & Verification:**
+  - New module documents in `docs/modules/alp-plugin/` and `docs/modules/alp-cli/commands/plugin.md`.
+  - Acceptance demonstration script `scripts/phase11-demo.sh` verifying end-to-end plugin scanning, hosting, CLI, and MCP automation.
+
+## [1.1.0] - 2026-10-27
+
+### Added (Phase 10 — MCP: AI-driven editing, creation, and export, Release v1.1 "Agent")
+
+- **Decisions & Architecture:**
+  - Resolved Decisions D9–D11 in `docs/adr/0020-phase10-mcp-architecture-and-protocols.md`.
+  - Implemented Model Context Protocol (MCP) spec revision `2026-07-28` support (stateless, `initialize`, `server/discover`, `tools/list`, `tools/call`, `resources/list`, `resources/read`, `prompts/list`, `prompts/get`).
+  - Strict architectural decoupling: `alp-mcp` connects exclusively through `alp-api`, forbidding direct links to audio rendering, DSP, or media codecs.
+- **`alp-api` Automation Layer:**
+  - Typed operations over audio domain crates (`alp-core`, `alp-media`, `alp-dsp`, `alp-voice`, `alp-engine`).
+  - Three-tier permission model: `Observe` < `Edit` < `Export` with runtime capability enforcement.
+  - Filesystem sandboxing (`WorkspaceSandbox`) enforcing canonical directory allowlists and blocking path traversal or symlink escapes.
+  - Automatic session checkpointing (`CheckpointManager`) enabling one-click full rollback to session start ("Undo all AI changes").
+  - Persistent JSONL audit logging (`AuditLogger`) tracking timestamps, client IDs, tool names, argument hashes, and revision deltas.
+  - Asynchronous background job manager (`JobManager`) with progress tracking and cooperative cancellation.
+- **`alp-mcp` Server Binary:**
+  - Standalone MCP server executable operating over standard input/output (`stdio`) for headless AI agents.
+  - Typed JSON-RPC 2.0 dispatching engine with schema reflection, structured content, and actionable error messages.
+  - Registered core tool catalog: `project_info`, `project_save`, `history_undo`, `history_redo`, `checkpoint_create`, `checkpoint_restore`, `rollback_session`, `track_list`, `track_add`, `track_remove`, `clip_split`, `range_delete`, `analyze_loudness`, `export_audio`.
+  - Built-in prompt recipes: `clean_up_voice_recording`, `produce_podcast_episode`, `narrate_script`, `remove_fillers_and_dead_air`.
+  - Served resources under `alp://docs/agent-guide` and `alp://project/current`.
+- **Desktop UI Integration (`alp-ui`):**
+  - Added `AiActivity` panel with master switch, permission tier selector, and live activity audit feed.
+  - Chrome status indicator badge (`⚡ AI Active` / `⚡ AI`) with tooltip and one-click toggle.
+  - Emergency safety controls: **Stop AI** kill switch and **Undo all AI changes** rollback button.
+- **Documentation & Verification:**
+  - Complete MCP documentation in `docs/mcp/`: `TOOLS.md`, `CLIENT_SETUP.md`, `AGENT_GUIDE.md`, `WORKFLOWS.md`, `SECURITY.md`.
+  - 12 new module documentation files across `docs/modules/alp-api/`, `docs/modules/alp-mcp/`, and `docs/modules/alp-ui/app/`.
+  - Automated executable acceptance script `scripts/phase10-demo.sh`.
+
+## [1.0.0] - 2026-10-27
+
+### Added (Phase 9 — polish, packaging, and 1.0)
+
+- **Packaging & Desktop Integration:**
+  - Resolved Decision D12: registered canonical application ID `io.github.zvirox.AudioLabsPro`.
+  - Desktop Entry specification: `packaging/desktop/io.github.zvirox.AudioLabsPro.desktop` with categories, file associations, and desktop actions.
+  - AppStream 1.0 metainfo specification: `packaging/desktop/io.github.zvirox.AudioLabsPro.metainfo.xml` with OARS-1.1 content ratings and release history.
+  - MIME type registration: `packaging/mime/io.github.zvirox.AudioLabsPro.xml` for `application/x-audio-labs-pro` (`*.alp`) and `application/x-audio-labs-pro-voice` (`*.alpvoice`).
+  - High-resolution scalable application vector icon: `packaging/icons/hicolor/scalable/apps/io.github.zvirox.AudioLabsPro.svg`.
+  - Standalone AppImage build pipeline: `scripts/build-appimage.sh` constructing integrated AppDir and `AppRun` launcher.
+  - Flatpak manifest: `packaging/flatpak/io.github.zvirox.AudioLabsPro.yaml` configuring Wayland, PipeWire, ALSA, and GPU device permissions.
+  - Debian package specification: `packaging/deb/control`.
+- **Reliability & Stress Testing:**
+  - Added comprehensive test suite `crates/alp-core/tests/reliability_and_stress.rs`:
+    - Fuzzing & corrupt JSON rejection: invalid schema versions, missing fields, cyclic IDs, and path traversal protection in media paths.
+    - Autosave recovery: corrupted autosaves are safely held for inspection without replacing clean project files, and valid autosaves restore interrupted work.
+    - Stress benchmarks: projects with 50 tracks, 500 clips, and 500 undo steps serialize and deserialize in under 30 ms.
+- **Accessibility & Usability:**
+  - First-Run Setup Wizard: interactive calibration modal configuring audio inputs/outputs, system hardware tiering, appearance theme, and glass blur effects.
+  - Keyboard Shortcuts Reference Modal (`F1`): instant on-screen cheat sheet for playback, navigation, editing, and dictation hotkeys.
+- **Documentation:**
+  - Comprehensive User Guide: `docs/USER_GUIDE.md`.
+  - Keyboard Shortcuts cheat sheet: `docs/KEYBOARD_SHORTCUTS.md`.
+  - Voice Cloning Ethics & Safety Policy: `docs/ETHICS.md`.
+  - Platform & Hardware Troubleshooting Guide: `docs/TROUBLESHOOTING.md`.
+  - Updated license inventory in `THIRD_PARTY.md` and module docs.
+  - Automated `scripts/phase9-demo.sh` acceptance harness.
+
+## [0.3.0] - 2026-10-26
+
+### Added (Phase 8 — voice profiles, cloning, and voice generation, Releases v0.2 "Voice" and v0.3 "Clone")
+
+- `alp-voice`:
+  - `profile`: persistent `ProfileStore` managing profiles in `$XDG_DATA_HOME/alp/voices`, prebuilt profiles ("Aura", "Atlas", "Echo", "Sol"), and `VoiceParams` parameter tuning.
+  - `zip`: pure-Rust zero-dependency ZIP archive writer and reader (method 0 STORED + CRC-32) for portable `.alpvoice` archive import and export.
+  - `ConsentRecord`: enforced human consent gate requiring speaker name, attester identity, and written permission statement; cloning without signed consent is strictly rejected at the library level.
+  - `reference`: `analyze_reference_quality` assessing duration ($\ge 5.0$ s), digital clipping spikes, noise floor, and silence ratio with actionable advice.
+  - `design`: `design_voice` synthesizing customized voice profiles from natural language briefs.
+  - `cache`: cryptographic `VoiceGenerationCache` deduplicating identical synthesis requests via SHA-256.
+  - `compare`: `compare_audio` providing side-by-side A/B acoustic similarity metrics.
+  - `hardware`: `HardwareProfile` assessing CPU cores, RAM, and GPU presence, recommending "Fast" vs "Best" model tiers.
+- `alp-infer`:
+  - Handles `InferRequest::DesignVoice` and `InferResponse::VoiceDesigned`.
+- `alp-cli`:
+  - `alp-cli profile list / info / check-reference / design / export / import / compare / delete`: full headless profile lifecycle management.
+  - `alp-cli hardware`: hardware capability probing and model tier recommendations.
+- `alp-ui`:
+  - Voice Lab updated with profile selector, reference audio audit button with status readouts, and human consent attestation card.
+  - Voice design natural language prompt input.
+  - Models panel updated with hardware capability and tiering recommendations.
+- ADR 0018, Phase 8 results, module docs, and automated `scripts/phase8-demo.sh` acceptance harness.
+
+### Added (Phase 7 — dictation and transcription)
+
+- `alp-voice`:
+  - `vad`: streaming and batch Voice Activity Detection (`VoiceActivityDetector`, `segment_speech`) using dual-criterion energy RMS thresholding and zero-crossing rate windowing with hangover buffering and speech onset backdating.
+  - `transcript`: `Transcript` document model owning frame-accurate `TranscriptSegment` items; export to TXT, SubRip SRT (`00:00:01,234`), and WebVTT (`00:00:01.234`); sample-rate aware SRT parsing (`parse_srt`); timeline cut mapping (`cut_range_for_segment`) for text-based audio ripple editing.
+  - `stt`: streaming `DictationSession` emitting `DictationEvent` (`SpeechStarted`, `Partial`, `Final`, `Silence`) for live microphone input with sub-second perceived latency; `BuiltinSttBackend` baseline acoustic transcription.
+  - `protocol` & `client`: IPC messages `InferRequest::Transcribe` and `InferResponse::Transcript` added to `alp-infer` daemon protocol, with transparent in-process STT fallback.
+  - `model`: registered `moonshine-tiny` manifest in standard catalogue.
+- `alp-infer`:
+  - Handles `InferRequest::Transcribe` for out-of-process speech transcription.
+- `alp-cli`:
+  - `alp-cli transcribe <input> [--out <output>] [--format txt|srt|vtt] [--json]`: transcribe audio into text or subtitles.
+  - `alp-cli vad <input> [--threshold-db <float>] [--hangover-ms <int>] [--min-speech-ms <int>] [--json]`: segment audio into speech intervals and report vocal percentage.
+- `alp-ui`:
+  - Added Voice & Dictation Lab view with live microphone dictation toggle and realtime feedback preview.
+  - Added transcript segment browser with click-to-seek playhead positioning.
+  - Text-based editing: one-click "×" button on transcript segments executes undoable ripple deletions on the timeline.
+  - Transport bar updated with dedicated dictation toggle button.
+  - Models panel updated with Moonshine Tiny STT entry.
+- ADR 0017, Phase 7 results, module docs, and automated `scripts/phase7-demo.sh` acceptance harness.
+
+### Added (Phase 6 — model manager and built-in TTS)
+
+- `alp-voice`:
+  - `ModelManager`: catalogue-driven model registry, per-model licensing agreements, XDG directory resolution, atomic `.part` download commitment, and offline mode.
+  - `sha256`: self-contained FIPS 180-4 standard cryptographic hash implementation for model integrity verification.
+  - `TextNormalizer`: rule-based spoken word expansion for currency, numbers, ordinals, dates, percentages, and abbreviations.
+  - `PronunciationDictionary`: custom phonetic respelling overrides and pause (`[pause=500ms]`)/emphasis markup parsing.
+  - `Script` & `ScriptLine`: multi-line narration data model with single-line dirty invalidation, gapless stitching, and batch stem export.
+  - `protocol`: length-prefixed JSON framing over Unix domain sockets (`InferRequest`, `InferResponse`).
+  - `client`: `InferClient` connecting to `alp-infer` daemon with seamless in-process `BuiltinAcousticBackend` fallback generating 48 kHz formant speech without external dependencies.
+- `alp-infer`:
+  - Out-of-process daemon executable isolating neural inference and model memory from the editing application.
+  - Handles `Ping`, `GetStatus`, `LoadModel`, `Synthesize`, `Cancel`, and `Shutdown`.
+- `alp-cli`:
+  - `alp-cli tts <text> <output.wav> [--voice <id>] [--speed <float>]` for command-line speech generation.
+  - `alp-cli model list / verify / accept-license` for model lifecycle management.
+  - `alp-cli script render <script.json> <output> [--stitch]` for batch script production.
+- `alp-ui`:
+  - Voice Lab panel updated with active voice selector, live text input, and line synthesis.
+  - Models panel updated with actual catalogue status.
+- ADR 0016, Phase 6 results, module docs, and automated `scripts/phase6-demo.sh` acceptance harness.
+
+### Added (Phase 5 — effects and voice cleanup, Release v0.1 "Editor")
+
+- `alp-dsp`:
+  - Direct Form biquad filters implementing standard RBJ cookbook curves (HighPass, LowPass, Peaking, LowShelf, HighShelf, Notch, BandPass).
+  - 5-band voice-optimized `ParametricEq` (HPF 80Hz, LowShelf 200Hz, Bell 800Hz, Bell 3.5kHz, HighShelf 10kHz).
+  - Soft-knee `Compressor` with attack/release envelopes and makeup gain.
+  - Downward `NoiseGate` with threshold, attack, hold, and release ballistics.
+  - Peak `Limiter` guaranteeing strictly bounded output ceilings without clipping.
+  - Vocal cleanup processors: `DeEsser` (sidechain bandpass detector), `DeHum` (50Hz/60Hz mains notch cascade with 4 harmonics), and `DeClick` (transient derivative spike detector and polynomial repair).
+  - ITU-R BS.1770-4 K-weighting filter, integrated LUFS loudness measurement (`measure_lufs`), and target normalization calculator (`calculate_normalization_gain`).
+  - Composable `EffectChain` and one-click `VoiceCleanup` preset pipeline.
+- `alp-core`: track effect list model (`Track.effects: Vec<EffectRef>`) and undoable `SetTrackEffects` command.
+- `alp-cli`:
+  - `alp-cli lufs <file>`: measures integrated LUFS, peak linear/dBFS, and computes normalization gain targets for Podcast, Streaming, and Broadcast.
+  - `alp-cli cleanup <input> <output> [--mains 50|60]`: executes full vocal cleanup pipeline offline.
+- `alp-ui`:
+  - Effects panel wired with active vocal processing chain (De-Hum, De-Click, Voice EQ, De-Esser, Compressor, Peak Limiter).
+  - Per-effect enable/bypass toggles, parameter inspector readouts, and one-click "Voice Cleanup Preset" button.
+  - Integrated loudness target reference (-16.0 LUFS Podcast standard / -1.0 dBFS ceiling).
+- ADR 0015, Phase 5 results, module docs, and automated `scripts/phase5-demo.sh` acceptance harness.
+
+### Added (Phase 4 — multitrack timeline and mixing)
+
+- `alp-core`: multitrack project model with per-track gain, pan, mute, solo, arming,
+  track colors, and master bus gain. Named markers, regions, and loop ranges with
+  undoable commands.
+- `alp-engine`: multitrack mix scene with standard stereo balance pan law, master bus
+  gain with limiter, live meter streaming via `play_scene_live`, and 10-track scene
+  rendering with 0.00 null error.
+- `alp-media`: `ExportPreset` enum with standard configurations for `Podcast` (44.1 kHz
+  16-bit FLAC), `Audiobook` (44.1 kHz 16-bit WAV), and `VoiceOver` (48.0 kHz 24-bit WAV),
+  with triangular TPDF dither.
+- `alp-cli`: `render --preset` and `render-stems --preset` supporting delivery targets,
+  plus stem rendering of individual tracks as WAV or FLAC.
+- `alp-ui`: timeline rendering of live tracks, markers and loop range, configurable
+  crossfade inspector actions (0.5s, 1.0s), and direct preset buttons in the Export Queue.
+  Modular refactoring of `session` into `operations`, `export`, `import`, and `tests`.
+- ADR 0014, Phase 4 results, and updated `scripts/phase4-demo.sh` acceptance harness.
+
 ### Added (Phase 3 — recording and single-track editing)
 
 - `alp-core`: selection/cursor/snap model, clipboard fragments, undoable
