@@ -156,7 +156,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \
-            flatpak flatpak-builder elfutils
+            flatpak flatpak-builder elfutils \
+            librsvg2-common shared-mime-info
 
       - name: Resolve version
         id: version
