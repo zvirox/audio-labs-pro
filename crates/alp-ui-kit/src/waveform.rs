@@ -254,6 +254,12 @@ impl WaveformWidget {
         self.scroll_secs = (self.scroll_secs + secs).clamp(0.0, max);
     }
 
+    /// Re-tint the waveform (for example when the active workspace changes its
+    /// neon accent, or when the theme mode flips).
+    pub fn set_colors(&mut self, colors: ThemeColors) {
+        self.colors = colors;
+    }
+
     /// Zoom around the centre of the current view.
     pub fn zoom_by(&mut self, factor: f32) {
         let centre = self.scroll_secs + self.visible_secs / 2.0;

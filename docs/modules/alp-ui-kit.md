@@ -9,7 +9,8 @@ these modules instead of raw iced widgets, which is how the shell keeps one
 visual language and how the no-raw-button rule stays enforceable.
 
 The studio language is deliberately restrained: near-black surfaces, graphite
-cards, a single warm gold accent with dark ink on filled buttons, 6/10/14/18 px
+cards, a cyberpunk neon accent (one hue per workspace) with ink chosen by
+iced-cube's luminance rule on filled buttons, 6/10/14/18 px
 radii, rectangular controls with minimal (4 px) corners, hairline white borders at 10% and soft shadows. Icons
 are embedded Lucide SVGs rendered through iced-cube; buttons, switches,
 checkboxes and icon tints borrow iced-cube's style functions, resolved from the

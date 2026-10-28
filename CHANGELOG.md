@@ -5,6 +5,28 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+### Changed (cyberpunk neon accents)
+
+- **Cyberpunk accent system:** the warm gold accent is replaced by a
+  cyberpunk neon palette. The kit gains a `Neon` hue vocabulary — cyan,
+  magenta, acid green, violet, ember, volt blue, solar yellow — with a vivid
+  set for dark surfaces and a deepened set for light, all contrast-checked
+  against iced-cube's automatic ink rule so filled buttons stay legible.
+- **One hue per workspace:** Generate is electric cyan, Stories neon magenta,
+  Captures acid green, Voices electric violet, Effects blaster orange, Models
+  deep-sky blue and Settings solar yellow. Switching workspaces retints every
+  control (buttons, sliders, toggles, segmented strips), the focus hairline
+  and the docked waveform — application-side, fed through the existing
+  `ThemeColors`/iced-cube theme pipeline; no per-widget styling.
+- **Waveform follows the accent:** the stateful session waveform is re-tinted
+  when the active workspace (or theme mode) changes instead of keeping its
+  boot-time colors.
+- **Docs:** kit `theme` module page rewritten around `Neon`/`with_neon()`;
+  workspace hue map documented in the shell, user guide and UI module pages.
+- Neon hues: cyan `#00E5FF`/`#0E7490`, magenta `#FF2E97`/`#C81E78`, acid
+  `#5BFF4D`/`#15803D`, violet `#B026FF`/`#7C3AED`, ember `#FF7A29`/`#C2410C`,
+  volt `#4DB3FF`/`#2563EB`, solar `#FCEE0A`/`#CA8A04` (dark/light bases).
+
 ### Changed (button geometry)
 
 - **Rectangular buttons with minimal corners:** every CTA and action button

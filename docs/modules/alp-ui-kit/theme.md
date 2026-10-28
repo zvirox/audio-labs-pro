@@ -21,23 +21,27 @@ defines a literal colour; everything reads a `ThemeColors` value.
 
 ## Data flow
 
-`App::colors()` resolves the stored `ThemeMode` against `system_is_dark()` and
-returns a copy. The view passes that value to kit builders, which close over it
-in style callbacks. The same value feeds the waveform's grid/wave/playhead
-colours and `to_theme()`, which maps it onto an iced-cube `Config`: the gold
-accent becomes the cube `primary`, raised surfaces become its secondary and
-hover accent, danger/success/warning pass through, and the studio hairline
-becomes the cube border. Dark or light is chosen by background luminance, and
-derived cube tokens (foreground-on-primary and friends) are computed from that
-mapping, so switches, checkboxes and buttons recolour on the same theme switch
-that flips `ThemeColors`.
+`App::colors()` resolves the stored `ThemeMode` against `system_is_dark()`,
+applies the active workspace's [`Neon`] hue through `with_neon()` and returns a
+copy. The view passes that value to kit builders, which close over it in style
+callbacks. The same value feeds the waveform's grid/wave/playhead colours and
+`to_theme()`, which maps it onto an iced-cube `Config`: the neon accent becomes
+the cube `primary`, raised surfaces become its secondary and hover accent,
+danger/success/warning pass through, and the studio hairline becomes the cube
+border. Dark or light is chosen by background luminance, and derived cube
+tokens (foreground-on-primary and friends) are computed from that mapping, so
+switches, checkboxes and buttons recolour on the same palette switch that the
+workspace or theme flip produces.
 
 The dark palette uses near-black surfaces (background 0.039, glass 0.055, cards
-0.078, inputs 0.106), text at 0.96/0.62/0.40 and a warm gold accent
-`rgb(0.780, 0.651, 0.294)` with dark ink for filled buttons. Borders are white at
-10% and the accent border at 55%. The light palette mirrors the same roles on
-paper surfaces with a deeper gold. The window root paints the background colour
-behind the 18 px frame; there is no separate alpha scrim in the frame.
+0.078, inputs 0.106), text at 0.96/0.62/0.40 and a cyberpunk neon accent with
+ink derived by iced-cube's luminance rule. Borders are white at 10% and the
+accent border at 55%. The light palette mirrors the same roles on paper
+surfaces with a deepened neon set. Each shell workspace owns one hue —
+Generate cyan, Stories magenta, Captures acid green, Voices violet, Effects
+ember, Models volt blue, Settings solar yellow — and the kit default (also the
+boot workspace) is cyan. The window root paints the background colour behind
+the 18 px frame; there is no separate alpha scrim in the frame.
 
 ## Allowed dependencies
 
@@ -57,18 +61,21 @@ missing palette.
 
 ## Testing
 
-Tests assert the dark/light background and text differ, that the studio accent
-is gold in both modes, and that borders stay translucent. Token tests cover
-theme cycling and parsing.
+Tests assert the dark/light background and text differ, that the two palettes
+already carry the default cyan hue, that `with_neon()` is idempotent for the
+default hue, that all seven hues stay distinct per mode with ordered
+hover/pressed/hot variants, and that ink follows the cube luminance rule.
+Token tests cover theme cycling and parsing.
 
 ## Known limits
 
 - The "system" mode is sampled when the app boots or cycles the theme; it does
   not subscribe to desktop colour-scheme changes.
-- There is no high-contrast theme or user-editable accent yet.
+- There is no high-contrast theme or user-editable accent mapping yet (the
+  hue set is fixed per workspace in code).
 - Blur strength cannot be controlled by the app; only tint opacity is ours.
 - Colour contrast has not been audited against WCAG text thresholds for every
   state.
-- The iced-cube mapping is fixed: gold → cube primary, raised surface →
-  secondary/accent. Cube-derived hovers (dark-theme primary darkens) follow
+- The iced-cube mapping is fixed: neon accent → cube primary, raised surface
+  → secondary/accent. Cube-derived hovers (dark-theme primary darkens) follow
   iced-cube's emphasis convention rather than a per-token ALP choice.

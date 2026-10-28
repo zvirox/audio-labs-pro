@@ -8,6 +8,19 @@ use super::*;
 impl App {
     /// Apply a message.
     pub fn update(&mut self, message: Message) -> Task<Message> {
+        let task = self.handle_message(message);
+        // The palette depends on the active workspace (its neon hue) and the
+        // theme mode, both of which messages can change; the stateful demo
+        // waveform carries its own copy, so re-tint it whenever they diverge.
+        let colors = self.colors();
+        if colors != self.waveform_tint {
+            self.waveform.set_colors(colors);
+            self.waveform_tint = colors;
+        }
+        task
+    }
+
+    fn handle_message(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::WindowOpened(id) => {
                 self.window = Some(id);

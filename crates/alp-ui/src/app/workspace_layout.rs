@@ -89,6 +89,26 @@ impl WorkflowTab {
             Self::Settings => icons::SETTINGS,
         }
     }
+
+    /// Cyberpunk neon accent hue for this workspace.
+    ///
+    /// Generate synthesis is electric cyan, Stories narrate in neon magenta,
+    /// Captures record in acid green, Voices carry electric violet, Effects
+    /// burn blaster orange, Models hum deep-sky blue and Settings run solar
+    /// yellow. Every control, meter and waveform in the active workspace
+    /// picks the hue up through `ThemeColors::with_neon`.
+    #[must_use]
+    pub fn neon(self) -> alp_ui_kit::Neon {
+        match self {
+            Self::Generate => alp_ui_kit::Neon::Cyan,
+            Self::Stories => alp_ui_kit::Neon::Magenta,
+            Self::Captures => alp_ui_kit::Neon::Acid,
+            Self::Voices => alp_ui_kit::Neon::Violet,
+            Self::Effects => alp_ui_kit::Neon::Ember,
+            Self::Models => alp_ui_kit::Neon::Volt,
+            Self::Settings => alp_ui_kit::Neon::Solar,
+        }
+    }
 }
 
 /// A flat studio card with a heading and body.

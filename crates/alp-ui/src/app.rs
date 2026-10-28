@@ -443,6 +443,8 @@ pub struct App {
     toast: Option<(String, Instant)>,
 
     waveform: WaveformWidget,
+    /// Tint the waveform was last drawn with, to detect accent changes.
+    waveform_tint: ThemeColors,
     media_duration: f32,
     playing: bool,
     position_secs: f32,
@@ -588,7 +590,15 @@ impl App {
             panel_motion.insert(kind, toggle);
         }
 
-        let colors = theme_colors(theme_mode, system_dark);
+        // Smoke runs can pin a workspace so each tab can be screenshotted.
+        let start_tab = std::env::var("ALP_START_TAB")
+            .ok()
+            .and_then(|value| WorkflowTab::from_slug(&value))
+            .unwrap_or(WorkflowTab::Generate);
+
+        // The palette carries the boot workspace's neon hue; the update loop
+        // re-tints it when the active workspace (or theme) changes.
+        let colors = theme_colors(theme_mode, system_dark).with_neon(start_tab.neon());
         let seconds = demo::configured_seconds();
         let (waveform, frames) = demo::waveform(seconds, colors);
         let media_duration = frames as f32 / 48_000.0;
@@ -598,11 +608,6 @@ impl App {
             .ok()
             .and_then(|value| value.parse::<u64>().ok())
             .map(|seconds| Instant::now() + Duration::from_secs(seconds));
-        // Smoke runs can pin a workspace so each tab can be screenshotted.
-        let start_tab = std::env::var("ALP_START_TAB")
-            .ok()
-            .and_then(|value| WorkflowTab::from_slug(&value))
-            .unwrap_or(WorkflowTab::Generate);
 
         let data_root = dirs
             .as_ref()
@@ -692,6 +697,7 @@ impl App {
             commands: commands::registry(),
             toast: None,
             waveform,
+            waveform_tint: colors,
             media_duration,
             playing: false,
             position_secs: 0.0,
@@ -866,7 +872,7 @@ impl App {
     }
 
     fn colors(&self) -> ThemeColors {
-        theme_colors(self.theme_mode, self.system_dark)
+        theme_colors(self.theme_mode, self.system_dark).with_neon(self.workflow_tab.neon())
     }
 }
 

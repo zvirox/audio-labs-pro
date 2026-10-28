@@ -10,7 +10,9 @@ worker-backed mix export. It is the only crate that renders UI and the only
 place allowed to talk to the compositor through `glass`.
 
 The shell uses the studio palette from `alp-ui-kit`: near-black surfaces,
-graphite cards, a single warm gold accent with dark ink on filled buttons, an
+graphite cards, a cyberpunk neon accent per workspace (Generate cyan, Stories
+magenta, Captures acid green, Voices violet, Effects ember, Models volt blue,
+Settings solar yellow) on filled buttons, an
 80 px icon rail, rectangular controls with minimal corners,
 6/10/14/18 px radii and hairline borders. A
 light paper variant mirrors the roles, and every scrolling surface shares one
@@ -36,7 +38,7 @@ Inside the binary:
 - `app::create_voice_views` — the Create Voice dialog (sample source, name,
   description, language, reference text).
 - `app::track_editor` — the Stories dock: transport strip, ruler, track gutter
-  and proportional gold clips.
+  and proportional accent-coloured clips.
 - `session::EditSession` — live project, command stack, selection, clipboard,
   import and export bridge.
 - `commands` — registry, filtering, shortcuts and palette state.

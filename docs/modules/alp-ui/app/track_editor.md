@@ -3,7 +3,7 @@
 ## Purpose
 
 Draws the Stories dock: a transport strip, a time ruler, a track gutter and one
-lane of gold clip blocks. It replaces the generic player and mixer strip while
+lane of accent-coloured clip blocks. It replaces the generic player and mixer strip while
 the user is shaping a story, and keeps the timeline visible under the script.
 
 ## Public API
