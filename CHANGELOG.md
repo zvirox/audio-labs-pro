@@ -20,6 +20,12 @@ versions follow the release milestones in the build plan.
   inside the sandboxed SDK (Rust extension) and ships as a single-file
   bundle; metainfo gains the first published release entry and the licence
   field now matches the repository (Apache-2.0).
+- **Raster icon scheme:** all packages now ship the full hicolor icon set —
+  scalable SVG plus 48/64/128 px PNGs and HiDPI `@2` variants (96/128/256).
+  The SVG declares concrete intrinsic dimensions, so AppStream compose on
+  SDKs whose GdkPixbuf lacks the SVG loader can still export every icon
+  size from bitmaps alone (older `appstreamcli compose` fails the whole
+  metadata pass otherwise).
 - **Build parity:** the release build runs the full workspace test gate with
   `--locked` before packaging, mirroring CI.
 

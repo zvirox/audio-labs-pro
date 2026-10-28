@@ -16,7 +16,7 @@ mkdir -p "${APP_DIR}/usr/bin" \
          "${APP_DIR}/usr/share/applications" \
          "${APP_DIR}/usr/share/metainfo" \
          "${APP_DIR}/usr/share/mime/packages" \
-         "${APP_DIR}/usr/share/icons/hicolor/scalable/apps"
+         "${APP_DIR}/usr/share/icons/hicolor"
 
 # Copy binaries
 cp "${ROOT_DIR}/target/release/alp-ui" "${APP_DIR}/usr/bin/audio-labs-pro"
@@ -29,7 +29,7 @@ cp "${ROOT_DIR}/packaging/desktop/io.github.zvirox.AudioLabsPro.desktop" "${APP_
 cp "${ROOT_DIR}/packaging/desktop/io.github.zvirox.AudioLabsPro.desktop" "${APP_DIR}/"
 cp "${ROOT_DIR}/packaging/desktop/io.github.zvirox.AudioLabsPro.metainfo.xml" "${APP_DIR}/usr/share/metainfo/"
 cp "${ROOT_DIR}/packaging/mime/io.github.zvirox.AudioLabsPro.xml" "${APP_DIR}/usr/share/mime/packages/"
-cp "${ROOT_DIR}/packaging/icons/hicolor/scalable/apps/io.github.zvirox.AudioLabsPro.svg" "${APP_DIR}/usr/share/icons/hicolor/scalable/apps/"
+cp -r "${ROOT_DIR}/packaging/icons/hicolor/." "${APP_DIR}/usr/share/icons/hicolor/"
 cp "${ROOT_DIR}/packaging/icons/hicolor/scalable/apps/io.github.zvirox.AudioLabsPro.svg" "${APP_DIR}/io.github.zvirox.AudioLabsPro.svg"
 cp "${ROOT_DIR}/packaging/icons/hicolor/scalable/apps/io.github.zvirox.AudioLabsPro.svg" "${APP_DIR}/.DirIcon"
 

@@ -46,6 +46,12 @@ cp -r usr/. %{buildroot}/usr/
 %dir /usr/share/metainfo
 /usr/share/metainfo/io.github.zvirox.AudioLabsPro.metainfo.xml
 /usr/share/icons/hicolor/scalable/apps/io.github.zvirox.AudioLabsPro.svg
+/usr/share/icons/hicolor/48x48/apps/io.github.zvirox.AudioLabsPro.png
+/usr/share/icons/hicolor/64x64/apps/io.github.zvirox.AudioLabsPro.png
+/usr/share/icons/hicolor/128x128/apps/io.github.zvirox.AudioLabsPro.png
+/usr/share/icons/hicolor/48x48@2/apps/io.github.zvirox.AudioLabsPro.png
+/usr/share/icons/hicolor/64x64@2/apps/io.github.zvirox.AudioLabsPro.png
+/usr/share/icons/hicolor/128x128@2/apps/io.github.zvirox.AudioLabsPro.png
 /usr/share/mime/packages/io.github.zvirox.AudioLabsPro.xml
 
 %changelog

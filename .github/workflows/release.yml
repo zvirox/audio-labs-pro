@@ -84,7 +84,7 @@ jobs:
                    "$STAGE/usr/share/applications" \
                    "$STAGE/usr/share/metainfo" \
                    "$STAGE/usr/share/mime/packages" \
-                   "$STAGE/usr/share/icons/hicolor/scalable/apps"
+                   "$STAGE/usr/share/icons/hicolor"
           cp target/release/alp-ui "$STAGE/usr/bin/audio-labs-pro"
           cp target/release/alp-cli "$STAGE/usr/bin/alp-cli"
           cp target/release/alp-infer "$STAGE/usr/bin/alp-infer"
@@ -95,8 +95,9 @@ jobs:
              "$STAGE/usr/share/metainfo/"
           cp packaging/mime/io.github.zvirox.AudioLabsPro.xml \
              "$STAGE/usr/share/mime/packages/"
-          cp packaging/icons/hicolor/scalable/apps/io.github.zvirox.AudioLabsPro.svg \
-             "$STAGE/usr/share/icons/hicolor/scalable/apps/"
+          # Full hicolor scheme: scalable SVG plus raster PNGs (48/64/128 and
+          # HiDPI @2) so AppStream compose never needs SVG rasterization.
+          cp -r packaging/icons/hicolor/. "$STAGE/usr/share/icons/hicolor/"
           echo "== Staged tree =="
           find "$STAGE" -type f | sort
 

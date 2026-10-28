@@ -34,7 +34,8 @@ modules:
       - install -Dm644 packaging/desktop/io.github.zvirox.AudioLabsPro.desktop /app/share/applications/io.github.zvirox.AudioLabsPro.desktop
       - install -Dm644 packaging/desktop/io.github.zvirox.AudioLabsPro.metainfo.xml /app/share/metainfo/io.github.zvirox.AudioLabsPro.metainfo.xml
       - install -Dm644 packaging/mime/io.github.zvirox.AudioLabsPro.xml /app/share/mime/packages/io.github.zvirox.AudioLabsPro.xml
-      - install -Dm644 packaging/icons/hicolor/scalable/apps/io.github.zvirox.AudioLabsPro.svg /app/share/icons/hicolor/scalable/apps/io.github.zvirox.AudioLabsPro.svg
+      - mkdir -p /app/share/icons/hicolor
+      - cp -r packaging/icons/hicolor/. /app/share/icons/hicolor/
     sources:
       - type: dir
         path: ../../
