@@ -3,21 +3,24 @@
 ## Purpose
 
 Defines the numeric design tokens used by every screen: spacing, control sizes,
-radii, motion durations, type sizes, theme modes and the waveform display limit.
-Values are unitless logical pixels or milliseconds so screens do not invent
-their own scale.
+rail geometry, radii, motion durations, type sizes, theme modes and the waveform
+display limit. Values are unitless logical pixels or milliseconds so screens do
+not invent their own scale.
 
 ## Public API
 
-- `Spacing::{XXS, XS, SM, MD, LG, XL, XXL}`
-- `Radius::{SM, MD, LG, PILL}`
-- `Control::{SM, MD, LG, GRIP, TITLE_BAR, CHROME}`
-- `Duration::{FAST_MS, BASE_MS, PANEL_MS}`
-- `Motion { reduce_motion }` with `duration_ms(value)`
-- `ThemeMode::{Dark, Light, System}` with `next`, `resolve`, `as_str`, `parse`
-- `TypeScale::{CAPTION, BODY, BODY_STRONG, TITLE, DISPLAY}`
+- `Spacing::{XXS, XS, SM, MD, LG, XL, XXL}` = 2/4/8/12/16/24/32.
+- `Radius::{SM, MD, LG, XL, PILL}` = 6/10/14/18/999.
+- `Control::{SM, MD, LG, PAGE, TITLE_BAR, DOCK, GRIP, CHROME}` = 28/36/44/32/
+  34/96/14/34.
+- `Rail::{WIDTH, BUTTON, LOGO}` = 80/44/48.
+- `Duration::{FAST_MS, BASE_MS, PANEL_MS}` = 120/200/320.
+- `Motion { reduce_motion }` with `duration_ms(value)`.
+- `ThemeMode::{Dark, Light, System}` with `next`, `resolve`, `as_str`, `parse`.
+- `TypeScale::{CAPTION, LABEL, BODY, BODY_STRONG, HEADING, TITLE, DISPLAY}` =
+  12/13/14/15/17/22/30.
 - `system_is_dark()` — reads `ALP_SYSTEM_THEME`, `GTK_THEME` or `COLORFGBG`
-  and falls back to dark
+  and falls back to dark.
 
 ## Data flow
 

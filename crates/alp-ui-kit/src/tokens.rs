@@ -25,18 +25,37 @@ impl Spacing {
 }
 
 /// Corner radii in logical pixels.
+///
+/// The studio language is softly rounded: inputs and small controls use
+/// [`Radius::SM`], cards [`Radius::MD`], docks and raised panels [`Radius::LG`]
+/// and the application frame [`Radius::XL`]. Buttons and chips are pills.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Radius;
 
 impl Radius {
-    /// Small control radius.
-    pub const SM: u16 = 3;
-    /// Default panel radius.
-    pub const MD: u16 = 7;
-    /// Floating panel radius.
-    pub const LG: u16 = 11;
-    /// Pill radius for toggles and tags.
+    /// Small control radius (inputs, chips at rest).
+    pub const SM: u16 = 6;
+    /// Default card radius.
+    pub const MD: u16 = 10;
+    /// Raised dock / dialog radius.
+    pub const LG: u16 = 14;
+    /// Outer application frame radius.
+    pub const XL: u16 = 18;
+    /// Pill radius for buttons, toggles and tags.
     pub const PILL: u16 = 999;
+}
+
+/// Navigation rail geometry in logical pixels.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Rail;
+
+impl Rail {
+    /// Fixed rail width.
+    pub const WIDTH: u16 = 80;
+    /// Circular navigation button diameter.
+    pub const BUTTON: u16 = 44;
+    /// Brand mark tile.
+    pub const LOGO: u16 = 48;
 }
 
 /// Control sizing in logical pixels.
@@ -47,15 +66,19 @@ impl Control {
     /// Compact row height.
     pub const SM: u16 = 28;
     /// Default control height.
-    pub const MD: u16 = 34;
+    pub const MD: u16 = 36;
     /// Large primary action height.
-    pub const LG: u16 = 42;
-    /// Panel title bar height.
+    pub const LG: u16 = 44;
+    /// Page content padding.
+    pub const PAGE: u16 = 32;
+    /// Title strip above the workspace.
     pub const TITLE_BAR: u16 = 34;
+    /// Docked player / track editor height.
+    pub const DOCK: u16 = 96;
     /// Resize grip hit area.
     pub const GRIP: u16 = 14;
     /// Custom window chrome height (title, panel menu and controls).
-    pub const CHROME: u16 = 46;
+    pub const CHROME: u16 = 34;
 }
 
 /// Motion durations in milliseconds (ADR 0007).
@@ -147,14 +170,18 @@ pub struct TypeScale;
 impl TypeScale {
     /// Small labels.
     pub const CAPTION: u16 = 12;
+    /// Field labels and meta text.
+    pub const LABEL: u16 = 13;
     /// Body text.
     pub const BODY: u16 = 14;
     /// Emphasized body text.
     pub const BODY_STRONG: u16 = 15;
-    /// Section titles.
-    pub const TITLE: u16 = 20;
+    /// Card titles and dialog headings.
+    pub const HEADING: u16 = 17;
+    /// Section titles inside a page.
+    pub const TITLE: u16 = 22;
     /// Screen titles.
-    pub const DISPLAY: u16 = 28;
+    pub const DISPLAY: u16 = 30;
 }
 
 /// Detect a dark desktop preference from the environment.

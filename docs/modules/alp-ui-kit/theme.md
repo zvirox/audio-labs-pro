@@ -2,19 +2,21 @@
 
 ## Purpose
 
-`theme` owns the dark and light glass palettes and the container styles that
-paint panels, cards and overlays. No widget or screen defines a literal colour;
-everything reads a `ThemeColors` value.
+`theme` owns the dark and light studio palettes and the container styles that
+paint the frame, rail, panels, cards, wells and overlays. No widget or screen
+defines a literal colour; everything reads a `ThemeColors` value.
 
 ## Public API
 
-- `ThemeColors` fields: background, glass, glass_strong, text, muted, faint,
-  accent, accent_hover, accent_pressed, border, border_strong, shadow, success,
-  warning, danger, wave, wave_hot, grid, playhead.
+- `ThemeColors` fields: background, glass, glass_strong, surface_raised, text,
+  muted, faint, accent, accent_text, accent_hover, accent_pressed,
+  accent_secondary, border, border_strong, shadow, scrim, success, warning,
+  danger, wave, wave_hot, grid, playhead.
 - `ThemeColors::DARK` and `LIGHT`.
 - `for_mode(ThemeMode)` — resolves system preference at call time.
 - `to_theme()` — iced palette for built-in widgets.
-- `panel_style(focused)`, `card_style()`, `plain_style()`.
+- `frame_style()`, `rail_style()`, `panel_style(focused)`, `card_style()`,
+  `well_style()`, `plain_style()`.
 
 ## Data flow
 
@@ -23,9 +25,12 @@ returns a copy. The view passes that value to kit builders, which close over it
 in style callbacks. The same value feeds the waveform's grid/wave/playhead
 colours and the iced `Theme` used by standard widgets.
 
-Tint alphas are deliberately at least 0.70 for panel surfaces so text remains
-legible when the desktop behind is sharp; the window root adds a darker 0.58
-scrim.
+The dark palette uses near-black surfaces (background 0.039, glass 0.055, cards
+0.078, inputs 0.106), text at 0.96/0.62/0.40 and a warm gold accent
+`rgb(0.780, 0.651, 0.294)` with dark ink for filled buttons. Borders are white at
+10% and the accent border at 55%. The light palette mirrors the same roles on
+paper surfaces with a deeper gold. The window root paints the background colour
+behind the 18 px frame; there is no separate alpha scrim in the frame.
 
 ## Allowed dependencies
 
@@ -45,9 +50,9 @@ missing palette.
 
 ## Testing
 
-Tests assert the dark/light background and text differ and that glass tint alpha
-is at least 0.7 in both themes, which protects the no-blur fallback. Token tests
-cover theme cycling and parsing.
+Tests assert the dark/light background and text differ, that the studio accent
+is gold in both modes, and that borders stay translucent. Token tests cover
+theme cycling and parsing.
 
 ## Known limits
 

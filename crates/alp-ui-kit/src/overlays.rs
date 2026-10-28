@@ -1,11 +1,11 @@
-//! Floating surfaces: cards, modals, toasts and the command palette.
+//! Floating surfaces: cards, dialogs, toasts and the command palette.
 //!
 //! These are pure builders. The application decides when a layer is shown and
 //! owns the palette query/selection state, which keeps keyboard handling in one
 //! place.
 
-use iced::widget::{column, container, row, text, text_input};
-use iced::{Alignment, Element, Length};
+use iced::widget::{Space, column, container, row, scrollable, text, text_input};
+use iced::{Alignment, Background, Border, Element, Length, Shadow};
 
 use crate::components::{self, ButtonKind};
 use crate::fonts;
@@ -23,18 +23,14 @@ pub struct CommandItem<Message> {
     pub message: Message,
 }
 
-/// A raised glass card.
+/// A raised graphite card.
 pub fn card<'a, Message: 'a>(
     content: impl Into<Element<'a, Message>>,
     colors: ThemeColors,
 ) -> Element<'a, Message> {
-    container(
-        container(content)
-            .padding(Spacing::MD)
-            .style(move |_theme| colors.card_style()),
-    )
-    .padding(Spacing::XXS)
-    .into()
+    container(container(content).padding(Spacing::MD))
+        .style(move |_theme| colors.card_style())
+        .into()
 }
 
 /// A centered modal dialog with an action row.
@@ -67,20 +63,79 @@ pub fn modal<'a, Message: Clone + 'a>(
         ]
         .spacing(f32::from(Spacing::MD)),
     )
-    .padding(Spacing::XL)
+    .padding(Spacing::XXL)
     .width(Length::Fixed(560.0))
     .style(move |_theme| colors.panel_style(true));
 
-    container(dialog)
+    scrim(dialog.into(), colors)
+}
+
+/// A wide dialog with a close affordance and a footer action row.
+///
+/// Used by the voice-creation and consent flows, which need a two-column body
+/// and their own footer buttons rather than the generic action list.
+pub fn dialog<'a, Message: Clone + 'a>(
+    title: &'a str,
+    subtitle: &'a str,
+    body: impl Into<Element<'a, Message>>,
+    footer: impl Into<Element<'a, Message>>,
+    width: f32,
+    colors: ThemeColors,
+    on_close: Message,
+) -> Element<'a, Message> {
+    let header = row![
+        column![
+            text(title)
+                .size(f32::from(TypeScale::TITLE))
+                .font(fonts::semibold())
+                .color(colors.text),
+            text(subtitle)
+                .size(f32::from(TypeScale::BODY))
+                .font(fonts::regular())
+                .color(colors.muted),
+        ]
+        .spacing(f32::from(Spacing::XXS)),
+        Space::new().width(Length::Fill),
+        components::glyph_button("✕", 14.0, ButtonKind::Ghost, colors, Some(on_close)),
+    ]
+    .align_y(Alignment::Start);
+
+    let panel = column![
+        header,
+        body.into(),
+        column![
+            container(Space::new())
+                .width(Length::Fill)
+                .height(Length::Fixed(1.0))
+                .style(move |_theme| container::Style {
+                    background: Some(Background::Color(colors.border)),
+                    ..container::Style::default()
+                }),
+            container(footer.into())
+                .width(Length::Fill)
+                .padding([Spacing::MD, 0]),
+        ],
+    ]
+    .spacing(f32::from(Spacing::LG))
+    .padding(Spacing::XXL)
+    .width(Length::Fixed(width));
+
+    let panel = container(panel).style(move |_theme| colors.panel_style(true));
+    scrim(panel.into(), colors)
+}
+
+fn scrim<'a, Message: Clone + 'a>(
+    panel: Element<'a, Message>,
+    colors: ThemeColors,
+) -> Element<'a, Message> {
+    container(panel)
         .padding(Spacing::XXL)
         .width(Length::Fill)
         .height(Length::Fill)
         .align_x(Alignment::Center)
-        .align_y(Alignment::Center)
+        .align_y(iced::alignment::Vertical::Center)
         .style(move |_theme| container::Style {
-            background: Some(iced::Background::Color(iced::Color::from_rgba(
-                0.0, 0.0, 0.0, 0.55,
-            ))),
+            background: Some(Background::Color(colors.scrim)),
             ..container::Style::default()
         })
         .into()
@@ -94,7 +149,7 @@ pub fn toast<'a, Message: Clone + 'a>(
 ) -> Element<'a, Message> {
     let toast = row![
         text(message.into())
-            .size(f32::from(TypeScale::BODY))
+            .size(f32::from(TypeScale::LABEL))
             .font(fonts::regular())
             .color(colors.text),
         components::button("Dismiss", ButtonKind::Ghost, colors, Some(on_dismiss)),
@@ -105,13 +160,13 @@ pub fn toast<'a, Message: Clone + 'a>(
     container(toast)
         .padding([Spacing::SM, Spacing::MD])
         .style(move |_theme| container::Style {
-            background: Some(iced::Background::Color(colors.glass_strong)),
-            border: iced::Border {
-                radius: f32::from(Radius::LG).into(),
+            background: Some(Background::Color(colors.surface_raised)),
+            border: Border {
+                radius: f32::from(Radius::PILL).into(),
                 width: 1.0,
                 color: colors.border,
             },
-            shadow: iced::Shadow {
+            shadow: Shadow {
                 color: colors.shadow,
                 offset: iced::Vector::new(0.0, 10.0),
                 blur_radius: 30.0,
@@ -146,31 +201,59 @@ pub fn command_palette<'a, Message: Clone + 'a>(
             Some(item.message.clone()),
         ));
     }
+    if items.is_empty() {
+        list = list.push(components::muted("No matching command.", colors));
+    }
+
+    let head = row![
+        text("Commands")
+            .size(f32::from(TypeScale::TITLE))
+            .font(fonts::semibold())
+            .color(colors.text),
+        Space::new().width(Length::Fill),
+        components::chip(format!("{} results", items.len()), colors),
+    ]
+    .align_y(Alignment::Center);
 
     let panel = column![
+        head,
         text_input("Type a command…", query)
             .id(id)
             .on_input(on_input)
             .padding([Spacing::SM, Spacing::MD])
             .size(f32::from(TypeScale::BODY_STRONG))
-            .font(fonts::regular()),
-        list,
+            .font(fonts::regular())
+            .style(move |_theme, _status| iced::widget::text_input::Style {
+                background: Background::Color(colors.surface_raised),
+                border: Border {
+                    radius: f32::from(Radius::SM).into(),
+                    width: 1.0,
+                    color: colors.border_strong,
+                },
+                icon: colors.muted,
+                placeholder: colors.faint,
+                value: colors.text,
+                selection: colors.border_strong,
+            }),
+        scrollable(list)
+            .style(move |_theme, _status| components::scroll_style(colors))
+            .height(Length::Fixed(324.0)),
         components::muted("↑↓ move · Enter run · Esc close", colors),
     ]
-    .spacing(f32::from(Spacing::SM))
-    .padding(Spacing::MD)
-    .width(Length::Fixed(640.0));
+    .spacing(f32::from(Spacing::MD))
+    .padding(Spacing::LG)
+    .width(Length::Fixed(620.0));
+
+    let panel = container(panel).style(move |_theme| colors.panel_style(true));
 
     container(panel)
-        .padding(Spacing::XXL)
+        .padding([Spacing::XXL, Spacing::XXL])
         .width(Length::Fill)
         .height(Length::Fill)
         .align_x(Alignment::Center)
-        .align_y(Alignment::Start)
+        .align_y(iced::alignment::Vertical::Top)
         .style(move |_theme| container::Style {
-            background: Some(iced::Background::Color(iced::Color::from_rgba(
-                0.0, 0.0, 0.0, 0.32,
-            ))),
+            background: Some(Background::Color(colors.scrim)),
             ..container::Style::default()
         })
         .into()
@@ -255,12 +338,26 @@ mod tests {
     }
 
     #[test]
-    fn modal_and_toast_build() {
+    fn modal_dialog_and_toast_build() {
         let _ = modal(
             "Reset layout?",
             components::muted("All panel positions will be restored.", ThemeColors::DARK),
             vec![("Reset".into(), Msg::Dismiss)],
             ThemeColors::DARK,
+        );
+        let _ = dialog(
+            "Clone voice",
+            "Create a new voice profile with an audio sample.",
+            components::muted("Body", ThemeColors::DARK),
+            components::button(
+                "Create",
+                ButtonKind::Primary,
+                ThemeColors::DARK,
+                None::<Msg>,
+            ),
+            960.0,
+            ThemeColors::DARK,
+            Msg::Dismiss,
         );
         let _ = toast("Layout saved", ThemeColors::DARK, Msg::Dismiss);
     }

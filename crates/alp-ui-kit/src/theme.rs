@@ -1,8 +1,9 @@
-//! Dark and light glass palettes.
+//! Dark and light studio palettes.
 //!
 //! Every screen reads colors from [`ThemeColors`]; no widget owns a literal
-//! color. The tint is deliberately opaque enough to stay legible when the
-//! compositor cannot blur the desktop behind the window (ADR 0012).
+//! color. The dark palette is the studio default: near-black surfaces, a warm
+//! gold accent and hairline white borders. The light palette mirrors it with
+//! paper surfaces and the same gold, so one component set serves both.
 
 use iced::widget::container;
 use iced::{Background, Border, Color, Shadow, Theme, Vector, theme};
@@ -12,12 +13,14 @@ use crate::tokens::{Radius, ThemeMode};
 /// Resolved colors for one theme.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ThemeColors {
-    /// Window background when the desktop is not visible.
+    /// Window background behind the application frame.
     pub background: Color,
-    /// Panel glass tint.
+    /// Rail and sidebar tint.
     pub glass: Color,
-    /// Stronger glass tint for raised cards and overlays.
+    /// Card and raised-panel surface.
     pub glass_strong: Color,
+    /// Inputs, wells and hovered rows.
+    pub surface_raised: Color,
     /// Primary text.
     pub text: Color,
     /// Secondary text.
@@ -26,6 +29,8 @@ pub struct ThemeColors {
     pub faint: Color,
     /// Accent for primary actions and focus.
     pub accent: Color,
+    /// Ink that stays legible on the accent fill.
+    pub accent_text: Color,
     /// Accent hover.
     pub accent_hover: Color,
     /// Accent pressed.
@@ -38,6 +43,8 @@ pub struct ThemeColors {
     pub border_strong: Color,
     /// Drop shadow.
     pub shadow: Color,
+    /// Modal scrim.
+    pub scrim: Color,
     /// Success and positive meters.
     pub success: Color,
     /// Warning badges.
@@ -55,52 +62,58 @@ pub struct ThemeColors {
 }
 
 impl ThemeColors {
-    /// Retro dark palette: walnut cabinet, cream lettering, burnt-orange accent.
+    /// Studio dark: near-black frame, graphite cards, warm gold accent.
     pub const DARK: Self = Self {
-        background: Color::from_rgba(0.075, 0.062, 0.051, 0.98),
-        glass: Color::from_rgba(0.106, 0.086, 0.067, 0.92),
-        glass_strong: Color::from_rgba(0.137, 0.110, 0.086, 0.98),
-        text: Color::from_rgba(0.949, 0.902, 0.812, 0.97),
-        muted: Color::from_rgba(0.706, 0.639, 0.522, 0.90),
-        faint: Color::from_rgba(0.478, 0.424, 0.341, 0.75),
-        accent: Color::from_rgb(0.847, 0.514, 0.235),
-        accent_hover: Color::from_rgb(0.925, 0.616, 0.314),
-        accent_pressed: Color::from_rgb(0.702, 0.396, 0.157),
-        accent_secondary: Color::from_rgb(0.373, 0.612, 0.573),
-        border: Color::from_rgba(0.949, 0.902, 0.812, 0.11),
-        border_strong: Color::from_rgba(0.847, 0.514, 0.235, 0.55),
-        shadow: Color::from_rgba(0.0, 0.0, 0.0, 0.55),
-        success: Color::from_rgb(0.545, 0.671, 0.400),
-        warning: Color::from_rgb(0.890, 0.706, 0.267),
-        danger: Color::from_rgb(0.769, 0.322, 0.243),
-        wave: Color::from_rgb(0.847, 0.514, 0.235),
-        wave_hot: Color::from_rgb(0.949, 0.741, 0.404),
-        grid: Color::from_rgba(0.949, 0.902, 0.812, 0.07),
-        playhead: Color::from_rgb(0.949, 0.741, 0.404),
+        background: Color::from_rgb(0.039, 0.039, 0.039),
+        glass: Color::from_rgb(0.055, 0.055, 0.055),
+        glass_strong: Color::from_rgb(0.078, 0.078, 0.078),
+        surface_raised: Color::from_rgb(0.106, 0.106, 0.106),
+        text: Color::from_rgb(0.960, 0.960, 0.960),
+        muted: Color::from_rgb(0.620, 0.620, 0.620),
+        faint: Color::from_rgb(0.400, 0.400, 0.400),
+        accent: Color::from_rgb(0.780, 0.651, 0.294),
+        accent_text: Color::from_rgb(0.055, 0.047, 0.027),
+        accent_hover: Color::from_rgb(0.847, 0.729, 0.400),
+        accent_pressed: Color::from_rgb(0.651, 0.522, 0.204),
+        accent_secondary: Color::from_rgb(0.655, 0.647, 0.620),
+        border: Color::from_rgba(1.0, 1.0, 1.0, 0.10),
+        border_strong: Color::from_rgba(0.780, 0.651, 0.294, 0.55),
+        shadow: Color::from_rgba(0.0, 0.0, 0.0, 0.50),
+        scrim: Color::from_rgba(0.0, 0.0, 0.0, 0.72),
+        success: Color::from_rgb(0.478, 0.769, 0.541),
+        warning: Color::from_rgb(0.878, 0.698, 0.361),
+        danger: Color::from_rgb(0.878, 0.424, 0.373),
+        wave: Color::from_rgb(0.780, 0.651, 0.294),
+        wave_hot: Color::from_rgb(0.949, 0.831, 0.545),
+        grid: Color::from_rgba(1.0, 1.0, 1.0, 0.055),
+        playhead: Color::from_rgb(0.960, 0.960, 0.960),
     };
 
-    /// Retro light palette: aged paper, ink lettering, oxblood accent.
+    /// Studio light: paper surfaces, graphite ink, the same gold accent.
     pub const LIGHT: Self = Self {
-        background: Color::from_rgba(0.910, 0.867, 0.776, 0.97),
-        glass: Color::from_rgba(0.965, 0.937, 0.875, 0.94),
-        glass_strong: Color::from_rgba(0.984, 0.961, 0.910, 0.99),
-        text: Color::from_rgba(0.180, 0.145, 0.106, 0.97),
-        muted: Color::from_rgba(0.376, 0.325, 0.255, 0.85),
-        faint: Color::from_rgba(0.541, 0.482, 0.388, 0.70),
-        accent: Color::from_rgb(0.663, 0.278, 0.129),
-        accent_hover: Color::from_rgb(0.749, 0.341, 0.161),
-        accent_pressed: Color::from_rgb(0.549, 0.216, 0.094),
-        accent_secondary: Color::from_rgb(0.184, 0.435, 0.412),
-        border: Color::from_rgba(0.180, 0.145, 0.106, 0.18),
-        border_strong: Color::from_rgba(0.663, 0.278, 0.129, 0.55),
-        shadow: Color::from_rgba(0.200, 0.150, 0.100, 0.20),
-        success: Color::from_rgb(0.247, 0.463, 0.259),
-        warning: Color::from_rgb(0.706, 0.494, 0.086),
-        danger: Color::from_rgb(0.659, 0.212, 0.161),
-        wave: Color::from_rgb(0.663, 0.278, 0.129),
-        wave_hot: Color::from_rgb(0.788, 0.427, 0.180),
-        grid: Color::from_rgba(0.180, 0.145, 0.106, 0.10),
-        playhead: Color::from_rgb(0.788, 0.427, 0.180),
+        background: Color::from_rgb(0.910, 0.910, 0.910),
+        glass: Color::from_rgb(0.898, 0.898, 0.898),
+        glass_strong: Color::from_rgb(0.969, 0.969, 0.969),
+        surface_raised: Color::from_rgb(1.0, 1.0, 1.0),
+        text: Color::from_rgb(0.078, 0.078, 0.078),
+        muted: Color::from_rgb(0.430, 0.430, 0.430),
+        faint: Color::from_rgb(0.600, 0.600, 0.600),
+        accent: Color::from_rgb(0.678, 0.545, 0.227),
+        accent_text: Color::from_rgb(1.0, 1.0, 1.0),
+        accent_hover: Color::from_rgb(0.745, 0.612, 0.278),
+        accent_pressed: Color::from_rgb(0.588, 0.463, 0.176),
+        accent_secondary: Color::from_rgb(0.380, 0.380, 0.380),
+        border: Color::from_rgba(0.0, 0.0, 0.0, 0.12),
+        border_strong: Color::from_rgba(0.678, 0.545, 0.227, 0.65),
+        shadow: Color::from_rgba(0.0, 0.0, 0.0, 0.16),
+        scrim: Color::from_rgba(0.0, 0.0, 0.0, 0.45),
+        success: Color::from_rgb(0.208, 0.518, 0.290),
+        warning: Color::from_rgb(0.663, 0.467, 0.114),
+        danger: Color::from_rgb(0.741, 0.243, 0.212),
+        wave: Color::from_rgb(0.678, 0.545, 0.227),
+        wave_hot: Color::from_rgb(0.808, 0.663, 0.320),
+        grid: Color::from_rgba(0.0, 0.0, 0.0, 0.07),
+        playhead: Color::from_rgb(0.078, 0.078, 0.078),
     };
 
     /// Resolve a theme mode, including the desktop preference.
@@ -128,11 +141,47 @@ impl ThemeColors {
         )
     }
 
-    /// Floating glass panel style.
+    /// The rounded application frame.
+    #[must_use]
+    pub fn frame_style(self) -> container::Style {
+        container::Style {
+            background: Some(Background::Color(self.glass)),
+            text_color: Some(self.text),
+            border: Border {
+                radius: f32::from(Radius::XL).into(),
+                width: 1.0,
+                color: Color::from_rgba(1.0, 1.0, 1.0, 0.07),
+            },
+            shadow: Shadow {
+                color: self.shadow,
+                offset: Vector::new(0.0, 18.0),
+                blur_radius: 48.0,
+            },
+            snap: true,
+        }
+    }
+
+    /// The fixed navigation rail.
+    #[must_use]
+    pub fn rail_style(self) -> container::Style {
+        container::Style {
+            background: Some(Background::Color(self.glass)),
+            text_color: Some(self.text),
+            border: Border {
+                radius: 0.0.into(),
+                width: 0.0,
+                color: Color::TRANSPARENT,
+            },
+            shadow: Shadow::default(),
+            snap: true,
+        }
+    }
+
+    /// Floating dock, dialog or overlay panel.
     #[must_use]
     pub fn panel_style(self, focused: bool) -> container::Style {
         container::Style {
-            background: Some(Background::Color(self.glass)),
+            background: Some(Background::Color(self.glass_strong)),
             text_color: Some(self.text),
             border: Border {
                 radius: f32::from(Radius::LG).into(),
@@ -145,14 +194,14 @@ impl ThemeColors {
             },
             shadow: Shadow {
                 color: self.shadow,
-                offset: Vector::new(0.0, 6.0),
-                blur_radius: 18.0,
+                offset: Vector::new(0.0, 8.0),
+                blur_radius: 24.0,
             },
             snap: true,
         }
     }
 
-    /// Raised card inside a panel.
+    /// Flat raised card inside the workspace.
     #[must_use]
     pub fn card_style(self) -> container::Style {
         container::Style {
@@ -160,6 +209,22 @@ impl ThemeColors {
             text_color: Some(self.text),
             border: Border {
                 radius: f32::from(Radius::MD).into(),
+                width: 1.0,
+                color: self.border,
+            },
+            shadow: Shadow::default(),
+            snap: true,
+        }
+    }
+
+    /// Recessed well for inputs, rulers and empty states.
+    #[must_use]
+    pub fn well_style(self) -> container::Style {
+        container::Style {
+            background: Some(Background::Color(self.surface_raised)),
+            text_color: Some(self.text),
+            border: Border {
+                radius: f32::from(Radius::SM).into(),
                 width: 1.0,
                 color: self.border,
             },
@@ -183,10 +248,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn glass_tint_is_legible_without_blur() {
-        const { assert!(ThemeColors::DARK.glass.a >= 0.7) };
-        const { assert!(ThemeColors::LIGHT.glass.a >= 0.7) };
+    fn surfaces_stay_opaque_and_legible() {
+        const { assert!(ThemeColors::DARK.glass_strong.a == 1.0) };
+        const { assert!(ThemeColors::LIGHT.glass_strong.a == 1.0) };
         const { assert!(ThemeColors::DARK.text.a > 0.9) };
+        const { assert!(ThemeColors::DARK.accent_text.r < 0.1) };
     }
 
     #[test]
