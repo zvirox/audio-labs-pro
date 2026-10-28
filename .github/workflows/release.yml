@@ -155,7 +155,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \
-            flatpak flatpak-builder
+            flatpak flatpak-builder elfutils
 
       - name: Resolve version
         id: version

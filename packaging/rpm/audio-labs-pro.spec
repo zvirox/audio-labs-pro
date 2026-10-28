@@ -30,7 +30,8 @@ The package ships the graphical workstation (audio-labs-pro), the CLI
 (alp-cli) and the local inference runner (alp-infer).
 
 %prep
-%setup -q -c -T -b 0
+# The Source0 tarball already contains a relative usr/ tree.
+%setup -q -c
 
 %install
 mkdir -p %{buildroot}/usr
