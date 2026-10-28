@@ -52,6 +52,14 @@ macro_rules! id_type {
                 write!(formatter, "{}({})", stringify!($name), self.0)
             }
         }
+
+        impl std::str::FromStr for $name {
+            type Err = uuid::Error;
+
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                Uuid::parse_str(s).map(Self)
+            }
+        }
     };
 }
 

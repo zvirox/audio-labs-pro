@@ -52,6 +52,72 @@ impl FromStr for ExportFormat {
     }
 }
 
+/// Built-in delivery presets for common export targets.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExportPreset {
+    /// Standard podcast master: 44.1 kHz, 16-bit FLAC, triangular dither.
+    Podcast,
+    /// Standard audiobook master: 44.1 kHz, 16-bit WAV, triangular dither.
+    Audiobook,
+    /// Broadcast / video voice-over delivery: 48.0 kHz, 24-bit WAV, triangular dither.
+    VoiceOver,
+}
+
+impl ExportPreset {
+    /// Preconfigured export settings for this preset.
+    #[must_use]
+    pub fn settings(self) -> ExportSettings {
+        match self {
+            Self::Podcast => ExportSettings {
+                format: ExportFormat::Flac,
+                bit_depth: WavBitDepth::Int16,
+                sample_rate: Some(44_100),
+                dither: DitherMode::Triangular,
+                metadata: AudioMetadata::default(),
+            },
+            Self::Audiobook => ExportSettings {
+                format: ExportFormat::Wav,
+                bit_depth: WavBitDepth::Int16,
+                sample_rate: Some(44_100),
+                dither: DitherMode::Triangular,
+                metadata: AudioMetadata::default(),
+            },
+            Self::VoiceOver => ExportSettings {
+                format: ExportFormat::Wav,
+                bit_depth: WavBitDepth::Int24,
+                sample_rate: Some(48_000),
+                dither: DitherMode::Triangular,
+                metadata: AudioMetadata::default(),
+            },
+        }
+    }
+
+    /// Short label used by CLI and UI.
+    #[must_use]
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Podcast => "podcast",
+            Self::Audiobook => "audiobook",
+            Self::VoiceOver => "voice-over",
+        }
+    }
+}
+
+impl FromStr for ExportPreset {
+    type Err = MediaError;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value.to_ascii_lowercase().replace('_', "-").as_str() {
+            "podcast" => Ok(Self::Podcast),
+            "audiobook" => Ok(Self::Audiobook),
+            "voice-over" | "voiceover" => Ok(Self::VoiceOver),
+            other => Err(MediaError::Encode(format!(
+                "unknown export preset {other:?} (supported: podcast, audiobook, voice-over)"
+            ))),
+        }
+    }
+}
+
 /// Basic file tags.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct AudioMetadata {
@@ -160,6 +226,12 @@ impl ExportSettings {
             bit_depth,
             ..Self::default()
         })
+    }
+
+    /// Build settings from an industry preset.
+    #[must_use]
+    pub fn preset(preset: ExportPreset) -> Self {
+        preset.settings()
     }
 }
 
@@ -322,6 +394,19 @@ mod tests {
             DitherMode::Triangular
         );
         assert!(ExportSettings::flac(WavBitDepth::Float32).is_err());
+
+        assert_eq!(
+            "podcast".parse::<ExportPreset>().expect("parse"),
+            ExportPreset::Podcast
+        );
+        assert_eq!(
+            "voice-over".parse::<ExportPreset>().expect("parse"),
+            ExportPreset::VoiceOver
+        );
+        let podcast_settings = ExportSettings::preset(ExportPreset::Podcast);
+        assert_eq!(podcast_settings.format, ExportFormat::Flac);
+        assert_eq!(podcast_settings.sample_rate, Some(44_100));
+        assert_eq!(podcast_settings.dither, DitherMode::Triangular);
     }
 
     #[test]

@@ -21,7 +21,7 @@ pub use compare::{NullReport, compare};
 pub use decode::{MediaInfo, decode, decode_path, probe};
 pub use dither::DitherMode;
 pub use error::MediaError;
-pub use export::{AudioMetadata, ExportFormat, ExportReport, ExportSettings, export};
+pub use export::{AudioMetadata, ExportFormat, ExportPreset, ExportReport, ExportSettings, export};
 pub use pcm::PcmBuffer;
 pub use peaks::{
     BASE_BUCKET, CACHE_MAGIC, CACHE_VERSION, LEVEL_COUNT, PeakBuilder, PeakLevel, PeakPyramid,

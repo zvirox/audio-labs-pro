@@ -21,6 +21,7 @@ alp-core.workspace = true
 alp-dsp.workspace = true
 alp-engine.workspace = true
 alp-media.workspace = true
+alp-plugin.workspace = true
 alp-voice.workspace = true
 anyhow.workspace = true
 clap.workspace = true

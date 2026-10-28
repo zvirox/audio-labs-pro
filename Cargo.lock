@@ -41,6 +41,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "alp-api"
+version = "0.1.0"
+dependencies = [
+ "alp-core",
+ "alp-dsp",
+ "alp-engine",
+ "alp-media",
+ "alp-plugin",
+ "alp-voice",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "alp-cli"
 version = "0.1.0"
 dependencies = [
@@ -48,6 +66,7 @@ dependencies = [
  "alp-dsp",
  "alp-engine",
  "alp-media",
+ "alp-plugin",
  "alp-voice",
  "anyhow",
  "clap",
@@ -84,6 +103,7 @@ version = "0.1.0"
 dependencies = [
  "alp-core",
  "alp-media",
+ "alp-plugin",
  "cpal",
  "hound",
  "rtrb",
@@ -101,6 +121,25 @@ dependencies = [
  "alp-core",
  "alp-media",
  "alp-voice",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "alp-mcp"
+version = "0.1.0"
+dependencies = [
+ "alp-api",
+ "alp-core",
+ "anyhow",
+ "clap",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -118,12 +157,28 @@ dependencies = [
 ]
 
 [[package]]
-name = "alp-ui"
+name = "alp-plugin"
 version = "0.1.0"
 dependencies = [
  "alp-core",
+ "libloading",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "alp-ui"
+version = "0.1.0"
+dependencies = [
+ "alp-api",
+ "alp-core",
  "alp-engine",
  "alp-media",
+ "alp-plugin",
  "alp-ui-kit",
  "alp-voice",
  "iced",
@@ -148,7 +203,12 @@ version = "0.1.0"
 dependencies = [
  "alp-core",
  "alp-media",
+ "dirs",
+ "serde",
+ "serde_json",
+ "tempfile",
  "thiserror 2.0.21",
+ "uuid",
 ]
 
 [[package]]

@@ -1,0 +1,25 @@
+[package]
+name = "alp-api"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+alp-core = { workspace = true }
+alp-dsp = { workspace = true }
+alp-engine = { workspace = true }
+alp-media = { workspace = true }
+alp-plugin = { workspace = true }
+alp-voice = { workspace = true }
+
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

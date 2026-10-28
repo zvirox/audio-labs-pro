@@ -11,6 +11,7 @@ publish.workspace = true
 [dependencies]
 alp-core.workspace = true
 alp-media.workspace = true
+alp-plugin.workspace = true
 cpal.workspace = true
 hound.workspace = true
 rtrb.workspace = true

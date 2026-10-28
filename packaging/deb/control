@@ -1,0 +1,22 @@
+Package: audio-labs-pro
+Version: 1.0.0
+Section: sound
+Priority: optional
+Architecture: amd64
+Maintainer: Audio Labs Pro Developers <contact@audiolabspro.internal>
+Depends: libc6 (>= 2.34), libasound2 (>= 1.2.0)
+Recommends: pipewire-audio-client-libraries
+Suggests: alsa-utils
+Description: Professional Voice Audio Workstation
+ Audio Labs Pro is a modern, responsive voice audio workstation built in Rust.
+ It combines non-destructive multitrack audio editing with local speech synthesis,
+ voice cloning, automated transcription, speech cleanup DSP, and an undoable
+ session engine.
+ .
+ Features include:
+  - Sample-accurate multitrack editing, crossfades, and rippled deletes
+  - Real-time voice cleanup DSP: high-pass, parametric EQ, de-hum, de-click, compressor, and limiter
+  - Integrated Voice Lab with built-in neural TTS synthesis and script editor
+  - Local voice dictation and clip transcription with SRT and WebVTT exports
+  - Consent-gated voice profiling, reference quality auditing, and A/B acoustic comparison
+  - Liquid-smooth GPU interface with dynamic glass themes and Wayland support

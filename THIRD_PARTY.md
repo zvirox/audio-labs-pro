@@ -6,7 +6,8 @@ with a version and a license that is compatible with Apache-2.0 (see
 
 Status legend: **P0** used by a Phase 0 spike, **P1** used by the Phase 1
 workspace, **P2** used by the Phase 2 shell, **P3** used by Phase 3 recording and
-editing, **planned** approved but not yet wired into the app.
+editing, **P4-P8** used by multitrack, DSP, TTS, dictation, and voice profiles,
+**P9** packaged for v1.0, **planned** approved but not yet wired into the app.
 
 ## Rust crates
 
@@ -65,6 +66,8 @@ F5-TTS weights (CC-BY-NC), XTTS-v2 (CPML), KittenTTS 2 (custom license + AUP).
 |---|---|---|
 | CMU Pronouncing Dictionary v0.7b (`cmudict_data.json`) | BSD-style (CMU) | P0, used via `piper-plus-g2p`; ship the notice with the app |
 | Inter variable (`InterVariable.ttf`, family “Inter Variable”) | SIL OFL-1.1 | P2, bundled in `crates/alp-ui-kit/assets/fonts/` with `LICENSE-Inter.txt` |
+| Application Brand & Scalable Icon (`io.github.zvirox.AudioLabsPro.svg`) | CC0-1.0 / MIT | P9, bundled in `packaging/icons/` |
+| AppStream metadata & MIME spec (`io.github.zvirox.AudioLabsPro.*`) | CC0-1.0 | P9, desktop integration |
 | Icons | — | no icon font in Phase 2; Unicode text glyphs render through Inter or the system fallback |
 
 ## Distribution obligations

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.zvirox.AudioLabsPro</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Audio Labs Pro</name>
+  <summary>Professional Voice Audio Workstation</summary>
+  <description>
+    <p>
+      Audio Labs Pro is a modern, responsive voice audio workstation built in Rust.
+      It combines non-destructive multitrack audio editing with local speech synthesis,
+      voice cloning, automated transcription, speech cleanup DSP, and an undoable
+      session engine.
+    </p>
+    <p>Features include:</p>
+    <ul>
+      <li>Sample-accurate multitrack editing, crossfades, volume envelopes, and rippled deletes</li>
+      <li>Real-time voice cleanup DSP: high-pass filter, parametric EQ, de-hum, de-click, compressor, and limiter</li>
+      <li>Integrated Voice Lab with built-in neural TTS synthesis and script editor</li>
+      <li>Local voice dictation and clip transcription with SRT and WebVTT exports</li>
+      <li>Consent-gated voice profiling, reference quality auditing, and A/B acoustic comparison</li>
+      <li>Liquid-smooth GPU interface with dynamic glass themes and Wayland support</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">io.github.zvirox.AudioLabsPro.desktop</launchable>
+  <url type="homepage">https://github.com/zvirox/audio-labs-pro</url>
+  <url type="bugtracker">https://github.com/zvirox/audio-labs-pro/issues</url>
+  <provides>
+    <binary>audio-labs-pro</binary>
+    <binary>alp-cli</binary>
+    <mediatype>application/x-audio-labs-pro</mediatype>
+    <mediatype>application/x-audio-labs-pro-voice</mediatype>
+  </provides>
+  <content_rating type="oars-1.1" />
+  <releases>
+    <release version="1.0.0" date="2026-10-27">
+      <description>
+        <p>Audio Labs Pro 1.0.0 release: production-ready multitrack editing, complete voice DSP chain, TTS, STT dictation, voice profiles, and packaging.</p>
+      </description>
+    </release>
+    <release version="0.3.0" date="2026-10-26">
+      <description>
+        <p>Voice profiles, cloning consent gate, reference audio quality auditing, and prompt-based voice design.</p>
+      </description>
+    </release>
+    <release version="0.2.0" date="2026-10-25">
+      <description>
+        <p>Built-in acoustic TTS, script mode stitching, and offline dictation transcription.</p>
+      </description>
+    </release>
+    <release version="0.1.0" date="2026-10-24">
+      <description>
+        <p>Initial release: multitrack timeline, mixer, DSP effects chain, and WAV/FLAC/MP3 export.</p>
+      </description>
+    </release>
+  </releases>
+</component>

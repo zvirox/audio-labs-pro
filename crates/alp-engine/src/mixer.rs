@@ -141,6 +141,7 @@ pub struct Mixer {
     track_peak: Vec<f32>,
     track_sum: Vec<f64>,
     track_samples: Vec<u64>,
+    master_plugin_chain: Option<alp_plugin::TrackPluginChain>,
 }
 
 impl Mixer {
@@ -193,7 +194,13 @@ impl Mixer {
             track_peak: vec![0.0; track_count],
             track_sum: vec![0.0; track_count],
             track_samples: vec![0; track_count],
+            master_plugin_chain: None,
         }
+    }
+
+    /// Attach a plugin processing chain to the master bus.
+    pub fn set_master_plugin_chain(&mut self, chain: Option<alp_plugin::TrackPluginChain>) {
+        self.master_plugin_chain = chain;
     }
 
     /// Track and master level meters.
@@ -337,6 +344,15 @@ impl Mixer {
             for sample in &mut out[..written_samples] {
                 *sample *= self.master_gain;
             }
+        }
+        if let Some(chain) = &mut self.master_plugin_chain {
+            let ctx = alp_plugin::ProcessContext {
+                sample_rate: self.scene.sample_rate(),
+                num_frames: written_frames,
+                frame_position: start,
+                is_playing: true,
+            };
+            let _ = chain.process_interleaved(&mut out[..written_samples], channels, &ctx);
         }
         if let Some(limiter) = &mut self.master_limiter {
             limiter.process(&mut out[..written_samples]);

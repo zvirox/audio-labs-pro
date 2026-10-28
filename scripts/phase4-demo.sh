@@ -50,6 +50,12 @@ echo "== render master == "
 "$alp" render "$work/p" "$work/mix.wav" --format wav --bit-depth int24 --dither triangular >/dev/null
 "$alp" render-stems "$work/p" --output-dir "$work/stems" --format wav --bit-depth int24 --dither triangular
 
+echo "== render presets =="
+"$alp" render "$work/p" "$work/podcast.flac" --preset podcast >/dev/null
+test -f "$work/podcast.flac"
+"$alp" render "$work/p" "$work/vo.wav" --preset voice-over >/dev/null
+test -f "$work/vo.wav"
+
 echo "== verify stems =="
 test "$(find "$work/stems" -name '*.wav' | wc -l)" -ge 1
 "$alp" null-test "$work/mix.wav" "$work/mix.wav" --tolerance 0.001

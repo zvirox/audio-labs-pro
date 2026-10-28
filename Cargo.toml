@@ -17,6 +17,9 @@ alp-engine = { path = "crates/alp-engine" }
 alp-media = { path = "crates/alp-media" }
 alp-voice = { path = "crates/alp-voice" }
 alp-ui-kit = { path = "crates/alp-ui-kit" }
+alp-api = { path = "crates/alp-api" }
+alp-mcp = { path = "crates/alp-mcp" }
+alp-plugin = { path = "crates/alp-plugin" }
 
 anyhow = "1.0"
 clap = { version = "4.5", features = ["derive"] }
@@ -24,6 +27,7 @@ cpal = "0.18.2"
 dirs = "7.0.0"
 flacenc = { version = "0.5.1", default-features = false }
 iced = { version = "=0.14.0", features = ["canvas", "advanced"] }
+libloading = "0.8.9"
 lilt = "=0.8.2"
 hound = "3.5.1"
 proptest = "1.12.0"
@@ -50,7 +54,7 @@ uuid = { version = "1.27", features = ["serde", "v4"] }
 x11rb = "0.13.2"
 
 [workspace.lints.rust]
-unsafe_code = "forbid"
+unsafe_code = "deny"
 
 [workspace.lints.clippy]
 dbg_macro = "deny"

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-audio-labs-pro">
+    <comment>Audio Labs Pro Project</comment>
+    <glob pattern="*.alp"/>
+    <icon name="io.github.zvirox.AudioLabsPro"/>
+    <sub-class-of type="application/json"/>
+  </mime-type>
+  <mime-type type="application/x-audio-labs-pro-voice">
+    <comment>Audio Labs Pro Voice Profile Archive</comment>
+    <glob pattern="*.alpvoice"/>
+    <icon name="io.github.zvirox.AudioLabsPro"/>
+    <sub-class-of type="application/zip"/>
+  </mime-type>
+</mime-info>

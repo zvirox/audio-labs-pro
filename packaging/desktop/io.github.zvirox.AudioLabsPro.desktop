@@ -1,0 +1,23 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Audio Labs Pro
+GenericName=Voice Audio Workstation
+Comment=Professional Voice Audio Workstation with speech synthesis, transcription, and multi-track mixing
+Exec=audio-labs-pro %F
+Icon=io.github.zvirox.AudioLabsPro
+Terminal=false
+StartupNotify=true
+StartupWMClass=audio-labs-pro
+Categories=AudioVideo;Audio;AudioVideoEditing;Recorder;
+MimeType=application/x-audio-labs-pro;application/x-audio-labs-pro-voice;audio/wav;audio/x-wav;audio/flac;audio/mpeg;
+Keywords=audio;voice;editor;daw;podcast;transcribe;tts;speech;mixing;recording;cloning;dsp;
+Actions=NewProject;VoiceLab;
+
+[Desktop Action NewProject]
+Name=New Project
+Exec=audio-labs-pro --new-project
+
+[Desktop Action VoiceLab]
+Name=Open Voice Lab
+Exec=audio-labs-pro --panel voice_lab

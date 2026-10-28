@@ -10,10 +10,7 @@ use alp_core::{
     ProjectPaths, Source, SourceId, Track, TrackId, secs_to_frames,
 };
 use alp_engine::{MixScene, SourceAudio, play_scene, render_scene};
-use alp_media::{
-    AudioMetadata, DitherMode, ExportFormat, ExportSettings, WavBitDepth, decode, resample,
-    write_wav,
-};
+use alp_media::{AudioMetadata, ExportSettings, WavBitDepth, decode, resample, write_wav};
 use anyhow::{Context, Result, bail};
 
 /// Create a project directory with one empty track.
@@ -343,29 +340,52 @@ pub fn recover_project(project_path: &Path, json: bool) -> Result<()> {
     Ok(())
 }
 
+/// Options for rendering a project or stems.
+#[derive(Debug, Clone)]
+pub struct RenderOptions<'a> {
+    pub preset: Option<&'a str>,
+    pub format: &'a str,
+    pub bit_depth: &'a str,
+    pub sample_rate: Option<u32>,
+    pub dither: &'a str,
+    pub metadata: AudioMetadata,
+}
+
+fn resolve_export_settings(options: &RenderOptions<'_>) -> Result<ExportSettings> {
+    if let Some(preset_name) = options.preset {
+        let preset: alp_media::ExportPreset = preset_name.parse()?;
+        let mut settings = preset.settings();
+        if options.format != "wav" {
+            settings.format = options.format.parse()?;
+        }
+        if options.bit_depth != "int16" {
+            settings.bit_depth = options.bit_depth.parse()?;
+        }
+        if let Some(sr) = options.sample_rate {
+            settings.sample_rate = Some(sr);
+        }
+        if options.dither != "none" {
+            settings.dither = options.dither.parse()?;
+        }
+        settings.metadata = options.metadata.clone();
+        Ok(settings)
+    } else {
+        Ok(ExportSettings {
+            format: options.format.parse()?,
+            bit_depth: options.bit_depth.parse()?,
+            sample_rate: options.sample_rate,
+            dither: options.dither.parse()?,
+            metadata: options.metadata.clone(),
+        })
+    }
+}
+
 /// Render a project to WAV or FLAC with optional resampling and tags.
-pub fn render(
-    project_path: &Path,
-    output: &Path,
-    format: &str,
-    bit_depth: &str,
-    sample_rate: Option<u32>,
-    dither: &str,
-    metadata: AudioMetadata,
-) -> Result<()> {
-    let format: ExportFormat = format.parse()?;
-    let depth: WavBitDepth = bit_depth.parse()?;
-    let dither: DitherMode = dither.parse()?;
+pub fn render(project_path: &Path, output: &Path, options: RenderOptions<'_>) -> Result<()> {
+    let settings = resolve_export_settings(&options)?;
     let (_, project, scene) = load_scene(project_path)?;
     let started = Instant::now();
     let buffer = render_scene(&scene, alp_engine::DEFAULT_BLOCK_FRAMES).context("render scene")?;
-    let settings = ExportSettings {
-        format,
-        bit_depth: depth,
-        sample_rate,
-        dither,
-        metadata,
-    };
     let report = alp_media::export(output, &buffer, &settings).context("export audio")?;
     println!("rendered {}", output.display());
     println!("project:     {} ({})", project.name, project.id);
@@ -380,7 +400,7 @@ pub fn render(
         "format:      {} · {} bit",
         report.format, report.bits_per_sample
     );
-    println!("dither:      {dither}", dither = dither.label());
+    println!("dither:      {dither}", dither = settings.dither.label());
     println!("elapsed:     {:.3}s", started.elapsed().as_secs_f64());
     Ok(())
 }
@@ -440,26 +460,10 @@ pub fn default_render_path(project: &ProjectPaths, name: &str) -> PathBuf {
 pub fn render_stems(
     project_path: &Path,
     output_dir: Option<&Path>,
-    format: &str,
-    bit_depth: &str,
-    sample_rate: Option<u32>,
-    dither: &str,
-    metadata: alp_media::AudioMetadata,
+    options: RenderOptions<'_>,
 ) -> Result<()> {
-    let format: alp_media::ExportFormat =
-        format.parse().map_err(|error| anyhow::anyhow!("{error}"))?;
-    let depth: alp_media::WavBitDepth = bit_depth
-        .parse()
-        .map_err(|error| anyhow::anyhow!("{error}"))?;
-    let dither: alp_media::DitherMode =
-        dither.parse().map_err(|error| anyhow::anyhow!("{error}"))?;
-    let settings = alp_media::ExportSettings {
-        format,
-        bit_depth: depth,
-        sample_rate,
-        dither,
-        metadata: metadata.clone(),
-    };
+    let settings = resolve_export_settings(&options)?;
+    let metadata = options.metadata;
 
     let (paths, project) = ProjectPaths::open(project_path)
         .with_context(|| format!("open {}", project_path.display()))?;
@@ -509,7 +513,7 @@ pub fn render_stems(
         } else {
             slug.to_owned()
         };
-        let file_name = format!("{slug}.{}", format.label());
+        let file_name = format!("{slug}.{}", settings.format.label());
         let output = output_dir.join(file_name);
         let mut track_metadata = metadata.clone();
         if track_metadata.title.is_none() {

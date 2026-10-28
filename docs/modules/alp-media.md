@@ -15,7 +15,7 @@ The UI and engine never parse media containers themselves.
 - `resample`
 - `PeakBuilder`, `PeakPyramid`, `PeakLevel`, `PeakCache`, `CacheStatus`
 - `write_wav`, `WavBitDepth` (`Int16`, `Int24`, `Float32`)
-- `ExportFormat`, `AudioMetadata`, `ExportSettings`, `ExportReport`, `export`
+- `ExportFormat`, `ExportPreset`, `AudioMetadata`, `ExportSettings`, `ExportReport`, `export`
 - `DitherMode`, `Quantizer` (internal)
 - `NullReport`, `compare`
 - `write_test_tone`

@@ -2,45 +2,45 @@
 
 ## Purpose
 
-Defines the effect boundary shared by live playback and offline rendering. Phase
-1 ships the `Effect` trait and a reference linear `Gain` stage so the engine,
-UI and export paths can be wired before the real processors exist.
+Defines the digital signal processing effect boundaries and real-time audio processors shared by live playback, offline rendering, and the command-line interface. Provides biquad filtering, parametric EQ, dynamics (compressor, noise gate, limiter), specialized vocal cleanup (de-esser, de-hum, de-click), ITU-R BS.1770 LUFS loudness metering, and composable effect chains.
 
 ## Public API
 
 - `Effect` trait: `name`, `prepare`, `process`, `reset`
-- `Gain::new`, `Gain::gain`, and its `Effect` implementation
+- `Gain`: linear gain stage
+- `Biquad`, `FilterType`: RBJ biquad filters (HighPass, LowPass, Peaking, Shelves, Notch, BandPass)
+- `ParametricEq`, `EqBand`: multi-band parametric equalizer
+- `Compressor`: dynamic range compressor with soft-knee and makeup gain
+- `NoiseGate`: downward noise gate with attack/hold/release envelopes
+- `Limiter`: peak limiter with fast attack and smooth recovery
+- `DeEsser`: sibilance detector and attenuator
+- `DeHum`: multi-harmonic mains hum notch filter (50/60 Hz)
+- `DeClick`: transient derivative spike detector and polynomial interpolator
+- `KWeighting`, `measure_lufs`, `calculate_normalization_gain`: BS.1770 loudness measurement and normalization
+- `EffectChain`, `VoiceCleanup`: composite effect execution and one-click vocal cleanup chain
 
 ## Data flow
 
-The engine will call `prepare(sample_rate, channels)` before a stream, then
-`process(&mut [f32])` on interleaved blocks in place. `reset` clears delay lines
-and envelopes when the transport seeks. Phase 1 uses `Gain` only as a boundary
-test; project clip gain is applied directly by the mixer.
+The audio playback engine and offline renderers call `prepare(sample_rate, channels)` before audio streaming, followed by zero-allocation `process(&mut [f32])` passes on interleaved blocks in place. `reset` flushes filter state, envelopes, and delay lines on transport seek.
 
 ## Allowed dependencies
 
-`alp-core` only (for `CoreError` validation). No external DSP crate yet.
+- `alp-core` (for `CoreError`)
+- Standard library math
 
 ## Threading / real-time notes
 
-`process` is intended to run on the audio callback, so implementations must not
-allocate, lock, log or block. All state must be allocated in `prepare` or the
-constructor. Phase 1 `Gain` is a single multiplication and is real-time safe.
+`Effect::process` runs directly on the audio callback. All implementations are strictly zero-allocation, lock-free, and non-blocking. Filter buffers and internal channel states are pre-allocated during `prepare` or construction.
 
 ## Error handling
 
-`Gain::new` rejects non-finite and negative values with
-`CoreError::validation`. Future processors will return a construction error and
-keep per-block processing infallible.
+Constructors validate parameters and return `CoreError::Validation` if invalid or non-finite. Block-level processing is infallible and handles denormals.
 
 ## Testing
 
-A unit test verifies gain scaling. Future effects will add impulse-response,
-null-test and parameter-smoothing tests.
+Unit tests across all submodules verify frequency-domain attenuation, dynamics ballistics, transient repair, LUFS calculation accuracy, and limiter ceiling compliance. An automated null test in `scripts/phase5-demo.sh` verifies processing determinism.
 
 ## Known limits
 
-- No EQ, dynamics, denoise or loudness processors yet.
-- No parameter automation, oversampling or latency reporting.
-- `EffectRef` in `alp-core` is stored but not rendered.
+- Mono/stereo interleaved processing (surround formats not yet implemented).
+- Latency reporting and lookahead delay compensation will be expanded in future phases.

@@ -1,6 +1,6 @@
 # Phase 4 results — multitrack timeline and mixing
 
-Status: implementation in progress; backend and editor commands are green. Live cross-track drag and hardware multitrack capture still remain.
+Status: multitrack timeline, mixing, stems, crossfades, delivery presets, and markers completed.
 
 ## Automated/headless checks
 
@@ -12,8 +12,10 @@ Status: implementation in progress; backend and editor commands are green. Live 
 | track gain/pan | 0.75 / +0.25 · master_gain 0.85 |
 | render null check | max diff 0.00000000 |
 | stem export | 1 non-empty track, 144,000 frames |
-| workspace tests | 154 passing |
-| fmt / clippy | green |
+| delivery presets | Podcast (FLAC), Voice-Over (WAV) generated and verified |
+| workspace tests | 158 passing |
+| fmt / clippy | green (`-D warnings` enforced) |
+| guard scripts | file-length (≤1,500 loc), check-deps, check-docs (75 docs), check-ui |
 
 Engine test `renders_ten_tracks` processes a 10-track scene with no failure.
 `render-stems` exports each track independently as WAV or FLAC.
@@ -22,11 +24,12 @@ Engine test `renders_ten_tracks` processes a 10-track scene with no failure.
 
 - `ALP_AUTOCLOSE_SECS=3 ALP_FORCE_TINT=1 cargo run -p alp-ui` exits cleanly.
 - Audio playback now uses `play_scene_live`, feeding transport position, peak, RMS and per-track meters.
+- Inspector provides selectable crossfade intervals (0.5s, 1.0s) and track shifts.
+- Export Queue supports direct preset buttons: Podcast, Voice-Over, Audiobook.
+- Timeline dynamically renders project tracks, markers, and loop ranges.
 
 ## Known limits
 
-- Mixer meters are driven from playback and render, but no multi-input capture exists yet.
-- Dragging clips between tracks is not pointer-based; `MoveClip`/`MoveClip to next/previous track` commands expose track movement.
-- Ripple is selected through a toggle; the full inspector affordances are still minimal.
-- Crossfade command is implemented and tested, but its inspector UI is a single 1.0 s trigger.
-- OGG/MP3 export remains blocked by encoder and licence verification.
+- Mixer meters are driven from playback and render, but multi-hardware-interface capture is planned for after Phase 5.
+- Dragging clips across tracks uses inspector buttons and keyboard commands rather than pointer drag-and-drop.
+- OGG/MP3 export remains blocked by encoder and license verification per ADR 0005.

@@ -14,12 +14,15 @@ ALLOWED = {
     "alp-core": set(),
     "alp-media": {"alp-core"},
     "alp-dsp": {"alp-core"},
-    "alp-engine": {"alp-core", "alp-media"},
+    "alp-plugin": {"alp-core"},
+    "alp-engine": {"alp-core", "alp-media", "alp-plugin"},
     "alp-voice": {"alp-core", "alp-media"},
     "alp-infer": {"alp-core", "alp-media", "alp-voice"},
     "alp-ui-kit": set(),
-    "alp-ui": {"alp-core", "alp-engine", "alp-media", "alp-ui-kit", "alp-voice"},
-    "alp-cli": {"alp-core", "alp-dsp", "alp-engine", "alp-media", "alp-voice"},
+    "alp-api": {"alp-core", "alp-dsp", "alp-engine", "alp-media", "alp-plugin", "alp-voice"},
+    "alp-mcp": {"alp-api", "alp-core"},
+    "alp-ui": {"alp-api", "alp-core", "alp-engine", "alp-media", "alp-plugin", "alp-ui-kit", "alp-voice"},
+    "alp-cli": {"alp-core", "alp-dsp", "alp-engine", "alp-media", "alp-plugin", "alp-voice"},
 }
 
 result = subprocess.run(

@@ -62,6 +62,6 @@ pub use markers::{
 pub use project::RenameProject;
 pub use source::{AddSource, RemoveSource};
 pub use track::{
-    AddTrack, MoveTrack, RemoveTrack, RenameTrack, SetTrackArm, SetTrackColor, SetTrackGain,
-    SetTrackMuted, SetTrackPan, SetTrackSolo,
+    AddTrack, MoveTrack, RemoveTrack, RenameTrack, SetTrackArm, SetTrackColor, SetTrackEffects,
+    SetTrackGain, SetTrackMuted, SetTrackPan, SetTrackSolo,
 };

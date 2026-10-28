@@ -12,6 +12,9 @@ publish.workspace = true
 alp-core.workspace = true
 alp-media.workspace = true
 alp-voice.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+thiserror.workspace = true
 
 [lints]
 workspace = true

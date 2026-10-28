@@ -11,7 +11,14 @@ publish.workspace = true
 [dependencies]
 alp-core.workspace = true
 alp-media.workspace = true
+dirs.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
 thiserror.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [lints]
 workspace = true

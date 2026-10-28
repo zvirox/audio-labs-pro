@@ -110,6 +110,9 @@ pub enum Command {
         project: PathBuf,
         /// Output media path.
         output: PathBuf,
+        /// Delivery preset: `podcast`, `audiobook` or `voice-over`.
+        #[arg(long)]
+        preset: Option<String>,
         /// Container: `wav` or `flac`.
         #[arg(long, default_value = "wav")]
         format: String,
@@ -143,6 +146,9 @@ pub enum Command {
         /// Output directory for stem files.
         #[arg(long)]
         output_dir: Option<PathBuf>,
+        /// Delivery preset: `podcast`, `audiobook` or `voice-over`.
+        #[arg(long)]
+        preset: Option<String>,
         /// Container: `wav` or `flac`.
         #[arg(long, default_value = "wav")]
         format: String,
@@ -246,6 +252,231 @@ pub enum Command {
         /// Maximum absolute sample difference (linear, 0..=1).
         #[arg(long, default_value_t = 0.001)]
         tolerance: f32,
+        /// Emit machine-readable JSON.
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Measure ITU-R BS.1770 integrated loudness (LUFS).
+    Lufs {
+        /// Input media file.
+        input: PathBuf,
+        /// Emit machine-readable JSON.
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Apply the One-Click Voice Cleanup chain.
+    Cleanup {
+        /// Input media file.
+        input: PathBuf,
+        /// Output WAV path.
+        output: PathBuf,
+        /// Mains hum frequency in Hz (50 or 60).
+        #[arg(long, default_value_t = 50.0)]
+        mains_freq: f32,
+    },
+
+    /// Synthesize speech from text using the TTS engine.
+    Tts {
+        /// Text string to speak.
+        text: String,
+        /// Output audio WAV path.
+        output: PathBuf,
+        /// Target voice identifier (defaults to "aura").
+        #[arg(long, default_value = "aura")]
+        voice: String,
+        /// Speed multiplier (default 1.0).
+        #[arg(long, default_value_t = 1.0)]
+        speed: f32,
+    },
+
+    /// Manage local and downloadable AI models.
+    #[command(subcommand)]
+    Model(ModelCommand),
+
+    /// Render multi-line scripts to audio.
+    #[command(subcommand)]
+    Script(ScriptCommand),
+
+    /// Transcribe speech audio into text, SRT, or WebVTT.
+    Transcribe {
+        /// Input audio file.
+        input: PathBuf,
+        /// Output file path (defaults to stdout).
+        #[arg(long, short)]
+        out: Option<PathBuf>,
+        /// Export format: "txt", "srt", or "vtt" (defaults to "txt").
+        #[arg(long, default_value = "txt")]
+        format: String,
+        /// Emit machine-readable JSON.
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Run Voice Activity Detection on an audio file and output speech intervals.
+    Vad {
+        /// Input audio file.
+        input: PathBuf,
+        /// Threshold in dBFS (defaults to -32.0).
+        #[arg(long, default_value_t = -32.0, allow_hyphen_values = true)]
+        threshold_db: f32,
+        /// Hangover duration in milliseconds (defaults to 300).
+        #[arg(long, default_value_t = 300)]
+        hangover_ms: u32,
+        /// Minimum speech duration in milliseconds (defaults to 100).
+        #[arg(long, default_value_t = 100)]
+        min_speech_ms: u32,
+        /// Emit machine-readable JSON.
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Manage reusable voice profiles, cloning, and design.
+    #[command(subcommand)]
+    Profile(ProfileCommand),
+
+    /// Scan, list, and inspect CLAP and LV2 audio plugins.
+    #[command(subcommand)]
+    Plugin(PluginCommand),
+
+    /// Probe system hardware capabilities and model tier recommendations.
+    Hardware {
+        /// Emit machine-readable JSON.
+        #[arg(long)]
+        json: bool,
+    },
+}
+
+/// Model manager subcommands.
+#[derive(Debug, clap::Subcommand)]
+pub enum ModelCommand {
+    /// List all models in the catalogue.
+    List {
+        /// Emit machine-readable JSON.
+        #[arg(long)]
+        json: bool,
+    },
+    /// Verify an installed model against its checksum.
+    Verify {
+        /// Model identifier (e.g. kokoro-82m).
+        model: String,
+    },
+    /// Acknowledge and accept the license terms for a model.
+    AcceptLicense {
+        /// Model identifier.
+        model: String,
+    },
+}
+
+/// Script rendering subcommands.
+#[derive(Debug, clap::Subcommand)]
+pub enum ScriptCommand {
+    /// Render a script file into speech audio.
+    Render {
+        /// Path to JSON script file.
+        script: PathBuf,
+        /// Output WAV path (if stitched) or output directory (if stems).
+        output: PathBuf,
+        /// Stitch lines together into a single audio file instead of exporting individual stems.
+        #[arg(long)]
+        stitch: bool,
+    },
+}
+
+/// Voice profile subcommands.
+#[derive(Debug, clap::Subcommand)]
+pub enum ProfileCommand {
+    /// List all installed voice profiles.
+    List {
+        /// Emit machine-readable JSON.
+        #[arg(long)]
+        json: bool,
+    },
+    /// Show metadata for a voice profile.
+    Info {
+        /// Profile identifier.
+        id: String,
+        /// Emit machine-readable JSON.
+        #[arg(long)]
+        json: bool,
+    },
+    /// Audit a reference recording against cloning quality requirements.
+    CheckReference {
+        /// Input reference WAV file.
+        input: PathBuf,
+        /// Emit machine-readable JSON.
+        #[arg(long)]
+        json: bool,
+    },
+    /// Design a new voice profile from a natural language prompt.
+    Design {
+        /// Friendly name for the voice.
+        name: String,
+        /// Prompt describing the vocal qualities and character.
+        #[arg(long)]
+        prompt: String,
+        /// Comma-separated tags.
+        #[arg(long, value_delimiter = ',')]
+        tags: Vec<String>,
+        /// Emit machine-readable JSON.
+        #[arg(long)]
+        json: bool,
+    },
+    /// Export a voice profile to an `.alpvoice` package.
+    Export {
+        /// Profile identifier.
+        id: String,
+        /// Destination `.alpvoice` file path.
+        output: PathBuf,
+    },
+    /// Import a voice profile from an `.alpvoice` package.
+    Import {
+        /// Input `.alpvoice` file path.
+        input: PathBuf,
+        /// Emit machine-readable JSON.
+        #[arg(long)]
+        json: bool,
+    },
+    /// Compare reference audio against generated speech.
+    Compare {
+        /// Reference recording path.
+        reference: PathBuf,
+        /// Generated speech path.
+        generated: PathBuf,
+        /// Emit machine-readable JSON.
+        #[arg(long)]
+        json: bool,
+    },
+    /// Delete a voice profile from the local library.
+    Delete {
+        /// Profile identifier.
+        id: String,
+    },
+}
+
+/// Audio plugin subcommands (CLAP and LV2 hosting).
+#[derive(Debug, clap::Subcommand)]
+pub enum PluginCommand {
+    /// Scan directories for installed CLAP and LV2 plugins.
+    Scan {
+        /// Optional custom directory to scan instead of standard paths.
+        #[arg(long)]
+        path: Option<PathBuf>,
+        /// Emit machine-readable JSON.
+        #[arg(long)]
+        json: bool,
+    },
+    /// List all discovered and virtual audio plugins.
+    List {
+        /// Emit machine-readable JSON.
+        #[arg(long)]
+        json: bool,
+    },
+    /// Inspect a plugin's exposed parameters and metadata.
+    Inspect {
+        /// Plugin ID or URI.
+        id: String,
         /// Emit machine-readable JSON.
         #[arg(long)]
         json: bool,

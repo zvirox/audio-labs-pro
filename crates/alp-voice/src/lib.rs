@@ -1,10 +1,45 @@
-//! `alp-voice` — TTS, STT and cloning traits plus the model manifest types.
-//!
-//! Phase 1 defines the boundary only. Backends arrive with the model manager in
-//! Phase 6 and the cloning tier in Phase 8. Implementations live in `alp-infer`
-//! and reach the app over the Unix-socket protocol.
+//! `alp-voice` — TTS, STT and cloning traits, model manager, protocol and script mode.
+
+pub mod cache;
+pub mod client;
+pub mod compare;
+pub mod design;
+pub mod hardware;
+pub mod lexicon;
+pub mod manager;
+pub mod model;
+pub mod profile;
+pub mod protocol;
+pub mod reference;
+pub mod script;
+pub mod sha256;
+pub mod stt;
+pub mod text;
+pub mod transcript;
+pub mod vad;
+pub mod zip;
+
+pub use cache::VoiceGenerationCache;
+pub use client::{BuiltinAcousticBackend, InferClient};
+pub use compare::{VoiceComparison, compare_audio};
+pub use design::{VoiceDesignRequest, design_voice};
+pub use hardware::{HardwareProfile, ModelTier};
+pub use lexicon::{MarkupParser, PronunciationDictionary, SpeechToken};
+pub use manager::{ModelManager, ModelManagerConfig};
+pub use model::{
+    ModelFile, ModelId, ModelKind, ModelLicense, ModelManifest, ModelStatus, standard_catalogue,
+};
+pub use profile::{ConsentRecord, ProfileStore, VoiceParams, VoiceProfile};
+pub use protocol::{InferRequest, InferResponse, default_socket_path};
+pub use reference::{ReferenceQualityReport, analyze_reference_quality};
+pub use script::{LineStatus, Script, ScriptLine};
+pub use stt::{BuiltinSttBackend, DictationEvent, DictationSession};
+pub use text::TextNormalizer;
+pub use transcript::Transcript;
+pub use vad::{VadConfig, VoiceActivityDetector, segment_speech};
 
 use alp_media::PcmBuffer;
+use serde::{Deserialize, Serialize};
 
 /// Error produced by a voice backend.
 #[derive(Debug, thiserror::Error)]
@@ -21,7 +56,7 @@ pub enum VoiceError {
 }
 
 /// Description of one selectable voice.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct VoiceInfo {
     /// Backend-local identifier.
     pub id: String,
@@ -34,7 +69,7 @@ pub struct VoiceInfo {
 }
 
 /// Origin of a voice.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum VoiceKind {
     /// Shipped with a lightweight model.
     Builtin,
@@ -45,7 +80,7 @@ pub enum VoiceKind {
 }
 
 /// One synthesis request.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TtsRequest {
     /// Text to speak.
     pub text: String,
@@ -84,23 +119,8 @@ pub trait CloneBackend: TtsBackend {
     ) -> Result<PcmBuffer, VoiceError>;
 }
 
-/// A reusable voice profile, independent of any project.
-#[derive(Debug, Clone, PartialEq)]
-pub struct VoiceProfile {
-    /// Stable profile id.
-    pub id: String,
-    /// Friendly name.
-    pub name: String,
-    /// Built-in, cloned or designed.
-    pub kind: VoiceKind,
-    /// Backend that produced and can use it.
-    pub backend: String,
-    /// Attestation that the speaker consented to cloning.
-    pub consent_record: Option<String>,
-}
-
 /// A transcription segment with timestamps in frames.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TranscriptSegment {
     /// Start frame in the input buffer.
     pub start_frame: u64,

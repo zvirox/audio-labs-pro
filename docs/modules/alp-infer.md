@@ -2,44 +2,38 @@
 
 ## Purpose
 
-The out-of-process inference worker. Keeping ONNX Runtime and GGUF model
-loading in a separate process means an out-of-memory condition or GPU driver
-crash cannot take down the editor or the audio stream. Phase 1 establishes the
-binary and the process boundary; models arrive in Phase 6.
+The out-of-process inference worker for Audio Labs Pro. Listens on a Unix domain socket, serves speech synthesis requests, and isolates neural model memory, ONNX runtimes, and compute failures from the UI and audio playback processes.
 
 ## Public API
 
-The crate is a binary with no library API. Phase 1 `main` prints a notice and
-exits successfully so packaging and CI can build it.
+Binary executable with command-line interface:
+- `alp-infer [--socket <PATH>] [--once] [--help]`
 
 ## Data flow
 
-Planned: the worker reads requests from a versioned Unix socket, runs TTS, STT
-or cloning, and returns audio or transcripts. `alp-voice` owns the protocol
-types. The worker never reads project files or touches the audio device.
+1. Binds to `$XDG_RUNTIME_DIR/alp-infer.sock` (or specified socket path).
+2. Reads framed `InferRequest` messages (`Ping`, `GetStatus`, `LoadModel`, `Synthesize`, `Cancel`, `Shutdown`).
+3. Executes speech synthesis via `BuiltinAcousticBackend` or neural backends.
+4. Streams progress updates and returns synthesized audio frames as `InferResponse::Audio`.
 
 ## Allowed dependencies
 
-`alp-core`, `alp-media` and `alp-voice` are allowed by the architecture. No
-other ALP crate may depend on `alp-infer`; it is reached only at runtime over
-the socket.
+- `alp-core`, `alp-media`, `alp-voice`
+- `serde`, `serde_json`, `thiserror`
+- Standard library networking and filesystem
 
 ## Threading / real-time notes
 
-Model inference and audio model I/O run on worker threads inside this process.
-The real-time audio callback never calls into inference.
+Inference is CPU/worker-bound within this isolated process. It never interacts with the audio callback thread or audio devices.
 
 ## Error handling
 
-Phase 1 exits successfully after printing a notice. The future protocol will
-return typed error responses and keep the process alive after a failed request.
+Request-level failures return typed `InferResponse::Error` payloads without crashing the daemon. Clean socket cleanup occurs on shutdown.
 
 ## Testing
 
-CI builds the binary. Backend and protocol tests arrive with the runtime in
-Phase 6.
+Acceptance tested in `scripts/phase6-demo.sh` via socket connection, ping/pong health checks, and audio generation.
 
 ## Known limits
 
-- No model runtime, socket server or manifest loading yet.
-- No GPU selection, memory limits or crash-recovery policy yet.
+- Single-worker event loop; multi-worker pool scaling will be introduced for heavy batch workloads.

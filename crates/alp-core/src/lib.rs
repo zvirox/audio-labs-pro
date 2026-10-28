@@ -42,8 +42,8 @@ pub use commands::{
     AddClip, AddMarker, AddRegion, AddSource, AddTrack, MoveClip, MoveTrack, RemoveClip,
     RemoveMarker, RemoveRegion, RemoveSource, RemoveTrack, RenameMarker, RenameProject,
     RenameRegion, RenameTrack, SetClipEffects, SetClipEnvelope, SetClipFades, SetClipGain,
-    SetLoopRange, SetTrackArm, SetTrackColor, SetTrackGain, SetTrackMuted, SetTrackPan,
-    SetTrackSolo, SplitClip, TrimClip,
+    SetLoopRange, SetTrackArm, SetTrackColor, SetTrackEffects, SetTrackGain, SetTrackMuted,
+    SetTrackPan, SetTrackSolo, SplitClip, TrimClip,
 };
 pub use config::AppDirs;
 pub use edit_commands::{

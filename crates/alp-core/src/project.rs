@@ -384,6 +384,9 @@ pub struct Track {
     /// Whether the track is armed for recording.
     #[serde(default)]
     pub armed: bool,
+    /// Effect chain on this track.
+    #[serde(default)]
+    pub effects: Vec<EffectRef>,
     /// Clips in timeline order.
     pub clips: Vec<Clip>,
 }
@@ -401,6 +404,7 @@ impl Track {
             solo: false,
             color: [86, 132, 196],
             armed: false,
+            effects: Vec::new(),
             clips: Vec::new(),
         }
     }
@@ -589,17 +593,34 @@ pub struct EnvelopePoint {
     pub gain: f32,
 }
 
-/// Placeholder for an effect inserted on a clip.
+/// Placeholder for an effect inserted on a track or clip.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EffectRef {
     /// Stable identifier used by the effects UI.
     pub id: String,
-    /// Effect type understood by `alp-dsp`.
+    /// Effect type understood by `alp-dsp` or `alp-plugin` (e.g. `clap:<id>`, `lv2:<uri>`, `eq`, `compressor`).
     pub kind: String,
     /// Whether the effect is bypassed.
     pub enabled: bool,
     /// Serialized parameters.
     pub params: BTreeMap<String, f64>,
+    /// Optional serialized plugin state or JSON payload for hosted plugins.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub state: Option<String>,
+}
+
+impl EffectRef {
+    /// Create a new effect reference.
+    #[must_use]
+    pub fn new(id: impl Into<String>, kind: impl Into<String>) -> Self {
+        Self {
+            id: id.into(),
+            kind: kind.into(),
+            enabled: true,
+            params: BTreeMap::new(),
+            state: None,
+        }
+    }
 }
 
 #[cfg(test)]

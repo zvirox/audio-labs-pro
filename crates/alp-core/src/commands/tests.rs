@@ -248,3 +248,25 @@ fn crossfade_adjacent_clips_is_undoable() {
     stack.undo(&mut project).expect("undo");
     assert_eq!(serde_json::to_string(&project).expect("json"), initial);
 }
+
+#[test]
+fn track_effects_round_trip() {
+    let (mut project, track_id, _) = fixture();
+    let initial = serde_json::to_string(&project).expect("json");
+    let mut stack = CommandStack::new();
+
+    let effect = EffectRef::new("eq-1", "eq");
+
+    stack
+        .execute(
+            &mut project,
+            Box::new(SetTrackEffects::new(track_id, vec![effect.clone()])),
+        )
+        .expect("set track effects");
+    assert_eq!(project.tracks[0].effects.len(), 1);
+    assert_eq!(project.tracks[0].effects[0].id, "eq-1");
+
+    stack.undo(&mut project).expect("undo effects");
+    assert!(project.tracks[0].effects.is_empty());
+    assert_eq!(serde_json::to_string(&project).expect("json"), initial);
+}

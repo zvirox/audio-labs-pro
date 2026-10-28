@@ -4,3 +4,4 @@
 *.wav.tmp
 *.tmp
 *.peaks
+graphify-out/

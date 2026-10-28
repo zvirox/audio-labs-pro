@@ -453,3 +453,47 @@ impl Command for SetTrackArm {
         Ok(())
     }
 }
+
+/// Replace a track's effect chain.
+#[derive(Debug)]
+pub struct SetTrackEffects {
+    track_id: TrackId,
+    effects: Vec<EffectRef>,
+    previous: Option<Vec<EffectRef>>,
+}
+
+impl SetTrackEffects {
+    /// Build the command.
+    #[must_use]
+    pub fn new(track_id: TrackId, effects: Vec<EffectRef>) -> Self {
+        Self {
+            track_id,
+            effects,
+            previous: None,
+        }
+    }
+}
+
+impl Command for SetTrackEffects {
+    fn label(&self) -> &'static str {
+        "Set track effects"
+    }
+
+    fn apply(&mut self, project: &mut Project) -> Result<(), CommandError> {
+        let index = track_index(project, self.track_id)?;
+        self.previous = Some(std::mem::replace(
+            &mut project.tracks[index].effects,
+            self.effects.clone(),
+        ));
+        Ok(())
+    }
+
+    fn revert(&mut self, project: &mut Project) -> Result<(), CommandError> {
+        let previous = self.previous.take().ok_or(CommandError::InconsistentState(
+            "track effects were not changed",
+        ))?;
+        let index = track_index(project, self.track_id)?;
+        project.tracks[index].effects = previous;
+        Ok(())
+    }
+}
