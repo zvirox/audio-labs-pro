@@ -2,35 +2,41 @@
 
 ## Purpose
 
-Renders the Generate workspace: the prompt box, profile picker, render status,
-take history with play/insert/delete actions, and an engine/storage summary.
+Renders the Generate workspace: the voice profile grid, the Generate Speech
+card (voice picker, prompt editor, generate/play/status) and the take history
+panel. Import Voice and Create Voice actions sit in the page header.
 
 ## Public API
 
 - `App::generate_workspace(&self, colors: ThemeColors) -> Element<'_, Message>`
+- Private helpers `generate_box`, `history_panel`, `history_row`.
 
 ## Data flow
 
-1. Reads `voice_text`, `profiles`, `selected_profile`, `history`, `generating`,
-   `voice_status` and `media_root` from `App`.
-2. Emits `GenerateTextInput`, `GenerateSpeech`, `SelectVoice`, `PlayHistory`,
-   `InsertHistory`, `DeleteHistory` and `ClearHistory`.
-3. All rendering is pure; playback and insertion are handled in `studio.rs`.
+1. Reads the profile library through `profile_grid(3, colors)`, plus
+   `voice_editor`, `voice_status`, `generating` and `history`.
+2. Emits `GenerateEditor` (text-editor action), `GenerateSpeech`,
+   `SelectVoice`, `PlayHistory`, `InsertHistory`, `DeleteHistory`,
+   `ClearHistory`, `ImportVoice` and `OpenCreateVoice`.
+3. All rendering is pure; generation, playback and insertion are handled in
+   `studio.rs`. The left column scrolls through `App::scroll`.
 
 ## Allowed dependencies
 
-- `iced::widget::{Space, column, container, row, scrollable, text, text_input}`
-- `alp-ui-kit::{ButtonKind, ThemeColors, components, fonts, tokens}`
-- `super::{App, Message, format_time}`, `super::workspace_layout::{card, header}`
+- `iced::widget` primitives, `alp-ui-kit` components/fonts/tokens
+- `super::{App, Message, format_time}`, `super::workspace_layout::header`
 
 ## Threading / real-time notes
 
-None. The view never synthesizes or decodes; it only reflects worker state.
+None. The view never synthesizes or decodes; it only reflects worker state and
+the status line. The prompt editor is an `iced` text editor whose `Action`
+message is forwarded.
 
 ## Error handling
 
-Shows an empty-state card when no take exists and disables the generate label
-while a render is running. Playback errors surface as toasts from the handler.
+The history panel shows an empty state until a take exists. Generate is a
+primary button that stays visible while working; the status line reports worker
+progress and failures. Playback errors surface as toasts from the handler.
 
 ## Testing
 
@@ -42,3 +48,5 @@ compile-checked with the rest of `alp-ui`.
 - `Play last` targets history index 0 even when the list is empty; the handler
   guards the case and shows no toast.
 - History rows are truncated to 110 characters for display only.
+- The profile grid is three columns inside the 11/20-width left column; a fourth
+  profile starts a new row.

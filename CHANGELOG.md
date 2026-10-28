@@ -5,28 +5,40 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
-### Changed (Seven-workspace retro shell)
+### Changed (Seven-workspace studio shell)
 
 - **Workspace shell:**
-  - Replaced the four workflow tabs with seven workspaces in a glyph navigation
-    rail: Generate, Stories, Captures, Voices, Effects, Models, Settings.
+  - Replaced the four workflow tabs with seven workspaces in a round-icon
+    navigation rail: Generate, Stories, Captures, Voices, Effects, Models, Settings.
   - The docked player is shared by every workspace; timeline, mixer and
     inspector stay available to the palette and AI clients.
   - `ALP_START_TAB=<slug>` pins the boot workspace for smoke screenshots.
+  - `ALP_START_OVERLAY=create-voice|consent|shortcuts|palette|wizard` pins a
+    modal for smoke screenshots.
 - **Visual language:**
-  - Retro “midnight walnut” dark palette (espresso surfaces, cream text,
-    burnt-orange accent, teal secondary) plus an “aged paper” light palette.
-  - Radii tokenised at 3/7/11, soft card shadows and letterpress-style headers.
+  - Studio graphite dark palette (near-black surfaces, graphite cards, one warm
+    gold accent, dark ink on filled buttons) plus a paper light palette.
+  - 80 px round-icon rail, 18 px rounded app frame with a 34 px title strip,
+    pill buttons and chips, 6/10/14/18 px radii and hairline borders.
+  - Profile cards compacted to 128 px with avatar, kind chip, one-line
+    description and compact glyph actions; `profile_grid` keeps partial rows at
+    equal column width.
+  - Every scrolling surface uses one themed scroller through `App::scroll`; the
+    command palette is now a styled, scrolling card.
   - Cards gain a shrink-to-fit variant so Settings, Models, Effects and Voices
     no longer stretch short content to the window height.
 - **Generate:**
-  - Text-to-speech prompt, voice selection, engine tier and prompt starters.
+  - Three-column voice card grid, prompt editor, profile picker, Generate and
+    Play last actions, plus a history panel with an empty state.
   - Generation runs on a worker; history rows play, insert into the edit
     session, or delete the cached render.
 - **Stories:**
   - Multi-line script editor with per-line voice, render/stitch and export of
     the assembled timeline; lines reload as `Pending` because audio is skipped
     by the script serialiser.
+  - Docked track editor in `track_editor.rs`: transport strip, ruler, track
+    gutter and proportional gold clips; Mixer toggle overlays the shared mixer,
+    inspector and timeline.
 - **Captures:**
   - Record and dictate from the workspace, device picker filtered to real
     inputs, VAD transcription and SRT/TXT transcript export.
@@ -34,6 +46,8 @@ versions follow the release milestones in the build plan.
   - Real `alp_voice::ProfileStore` library with designed and cloned profiles,
     consent gate, reference quality audit, `.alpvoice` import/export and
     per-row export of the correct profile.
+  - New Create Voice dialog (Upload/Record/System Audio, animated record panel,
+    reference text, name/description/language) in `create_voice_views.rs`.
 - **Effects:**
   - Cleanup chain, signal-path summary, plugin browser with per-row insert and
     rescan. DSP application is still pending wiring through `alp-api`.

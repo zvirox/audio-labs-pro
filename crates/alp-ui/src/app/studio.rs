@@ -17,6 +17,17 @@ use alp_voice::{
 
 use super::{App, CaptureItem, GeneratedTake, GenerationKind, HistoryItem, RenderOutput};
 
+/// Shorten a take for the docked player title.
+fn preview_text(text: &str) -> String {
+    let trimmed = text.trim();
+    if trimmed.chars().count() > 52 {
+        let short: String = trimmed.chars().take(52).collect();
+        format!("{short}…")
+    } else {
+        trimmed.to_owned()
+    }
+}
+
 /// Human consent statement recorded for cloned voices.
 const CONSENT_STATEMENT: &str =
     "I confirm that I have explicit permission from this speaker to clone their voice locally.";
@@ -127,7 +138,6 @@ impl App {
             }
             let take = GeneratedTake {
                 text,
-                voice_id: request.voice_id,
                 voice_name,
                 path,
                 duration_secs: buffer.duration_secs() as f32,
@@ -180,9 +190,10 @@ impl App {
     }
 
     fn push_history(&mut self, take: GeneratedTake) {
+        self.player_title = preview_text(&take.text);
+        self.media_duration = take.duration_secs.max(0.01);
         let item = HistoryItem {
             text: take.text,
-            voice_id: take.voice_id,
             voice_name: take.voice_name,
             path: take.path,
             duration_secs: take.duration_secs,
@@ -251,6 +262,7 @@ impl App {
             return;
         };
         let path = item.path.clone();
+        self.player_title = preview_text(&item.text);
         match self.play_file(&path) {
             Ok(()) => self.show_toast("Previewing generated take"),
             Err(error) => self.show_toast(format!("Cannot preview: {error}")),
@@ -314,6 +326,33 @@ impl App {
         self.show_toast("Designed voice saved to the library");
     }
 
+    /// Route the Create Voice dialog to the right creation path.
+    ///
+    /// The record tab needs a sample and a consent record; the other tabs are
+    /// visible but explain what is still missing instead of pretending to work.
+    pub(super) fn submit_create_voice(&mut self) {
+        if self.profile_name.trim().is_empty() {
+            self.show_toast("Give the voice a name first");
+            return;
+        }
+        match self.create_voice_tab {
+            super::CreateVoiceTab::Record => {
+                if self.record_path.is_none() {
+                    self.show_toast("Record a reference sample first");
+                    return;
+                }
+                self.consent_dialog_open = true;
+                self.show_toast("Confirm the consent record to finish this voice");
+            }
+            super::CreateVoiceTab::Upload => {
+                self.show_toast("Drop a WAV on the window, record it, then clone the take");
+            }
+            super::CreateVoiceTab::SystemAudio => {
+                self.show_toast("System audio capture is not available in this build");
+            }
+        }
+    }
+
     /// Create a cloned profile from the last recording, requiring consent.
     pub(super) fn create_cloned_profile(&mut self) {
         if self.consent_speaker.trim().is_empty() || self.consent_attester.trim().is_empty() {
@@ -372,6 +411,7 @@ impl App {
         }
         self.persist_profile(profile);
         self.consent_dialog_open = false;
+        self.create_voice_open = false;
         self.show_toast("Cloned voice saved with a consent record");
     }
 
@@ -584,7 +624,6 @@ impl App {
                 .collect();
             let take = GeneratedTake {
                 text: format!("{title} · {} lines", rendered.lines.len()),
-                voice_id: rendered.default_voice.clone(),
                 voice_name: "Story mix".into(),
                 path,
                 duration_secs: stitched.duration_secs() as f32,

@@ -3,9 +3,7 @@
 //! Views are pure: they read [`App`](super::App) state and return iced elements.
 //! They never mutate the project or the panel model directly.
 
-use iced::widget::{
-    Space, column, container, mouse_area, row, scrollable, stack, text, text_input,
-};
+use iced::widget::{Space, column, container, mouse_area, row, stack, text};
 
 use super::*;
 
@@ -23,43 +21,41 @@ impl App {
     pub fn view(&self) -> Element<'_, Message> {
         let colors = self.colors();
         let mut layers: Vec<Element<'_, Message>> = Vec::new();
-        layers.push(
-            container(Space::new())
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .style(move |_theme| container::Style {
-                    background: Some(Background::Color(Color {
-                        a: 0.58,
-                        ..colors.background
-                    })),
-                    ..container::Style::default()
-                })
-                .into(),
-        );
 
-        let main_layout = column![
-            self.chrome_view(colors),
-            row![
-                self.sidebar_view(colors),
-                container(column![
-                    container(self.workspace_view(colors))
+        let workspace = container(self.workspace_view(colors))
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .padding([Spacing::XL, Control::PAGE]);
+
+        let frame = container(
+            column![
+                self.chrome_view(colors),
+                row![
+                    self.sidebar_view(colors),
+                    column![workspace, self.dock_view(colors)]
                         .width(Length::Fill)
                         .height(Length::Fill),
-                    container(self.docked_player_view(colors))
-                        .padding([Spacing::SM, Spacing::XS])
-                        .width(Length::Fill),
-                ])
+                ]
+                .spacing(0.0)
                 .width(Length::Fill)
-                .height(Length::Fill)
-                .padding(Spacing::XS),
+                .height(Length::Fill),
             ]
-            .spacing(0.0)
-            .width(Length::Fill)
-            .height(Length::Fill),
-        ]
-        .spacing(0.0);
+            .spacing(0.0),
+        )
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .style(move |_theme| colors.frame_style());
 
-        layers.push(main_layout.into());
+        let backdrop = container(frame)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .padding(10)
+            .style(move |_theme| container::Style {
+                background: Some(Background::Color(colors.background)),
+                ..container::Style::default()
+            });
+
+        layers.push(backdrop.into());
 
         if self.palette.open {
             let items: Vec<CommandItem<Message>> = self
@@ -100,13 +96,17 @@ impl App {
                 .height(Length::Fill)
                 .align_x(Alignment::Center)
                 .align_y(iced::alignment::Vertical::Bottom)
-                .padding(Spacing::XXL)
+                .padding([Spacing::XXL, Spacing::XXL])
                 .into(),
             );
         }
 
         if self.shortcuts_help_open {
             layers.push(self.shortcuts_help_modal_view(colors));
+        }
+
+        if self.create_voice_open {
+            layers.push(self.create_voice_dialog_view(colors));
         }
 
         if self.consent_dialog_open {
@@ -126,88 +126,68 @@ impl App {
     pub(super) fn chrome_view(&self, colors: ThemeColors) -> Element<'_, Message> {
         let drag = mouse_area(
             row![
-                text("◈").size(15.0).color(colors.accent),
-                text("AUDIO LAB PRO")
+                text("Audio Labs Pro")
                     .size(f32::from(TypeScale::CAPTION))
                     .font(fonts::semibold())
-                    .color(colors.text),
-                components::muted(
-                    format!(
-                        "{:.0} fps · {:.1} ms",
-                        1000.0 / self.frame_ms.max(0.1),
-                        self.frame_ms
-                    ),
-                    colors,
-                ),
+                    .color(colors.muted),
+                text("· Studio")
+                    .size(f32::from(TypeScale::CAPTION))
+                    .font(fonts::regular())
+                    .color(colors.faint),
             ]
-            .spacing(f32::from(Spacing::SM))
+            .spacing(f32::from(Spacing::XS))
             .align_y(Alignment::Center),
         )
         .on_press(Message::WindowDrag);
 
-        let play_glyph = if self.playing { "⏸" } else { "▶" };
-        let quick_transport = row![
-            components::icon_button("⏮", colors, Some(Message::Stop)),
-            components::icon_button(play_glyph, colors, Some(Message::PlayPause)),
-            text(format_time(self.position_secs))
-                .size(f32::from(TypeScale::CAPTION))
-                .font(fonts::semibold())
-                .color(colors.text),
-            components::muted(format!("/ {}", format_time(self.media_duration)), colors),
-        ]
-        .spacing(f32::from(Spacing::XS))
-        .align_y(Alignment::Center);
-
-        let ai_indicator = components::with_tooltip(
-            components::button(
-                if self.ai_enabled {
-                    "⚡ AI Active"
-                } else {
-                    "⚡ AI"
-                },
-                if self.ai_enabled {
-                    ButtonKind::Primary
-                } else {
-                    ButtonKind::Ghost
-                },
-                colors,
-                Some(Message::SelectWorkflowTab(WorkflowTab::Stories)),
-            ),
-            if self.ai_enabled {
-                "AI Control: Active (Click to open AI Control in Voice Editing)".to_string()
-            } else {
-                "AI Control: Standby (Click to configure in Voice Editing)".to_string()
-            },
-            colors,
-        );
-
         let chrome = row![
-            drag,
+            self.traffic_lights(colors),
             Space::new().width(Length::Fixed(f32::from(Spacing::MD))),
-            quick_transport,
+            drag,
             Space::new().width(Length::Fill),
-            ai_indicator,
             components::with_tooltip(
-                components::button(self.glass.badge(), ButtonKind::Ghost, colors, None),
-                self.glass.detail.clone(),
+                components::glyph_button(
+                    if self.reduce_motion { "≈" } else { "~" },
+                    13.0,
+                    ButtonKind::Ghost,
+                    colors,
+                    Some(Message::ToggleReduceMotion),
+                ),
+                "Reduce motion".to_string(),
                 colors,
             ),
-            components::icon_button("?", colors, Some(Message::OpenShortcutsHelp)),
-            components::icon_button("◐", colors, Some(Message::ToggleTheme)),
-            components::icon_button("≈", colors, Some(Message::ToggleReduceMotion)),
-            components::icon_button("⌄", colors, Some(Message::WindowMinimize)),
-            components::icon_button("□", colors, Some(Message::WindowMaximize)),
-            components::icon_button("×", colors, Some(Message::WindowClose)),
+            components::with_tooltip(
+                components::glyph_button(
+                    "◐",
+                    14.0,
+                    ButtonKind::Ghost,
+                    colors,
+                    Some(Message::ToggleTheme),
+                ),
+                self.theme_mode.as_str().to_string(),
+                colors,
+            ),
+            components::with_tooltip(
+                components::glyph_button(
+                    "?",
+                    13.0,
+                    ButtonKind::Ghost,
+                    colors,
+                    Some(Message::OpenShortcutsHelp),
+                ),
+                "Keyboard shortcuts".to_string(),
+                colors,
+            ),
         ]
         .spacing(f32::from(Spacing::XXS))
         .align_y(Alignment::Center);
 
         container(chrome)
             .width(Length::Fill)
-            .height(Length::Fixed(f32::from(Control::CHROME)))
-            .padding([Spacing::XS, Spacing::SM])
+            .height(Length::Fixed(f32::from(Control::TITLE_BAR)))
+            .padding([0.0, f32::from(Spacing::MD)])
             .style(move |_theme| container::Style {
-                background: Some(Background::Color(colors.glass_strong)),
+                background: Some(Background::Color(colors.glass)),
                 border: Border {
                     radius: 0.0.into(),
                     width: 0.0,
@@ -221,66 +201,53 @@ impl App {
     }
 
     pub(super) fn mixer_view(&self, colors: ThemeColors) -> Element<'_, Message> {
-        let mut rows = column!().spacing(f32::from(Spacing::XS)).push(
-            text("TRACKS")
-                .size(f32::from(TypeScale::CAPTION))
-                .color(colors.text),
-        );
+        let mut rows = column![]
+            .spacing(f32::from(Spacing::SM))
+            .push(components::kicker("Tracks", colors));
         for (index, track) in self.session.tracks().iter().enumerate() {
             let meter = self.live_track_peak(index);
             let gain = track.gain;
             let pan = track.pan;
-            rows = rows.push(
-                column![
-                    row![
-                        text(track.name.clone())
-                            .size(f32::from(TypeScale::CAPTION))
-                            .font(fonts::semibold())
-                            .color(colors.text),
-                        Space::new().width(Length::Fill),
-                        components::toggle(
-                            "M",
-                            track.muted,
-                            colors,
-                            Message::ToggleTrackMute(index)
-                        ),
-                        components::toggle(
-                            "S",
-                            track.solo,
-                            colors,
-                            Message::ToggleTrackSolo(index)
-                        ),
-                        components::toggle(
-                            "R",
-                            track.armed,
-                            colors,
-                            Message::ToggleTrackArm(index)
-                        ),
-                    ]
-                    .spacing(f32::from(Spacing::XXS)),
-                    row![
-                        components::muted(format!("trim {:.0}%", pan * 100.0), colors),
-                        components::progress(meter, colors),
-                        components::slider_control(gain / 2.0, move |value| {
-                            Message::SetTrackGain(index, value * 2.0)
-                        }),
-                    ]
-                    .spacing(f32::from(Spacing::XXS)),
-                    overlays::property_row(
-                        "Pan",
-                        components::slider_control((pan + 1.0) / 2.0, move |value| {
-                            Message::SetTrackPan(index, value * 2.0 - 1.0)
-                        }),
-                        colors,
-                    ),
+            let strip = column![
+                row![
+                    text(track.name.clone())
+                        .size(f32::from(TypeScale::LABEL))
+                        .font(fonts::semibold())
+                        .color(colors.text),
+                    Space::new().width(Length::Fill),
+                    components::toggle("M", track.muted, colors, Message::ToggleTrackMute(index)),
+                    components::toggle("S", track.solo, colors, Message::ToggleTrackSolo(index)),
+                    components::toggle("R", track.armed, colors, Message::ToggleTrackArm(index)),
                 ]
-                .spacing(f32::from(Spacing::XXS)),
+                .spacing(f32::from(Spacing::XXS))
+                .align_y(Alignment::Center),
+                row![
+                    components::muted(format!("trim {:.0}%", pan * 100.0), colors),
+                    components::progress(meter, colors),
+                    components::slider_control(gain / 2.0, move |value| {
+                        Message::SetTrackGain(index, value * 2.0)
+                    }),
+                ]
+                .spacing(f32::from(Spacing::XS))
+                .align_y(Alignment::Center),
+                overlays::property_row(
+                    "Pan",
+                    components::slider_control((pan + 1.0) / 2.0, move |value| {
+                        Message::SetTrackPan(index, value * 2.0 - 1.0)
+                    }),
+                    colors,
+                ),
+            ]
+            .spacing(f32::from(Spacing::XS))
+            .padding(Spacing::SM);
+            rows = rows.push(
+                container(strip)
+                    .width(Length::Fill)
+                    .style(move |_theme| colors.well_style()),
             );
         }
         let master = column![
-            text("MASTER")
-                .size(f32::from(TypeScale::CAPTION))
-                .color(colors.text),
+            components::kicker("Master", colors),
             overlays::property_row(
                 "Bus",
                 components::slider_control(self.gain / 4.0, |value| Message::SetMasterGain(
@@ -291,51 +258,21 @@ impl App {
             components::toggle("Ripple delete", self.ripple, colors, Message::ToggleRipple),
             components::progress(self.record_peak, colors),
         ]
-        .spacing(f32::from(Spacing::XXS));
+        .spacing(f32::from(Spacing::XS))
+        .padding(Spacing::SM);
 
-        let content = column![rows, master]
-            .spacing(f32::from(Spacing::SM))
-            .padding(f32::from(Spacing::SM))
-            .width(Length::Fill)
-            .height(Length::Fill);
-
-        scrollable(content).into()
-    }
-
-    pub(super) fn transport_view(&self, colors: ThemeColors) -> Element<'_, Message> {
-        let play_glyph = if self.playing { "⏸" } else { "▶" };
-        column![
-            row![
-                components::icon_button("⏮", colors, Some(Message::Stop)),
-                components::icon_button(play_glyph, colors, Some(Message::PlayPause)),
-                components::icon_button("⏹", colors, Some(Message::Stop)),
-                text(format!(
-                    "{} / {}",
-                    format_time(self.position_secs),
-                    format_time(self.media_duration)
-                ))
-                .size(f32::from(TypeScale::BODY_STRONG))
-                .font(fonts::medium())
-                .color(colors.text),
-                Space::new().width(Length::Fill),
-                components::muted(format!("{:.0}% gain", self.gain * 100.0), colors),
-            ]
-            .spacing(f32::from(Spacing::XS))
-            .align_y(Alignment::Center),
-            components::progress(
-                (self.position_secs / self.media_duration.max(1.0)).clamp(0.0, 1.0),
-                colors
-            ),
-            row![
-                components::muted("Recording and dictation live in Captures.", colors),
-                Space::new().width(Length::Fill),
-                components::toggle("Ripple deletes", self.ripple, colors, Message::ToggleRipple),
-            ]
-            .spacing(f32::from(Spacing::XS))
-            .align_y(Alignment::Center),
+        let content = column![
+            rows,
+            container(master)
+                .width(Length::Fill)
+                .style(move |_theme| colors.well_style()),
         ]
         .spacing(f32::from(Spacing::SM))
-        .into()
+        .padding(f32::from(Spacing::SM))
+        .width(Length::Fill)
+        .height(Length::Fill);
+
+        self.scroll(content, colors).into()
     }
 
     pub(super) fn timeline_view(&self, colors: ThemeColors) -> Element<'_, Message> {
@@ -399,7 +336,7 @@ impl App {
             .spacing(f32::from(Spacing::XS))
             .align_y(Alignment::Center),
             waveform,
-            scrollable(tracks).height(Length::Fill),
+            self.scroll(tracks, colors).height(Length::Fill),
         ]
         .spacing(f32::from(Spacing::SM))
         .into()
@@ -429,7 +366,7 @@ impl App {
         }
         let undo = self.session.can_undo().then_some(Message::UndoEdit);
         let redo = self.session.can_redo().then_some(Message::RedoEdit);
-        scrollable(
+        self.scroll(
             column![
                 components::kicker("Track edit", colors),
                 components::muted(self.session.status(), colors),
@@ -448,17 +385,21 @@ impl App {
                 .spacing(f32::from(Spacing::XS))
                 .align_y(Alignment::Center),
                 components::kicker("Clips", colors),
-                scrollable(clips).height(Length::Fixed(112.0)),
+                self.scroll(clips, colors).height(Length::Fixed(112.0)),
                 components::kicker("Selection (seconds)", colors),
                 row![
-                    text_input("start", &self.selection_start)
-                        .on_input(Message::SelectionStart)
-                        .padding(Spacing::XS)
-                        .width(Length::Fill),
-                    text_input("end", &self.selection_end)
-                        .on_input(Message::SelectionEnd)
-                        .padding(Spacing::XS)
-                        .width(Length::Fill),
+                    components::text_field(
+                        "start",
+                        &self.selection_start,
+                        colors,
+                        Message::SelectionStart
+                    ),
+                    components::text_field(
+                        "end",
+                        &self.selection_end,
+                        colors,
+                        Message::SelectionEnd
+                    ),
                     components::button(
                         "Apply",
                         ButtonKind::Secondary,
@@ -534,6 +475,7 @@ impl App {
                 ),
             ]
             .spacing(f32::from(Spacing::SM)),
+            colors,
         )
         .height(Length::Fill)
         .into()
@@ -542,45 +484,69 @@ impl App {
     pub(super) fn effects_view(&self, colors: ThemeColors) -> Element<'_, Message> {
         let mut rows = column![].spacing(f32::from(Spacing::XS));
         for (index, eff) in self.effects.iter().enumerate() {
-            let (glyph, kind) = if eff.enabled {
-                ("●", ButtonKind::Primary)
-            } else {
-                ("○", ButtonKind::Ghost)
-            };
-            let sel_kind = if index == self.selected_effect {
-                ButtonKind::Secondary
-            } else {
-                ButtonKind::Ghost
-            };
-            rows = rows.push(
-                row![
-                    components::button(glyph, kind, colors, Some(Message::ToggleEffect(index))),
-                    components::button(
-                        eff.name.clone(),
-                        sel_kind,
-                        colors,
-                        Some(Message::SelectEffect(index)),
-                    ),
-                    Space::new().width(Length::Fill),
+            let selected = index == self.selected_effect;
+            let body = row![
+                text(format!("{:02}", index + 1))
+                    .size(f32::from(TypeScale::CAPTION))
+                    .font(fonts::mono())
+                    .color(if selected {
+                        colors.accent
+                    } else {
+                        colors.faint
+                    }),
+                column![
+                    text(eff.name.clone())
+                        .size(f32::from(TypeScale::BODY_STRONG))
+                        .font(fonts::semibold())
+                        .color(colors.text),
                     components::muted(eff.params.clone(), colors),
                 ]
-                .align_y(Alignment::Center)
-                .spacing(f32::from(Spacing::XS)),
+                .spacing(f32::from(Spacing::XXS)),
+                Space::new().width(Length::Fill),
+                components::switch(eff.enabled, colors, Message::ToggleEffect(index)),
+            ]
+            .spacing(f32::from(Spacing::MD))
+            .align_y(Alignment::Center)
+            .padding(Spacing::MD);
+
+            rows = rows.push(
+                mouse_area(container(body).width(Length::Fill).style(move |_theme| {
+                    container::Style {
+                        background: Some(Background::Color(if selected {
+                            colors.surface_raised
+                        } else {
+                            colors.glass_strong
+                        })),
+                        border: Border {
+                            radius: f32::from(alp_ui_kit::Radius::SM).into(),
+                            width: 1.0,
+                            color: if selected {
+                                colors.border_strong
+                            } else {
+                                colors.border
+                            },
+                        },
+                        shadow: iced::Shadow::default(),
+                        text_color: Some(colors.text),
+                        snap: true,
+                    }
+                }))
+                .on_press(Message::SelectEffect(index)),
             );
         }
 
         let detail = self.effects.get(self.selected_effect).map_or_else(
             || "Select an effect stage to inspect parameters".into(),
             |e| {
-                let s = if e.enabled { "ACTIVE" } else { "BYPASSED" };
-                format!("{}: {} [{s}]", e.name, e.params)
+                let s = if e.enabled { "active" } else { "bypassed" };
+                format!("{}: {} · {s}", e.name, e.params)
             },
         );
 
         column![
             rows,
             components::muted(detail, colors),
-            components::muted("Master Target: -16.0 LUFS · Ceiling: -1.0 dBFS", colors),
+            components::muted("Master target -16.0 LUFS · ceiling -1.0 dBFS", colors),
         ]
         .spacing(f32::from(Spacing::SM))
         .into()
@@ -600,23 +566,31 @@ impl App {
                 alp_plugin::PluginFormat::Clap => "CLAP",
                 alp_plugin::PluginFormat::Lv2 => "LV2",
             };
+            let body = row![
+                components::chip(fmt_str, colors),
+                text(p.name.clone())
+                    .size(f32::from(TypeScale::BODY))
+                    .font(fonts::regular())
+                    .color(colors.text),
+                Space::new().width(Length::Fill),
+                components::button(
+                    "+  Insert",
+                    ButtonKind::Secondary,
+                    colors,
+                    Some(Message::InsertPlugin(p.id.clone())),
+                ),
+            ]
+            .align_y(Alignment::Center)
+            .spacing(f32::from(Spacing::SM))
+            .padding([Spacing::XS, Spacing::SM]);
+
             plugin_rows = plugin_rows.push(
-                row![
-                    components::kicker(fmt_str, colors),
-                    components::muted(p.name.clone(), colors),
-                    Space::new().width(Length::Fill),
-                    components::button(
-                        "+ Insert",
-                        ButtonKind::Secondary,
-                        colors,
-                        Some(Message::InsertPlugin(p.id.clone())),
-                    ),
-                ]
-                .align_y(Alignment::Center)
-                .spacing(f32::from(Spacing::XS)),
+                container(body)
+                    .width(Length::Fill)
+                    .style(move |_theme| colors.well_style()),
             );
         }
-        scrollable(plugin_rows).height(Length::Fill).into()
+        self.scroll(plugin_rows, colors).height(Length::Fill).into()
     }
 
     pub(super) fn export_view(&self, colors: ThemeColors) -> Element<'_, Message> {
@@ -638,25 +612,29 @@ impl App {
             } else {
                 Space::new().width(Length::Fixed(0.0)).into()
             };
-            rows = rows.push(overlays::card(
-                column![
-                    row![
-                        text(job.name.clone())
-                            .size(f32::from(TypeScale::BODY))
-                            .font(fonts::medium())
-                            .color(colors.text),
-                        Space::new().width(Length::Fill),
-                        components::muted(status, colors),
-                        cancel_btn,
+            rows = rows.push(
+                container(
+                    column![
+                        row![
+                            text(job.name.clone())
+                                .size(f32::from(TypeScale::BODY_STRONG))
+                                .font(fonts::semibold())
+                                .color(colors.text),
+                            Space::new().width(Length::Fill),
+                            components::muted(status, colors),
+                            cancel_btn,
+                        ]
+                        .align_y(Alignment::Center)
+                        .spacing(f32::from(Spacing::XS)),
+                        components::progress(job.progress, colors),
+                        components::muted(job.detail.clone(), colors),
                     ]
-                    .align_y(Alignment::Center)
-                    .spacing(f32::from(Spacing::XS)),
-                    components::progress(job.progress, colors),
-                    components::muted(job.detail.clone(), colors),
-                ]
-                .spacing(f32::from(Spacing::XS)),
-                colors,
-            ));
+                    .spacing(f32::from(Spacing::XS))
+                    .padding(Spacing::MD),
+                )
+                .width(Length::Fill)
+                .style(move |_theme| colors.well_style()),
+            );
         }
         let running_label = if self.jobs.running_count() > 0 {
             format!("{} running", self.jobs.running_count())
@@ -673,7 +651,9 @@ impl App {
         let queue: Element<'_, Message> = if self.jobs.jobs().is_empty() {
             components::muted("No export jobs yet.", colors)
         } else {
-            scrollable(rows).height(Length::Fixed(150.0)).into()
+            self.scroll(rows, colors)
+                .height(Length::Fixed(150.0))
+                .into()
         };
         column![
             row![

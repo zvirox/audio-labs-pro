@@ -1,10 +1,10 @@
-//! Stories workspace: multi-line scripts, line status and the timeline.
+//! Stories workspace: story list, line editor and the shared track editor.
 
 use alp_ui_kit::components;
-use alp_ui_kit::tokens::{Spacing, TypeScale};
+use alp_ui_kit::tokens::{Radius, Spacing, TypeScale};
 use alp_ui_kit::{ButtonKind, ThemeColors, fonts};
-use iced::widget::{Space, column, container, row, scrollable, text, text_input};
-use iced::{Alignment, Element, Length};
+use iced::widget::{Space, column, container, mouse_area, row, stack, text};
+use iced::{Alignment, Background, Border, Element, Length};
 
 use super::workspace_layout::{card, header};
 use super::{App, Message};
@@ -19,222 +19,332 @@ fn status_label(status: alp_voice::LineStatus) -> &'static str {
 }
 
 impl App {
-    /// Story list, line editor, render controls and the shared timeline.
+    /// Story list, line editor, render controls and the tools overlay.
     pub(super) fn stories_workspace(&self, colors: ThemeColors) -> Element<'_, Message> {
-        let mut story_rows = column![].spacing(f32::from(Spacing::XXS));
+        let list = self.story_list(colors);
+        let detail = self.story_detail(colors);
+
+        let content =
+            column![
+                header(
+                    "Stories",
+                    "Narrate a script, then shape it on the track editor",
+                    vec![
+                        components::button(
+                            "New Story",
+                            ButtonKind::Primary,
+                            colors,
+                            Some(Message::NewStory),
+                        ),
+                        components::button(
+                            "Save",
+                            ButtonKind::Ghost,
+                            colors,
+                            Some(Message::SaveStory),
+                        ),
+                    ],
+                    colors,
+                ),
+                row![
+                    column![list]
+                        .width(Length::FillPortion(5))
+                        .height(Length::Fill),
+                    column![detail]
+                        .width(Length::FillPortion(12))
+                        .height(Length::Fill),
+                ]
+                .spacing(f32::from(Spacing::XL))
+                .width(Length::Fill)
+                .height(Length::Fill),
+            ]
+            .spacing(f32::from(Spacing::LG))
+            .height(Length::Fill);
+
+        if self.stories_tools_open {
+            stack![content, self.stories_tools_overlay(colors)]
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .into()
+        } else {
+            content.into()
+        }
+    }
+
+    fn story_list(&self, colors: ThemeColors) -> Element<'_, Message> {
+        let mut items = column![].spacing(f32::from(Spacing::SM));
+        if self.stories.is_empty() {
+            items = items.push(components::muted(
+                "No stories yet. Create one to start.",
+                colors,
+            ));
+        }
         for (index, story) in self.stories.iter().enumerate() {
             let selected = index == self.selected_story;
-            story_rows = story_rows.push(
-                row![
-                    components::button(
-                        format!("{}  ·  {}", story.title, story.lines.len()),
-                        if selected {
-                            ButtonKind::Secondary
-                        } else {
-                            ButtonKind::Ghost
-                        },
-                        colors,
-                        Some(Message::SelectStory(index))
-                    ),
-                    Space::new().width(Length::Fill),
-                    if selected {
-                        components::muted("viewing", colors)
-                    } else {
-                        components::muted("", colors)
-                    },
-                ]
-                .spacing(f32::from(Spacing::XS))
-                .align_y(Alignment::Center),
-            );
-        }
-
-        let story_list = card(
-            "Story Projects",
-            "📖",
-            column![
-                row![
-                    self.action_btn("New", ButtonKind::Secondary, Message::NewStory),
-                    self.action_btn("Save", ButtonKind::Ghost, Message::SaveStory),
+            let ready = story
+                .lines
+                .iter()
+                .filter(|line| line.status == alp_voice::LineStatus::Ready)
+                .count();
+            let meta = format!("{} item(s) · {} ready", story.lines.len(), ready);
+            let card = container(
+                column![
+                    text(story.title.clone())
+                        .size(f32::from(TypeScale::HEADING))
+                        .font(fonts::semibold())
+                        .color(colors.text),
+                    components::muted(meta, colors),
                 ]
                 .spacing(f32::from(Spacing::XXS)),
-                scrollable(story_rows).height(Length::Fill),
-            ]
-            .spacing(f32::from(Spacing::XS))
-            .into(),
-            colors,
-        );
-
-        let story = self.stories.get(self.selected_story);
-        let mut line_rows = column![].spacing(f32::from(Spacing::XS));
-        if let Some(story) = story {
-            if story.lines.is_empty() {
-                line_rows = line_rows.push(components::muted(
-                    "This story has no lines yet. Add one below.",
-                    colors,
-                ));
-            }
-            for (index, line) in story.lines.iter().enumerate() {
-                let selected = self.selected_story_line == Some(index);
-                line_rows = line_rows.push(
-                    container(
-                        column![
-                            row![
-                                text(format!("{:02}", index + 1))
-                                    .size(f32::from(TypeScale::CAPTION))
-                                    .font(fonts::mono())
-                                    .color(colors.faint),
-                                text(self.profile_name(&line.voice_id))
-                                    .size(f32::from(TypeScale::CAPTION))
-                                    .font(fonts::semibold())
-                                    .color(colors.accent_secondary),
-                                components::kicker(status_label(line.status), colors),
-                                Space::new().width(Length::Fill),
-                                components::button(
-                                    "Select",
-                                    if selected {
-                                        ButtonKind::Secondary
-                                    } else {
-                                        ButtonKind::Ghost
-                                    },
-                                    colors,
-                                    Some(Message::SelectStoryLine(index)),
-                                ),
-                                components::button(
-                                    "✕",
-                                    ButtonKind::Ghost,
-                                    colors,
-                                    Some(Message::DeleteStoryLine(index)),
-                                ),
-                            ]
-                            .spacing(f32::from(Spacing::XXS))
-                            .align_y(Alignment::Center),
-                            text(line.text.clone())
-                                .size(f32::from(TypeScale::BODY))
-                                .color(colors.text),
-                        ]
-                        .spacing(f32::from(Spacing::XXS)),
-                    )
-                    .padding(Spacing::XS)
-                    .style(move |_theme| {
-                        if selected {
-                            colors.panel_style(true)
-                        } else {
-                            colors.card_style()
-                        }
-                    }),
-                );
-            }
+            )
+            .width(Length::Fill)
+            .padding(Spacing::MD)
+            .style(move |_theme| container::Style {
+                background: Some(Background::Color(if selected {
+                    colors.surface_raised
+                } else {
+                    colors.glass_strong
+                })),
+                border: Border {
+                    radius: f32::from(Radius::MD).into(),
+                    width: 1.0,
+                    color: if selected {
+                        colors.border_strong
+                    } else {
+                        colors.border
+                    },
+                },
+                shadow: iced::Shadow::default(),
+                text_color: Some(colors.text),
+                snap: true,
+            });
+            items = items.push(mouse_area(card).on_press(Message::SelectStory(index)));
         }
-
-        let lines_card = card(
-            "Lines",
-            "💬",
-            scrollable(line_rows).height(Length::Fill).into(),
-            colors,
-        );
-
-        let selected_text = story
-            .and_then(|story| {
-                self.selected_story_line
-                    .and_then(|index| story.lines.get(index))
-            })
-            .map(|line| line.text.clone())
-            .unwrap_or_default();
-        let title = story.map_or("No story".into(), |story| story.title.clone());
 
         let composer = container(
             column![
-                components::kicker(title, colors),
-                components::muted(
-                    "Each line is rendered with the profile it names. Rendering stitches ready lines into one take with a short pause between them.",
-                    colors
+                components::text_field(
+                    "Generate speech for this story…",
+                    &self.story_text,
+                    colors,
+                    Message::StoryLineInput,
                 ),
-                text_input(
-                    if selected_text.is_empty() {
-                        "Write the next line of the story…"
-                    } else {
-                        &selected_text
-                    },
-                    &self.story_text
-                )
-                .on_input(Message::StoryLineInput)
-                .padding(Spacing::SM),
                 row![
-                    self.action_btn("Add line", ButtonKind::Secondary, Message::AddStoryLine),
-                    self.action_btn(
-                        if self.generating {
-                            "Rendering…"
-                        } else {
-                            "✦ Render story"
-                        },
+                    container(components::dropdown(
+                        self.profiles
+                            .iter()
+                            .map(|profile| profile.name.clone())
+                            .collect(),
+                        self.profile().map(|profile| profile.name.clone()),
+                        colors,
+                        Message::SelectVoice,
+                    ))
+                    .width(Length::FillPortion(1)),
+                    components::button(
+                        "✦",
                         ButtonKind::Primary,
-                        Message::RenderStory
+                        colors,
+                        Some(Message::AddStoryLine),
                     ),
-                    Space::new().width(Length::Fill),
-                    components::muted(self.voice_status.clone(), colors),
                 ]
                 .spacing(f32::from(Spacing::XS))
                 .align_y(Alignment::Center),
             ]
-            .spacing(f32::from(Spacing::XS)),
+            .spacing(f32::from(Spacing::SM)),
         )
+        .width(Length::Fill)
         .padding(Spacing::MD)
-        .style(move |_theme| colors.panel_style(true));
+        .style(move |_theme| colors.card_style());
 
-        let top = row![
-            column![story_list]
-                .width(Length::FillPortion(2))
-                .height(Length::Fill),
-            column![lines_card]
-                .width(Length::FillPortion(3))
-                .height(Length::Fill),
-            column![composer]
-                .width(Length::FillPortion(3))
-                .height(Length::Fill),
-        ]
-        .spacing(f32::from(Spacing::SM))
-        .width(Length::Fill)
-        .height(Length::FillPortion(3));
+        column![self.scroll(items, colors).height(Length::Fill), composer,]
+            .spacing(f32::from(Spacing::MD))
+            .height(Length::Fill)
+            .into()
+    }
 
-        let bottom = row![
-            container(card(
-                "Transport & Timeline",
-                "▤",
-                column![self.transport_view(colors), self.timeline_view(colors),]
-                    .spacing(f32::from(Spacing::XS))
-                    .into(),
-                colors
-            ))
-            .width(Length::FillPortion(3))
-            .height(Length::Fill),
-            container(card("Mixer", "∑", self.mixer_view(colors), colors))
-                .width(Length::FillPortion(2))
-                .height(Length::Fill),
-            container(card("Inspector", "▥", self.inspector_view(colors), colors))
-                .width(Length::FillPortion(3))
-                .height(Length::Fill),
-        ]
-        .spacing(f32::from(Spacing::SM))
-        .width(Length::Fill)
-        .height(Length::Fixed(330.0));
+    fn story_detail(&self, colors: ThemeColors) -> Element<'_, Message> {
+        let story = self.stories.get(self.selected_story);
+        let Some(story) = story else {
+            return container(components::muted("Select a story on the left.", colors))
+                .padding(Spacing::XL)
+                .into();
+        };
 
-        column![
-            header(
-                "Stories",
-                "Narrate a script, then edit the result on the timeline",
-                vec![self.action_btn(
-                    "Generate",
-                    ButtonKind::Secondary,
-                    Message::SelectWorkflowTab(super::WorkflowTab::Generate)
-                )],
+        let title = story.title.clone();
+        let line_count = story.lines.len();
+        let ready = story
+            .lines
+            .iter()
+            .filter(|line| line.status == alp_voice::LineStatus::Ready)
+            .count();
+
+        let head = row![
+            column![
+                text(title)
+                    .size(f32::from(TypeScale::TITLE))
+                    .font(fonts::bold())
+                    .color(colors.text),
+                components::muted(
+                    format!("{line_count} line(s) · {ready} ready · rendered locally"),
+                    colors
+                ),
+            ]
+            .spacing(f32::from(Spacing::XXS)),
+            Space::new().width(Length::Fill),
+            components::button(
+                "+  Add",
+                ButtonKind::Secondary,
                 colors,
+                Some(Message::AddStoryLine),
             ),
-            top,
-            bottom,
+            components::button(
+                if self.generating {
+                    "Rendering…"
+                } else {
+                    "↓  Render Audio"
+                },
+                ButtonKind::Primary,
+                colors,
+                Some(Message::RenderStory),
+            ),
         ]
         .spacing(f32::from(Spacing::SM))
-        .width(Length::Fill)
+        .align_y(Alignment::Center);
+
+        let mut lines = column![].spacing(f32::from(Spacing::MD));
+        if story.lines.is_empty() {
+            lines = lines.push(
+                container(
+                    column![
+                        text("This story is empty")
+                            .size(f32::from(TypeScale::HEADING))
+                            .font(fonts::semibold())
+                            .color(colors.text),
+                        components::muted(
+                            "Write a line below the list and press the gold button to add it.",
+                            colors,
+                        ),
+                    ]
+                    .spacing(f32::from(Spacing::XS)),
+                )
+                .padding(Spacing::XL)
+                .style(move |_theme| colors.well_style()),
+            );
+        }
+        for (index, line) in story.lines.iter().enumerate() {
+            let selected = self.selected_story_line == Some(index);
+            let voice = self.profile_name(&line.voice_id);
+            let line_card = container(
+                column![
+                    row![
+                        components::avatar(&voice, 36.0, colors),
+                        text(voice)
+                            .size(f32::from(TypeScale::BODY_STRONG))
+                            .font(fonts::semibold())
+                            .color(colors.text),
+                        components::chip("en", colors),
+                        Space::new().width(Length::Fill),
+                        components::muted(
+                            format!("{:.1}x · {}", line.speed, status_label(line.status)),
+                            colors
+                        ),
+                        components::with_tooltip(
+                            components::glyph_button(
+                                "⋯",
+                                16.0,
+                                ButtonKind::Ghost,
+                                colors,
+                                Some(Message::SelectStoryLine(index)),
+                            ),
+                            "Select this line".to_string(),
+                            colors,
+                        ),
+                        components::with_tooltip(
+                            components::glyph_button(
+                                "⌫",
+                                12.0,
+                                ButtonKind::Ghost,
+                                colors,
+                                Some(Message::DeleteStoryLine(index)),
+                            ),
+                            "Delete this line".to_string(),
+                            colors,
+                        ),
+                    ]
+                    .spacing(f32::from(Spacing::SM))
+                    .align_y(Alignment::Center),
+                    container(
+                        text(line.text.clone())
+                            .size(f32::from(TypeScale::BODY))
+                            .font(fonts::regular())
+                            .color(colors.text),
+                    )
+                    .width(Length::Fill)
+                    .padding(Spacing::MD)
+                    .style(move |_theme| colors.well_style()),
+                ]
+                .spacing(f32::from(Spacing::SM)),
+            )
+            .width(Length::Fill)
+            .padding(Spacing::MD)
+            .style(move |_theme| container::Style {
+                background: Some(Background::Color(colors.glass_strong)),
+                border: Border {
+                    radius: f32::from(Radius::MD).into(),
+                    width: 1.0,
+                    color: if selected {
+                        colors.accent
+                    } else {
+                        colors.border
+                    },
+                },
+                shadow: iced::Shadow::default(),
+                text_color: Some(colors.text),
+                snap: true,
+            });
+            lines = lines.push(mouse_area(line_card).on_press(Message::SelectStoryLine(index)));
+        }
+
+        column![head, self.scroll(lines, colors).height(Length::Fill)]
+            .spacing(f32::from(Spacing::LG))
+            .height(Length::Fill)
+            .into()
+    }
+
+    fn stories_tools_overlay(&self, colors: ThemeColors) -> Element<'_, Message> {
+        let panel = container(
+            column![
+                row![
+                    components::card_title("Mixer & Inspector", colors),
+                    Space::new().width(Length::Fill),
+                    components::glyph_button(
+                        "✕",
+                        13.0,
+                        ButtonKind::Ghost,
+                        colors,
+                        Some(Message::ToggleStoriesTools),
+                    ),
+                ]
+                .align_y(Alignment::Center),
+                card("Timeline", "▤", self.timeline_view(colors), colors),
+                card("Mixer", "∑", self.mixer_view(colors), colors),
+                card("Inspector", "▥", self.inspector_view(colors), colors),
+            ]
+            .spacing(f32::from(Spacing::MD)),
+        )
+        .width(Length::Fixed(460.0))
         .height(Length::Fill)
-        .into()
+        .padding(Spacing::LG)
+        .style(move |_theme| colors.frame_style());
+
+        container(panel)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .padding([Spacing::XL, Spacing::XL])
+            .align_x(Alignment::End)
+            .style(move |_theme| container::Style {
+                background: Some(Background::Color(colors.scrim)),
+                ..container::Style::default()
+            })
+            .into()
     }
 }

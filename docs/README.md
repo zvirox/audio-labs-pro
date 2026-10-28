@@ -51,7 +51,7 @@ profiles. Licensed Apache-2.0.
 | 9 — polish, packaging, and 1.0 | complete: Decision D12 (io.github.zvirox.AudioLabsPro), AppImage/Flatpak/Debian packaging, desktop/MIME integration, fuzzing/stress benchmarks, first-run wizard, keyboard shortcuts modal, user guide, and 1.0 release |
 | 10 — MCP: AI-driven editing, creation, and export | complete: Release v1.1 "Agent", alp-api automation layer, alp-mcp server (spec revision 2026-07-28), 14 core tools, 8 prompt workflows, sandboxing, session rollback, and UI live attach control panel |
 | 11 — CLAP & LV2 Audio Plugin Hosting | complete: Release v1.2 "Plugins", alp-plugin engine, C ABI loaders for CLAP and LV2, real-time safety, scanner/cache, CLI scan/list/inspect, MCP tools, and the hosted-plugin browser in the Effects workspace |
-| Unreleased — seven-workspace retro shell | in progress: Generate, Stories, Captures, Voices, Effects, Models and Settings workspaces on the retro palette; see `modules/alp-ui/app/` |
+| Unreleased — seven-workspace studio shell | in progress: Generate, Stories, Captures, Voices, Effects, Models and Settings workspaces on the studio palette, plus the Create Voice dialog and Stories track editor; see `modules/alp-ui/app/` |
 
 ## Phase 11 acceptance
 

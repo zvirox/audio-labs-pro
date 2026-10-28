@@ -3,7 +3,7 @@
 use alp_ui_kit::components;
 use alp_ui_kit::tokens::Spacing;
 use alp_ui_kit::{ButtonKind, ThemeColors};
-use iced::widget::{Space, column, row};
+use iced::widget::{Space, column, container, row};
 use iced::{Alignment, Element, Length};
 
 use super::workspace_layout::{card, card_auto, header, metric_badge};
@@ -13,7 +13,7 @@ impl App {
     /// Voice cleanup chain, plugin browser and mastering targets.
     pub(super) fn effects_workspace(&self, colors: ThemeColors) -> Element<'_, Message> {
         let enabled = self.effects.iter().filter(|effect| effect.enabled).count();
-        let chain = card("Cleanup Chain", "🪄", self.effects_view(colors), colors);
+        let chain = card("Cleanup Chain", "≋", self.effects_view(colors), colors);
 
         let path = card_auto(
             "Signal Path",
@@ -39,60 +39,67 @@ impl App {
             colors,
         );
 
+        let plugin_count = self.discovered_plugins.len();
         let plugins = card(
             "Hosted Plugins",
-            "◇",
+            "◈",
             column![
                 row![
                     components::muted(
-                        format!(
-                            "{} discovered CLAP/LV2 plugin(s)",
-                            self.discovered_plugins.len()
-                        ),
+                        format!("{plugin_count} discovered CLAP/LV2 plugin(s)"),
                         colors
                     ),
                     Space::new().width(Length::Fill),
-                    self.action_btn("Rescan", ButtonKind::Secondary, Message::RescanPlugins),
+                    components::button(
+                        "Rescan",
+                        ButtonKind::Secondary,
+                        colors,
+                        Some(Message::RescanPlugins),
+                    ),
                 ]
                 .align_y(Alignment::Center),
                 components::muted(
                     "Plugins load inside the sandboxed alp-plugin host. Inserting a plugin adds it to the cleanup chain on the active track.",
                     colors
                 ),
-                self.plugin_list_view(colors),
+                container(self.plugin_list_view(colors))
+                    .width(Length::Fill)
+                    .padding(Spacing::XS)
+                    .style(move |_theme| colors.well_style()),
             ]
             .spacing(f32::from(Spacing::SM))
             .into(),
             colors,
         );
 
-        let left = column![
-            header(
-                "Effects",
-                "Vocal cleanup, plugin hosting and mastering targets",
-                vec![self.action_btn(
-                    "Cleanup preset",
-                    ButtonKind::Primary,
-                    Message::ApplyVoiceCleanupPreset
-                )],
-                colors,
-            ),
-            chain,
-            Space::new().height(Length::Fill),
-        ]
-        .spacing(f32::from(Spacing::SM))
-        .width(Length::FillPortion(3))
-        .height(Length::Fill);
-
+        let left = column![chain]
+            .width(Length::FillPortion(3))
+            .height(Length::Fill);
         let right = column![path, plugins]
-            .spacing(f32::from(Spacing::SM))
+            .spacing(f32::from(Spacing::LG))
             .width(Length::FillPortion(2))
             .height(Length::Fill);
 
-        row![left, right]
-            .spacing(f32::from(Spacing::SM))
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .into()
+        column![
+            header(
+                "Effects",
+                "Vocal cleanup, plugin hosting and mastering targets",
+                vec![components::button(
+                    "Apply cleanup preset",
+                    ButtonKind::Primary,
+                    colors,
+                    Some(Message::ApplyVoiceCleanupPreset),
+                )],
+                colors,
+            ),
+            row![left, right]
+                .spacing(f32::from(Spacing::XL))
+                .width(Length::Fill)
+                .height(Length::Fill),
+        ]
+        .spacing(f32::from(Spacing::LG))
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .into()
     }
 }

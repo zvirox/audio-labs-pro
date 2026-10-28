@@ -2,9 +2,11 @@
 
 ## Purpose
 
-Renders the Models and Settings workspaces: the model catalogue with license and
-disk status, offline policy, appearance and motion, AI control, storage paths,
-delivery presets, the export queue, workspace panels and session actions.
+Renders the Models and Settings workspaces: the model catalogue with license,
+size and status chips, offline policy, appearance and motion, AI control,
+storage paths, delivery presets, the export queue, workspace panels and session
+actions. Both pages share the studio card/well language and scroll through
+`App::scroll`.
 
 ## Public API
 
@@ -14,7 +16,10 @@ delivery presets, the export queue, workspace panels and session actions.
 ## Data flow
 
 1. Reads `model_manager`, `models_offline`, `profiles`, `theme_mode`,
-   `reduce_motion`, `ai_*`, data paths, jobs and `EditSession` state.
+   `reduce_motion`, `glass.badge()`, `ai_*`, data paths, jobs and `EditSession`
+   state. Model rows show the status chip first, then kind/size chips with the
+   license action; the per-row directory path is omitted because the storage
+   card already shows the root and a long path clipped the row.
 2. Emits `AcceptModelLicense`, `RemoveModel`, `ToggleOfflineModels`,
    `ToggleTheme`, `ToggleReduceMotion`, `ToggleAiControl`, tier changes,
    `ExportPreset`, `SaveLayout`, `ResetLayout`, `OpenFirstRunWizard`,
@@ -46,4 +51,6 @@ Compile-checked and smoke-run; model status and licence gates are covered by
 
 - There is no downloader: accepting a licence records consent, and files must be
   placed in the model folder by hand.
+- Settings columns scroll independently; a very short window hides the lower
+  cards until the user scrolls.
 - Offline mode defaults to on and only governs policy; no network code exists.

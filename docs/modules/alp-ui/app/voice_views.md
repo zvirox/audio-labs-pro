@@ -2,37 +2,43 @@
 
 ## Purpose
 
-Renders the Voices workspace: the persisted profile library, designed/cloned
-voice creation, the reference-sample card and the consent gate summary.
+Renders the Voices workspace: the profile library grid, the selected-profile
+inspector, the cloning gate and the profile storage card. Import Voice and
+Create Voice actions live in the page header above both columns.
 
 ## Public API
 
 - `App::voices_workspace(&self, colors: ThemeColors) -> Element<'_, Message>`
+- Private helper `voice_inspector`.
 
 ## Data flow
 
-1. Reads `profiles`, `selected_profile`, `profile_name`, `profile_tags`,
-   `record_path`, `reference_audit_status`, `recording` and `hardware_summary`.
-2. Emits `SelectProfile`, `ExportProfile`, `DeleteProfile`, `ProfileNameInput`,
-   `ProfileTagsInput`, `CreateDesignedProfile`, `OpenConsentDialog`,
-   `ToggleRecord` and `AuditReferenceAudio`.
-3. Design and clone creation run in `studio.rs`; the view never touches disk.
+1. Reads `profiles` via `profile_grid(4, colors)`, `selected_profile`,
+   `profile_store`, `hardware_summary` and the derived consent state.
+2. Emits `SelectProfile`, `ExportProfile`, `DeleteProfile`,
+   `OpenCreateVoice`, `ImportVoice`, `OpenConsentDialog`,
+   `AuditReferenceAudio` and `SelectProfile` (Use in Generate).
+3. Library and inspector columns both scroll through `App::scroll`; design and
+   clone creation run in `studio.rs`, so the view never touches disk.
 
 ## Allowed dependencies
 
-- `alp-voice::{VoiceKind}` types
+- `alp-voice::{VoiceKind, VoiceParams}` types
 - `alp-ui-kit` components/tokens, `iced` widget primitives
-- `super::{App, Message}`, `super::workspace_layout::{card, header}`
+- `super::{App, Message}`, `super::workspace_layout::{card_auto, header,
+  metric_badge}`
 
 ## Threading / real-time notes
 
-Pure view. Recording itself is owned by the engine; this workspace only starts
-and stops it and displays audit results.
+Pure view. Recording and audit belong to the engine and `studio.rs`; this
+workspace only displays the result and a consent chip.
 
 ## Error handling
 
-Empty tags and missing consent are shown inline. The cloning card states that a
-consent record is mandatory and that the built-in backend does not clone timbre.
+An empty library keeps the grid empty; a missing selection shows "Select a
+profile to inspect it." A missing profile store renders "Profile store
+unavailable". Consent missing on a cloned profile is shown as a chip rather than
+hiding the profile.
 
 ## Testing
 
@@ -42,4 +48,5 @@ profile tests and the UI smoke run.
 ## Known limits
 
 - Bundle import is drop-only: `.alpvoice` files are routed by `ImportPath`.
-- The reference card always points at the most recent recording.
+- Clone last take always points at the most recent recording.
+- The inspector shows the profile's default speed/pitch but does not edit them.

@@ -7,7 +7,7 @@ use alp_api::PermissionTier;
 use alp_ui_kit::components;
 use alp_ui_kit::tokens::{Spacing, TypeScale};
 use alp_ui_kit::{ButtonKind, ThemeColors, fonts};
-use iced::widget::{Space, column, container, row, scrollable, text};
+use iced::widget::{Space, column, container, row, text};
 use iced::{Alignment, Element, Length};
 
 use super::{App, Message};
@@ -33,18 +33,14 @@ impl App {
 
         let header = row![
             column![
-                text(if self.ai_enabled {
-                    "MCP ATTACH · ACTIVE"
-                } else {
-                    "MCP ATTACH · STANDBY"
-                })
-                .size(f32::from(TypeScale::CAPTION))
-                .font(fonts::semibold())
-                .color(if self.ai_enabled {
-                    colors.accent_secondary
-                } else {
-                    colors.faint
-                }),
+                components::kicker(
+                    if self.ai_enabled {
+                        "MCP attach · active"
+                    } else {
+                        "MCP attach · standby"
+                    },
+                    colors
+                ),
                 components::muted(&self.ai_status, colors),
             ]
             .spacing(f32::from(Spacing::XXS)),
@@ -54,42 +50,19 @@ impl App {
         .align_y(Alignment::Center)
         .spacing(f32::from(Spacing::SM));
 
-        let tier_buttons = row![
-            components::button(
-                "Observe",
-                if self.ai_tier == PermissionTier::Observe {
-                    ButtonKind::Secondary
-                } else {
-                    ButtonKind::Ghost
-                },
-                colors,
-                Some(Message::SetAiPermissionTier(PermissionTier::Observe)),
-            ),
-            components::button(
-                "Edit",
-                if self.ai_tier == PermissionTier::Edit {
-                    ButtonKind::Secondary
-                } else {
-                    ButtonKind::Ghost
-                },
-                colors,
-                Some(Message::SetAiPermissionTier(PermissionTier::Edit)),
-            ),
-            components::button(
-                "Export",
-                if self.ai_tier == PermissionTier::Export {
-                    ButtonKind::Secondary
-                } else {
-                    ButtonKind::Ghost
-                },
-                colors,
-                Some(Message::SetAiPermissionTier(PermissionTier::Export)),
-            ),
-            Space::new().width(Length::Fill),
-            components::kicker(format!("tier: {:?}", self.ai_tier), colors),
-        ]
-        .spacing(f32::from(Spacing::XXS))
-        .align_y(Alignment::Center);
+        let tier = match self.ai_tier {
+            PermissionTier::Observe => 0,
+            PermissionTier::Edit => 1,
+            PermissionTier::Export => 2,
+        };
+        let tier_buttons =
+            components::segmented(&["Observe", "Edit", "Export"], tier, colors, |index| {
+                Message::SetAiPermissionTier(match index {
+                    0 => PermissionTier::Observe,
+                    1 => PermissionTier::Edit,
+                    _ => PermissionTier::Export,
+                })
+            });
 
         let tier_hint = match self.ai_tier {
             PermissionTier::Observe => {
@@ -102,12 +75,15 @@ impl App {
         };
 
         let safety_actions = row![
-            self.action_btn("Stop AI", ButtonKind::Danger, Message::StopAi),
-            self.action_btn(
+            components::button("Stop AI", ButtonKind::Danger, colors, Some(Message::StopAi)),
+            components::button(
                 "Undo AI changes",
                 ButtonKind::Secondary,
-                Message::UndoAiChanges
+                colors,
+                Some(Message::UndoAiChanges)
             ),
+            Space::new().width(Length::Fill),
+            components::chip(format!("{:?}", self.ai_tier), colors),
         ]
         .spacing(f32::from(Spacing::XS))
         .align_y(Alignment::Center);
@@ -119,22 +95,25 @@ impl App {
         for entry in self.ai_activity_log.iter().rev().take(12) {
             log_column = log_column.push(
                 row![
-                    text("▸")
+                    text("›")
                         .size(f32::from(TypeScale::CAPTION))
+                        .font(fonts::mono())
                         .color(colors.accent),
                     text(entry.clone())
                         .size(f32::from(TypeScale::CAPTION))
+                        .font(fonts::regular())
                         .color(colors.text),
                 ]
-                .spacing(f32::from(Spacing::XS)),
+                .spacing(f32::from(Spacing::XS))
+                .align_y(Alignment::Center),
             );
         }
 
-        let log_box = container(scrollable(log_column).height(Length::Fill))
+        let log_box = container(self.scroll(log_column, colors).height(Length::Fill))
             .width(Length::Fill)
             .height(Length::Fixed(96.0))
-            .padding(Spacing::XS)
-            .style(move |_theme| colors.card_style());
+            .padding(Spacing::SM)
+            .style(move |_theme| colors.well_style());
 
         column![
             header,

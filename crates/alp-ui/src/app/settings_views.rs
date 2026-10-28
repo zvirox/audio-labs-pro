@@ -4,7 +4,7 @@ use alp_media::ExportPreset;
 use alp_ui_kit::components;
 use alp_ui_kit::tokens::{Spacing, TypeScale};
 use alp_ui_kit::{ButtonKind, ThemeColors, fonts};
-use iced::widget::{Space, column, container, row, scrollable, text};
+use iced::widget::{Space, column, container, row, text};
 use iced::{Alignment, Element, Length};
 
 use super::workspace_layout::{card, card_auto, header, metric_badge};
@@ -94,31 +94,22 @@ impl App {
                                 .size(f32::from(TypeScale::BODY_STRONG))
                                 .font(fonts::bold())
                                 .color(colors.text),
-                            components::kicker(kind_label(manifest.kind), colors),
                             Space::new().width(Length::Fill),
-                            components::kicker(status_label(&status), colors),
+                            components::chip(status_label(&status), colors),
                         ]
                         .spacing(f32::from(Spacing::XS))
                         .align_y(Alignment::Center),
                         components::muted(manifest.description.clone(), colors),
+                        components::muted(
+                            format!("{} · v{} · {}", manifest.author, manifest.version, license),
+                            colors
+                        ),
                         row![
-                            components::muted(
-                                format!(
-                                    "{} · v{} · {}",
-                                    manifest.author, manifest.version, license
-                                ),
-                                colors
-                            ),
+                            components::chip(kind_label(manifest.kind), colors),
+                            components::chip(size, colors),
                             Space::new().width(Length::Fill),
-                            text(size)
-                                .size(f32::from(TypeScale::CAPTION))
-                                .font(fonts::mono())
-                                .color(colors.muted),
-                        ]
-                        .align_y(Alignment::Center),
-                        row![
                             if manifest.is_builtin {
-                                components::kicker("built in · no download", colors)
+                                components::chip("built in · no download", colors)
                             } else {
                                 self.action_btn(
                                     if manifest.license.accepted {
@@ -143,22 +134,14 @@ impl App {
                             } else {
                                 Space::new().width(Length::Fixed(0.0)).into()
                             },
-                            Space::new().width(Length::Fill),
-                            components::muted(
-                                self.model_manager
-                                    .model_dir(&manifest.id)
-                                    .display()
-                                    .to_string(),
-                                colors
-                            ),
                         ]
                         .spacing(f32::from(Spacing::XS))
                         .align_y(Alignment::Center),
                     ]
                     .spacing(f32::from(Spacing::XS)),
                 )
-                .padding(Spacing::SM)
-                .style(move |_theme| colors.card_style()),
+                .padding(Spacing::MD)
+                .style(move |_theme| colors.well_style()),
             );
         }
 
@@ -189,7 +172,7 @@ impl App {
                 ]
                 .spacing(f32::from(Spacing::XS))
                 .align_y(Alignment::Center),
-                scrollable(rows).height(Length::Fill),
+                self.scroll(rows, colors).height(Length::Fill),
             ]
             .spacing(f32::from(Spacing::SM))
             .into(),
@@ -198,7 +181,7 @@ impl App {
 
         let policy = card_auto(
             "Download Policy",
-            "🛡",
+            "⊙",
             column![
                 components::toggle(
                     "Offline only (no outbound traffic)",
@@ -222,7 +205,7 @@ impl App {
 
         let verification = card_auto(
             "Verification & Storage",
-            "🔍",
+            "⌕",
             column![
                 path_row(
                     "Folder",
@@ -254,14 +237,14 @@ impl App {
                     .width(Length::FillPortion(3))
                     .height(Length::Fill),
                 column![policy, verification, Space::new().height(Length::Fill),]
-                    .spacing(f32::from(Spacing::SM))
+                    .spacing(f32::from(Spacing::LG))
                     .width(Length::FillPortion(2))
                     .height(Length::Fill),
             ]
-            .spacing(f32::from(Spacing::SM))
+            .spacing(f32::from(Spacing::XL))
             .height(Length::Fill),
         ]
-        .spacing(f32::from(Spacing::SM))
+        .spacing(f32::from(Spacing::LG))
         .width(Length::Fill)
         .height(Length::Fill)
         .into()
@@ -291,7 +274,7 @@ impl App {
                 .align_y(Alignment::Center),
                 components::muted(
                     format!(
-                        "Retro midnight-walnut palette · glass {} · radii 3/7/11",
+                        "Studio graphite palette · {} · 6/10/14 px radii",
                         self.glass.badge()
                     ),
                     colors
@@ -400,28 +383,30 @@ impl App {
         let mut panel_rows = column![].spacing(f32::from(Spacing::XXS));
         for kind in crate::panels::PanelKind::ALL {
             let open = self.panels.panel(kind).open;
+            let body = row![
+                text(kind.glyph())
+                    .size(f32::from(TypeScale::LABEL))
+                    .color(colors.accent),
+                text(kind.title())
+                    .size(f32::from(TypeScale::LABEL))
+                    .font(fonts::regular())
+                    .color(colors.text),
+                Space::new().width(Length::Fill),
+                components::chip(if open { "open" } else { "closed" }, colors),
+                components::button(
+                    if open { "Hide" } else { "Show" },
+                    ButtonKind::Ghost,
+                    colors,
+                    Some(Message::TogglePanel(kind))
+                ),
+            ]
+            .spacing(f32::from(Spacing::SM))
+            .align_y(Alignment::Center)
+            .padding([Spacing::XS, Spacing::SM]);
             panel_rows = panel_rows.push(
-                row![
-                    text(kind.glyph())
-                        .size(f32::from(TypeScale::CAPTION))
-                        .color(colors.accent),
-                    text(kind.title())
-                        .size(f32::from(TypeScale::CAPTION))
-                        .color(colors.text),
-                    Space::new().width(Length::Fill),
-                    components::button(
-                        if open { "open" } else { "closed" },
-                        if open {
-                            ButtonKind::Secondary
-                        } else {
-                            ButtonKind::Ghost
-                        },
-                        colors,
-                        Some(Message::TogglePanel(kind))
-                    ),
-                ]
-                .spacing(f32::from(Spacing::XS))
-                .align_y(Alignment::Center),
+                container(body)
+                    .width(Length::Fill)
+                    .style(move |_theme| colors.well_style()),
             );
         }
         let panels = card_auto(
@@ -439,19 +424,23 @@ impl App {
             colors,
         );
 
-        let left = scrollable(
-            column![appearance, storage, panels]
-                .spacing(f32::from(Spacing::SM))
-                .width(Length::Fill),
-        )
-        .height(Length::Fill);
+        let left = self
+            .scroll(
+                column![appearance, storage, panels]
+                    .spacing(f32::from(Spacing::LG))
+                    .width(Length::Fill),
+                colors,
+            )
+            .height(Length::Fill);
 
-        let right = scrollable(
-            column![ai, delivery, export_queue, session]
-                .spacing(f32::from(Spacing::SM))
-                .width(Length::Fill),
-        )
-        .height(Length::Fill);
+        let right = self
+            .scroll(
+                column![ai, delivery, export_queue, session]
+                    .spacing(f32::from(Spacing::LG))
+                    .width(Length::Fill),
+                colors,
+            )
+            .height(Length::Fill);
 
         column![
             header(
@@ -472,10 +461,10 @@ impl App {
                     .width(Length::FillPortion(1))
                     .height(Length::Fill),
             ]
-            .spacing(f32::from(Spacing::SM))
+            .spacing(f32::from(Spacing::XL))
             .height(Length::Fill),
         ]
-        .spacing(f32::from(Spacing::SM))
+        .spacing(f32::from(Spacing::LG))
         .width(Length::Fill)
         .height(Length::Fill)
         .into()

@@ -1,6 +1,6 @@
 # Audio Labs Pro — User Guide
 
-Audio Labs Pro is a retro-styled, local-first voice audio workstation built in
+Audio Labs Pro is a studio-styled, local-first voice audio workstation built in
 Rust. It combines non-destructive single-track and multitrack editing with local
 speech synthesis, voice profiles, transcription, speech-cleanup DSP and an
 undoable session engine. Nothing leaves the machine.
@@ -24,22 +24,28 @@ On first launch, Audio Labs Pro displays an interactive setup wizard:
 
 ## 2. The Seven Workspaces
 
-A glyph rail on the left switches between workspaces; the docked player stays at
-the bottom of every screen.
+A round-icon rail on the left switches between workspaces. A player is docked at
+the bottom of every screen; Stories replaces it with a track editor.
 
 | Glyph | Workspace | What it holds |
 |---|---|---|
-| ✦ | Generate | Prompt, voice selection, engine tier and prompt starters; render history |
-| ▤ | Stories | Multi-line scripts, per-line render, stitch and timeline |
-| ◉ | Captures | Recording, dictation, VAD transcription and capture list |
-| ◇ | Voices | Profile library, designed voices and the cloning gate |
+| ◉ | Generate | Voice cards, prompt editor, generate/play controls and take history |
+| ▤ | Stories | Multi-line scripts, per-line render, stitch and the docked track editor |
+| ▣ | Captures | Recording, dictation, VAD transcription, input meters and transcript |
+| ◇ | Voices | Profile library, inspector, designed voices and the cloning gate |
 | ≋ | Effects | Cleanup chain, signal path and hosted CLAP/LV2 plugins |
 | ◈ | Models | Model catalogue, licences, offline policy and storage |
 | ⚙ | Settings | Appearance, motion, AI control, storage, delivery and panels |
 
 The **timeline**, **mixer** and **inspector** remain available to the palette and
-AI clients. Ripple delete lives in the mixer; recording and dictation live in
-Captures.
+AI clients. In Stories, the **Mixer** button opens them over the line cards; close
+it with the same button. Ripple delete lives in the mixer; recording and
+dictation live in Captures.
+
+**Create Voice** opens a modal with Upload, Record and System Audio tabs. Record
+captures up to 30 seconds, then **Create Profile** asks for the human consent
+attestation. Upload and System Audio state plainly that they are not wired in
+this build. **Import Voice** accepts `.alpvoice` bundles dropped on the window.
 
 ---
 

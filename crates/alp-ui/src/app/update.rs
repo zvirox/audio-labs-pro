@@ -482,8 +482,54 @@ impl App {
                 self.select_profile(&id);
                 Task::none()
             }
-            Message::GenerateTextInput(text) => {
-                self.voice_text = text;
+            Message::GenerateEditor(action) => {
+                self.voice_editor.perform(action);
+                self.voice_text = self.voice_editor.text();
+                Task::none()
+            }
+            Message::OpenCreateVoice => {
+                self.create_voice_open = true;
+                self.create_voice_tab = CreateVoiceTab::Record;
+                self.create_voice_reference.clear();
+                Task::none()
+            }
+            Message::CloseCreateVoice => {
+                self.create_voice_open = false;
+                Task::none()
+            }
+            Message::CreateVoiceTab(tab) => {
+                self.create_voice_tab = tab;
+                Task::none()
+            }
+            Message::CreateVoiceReferenceInput(text) => {
+                self.create_voice_reference = text;
+                Task::none()
+            }
+            Message::CreateVoiceLanguage(language) => {
+                self.create_voice_language = language;
+                Task::none()
+            }
+            Message::CreateVoiceSubmit => {
+                self.submit_create_voice();
+                Task::none()
+            }
+            Message::CreateDesignedVoice => {
+                self.create_designed_profile();
+                if self
+                    .profiles
+                    .iter()
+                    .any(|profile| profile.id.starts_with("design-"))
+                {
+                    self.create_voice_open = false;
+                }
+                Task::none()
+            }
+            Message::ImportVoice => {
+                self.show_toast("Drop a .alpvoice bundle on the window to import it");
+                Task::none()
+            }
+            Message::ToggleStoriesTools => {
+                self.stories_tools_open = !self.stories_tools_open;
                 Task::none()
             }
             Message::GenerateSpeech => {
@@ -517,10 +563,6 @@ impl App {
             }
             Message::ProfileTagsInput(text) => {
                 self.profile_tags = text;
-                Task::none()
-            }
-            Message::CreateDesignedProfile => {
-                self.create_designed_profile();
                 Task::none()
             }
             Message::DeleteProfile(id) => {
@@ -761,6 +803,7 @@ impl App {
             }
             Message::SelectWorkflowTab(tab) => {
                 self.workflow_tab = tab;
+                self.palette.open = false;
                 Task::none()
             }
             Message::Noop => Task::none(),

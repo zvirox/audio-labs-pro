@@ -1,17 +1,62 @@
-//! Generate workspace: prompt box, profile picker and take history.
+//! Generate workspace: voice card grid, the generate box and the take history.
 
 use alp_ui_kit::components;
 use alp_ui_kit::tokens::{Spacing, TypeScale};
 use alp_ui_kit::{ButtonKind, ThemeColors, fonts};
-use iced::widget::{Space, column, container, row, scrollable, text, text_input};
+use iced::widget::{Space, column, container, row, text};
 use iced::{Alignment, Element, Length};
 
-use super::workspace_layout::{card, card_auto, header};
+use super::workspace_layout::header;
 use super::{App, Message, format_time};
 
 impl App {
-    /// Generate workspace: render speech and review takes.
+    /// Generate workspace: pick a voice, render a take, review history.
     pub(super) fn generate_workspace(&self, colors: ThemeColors) -> Element<'_, Message> {
+        let grid = self.profile_grid(3, colors);
+
+        let left = column![
+            grid,
+            self.generate_box(colors),
+            Space::new().height(Length::Fixed(0.0)),
+        ]
+        .spacing(f32::from(Spacing::LG))
+        .width(Length::FillPortion(11));
+
+        let right = column![self.history_panel(colors)]
+            .width(Length::FillPortion(9))
+            .height(Length::Fill);
+
+        column![
+            header(
+                "Audio Labs Pro",
+                "Local speech, cloned voices and every take on this machine",
+                vec![
+                    components::button(
+                        "↑  Import Voice",
+                        ButtonKind::Secondary,
+                        colors,
+                        Some(Message::ImportVoice),
+                    ),
+                    components::button(
+                        "✦  Create Voice",
+                        ButtonKind::Primary,
+                        colors,
+                        Some(Message::OpenCreateVoice),
+                    ),
+                ],
+                colors,
+            ),
+            row![self.scroll(left, colors).height(Length::Fill), right]
+                .spacing(f32::from(Spacing::XL))
+                .width(Length::Fill)
+                .height(Length::Fill),
+        ]
+        .spacing(f32::from(Spacing::LG))
+        .height(Length::Fill)
+        .into()
+    }
+
+    fn generate_box(&self, colors: ThemeColors) -> Element<'_, Message> {
         let profile_names: Vec<String> = self
             .profiles
             .iter()
@@ -21,250 +66,185 @@ impl App {
             .profile()
             .map_or_else(|| "No profile".to_owned(), |profile| profile.name.clone());
 
-        let prompt_card = container(
+        container(
             column![
-                row![
-                    components::kicker("Active voice", colors),
-                    Space::new().width(Length::Fill),
-                    components::muted(
-                        format!("{} profile(s) in the library", self.profiles.len()),
-                        colors
-                    ),
-                ]
-                .align_y(Alignment::Center),
+                components::section_title("Generate Speech", colors),
+                components::field_label("Voice Profile", colors),
                 components::dropdown(
                     profile_names,
-                    Some(active_name.clone()),
+                    Some(active_name),
+                    colors,
                     Message::SelectVoice,
                 ),
-                text_input("Type what the voice should say…", &self.voice_text)
-                    .on_input(Message::GenerateTextInput)
-                    .padding(Spacing::SM)
-                    .size(f32::from(TypeScale::BODY)),
+                components::field_label("Text to Speak", colors),
+                components::text_area(
+                    &self.voice_editor,
+                    "Type what the voice should say…",
+                    72.0,
+                    colors,
+                    Message::GenerateEditor,
+                ),
                 row![
-                    self.action_btn(
+                    components::button_large(
                         if self.generating {
                             "Rendering…"
                         } else {
-                            "✦ Generate speech"
+                            "✦  Generate"
                         },
                         ButtonKind::Primary,
-                        Message::GenerateSpeech,
-                    ),
-                    self.action_btn("Play last", ButtonKind::Secondary, Message::PlayHistory(0)),
-                    Space::new().width(Length::Fill),
-                    components::muted(
-                        if self.generating {
-                            "Working on a worker thread".to_string()
-                        } else {
-                            format!("{} · built-in acoustic", self.voice_status)
-                        },
                         colors,
+                        Some(Message::GenerateSpeech),
                     ),
+                    components::button(
+                        "Play last",
+                        ButtonKind::Ghost,
+                        colors,
+                        Some(Message::PlayHistory(0)),
+                    ),
+                    Space::new().width(Length::Fill),
+                    components::muted(self.voice_status.clone(), colors),
                 ]
-                .spacing(f32::from(Spacing::XS))
+                .spacing(f32::from(Spacing::SM))
                 .align_y(Alignment::Center),
             ]
             .spacing(f32::from(Spacing::SM)),
         )
-        .padding(Spacing::MD)
-        .style(move |_theme| colors.panel_style(true));
+        .width(Length::Fill)
+        .padding(Spacing::LG)
+        .style(move |_theme| colors.card_style())
+        .into()
+    }
 
-        let mut history_rows = column![].spacing(f32::from(Spacing::XS));
+    fn history_panel(&self, colors: ThemeColors) -> Element<'_, Message> {
+        let mut rows = column![].spacing(f32::from(Spacing::SM));
         if self.history.is_empty() {
-            history_rows = history_rows.push(
-                container(
-                    column![
-                        text("No takes yet")
-                            .size(f32::from(TypeScale::BODY_STRONG))
-                            .font(fonts::semibold())
-                            .color(colors.text),
-                        components::muted(
-                            "Write a line and press Generate. Every take is rendered locally and kept on this machine.",
-                            colors
-                        ),
-                    ]
-                    .spacing(f32::from(Spacing::XXS)),
-                )
-                .padding(Spacing::MD)
-                .style(move |_theme| colors.card_style()),
-            );
-        }
-        for (index, item) in self.history.iter().enumerate() {
-            let snippet = if item.text.chars().count() > 110 {
-                let short: String = item.text.chars().take(110).collect();
-                format!("{short}…")
-            } else {
-                item.text.clone()
-            };
-            history_rows = history_rows.push(
-                container(
-                    column![
-                        row![
-                            text(format!("{} · {}", item.voice_name, item.voice_id))
-                                .size(f32::from(TypeScale::BODY))
-                                .font(fonts::semibold())
-                                .color(colors.text),
-                            components::kicker(item.kind, colors),
-                            Space::new().width(Length::Fill),
-                            components::muted(
-                                format!("{} · {}", item.created, format_time(item.duration_secs)),
-                                colors
-                            ),
-                        ]
-                        .spacing(f32::from(Spacing::XS))
-                        .align_y(Alignment::Center),
-                        components::muted(snippet, colors),
-                        row![
-                            self.action_btn("Play", ButtonKind::Ghost, Message::PlayHistory(index)),
-                            self.action_btn(
-                                "Insert",
-                                ButtonKind::Secondary,
-                                Message::InsertHistory(index)
-                            ),
-                            Space::new().width(Length::Fill),
-                            self.action_btn(
-                                "Delete",
-                                ButtonKind::Ghost,
-                                Message::DeleteHistory(index)
-                            ),
-                        ]
-                        .spacing(f32::from(Spacing::XXS))
-                        .align_y(Alignment::Center),
-                    ]
-                    .spacing(f32::from(Spacing::XS)),
-                )
-                .padding(Spacing::SM)
-                .style(move |_theme| colors.card_style()),
-            );
-        }
-
-        let history_card = card(
-            "Take History",
-            "⏱",
-            column![
-                row![
-                    components::muted(
-                        format!(
-                            "{} take(s) · stored in the app data folder",
-                            self.history.len()
-                        ),
-                        colors
-                    ),
-                    Space::new().width(Length::Fill),
-                    self.action_btn("Clear", ButtonKind::Ghost, Message::ClearHistory),
-                ]
-                .align_y(Alignment::Center),
-                scrollable(history_rows).height(Length::Fill),
-            ]
-            .spacing(f32::from(Spacing::SM))
-            .into(),
-            colors,
-        );
-
-        let engine_card = card_auto(
-            "Render Engine",
-            "◈",
-            column![
-                row![
-                    components::kicker("Backend", colors),
-                    Space::new().width(Length::Fill),
-                    text("builtin-acoustic · 48 kHz mono · 24-bit WAV")
-                        .size(f32::from(TypeScale::CAPTION))
-                        .color(colors.muted),
-                ],
-                row![
-                    components::kicker("Profile", colors),
-                    Space::new().width(Length::Fill),
-                    text(active_name)
-                        .size(f32::from(TypeScale::CAPTION))
+            rows = rows.push(container(
+                column![
+                    text("No takes yet")
+                        .size(f32::from(TypeScale::HEADING))
+                        .font(fonts::semibold())
                         .color(colors.text),
-                ],
-                row![
-                    components::kicker("Storage", colors),
-                    Space::new().width(Length::Fill),
-                    text(self.media_root.display().to_string())
-                        .size(f32::from(TypeScale::CAPTION))
-                        .font(fonts::mono())
-                        .color(colors.faint),
-                ],
-                components::muted(
-                    "The embedded acoustic engine is a formant synthesizer: it does not clone a timbre. Add a neural model in Models to change the render path.",
-                    colors
-                ),
-            ]
-            .spacing(f32::from(Spacing::XS))
-            .into(),
-            colors,
-        );
-
-        let starters = card_auto(
-            "Prompt Starters",
-            "✎",
-            column![
-                components::muted(
-                    "Quick drafts that show the shape of a good voice-over line.",
-                    colors
-                ),
-                row![
-                    self.action_btn(
-                        "Welcome narration",
-                        ButtonKind::Ghost,
-                        Message::GenerateTextInput(
-                            "Welcome back. Today we are listening to a story recorded entirely on this machine.".into()
-                        )
-                    ),
-                    self.action_btn(
-                        "Audiobook chapter",
-                        ButtonKind::Ghost,
-                        Message::GenerateTextInput(
-                            "Chapter one. The harbour was quiet when the last boat came in.".into()
-                        )
-                    ),
-                    self.action_btn(
-                        "Podcast intro",
-                        ButtonKind::Ghost,
-                        Message::GenerateTextInput(
-                            "You are listening to Audio Labs Pro, the local studio for voice and sound.".into()
-                        )
+                    components::muted(
+                        "Write a line and press Generate. Every take renders locally and stays on this machine.",
+                        colors,
                     ),
                 ]
                 .spacing(f32::from(Spacing::XS)),
-            ]
-            .spacing(f32::from(Spacing::XS))
-            .into(),
-            colors,
-        );
+            )
+            .padding(Spacing::LG)
+            .style(move |_theme| colors.well_style()));
+        }
+        for (index, item) in self.history.iter().enumerate() {
+            rows = rows.push(self.history_row(index, item, colors));
+        }
 
-        let left = column![
-            header(
-                "Generate",
-                "Local speech synthesis, one take at a time",
-                vec![self.action_btn(
-                    "Voices",
-                    ButtonKind::Secondary,
-                    Message::SelectWorkflowTab(super::WorkflowTab::Voices)
-                )],
+        let header = row![
+            components::card_title("History", colors),
+            Space::new().width(Length::Fill),
+            components::muted(format!("{} take(s)", self.history.len()), colors),
+            components::button(
+                "Clear",
+                ButtonKind::Ghost,
                 colors,
+                Some(Message::ClearHistory),
             ),
-            prompt_card,
-            engine_card,
-            starters,
-            Space::new().height(Length::Fill),
         ]
-        .spacing(f32::from(Spacing::SM))
-        .width(Length::FillPortion(3))
-        .height(Length::Fill);
+        .spacing(f32::from(Spacing::XS))
+        .align_y(Alignment::Center);
 
-        let right = column![history_card]
-            .spacing(f32::from(Spacing::SM))
-            .width(Length::FillPortion(2))
-            .height(Length::Fill);
-
-        row![left, right]
-            .spacing(f32::from(Spacing::SM))
-            .width(Length::Fill)
+        column![header, self.scroll(rows, colors).height(Length::Fill),]
+            .spacing(f32::from(Spacing::MD))
             .height(Length::Fill)
             .into()
+    }
+
+    fn history_row(
+        &self,
+        index: usize,
+        item: &super::HistoryItem,
+        colors: ThemeColors,
+    ) -> Element<'_, Message> {
+        let snippet = if item.text.chars().count() > 180 {
+            let short: String = item.text.chars().take(180).collect();
+            format!("{short}…")
+        } else {
+            item.text.clone()
+        };
+
+        container(
+            row![
+                text("≋")
+                    .size(18.0)
+                    .font(fonts::regular())
+                    .color(colors.muted),
+                column![
+                    text(item.voice_name.clone())
+                        .size(f32::from(TypeScale::BODY_STRONG))
+                        .font(fonts::semibold())
+                        .color(colors.text),
+                    row![
+                        components::chip(item.kind, colors),
+                        components::muted(format_time(item.duration_secs), colors),
+                    ]
+                    .spacing(f32::from(Spacing::XS))
+                    .align_y(Alignment::Center),
+                    components::muted(item.created.clone(), colors),
+                ]
+                .spacing(f32::from(Spacing::XXS))
+                .width(Length::Fixed(132.0)),
+                container(
+                    text(snippet)
+                        .size(f32::from(TypeScale::BODY))
+                        .font(fonts::regular())
+                        .color(colors.muted),
+                )
+                .width(Length::Fill)
+                .padding(Spacing::MD)
+                .style(move |_theme| colors.well_style()),
+                column![
+                    components::with_tooltip(
+                        components::glyph_button(
+                            "▶",
+                            12.0,
+                            ButtonKind::Ghost,
+                            colors,
+                            Some(Message::PlayHistory(index)),
+                        ),
+                        "Play take".to_string(),
+                        colors,
+                    ),
+                    components::with_tooltip(
+                        components::glyph_button(
+                            "+",
+                            13.0,
+                            ButtonKind::Ghost,
+                            colors,
+                            Some(Message::InsertHistory(index)),
+                        ),
+                        "Insert into timeline".to_string(),
+                        colors,
+                    ),
+                    components::with_tooltip(
+                        components::glyph_button(
+                            "⌫",
+                            12.0,
+                            ButtonKind::Ghost,
+                            colors,
+                            Some(Message::DeleteHistory(index)),
+                        ),
+                        "Delete take".to_string(),
+                        colors,
+                    ),
+                ]
+                .spacing(f32::from(Spacing::XXS))
+                .align_x(Alignment::End),
+            ]
+            .spacing(f32::from(Spacing::MD))
+            .align_y(Alignment::Center)
+            .padding(Spacing::MD),
+        )
+        .width(Length::Fill)
+        .style(move |_theme| colors.card_style())
+        .into()
     }
 }

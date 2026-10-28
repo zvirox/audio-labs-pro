@@ -1,14 +1,14 @@
-//! Seven-workspace shell: navigation rail, docked player and workspace dispatch.
+//! Studio shell: navigation rail, docked player and workspace dispatch.
 //!
 //! The navigation model follows the Voicebox studio layout while the contents
 //! stay native Audio Labs Pro: every workspace reads the same [`App`] state and
 //! sends [`Message`] values, so no view mutates the project directly.
 
 use alp_ui_kit::components;
-use alp_ui_kit::tokens::{Spacing, TypeScale};
+use alp_ui_kit::tokens::{Control, Radius, Rail, Spacing, TypeScale};
 use alp_ui_kit::{ButtonKind, ThemeColors, fonts};
-use iced::widget::{Space, column, container, row, text};
-use iced::{Alignment, Element, Length};
+use iced::widget::{Scrollable, Space, column, container, mouse_area, row, scrollable, text};
+use iced::{Alignment, Background, Border, Element, Length};
 use serde::{Deserialize, Serialize};
 
 use super::{App, Message, format_time};
@@ -78,9 +78,9 @@ impl WorkflowTab {
     #[must_use]
     pub fn glyph(self) -> &'static str {
         match self {
-            Self::Generate => "✦",
+            Self::Generate => "◉",
             Self::Stories => "▤",
-            Self::Captures => "◉",
+            Self::Captures => "▣",
             Self::Voices => "◇",
             Self::Effects => "≋",
             Self::Models => "◈",
@@ -89,7 +89,7 @@ impl WorkflowTab {
     }
 }
 
-/// A raised card with a heading and optional trailing controls.
+/// A flat studio card with a heading and body.
 pub(super) fn card<'a>(
     title: impl Into<String>,
     glyph: &'static str,
@@ -99,7 +99,7 @@ pub(super) fn card<'a>(
     card_sized(title, glyph, body, colors, Length::Fill)
 }
 
-/// A raised card that only takes the height its contents need.
+/// A card that only takes the height its contents need.
 pub(super) fn card_auto<'a>(
     title: impl Into<String>,
     glyph: &'static str,
@@ -117,30 +117,29 @@ fn card_sized<'a>(
     height: Length,
 ) -> Element<'a, Message> {
     let header = row![
-        text(glyph).size(13.0).color(colors.accent),
+        text(glyph).size(12.0).color(colors.accent),
         text(title.into())
-            .size(f32::from(TypeScale::BODY_STRONG))
+            .size(f32::from(TypeScale::HEADING))
             .font(fonts::semibold())
             .color(colors.text),
     ]
-    .spacing(f32::from(Spacing::XS))
-    .align_y(Alignment::Center)
-    .padding([Spacing::XS, Spacing::SM]);
+    .spacing(f32::from(Spacing::SM))
+    .align_y(Alignment::Center);
 
     container(
         column![
             header,
             container(body)
-                .padding([Spacing::XXS, Spacing::SM])
                 .width(Length::Fill)
                 .height(height)
                 .clip(true),
         ]
-        .spacing(0.0),
+        .spacing(f32::from(Spacing::MD)),
     )
     .width(Length::Fill)
     .height(height)
-    .style(move |_theme| colors.panel_style(false))
+    .padding(Spacing::LG)
+    .style(move |_theme| colors.card_style())
     .into()
 }
 
@@ -154,7 +153,7 @@ pub(super) fn metric_badge<'a, Message: 'a>(
         column![
             text(label)
                 .size(f32::from(TypeScale::CAPTION))
-                .font(fonts::semibold())
+                .font(fonts::medium())
                 .color(colors.faint),
             text(value.into())
                 .size(f32::from(TypeScale::BODY_STRONG))
@@ -163,8 +162,8 @@ pub(super) fn metric_badge<'a, Message: 'a>(
         ]
         .spacing(f32::from(Spacing::XXS)),
     )
-    .padding([Spacing::XS, Spacing::SM])
-    .style(move |_theme| colors.card_style())
+    .padding([Spacing::SM, Spacing::MD])
+    .style(move |_theme| colors.well_style())
     .into()
 }
 
@@ -176,17 +175,14 @@ pub(super) fn header<'a>(
     colors: ThemeColors,
 ) -> Element<'a, Message> {
     let mut trailing = row![]
-        .spacing(f32::from(Spacing::XS))
+        .spacing(f32::from(Spacing::SM))
         .align_y(Alignment::Center);
     for action in actions {
         trailing = trailing.push(action);
     }
     row![
         column![
-            text(title)
-                .size(f32::from(TypeScale::TITLE))
-                .font(fonts::bold())
-                .color(colors.text),
+            components::page_title(title, colors),
             components::muted(subtitle, colors),
         ]
         .spacing(f32::from(Spacing::XXS)),
@@ -201,30 +197,34 @@ impl App {
     /// Fixed left navigation rail.
     pub(super) fn sidebar_view(&self, colors: ThemeColors) -> Element<'_, Message> {
         let logo = container(
-            column![
-                text("◈").size(22.0).color(colors.accent),
-                text("ALP")
-                    .size(9.0)
-                    .font(fonts::semibold())
-                    .color(colors.faint),
-            ]
-            .spacing(0.0)
-            .align_x(Alignment::Center),
+            text("◈")
+                .size(22.0)
+                .font(fonts::bold())
+                .color(colors.accent_text),
         )
-        .padding([Spacing::XS, Spacing::XXS]);
+        .width(Length::Fixed(f32::from(Rail::LOGO)))
+        .height(Length::Fixed(f32::from(Rail::LOGO)))
+        .align_x(Alignment::Center)
+        .align_y(iced::alignment::Vertical::Center)
+        .style(move |_theme| container::Style {
+            background: Some(Background::Color(colors.accent)),
+            border: Border {
+                radius: f32::from(Radius::MD).into(),
+                width: 0.0,
+                color: iced::Color::TRANSPARENT,
+            },
+            shadow: iced::Shadow::default(),
+            text_color: Some(colors.accent_text),
+            snap: true,
+        });
 
-        let mut nav = column![].spacing(f32::from(Spacing::XXS));
+        let mut nav = column![].spacing(f32::from(Spacing::XS));
         for tab in WorkflowTab::ALL {
             let active = self.workflow_tab == tab;
             nav = nav.push(components::with_tooltip(
-                components::glyph_button(
+                components::rail_button(
                     tab.glyph(),
-                    17.0,
-                    if active {
-                        ButtonKind::Primary
-                    } else {
-                        ButtonKind::Ghost
-                    },
+                    active,
                     colors,
                     Some(Message::SelectWorkflowTab(tab)),
                 ),
@@ -234,14 +234,9 @@ impl App {
         }
 
         let ai = components::with_tooltip(
-            components::glyph_button(
+            components::rail_button(
                 if self.ai_enabled { "⚡" } else { "○" },
-                15.0,
-                if self.ai_enabled {
-                    ButtonKind::Secondary
-                } else {
-                    ButtonKind::Ghost
-                },
+                self.ai_enabled,
                 colors,
                 Some(Message::ToggleAiControl),
             ),
@@ -256,18 +251,12 @@ impl App {
         container(
             column![
                 logo,
-                Space::new().height(Length::Fixed(f32::from(Spacing::XS))),
+                Space::new().height(Length::Fixed(f32::from(Spacing::LG))),
                 nav,
                 Space::new().height(Length::Fill),
                 ai,
                 components::with_tooltip(
-                    components::glyph_button(
-                        "?",
-                        15.0,
-                        ButtonKind::Ghost,
-                        colors,
-                        Some(Message::OpenShortcutsHelp),
-                    ),
+                    components::rail_button("?", false, colors, Some(Message::OpenShortcutsHelp),),
                     "Keyboard shortcuts".to_string(),
                     colors,
                 ),
@@ -275,25 +264,163 @@ impl App {
                     .size(f32::from(TypeScale::CAPTION))
                     .color(colors.faint),
             ]
-            .spacing(f32::from(Spacing::XXS))
+            .spacing(f32::from(Spacing::XS))
             .align_x(Alignment::Center),
         )
-        .width(Length::Fixed(68.0))
+        .width(Length::Fixed(f32::from(Rail::WIDTH)))
         .height(Length::Fill)
-        .padding([Spacing::SM, Spacing::XXS])
-        .style(move |_theme| colors.panel_style(false))
+        .padding([Spacing::LG, Spacing::MD])
+        .style(move |_theme| colors.rail_style())
         .into()
     }
 
-    /// Bottom docked player, present on every workspace.
-    pub(super) fn docked_player_view(&self, colors: ThemeColors) -> Element<'_, Message> {
-        let play_glyph = if self.playing { "⏸" } else { "▶" };
-        let progress = (self.position_secs / self.media_duration.max(1.0)).clamp(0.0, 1.0);
-        let now_playing = if self.voice_status.is_empty() {
-            "No take loaded".to_owned()
-        } else {
-            self.voice_status.clone()
+    /// A themed scroll area; every scrolling surface goes through here so the
+    /// scrollbar matches the studio palette.
+    pub(super) fn scroll<'a>(
+        &self,
+        content: impl Into<Element<'a, Message>>,
+        colors: ThemeColors,
+    ) -> Scrollable<'a, Message> {
+        scrollable(content).style(move |_theme, _status| components::scroll_style(colors))
+    }
+
+    /// A voice profile card shared by Generate and Voices.
+    pub(super) fn profile_card(
+        &self,
+        profile: &alp_voice::VoiceProfile,
+        colors: ThemeColors,
+    ) -> Element<'_, Message> {
+        let selected = profile.id == self.selected_profile;
+        let kind = match profile.kind {
+            alp_voice::VoiceKind::Builtin => "built-in",
+            alp_voice::VoiceKind::Cloned => "cloned",
+            alp_voice::VoiceKind::Designed => "designed",
         };
+        let description = if profile.tags.is_empty() {
+            "Local voice profile".to_owned()
+        } else {
+            profile.tags.join(" ")
+        };
+        let is_builtin = profile.kind == alp_voice::VoiceKind::Builtin;
+        let id = profile.id.clone();
+
+        let body = column![
+            row![
+                components::avatar(&profile.name, 34.0, colors),
+                column![
+                    text(profile.name.clone())
+                        .size(f32::from(TypeScale::BODY_STRONG))
+                        .font(fonts::semibold())
+                        .color(colors.text),
+                    components::chip(kind, colors),
+                ]
+                .spacing(f32::from(Spacing::XXS))
+                .align_x(Alignment::Start),
+            ]
+            .spacing(f32::from(Spacing::SM))
+            .align_y(Alignment::Center),
+            text(description)
+                .size(f32::from(TypeScale::CAPTION))
+                .font(fonts::regular())
+                .color(colors.muted),
+            Space::new().height(Length::Fill),
+            row![
+                Space::new().width(Length::Fill),
+                components::with_tooltip(
+                    components::glyph_button_compact(
+                        "▶",
+                        12.0,
+                        ButtonKind::Ghost,
+                        colors,
+                        Some(Message::SelectProfile(id.clone())),
+                    ),
+                    "Use this voice".to_string(),
+                    colors,
+                ),
+                components::with_tooltip(
+                    components::glyph_button_compact(
+                        "↓",
+                        12.0,
+                        ButtonKind::Ghost,
+                        colors,
+                        Some(Message::ExportProfile(id.clone())),
+                    ),
+                    "Export bundle".to_string(),
+                    colors,
+                ),
+                if is_builtin {
+                    Space::new().width(Length::Fixed(28.0)).into()
+                } else {
+                    components::with_tooltip(
+                        components::glyph_button_compact(
+                            "⌫",
+                            12.0,
+                            ButtonKind::Ghost,
+                            colors,
+                            Some(Message::DeleteProfile(id)),
+                        ),
+                        "Delete profile".to_string(),
+                        colors,
+                    )
+                },
+            ]
+            .spacing(f32::from(Spacing::XXS))
+            .align_y(Alignment::Center),
+        ]
+        .spacing(f32::from(Spacing::XS))
+        .height(Length::Fill);
+
+        container(body)
+            .width(Length::Fill)
+            .height(Length::Fixed(128.0))
+            .padding(Spacing::MD)
+            .style(move |_theme| container::Style {
+                background: Some(Background::Color(colors.glass_strong)),
+                border: Border {
+                    radius: f32::from(Radius::MD).into(),
+                    width: 1.0,
+                    color: if selected {
+                        colors.accent
+                    } else {
+                        colors.border
+                    },
+                },
+                shadow: iced::Shadow::default(),
+                text_color: Some(colors.text),
+                snap: true,
+            })
+            .into()
+    }
+
+    /// A responsive grid of voice cards that keeps equal column widths even on
+    /// a partially filled last row.
+    pub(super) fn profile_grid(&self, columns: usize, colors: ThemeColors) -> Element<'_, Message> {
+        let columns = columns.max(1);
+        let mut grid = column![].spacing(f32::from(Spacing::SM));
+        for chunk in self.profiles.chunks(columns) {
+            let mut line = row![].spacing(f32::from(Spacing::SM));
+            for profile in chunk {
+                line = line.push(
+                    container(self.profile_card(profile, colors)).width(Length::FillPortion(1)),
+                );
+            }
+            let missing = columns - chunk.len();
+            if missing > 0 {
+                line = line.push(Space::new().width(Length::FillPortion(missing as u16)));
+            }
+            grid = grid.push(line);
+        }
+        grid.into()
+    }
+
+    /// Bottom docked player, present on every workspace except Stories.
+    pub(super) fn docked_player_view(&self, colors: ThemeColors) -> Element<'_, Message> {
+        let play_glyph = if self.playing { "❚❚" } else { "▶" };
+        let progress = (self.position_secs / self.media_duration.max(1.0)).clamp(0.0, 1.0);
+        let waveform = container(self.waveform.view())
+            .width(Length::Fill)
+            .height(Length::Fixed(48.0))
+            .clip(true);
 
         container(
             row![
@@ -304,29 +431,70 @@ impl App {
                     Some(Message::PlayPause),
                 ),
                 components::icon_button("⏮", colors, Some(Message::Stop)),
-                text(format_time(self.position_secs))
-                    .size(f32::from(TypeScale::CAPTION))
-                    .font(fonts::mono())
-                    .color(colors.text),
-                container(components::progress(progress, colors))
-                    .width(Length::FillPortion(2))
-                    .align_y(iced::alignment::Vertical::Center),
-                components::muted(format_time(self.media_duration), colors),
-                Space::new().width(Length::Fixed(f32::from(Spacing::SM))),
-                components::muted(now_playing, colors),
-                Space::new().width(Length::Fill),
-                components::kicker(
-                    format!("{:.0} fps", 1000.0 / self.frame_ms.max(0.1)),
-                    colors
-                ),
+                column![
+                    row![
+                        text(self.player_title.clone())
+                            .size(f32::from(TypeScale::BODY))
+                            .font(fonts::medium())
+                            .color(colors.text),
+                        Space::new().width(Length::Fill),
+                        text(format!(
+                            "{} / {}",
+                            format_time(self.position_secs),
+                            format_time(self.media_duration)
+                        ))
+                        .size(f32::from(TypeScale::CAPTION))
+                        .font(fonts::mono())
+                        .color(colors.muted),
+                    ]
+                    .align_y(Alignment::Center),
+                    waveform,
+                ]
+                .spacing(f32::from(Spacing::XXS))
+                .width(Length::Fill)
+                .height(Length::Fill),
+                column![
+                    components::muted(
+                        format!("{:.0} fps", 1000.0 / self.frame_ms.max(0.1)),
+                        colors
+                    ),
+                    row![
+                        text("VOL")
+                            .size(9.0)
+                            .font(fonts::semibold())
+                            .color(colors.faint),
+                        container(components::themed_slider(
+                            (self.gain / 4.0).clamp(0.0, 1.0),
+                            colors,
+                            |value| Message::SetMasterGain(value * 4.0)
+                        ))
+                        .width(Length::Fixed(88.0)),
+                    ]
+                    .spacing(f32::from(Spacing::XS))
+                    .align_y(Alignment::Center),
+                    components::progress(progress, colors),
+                ]
+                .spacing(f32::from(Spacing::XS))
+                .width(Length::Fixed(150.0))
+                .align_x(Alignment::End),
             ]
-            .spacing(f32::from(Spacing::SM))
+            .spacing(f32::from(Spacing::MD))
             .align_y(Alignment::Center),
         )
         .width(Length::Fill)
-        .height(Length::Fixed(54.0))
-        .padding([Spacing::XS, Spacing::MD])
-        .style(move |_theme| colors.card_style())
+        .height(Length::Fixed(f32::from(Control::DOCK)))
+        .padding([Spacing::MD, Spacing::LG])
+        .style(move |_theme| container::Style {
+            background: Some(Background::Color(colors.glass)),
+            border: Border {
+                width: 1.0,
+                color: colors.border,
+                radius: 0.0.into(),
+            },
+            shadow: iced::Shadow::default(),
+            text_color: Some(colors.text),
+            snap: true,
+        })
         .into()
     }
 
@@ -341,6 +509,52 @@ impl App {
             WorkflowTab::Models => self.models_workspace(colors),
             WorkflowTab::Settings => self.settings_workspace(colors),
         }
+    }
+
+    /// The studio dock: a player, or the track editor inside Stories.
+    pub(super) fn dock_view(&self, colors: ThemeColors) -> Element<'_, Message> {
+        match self.workflow_tab {
+            WorkflowTab::Stories => self.track_editor_view(colors),
+            _ => self.docked_player_view(colors),
+        }
+    }
+
+    /// Window controls drawn inside the title strip.
+    pub(super) fn traffic_lights(&self, _colors: ThemeColors) -> Element<'_, Message> {
+        let light = |color: iced::Color, message: Message| -> Element<'_, Message> {
+            mouse_area(
+                container(Space::new())
+                    .width(Length::Fixed(12.0))
+                    .height(Length::Fixed(12.0))
+                    .style(move |_theme| container::Style {
+                        background: Some(Background::Color(color)),
+                        border: Border {
+                            radius: 6.0.into(),
+                            ..Border::default()
+                        },
+                        ..container::Style::default()
+                    }),
+            )
+            .on_press(message)
+            .into()
+        };
+        row![
+            light(
+                iced::Color::from_rgb(0.925, 0.282, 0.600),
+                Message::WindowClose
+            ),
+            light(
+                iced::Color::from_rgb(0.961, 0.651, 0.137),
+                Message::WindowMinimize
+            ),
+            light(
+                iced::Color::from_rgb(0.157, 0.784, 0.251),
+                Message::WindowMaximize
+            ),
+        ]
+        .spacing(f32::from(Spacing::SM))
+        .align_y(Alignment::Center)
+        .into()
     }
 }
 

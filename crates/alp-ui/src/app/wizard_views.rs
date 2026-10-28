@@ -2,10 +2,10 @@
 
 use alp_ui_kit::components;
 use alp_ui_kit::overlays;
-use alp_ui_kit::tokens::{Spacing, TypeScale};
+use alp_ui_kit::tokens::{Radius, Spacing, TypeScale};
 use alp_ui_kit::{ButtonKind, ThemeColors, fonts};
-use iced::widget::{column, row, scrollable, text};
-use iced::{Alignment, Element, Length};
+use iced::widget::{Space, column, container, row, text};
+use iced::{Alignment, Background, Border, Element, Length};
 
 use crate::app::{App, Message};
 use crate::glass::GlassMode;
@@ -14,7 +14,7 @@ impl App {
     /// Render the first-run onboarding and hardware configuration wizard overlay.
     pub(super) fn first_run_wizard_view(&self, colors: ThemeColors) -> Element<'_, Message> {
         let devices_summary = if self.input_devices.is_empty() {
-            "Default System Audio (PipeWire / ALSA)".to_string()
+            "Default system audio (PipeWire / ALSA)".to_string()
         } else {
             let shown: Vec<&str> = self
                 .input_devices
@@ -31,8 +31,8 @@ impl App {
         };
 
         let glass_status = match self.glass.mode {
-            GlassMode::CompositorBlur => "Active (Hardware Accelerated)",
-            GlassMode::TintFallback => "Fallback (Clean Tinted Glass)",
+            GlassMode::CompositorBlur => "Active (hardware accelerated)",
+            GlassMode::TintFallback => "Fallback (clean tinted glass)",
         };
 
         let theme_label = match self.theme_mode {
@@ -41,61 +41,95 @@ impl App {
             alp_ui_kit::ThemeMode::System => "System",
         };
 
+        let step =
+            |number: &'static str, title: &'static str, detail: Element<'static, Message>| {
+                let header = row![
+                    components::chip(number, colors),
+                    text(title)
+                        .size(f32::from(TypeScale::BODY_STRONG))
+                        .font(fonts::semibold())
+                        .color(colors.text),
+                ]
+                .spacing(f32::from(Spacing::SM))
+                .align_y(Alignment::Center);
+                container(
+                    column![header, detail]
+                        .spacing(f32::from(Spacing::XS))
+                        .padding(Spacing::MD),
+                )
+                .width(Length::Fill)
+                .style(move |_theme| colors.well_style())
+            };
+
         let body = column![
             components::muted(
-                "Initial Setup & Hardware Calibration — Configure devices, appearance, and voice model tier.",
+                "Configure devices, appearance and the local model tier. Nothing leaves this machine.",
                 colors,
             ),
-            column![
-                text("1. Audio Hardware Setup")
-                    .size(f32::from(TypeScale::BODY))
-                    .font(fonts::medium())
-                    .color(colors.text),
-                components::muted(format!("Detected Inputs: {devices_summary}"), colors),
-            ]
-            .spacing(f32::from(Spacing::XXS)),
-            column![
-                text("2. System Capabilities & Recommended AI Tier")
-                    .size(f32::from(TypeScale::BODY))
-                    .font(fonts::medium())
-                    .color(colors.text),
-                components::muted(&self.hardware_summary, colors),
-            ]
-            .spacing(f32::from(Spacing::XXS)),
-            column![
-                text("3. Appearance & Compositor Glass")
-                    .size(f32::from(TypeScale::BODY))
-                    .font(fonts::medium())
-                    .color(colors.text),
-                components::muted(
-                    format!(
-                        "Theme: {theme_label} · Glass Effect: {glass_status} · Reduce Motion: {}",
-                        if self.reduce_motion { "Enabled" } else { "Disabled" }
+            step(
+                "01",
+                "Audio hardware",
+                components::muted(format!("Detected inputs: {devices_summary}"), colors)
+            ),
+            step(
+                "02",
+                "System capabilities",
+                components::muted(self.hardware_summary.clone(), colors)
+            ),
+            step(
+                "03",
+                "Appearance & glass",
+                column![
+                    components::muted(
+                        format!(
+                            "Theme {theme_label} · glass {glass_status} · reduce motion {}",
+                            if self.reduce_motion {
+                                "enabled"
+                            } else {
+                                "disabled"
+                            }
+                        ),
+                        colors,
                     ),
-                    colors,
-                ),
-                row![
-                    self.action_btn("Toggle Theme", ButtonKind::Secondary, Message::ToggleTheme),
-                    self.action_btn(
-                        "Toggle Motion",
-                        ButtonKind::Ghost,
-                        Message::ToggleReduceMotion,
-                    ),
+                    row![
+                        components::button(
+                            "Toggle theme",
+                            ButtonKind::Secondary,
+                            colors,
+                            Some(Message::ToggleTheme),
+                        ),
+                        components::button(
+                            "Toggle motion",
+                            ButtonKind::Ghost,
+                            colors,
+                            Some(Message::ToggleReduceMotion),
+                        ),
+                    ]
+                    .spacing(f32::from(Spacing::SM)),
                 ]
-                .spacing(f32::from(Spacing::SM)),
-            ]
-            .spacing(f32::from(Spacing::XXS)),
+                .spacing(f32::from(Spacing::XS))
+                .into(),
+            ),
         ]
         .spacing(f32::from(Spacing::MD));
 
-        overlays::modal(
+        overlays::dialog(
             "Welcome to Audio Labs Pro",
+            "A local voice studio: record, clone, generate and master without sending audio anywhere.",
             body,
-            vec![(
-                "Finish Setup & Start Working".to_string(),
-                Message::FinishFirstRunWizard,
-            )],
+            row![
+                Space::new().width(Length::Fill),
+                components::button(
+                    "Start working",
+                    ButtonKind::Primary,
+                    colors,
+                    Some(Message::FinishFirstRunWizard),
+                ),
+            ]
+            .align_y(Alignment::Center),
+            640.0,
             colors,
+            Message::FinishFirstRunWizard,
         )
     }
 
@@ -108,25 +142,59 @@ impl App {
             .and_then(|name| name.to_str())
             .unwrap_or("no reference recording");
         let body = column![
-            components::muted(
-                "A cloned voice profile is only written when a human attests that the speaker gave permission. This record is stored inside the profile.",
-                colors
-            ),
-            text("Speaker")
-                .size(f32::from(TypeScale::CAPTION))
-                .font(fonts::semibold())
-                .color(colors.faint),
-            iced::widget::text_input("Speaker name", &self.consent_speaker)
-                .on_input(Message::ConsentSpeakerInput)
-                .padding(Spacing::SM),
-            text("Attesting engineer")
-                .size(f32::from(TypeScale::CAPTION))
-                .font(fonts::semibold())
-                .color(colors.faint),
-            iced::widget::text_input("Your name", &self.consent_attester)
-                .on_input(Message::ConsentAttesterInput)
-                .padding(Spacing::SM),
-            components::muted(format!("Reference: {reference}"), colors),
+            container(
+                row![
+                    text("⚖")
+                        .size(f32::from(TypeScale::TITLE))
+                        .color(colors.accent),
+                    components::muted(
+                        "A cloned voice profile is only written when a human attests that the speaker gave permission. This record is stored inside the profile bundle.",
+                        colors,
+                    ),
+                ]
+                .spacing(f32::from(Spacing::MD))
+                .align_y(Alignment::Center)
+                .padding(Spacing::MD),
+            )
+            .width(Length::Fill)
+            .style(move |_theme| container::Style {
+                background: Some(Background::Color(colors.surface_raised)),
+                border: Border {
+                    radius: f32::from(Radius::SM).into(),
+                    width: 1.0,
+                    color: colors.border,
+                },
+                shadow: iced::Shadow::default(),
+                text_color: Some(colors.text),
+                snap: true,
+            }),
+            row![
+                column![
+                    components::field_label("Speaker", colors),
+                    components::text_field(
+                        "Speaker name",
+                        &self.consent_speaker,
+                        colors,
+                        Message::ConsentSpeakerInput,
+                    ),
+                ]
+                .spacing(f32::from(Spacing::XS))
+                .width(Length::FillPortion(1)),
+                column![
+                    components::field_label("Attesting engineer", colors),
+                    components::text_field(
+                        "Your name",
+                        &self.consent_attester,
+                        colors,
+                        Message::ConsentAttesterInput,
+                    ),
+                ]
+                .spacing(f32::from(Spacing::XS))
+                .width(Length::FillPortion(1)),
+            ]
+            .spacing(f32::from(Spacing::MD)),
+            components::kicker("Reference", colors),
+            components::muted(reference, colors),
             components::muted(
                 self.reference_audit_status
                     .clone()
@@ -134,16 +202,32 @@ impl App {
                 colors
             ),
         ]
-        .spacing(f32::from(Spacing::XS));
+        .spacing(f32::from(Spacing::MD));
 
-        overlays::modal(
-            "Consent to Clone",
+        overlays::dialog(
+            "Consent to clone",
+            "Ask the speaker before you create this profile.",
             body,
-            vec![
-                ("Cancel".to_string(), Message::CloseConsentDialog),
-                ("Confirm consent".to_string(), Message::ConfirmConsent),
-            ],
+            row![
+                Space::new().width(Length::Fill),
+                components::button(
+                    "Cancel",
+                    ButtonKind::Secondary,
+                    colors,
+                    Some(Message::CloseConsentDialog),
+                ),
+                components::button(
+                    "Confirm consent",
+                    ButtonKind::Primary,
+                    colors,
+                    Some(Message::ConfirmConsent),
+                ),
+            ]
+            .spacing(f32::from(Spacing::SM))
+            .align_y(Alignment::Center),
+            640.0,
             colors,
+            Message::CloseConsentDialog,
         )
     }
 
@@ -151,39 +235,39 @@ impl App {
     pub(super) fn shortcuts_help_modal_view(&self, colors: ThemeColors) -> Element<'_, Message> {
         let shortcuts = [
             (
-                "Transport & Playback",
+                "Transport & playback",
                 &[
                     ("Space", "Play / pause playback"),
                     ("Home", "Rewind playhead to timeline start"),
                 ][..],
             ),
             (
-                "Command & Panels",
+                "Command & panels",
                 &[
-                    ("Ctrl+K", "Open Command Palette"),
-                    ("F1", "Open Keyboard Shortcuts Help"),
+                    ("Ctrl+K", "Open command palette"),
+                    ("F1", "Open keyboard shortcuts"),
                     ("Ctrl+S", "Save project immediately"),
                     ("Ctrl+O", "Import audio media file"),
                     ("Ctrl+Shift+R", "Reset panels to default layout"),
                     ("Ctrl+D", "Toggle dark / light / system theme"),
-                    ("Ctrl+Shift+M", "Toggle Reduce Motion mode"),
+                    ("Ctrl+Shift+M", "Toggle reduce motion"),
                 ][..],
             ),
             (
-                "Timeline & Editing",
+                "Timeline & editing",
                 &[
                     ("Ctrl+Z", "Undo last edit command"),
                     ("Ctrl+Y / Ctrl+Shift+Z", "Redo last undone command"),
                     ("Delete / Backspace", "Delete selected clip or range"),
-                    ("Ctrl+B", "Split clip at current playhead position"),
-                    ("Ctrl+C", "Copy selected range to clipboard"),
-                    ("Ctrl+X", "Cut selected range to clipboard"),
-                    ("Ctrl+V", "Paste clipboard range into timeline"),
+                    ("Ctrl+B", "Split clip at the playhead"),
+                    ("Ctrl+C", "Copy selected range"),
+                    ("Ctrl+X", "Cut selected range"),
+                    ("Ctrl+V", "Paste clipboard range"),
                     ("R", "Toggle ripple edit mode"),
                 ][..],
             ),
             (
-                "Voice Lab & Dictation",
+                "Voice lab & dictation",
                 &[
                     ("Ctrl+Space", "Toggle live microphone dictation"),
                     ("Ctrl+Shift+T", "Transcribe active track clips"),
@@ -194,43 +278,52 @@ impl App {
         let mut list = column![].spacing(f32::from(Spacing::MD));
 
         for (category, items) in shortcuts {
-            let mut group = column![
-                text(category)
-                    .size(f32::from(TypeScale::BODY))
-                    .font(fonts::medium())
-                    .color(colors.text),
-            ]
-            .spacing(f32::from(Spacing::XXS));
-
+            let mut group =
+                column![components::kicker(category, colors)].spacing(f32::from(Spacing::XXS));
             for (key, desc) in items {
-                let shortcut_row = row![
-                    text(*key)
-                        .size(f32::from(TypeScale::BODY))
-                        .color(colors.text)
-                        .width(Length::Fixed(180.0)),
-                    components::muted(*desc, colors),
-                ]
-                .align_y(Alignment::Center)
-                .spacing(f32::from(Spacing::SM));
-                group = group.push(shortcut_row);
+                group = group.push(
+                    row![
+                        text(*key)
+                            .size(f32::from(TypeScale::LABEL))
+                            .font(fonts::mono())
+                            .color(colors.text)
+                            .width(Length::Fixed(180.0)),
+                        components::muted(*desc, colors),
+                    ]
+                    .align_y(Alignment::Center)
+                    .spacing(f32::from(Spacing::SM))
+                    .padding([2.0, 0.0]),
+                );
             }
             list = list.push(group);
         }
 
         let body = column![
             components::muted(
-                "Audio Labs Pro productivity and accessibility shortcuts",
+                "Productivity and accessibility shortcuts on this machine.",
                 colors,
             ),
-            scrollable(list).height(Length::Fixed(340.0)),
+            self.scroll(list, colors).height(Length::Fixed(340.0)),
         ]
         .spacing(f32::from(Spacing::SM));
 
-        overlays::modal(
-            "Keyboard Shortcuts Reference",
+        overlays::dialog(
+            "Keyboard shortcuts",
+            "Every action is also reachable from the command palette.",
             body,
-            vec![("Close (Esc)".to_string(), Message::CloseShortcutsHelp)],
+            row![
+                Space::new().width(Length::Fill),
+                components::button(
+                    "Close",
+                    ButtonKind::Secondary,
+                    colors,
+                    Some(Message::CloseShortcutsHelp),
+                ),
+            ]
+            .align_y(Alignment::Center),
+            680.0,
             colors,
+            Message::CloseShortcutsHelp,
         )
     }
 }

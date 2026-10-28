@@ -9,9 +9,11 @@ recording/metering, voice and story generation, capture transcription and
 worker-backed mix export. It is the only crate that renders UI and the only
 place allowed to talk to the compositor through `glass`.
 
-The shell uses a retro palette from `alp-ui-kit`: a dark “midnight walnut”
-theme (espresso surfaces, cream text, burnt-orange accent, teal secondary) and a
-light “aged paper” variant, with 3/7/11 radii and soft card shadows.
+The shell uses the studio palette from `alp-ui-kit`: near-black surfaces,
+graphite cards, a single warm gold accent with dark ink on filled buttons, an
+80 px icon rail, pill controls, 6/10/14/18 px radii and hairline borders. A
+light paper variant mirrors the roles, and every scrolling surface shares one
+themed scroller through `App::scroll`.
 
 ## Public API
 
@@ -22,13 +24,18 @@ Inside the binary:
 - `app::{App, Message}` — state machine, subscriptions and update logic.
 - `app::update` — the message reducer and recording/export helpers.
 - `app::views` — pure screen and panel rendering.
-- `app::workspace_layout` — `WorkflowTab`, the glyph rail, docked player,
-  `card`/`card_auto`, `header` and `metric_badge`.
+- `app::workspace_layout` — `WorkflowTab`, the icon rail, docked player,
+  `card`/`card_auto`, `header`, `metric_badge`, `profile_card`/`profile_grid`
+  and the themed `scroll` helper.
 - `app::studio` — profile CRUD/import/export, generation, story and capture
   operations against `alp-voice`.
 - `app::generate_views`, `app::stories_views`, `app::capture_views`,
   `app::voice_views`, `app::effects_views`, `app::settings_views`,
   `app::ai_views`, `app::wizard_views` — one workspace or overlay each.
+- `app::create_voice_views` — the Create Voice dialog (sample source, name,
+  description, language, reference text).
+- `app::track_editor` — the Stories dock: transport strip, ruler, track gutter
+  and proportional gold clips.
 - `session::EditSession` — live project, command stack, selection, clipboard,
   import and export bridge.
 - `commands` — registry, filtering, shortcuts and palette state.
@@ -103,7 +110,9 @@ behavior, the `WorkflowTab` slug round-trip used by `ALP_START_TAB`, and the
 studio label helpers (`slugify`, `clock_label`). `cargo clippy --workspace --all-targets -- -D warnings`
 and `scripts/check-ui.sh` guard the crate. Manual acceptance runs use
 `ALP_DEMO_SECONDS`, `ALP_DEMO_AUTOSCROLL`, `ALP_METRICS`, `ALP_AUTOCLOSE_SECS`,
-`ALP_START_TAB` and `ALP_FORCE_TINT`; results are in `docs/spikes/PHASE2-RESULTS.md`.
+`ALP_START_TAB`, `ALP_START_OVERLAY` (create-voice, consent, shortcuts,
+palette, wizard) and `ALP_FORCE_TINT`; results are in
+`docs/spikes/PHASE2-RESULTS.md`.
 
 ## Known limits
 
@@ -116,12 +125,15 @@ and `scripts/check-ui.sh` guard the crate. Manual acceptance runs use
   reference timbre.
 - Built-in STT writes placeholder segment text; transcription timing and export
   work, the words are a stand-in.
-- The Effects workspace prepares the cleanup chain, but `alp-engine` does not
-  apply `EffectRef` yet, so playback is unprocessed.
+- The Effects workspace prepares the cleanup chain and renders compact stage
+  switches, but `alp-engine` does not apply `EffectRef` yet, so playback is
+  unprocessed.
 - There is no HTTP model downloader; models must be placed and verified by hand.
 - Import after recording runs synchronously on the UI thread.
 - Real compositor blur is KWin/X11 only; Wayland and GNOME use the tint.
 - No full accessibility tree, screen-reader labels or in-app text scaling yet.
 - Only one window and one workspace file; monitor position is not persisted.
-- `app/update.rs` is above the 1,000-line soft warning; views, studio and the
-  editing session have already been split out.
+- `app/update.rs` is above the 1,000-line soft warning; views, studio, the
+  create-voice dialog and the track editor have already been split out.
+- The Create Voice upload tab is a drop target with no file picker dependency;
+  system-audio capture is not wired. Both states say so in the dialog.

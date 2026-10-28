@@ -15,6 +15,7 @@ use alp_ui_kit::motion::Toggle;
 use alp_ui_kit::overlays::{self, CommandItem};
 use alp_ui_kit::tokens::{Control, Duration as MotionDuration, Spacing, TypeScale};
 use alp_ui_kit::{ButtonKind, ThemeColors, ThemeMode, WaveformWidget, fonts};
+use iced::widget::text_editor;
 use iced::{
     Alignment, Background, Border, Color, Element, Length, Point, Size, Subscription, Task, Theme,
     mouse, window,
@@ -37,12 +38,14 @@ use crate::workspace::PersistedWorkspace;
 
 mod ai_views;
 mod capture_views;
+mod create_voice_views;
 mod effects_views;
 mod export_handlers;
 mod generate_views;
 mod settings_views;
 mod stories_views;
 mod studio;
+mod track_editor;
 mod update;
 mod views;
 mod voice_views;
@@ -52,6 +55,30 @@ mod workspace_layout;
 pub use workspace_layout::WorkflowTab;
 
 /// Top-level shell messages.
+/// Source tab in the Create Voice dialog.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum CreateVoiceTab {
+    /// Import a sample from disk.
+    Upload,
+    /// Record a sample with the selected input.
+    #[default]
+    Record,
+    /// Capture system audio.
+    SystemAudio,
+}
+
+impl CreateVoiceTab {
+    /// Index used by the segmented control.
+    #[must_use]
+    pub fn index(self) -> usize {
+        match self {
+            Self::Upload => 0,
+            Self::Record => 1,
+            Self::SystemAudio => 2,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Message {
     /// iced opened the main window.
@@ -254,8 +281,26 @@ pub enum Message {
     UndoAiChanges,
     /// Switch active workflow workspace tab.
     SelectWorkflowTab(WorkflowTab),
-    /// Update the Generate tab prompt.
-    GenerateTextInput(String),
+    /// Edit the Generate tab prompt in the multi-line editor.
+    GenerateEditor(text_editor::Action),
+    /// Open the Create Voice dialog.
+    OpenCreateVoice,
+    /// Close the Create Voice dialog.
+    CloseCreateVoice,
+    /// Switch the Create Voice sample source.
+    CreateVoiceTab(CreateVoiceTab),
+    /// Reference transcript typed into the Create Voice dialog.
+    CreateVoiceReferenceInput(String),
+    /// Target language chosen in the Create Voice dialog.
+    CreateVoiceLanguage(String),
+    /// Create the profile described by the dialog.
+    CreateVoiceSubmit,
+    /// Create a designed profile from the dialog description.
+    CreateDesignedVoice,
+    /// Open the import hint for voice bundles.
+    ImportVoice,
+    /// Show or hide the mixer/inspector tools over the Stories editor.
+    ToggleStoriesTools,
     /// Queue speech generation for the selected profile.
     GenerateSpeech,
     /// Play a generated take from history.
@@ -272,8 +317,6 @@ pub enum Message {
     ProfileNameInput(String),
     /// Voice profile description/tags field.
     ProfileTagsInput(String),
-    /// Create a designed voice profile from the description.
-    CreateDesignedProfile,
     /// Delete a voice profile from the library.
     DeleteProfile(String),
     /// Export a profile as a `.alpvoice` bundle.
@@ -332,7 +375,6 @@ struct EffectItem {
 #[derive(Debug, Clone)]
 struct HistoryItem {
     text: String,
-    voice_id: String,
     voice_name: String,
     path: PathBuf,
     duration_secs: f32,
@@ -363,7 +405,6 @@ enum GenerationKind {
 #[derive(Debug, Clone)]
 struct GeneratedTake {
     text: String,
-    voice_id: String,
     voice_name: String,
     path: PathBuf,
     duration_secs: f32,
@@ -443,7 +484,14 @@ pub struct App {
     captures: Vec<CaptureItem>,
     selected_capture: usize,
     voice_text: String,
+    voice_editor: text_editor::Content,
+    player_title: String,
     voice_status: String,
+    create_voice_open: bool,
+    create_voice_tab: CreateVoiceTab,
+    create_voice_reference: String,
+    create_voice_language: String,
+    stories_tools_open: bool,
     dictating: bool,
     dictation_preview: String,
     transcript: alp_voice::Transcript,
@@ -621,7 +669,7 @@ impl App {
         input_devices.dedup();
         let record_device = input_devices.first().cloned();
 
-        let app = Self {
+        let mut app = Self {
             window: None,
             panels,
             panel_motion,
@@ -714,7 +762,14 @@ impl App {
             selected_capture: 0,
             selected_effect: 0,
             voice_text: "Hello from Audio Labs Pro.".into(),
+            voice_editor: text_editor::Content::with_text("Hello from Audio Labs Pro."),
+            player_title: "Studio session".into(),
             voice_status: "Ready".into(),
+            create_voice_open: false,
+            create_voice_tab: CreateVoiceTab::Record,
+            create_voice_reference: String::new(),
+            create_voice_language: "English".into(),
+            stories_tools_open: false,
             dictating: false,
             dictation_preview: String::new(),
             transcript: alp_voice::Transcript::new(),
@@ -760,6 +815,15 @@ impl App {
             demo_autoscroll,
             autoclose,
         };
+        // Smoke runs can pin an overlay so each modal can be screenshotted.
+        match std::env::var("ALP_START_OVERLAY").as_deref() {
+            Ok("create-voice") => app.create_voice_open = true,
+            Ok("consent") => app.consent_dialog_open = true,
+            Ok("shortcuts") => app.shortcuts_help_open = true,
+            Ok("palette") => app.palette.show(&app.commands),
+            Ok("wizard") => app.first_run_open = true,
+            _ => {}
+        }
         (app, Task::none())
     }
 
