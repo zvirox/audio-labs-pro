@@ -10,7 +10,8 @@ not invent their own scale.
 ## Public API
 
 - `Spacing::{XXS, XS, SM, MD, LG, XL, XXL}` = 2/4/8/12/16/24/32.
-- `Radius::{SM, MD, LG, XL, PILL}` = 6/10/14/18/999.
+- `Radius::{BUTTON, SM, MD, LG, XL, PILL}` = 4/6/10/14/18/999 (buttons are
+  rectangles with minimal corners; pill ends remain on meters and toasts).
 - `Control::{SM, MD, LG, PAGE, TITLE_BAR, DOCK, GRIP, CHROME}` = 28/36/44/32/
   34/96/14/34.
 - `Rail::{WIDTH, BUTTON, LOGO}` = 80/44/48.

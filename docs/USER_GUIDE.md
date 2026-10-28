@@ -24,7 +24,7 @@ On first launch, Audio Labs Pro displays an interactive setup wizard:
 
 ## 2. The Seven Workspaces
 
-A round-icon rail on the left switches between workspaces. A player is docked at
+An icon rail on the left switches between workspaces. A player is docked at
 the bottom of every screen; Stories replaces it with a track editor.
 
 | Icon | Workspace | What it holds |

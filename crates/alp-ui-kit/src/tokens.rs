@@ -26,13 +26,16 @@ impl Spacing {
 
 /// Corner radii in logical pixels.
 ///
-/// The studio language is softly rounded: inputs and small controls use
-/// [`Radius::SM`], cards [`Radius::MD`], docks and raised panels [`Radius::LG`]
-/// and the application frame [`Radius::XL`]. Buttons and chips are pills.
+/// The studio language is softly rounded: [buttons] use [`Radius::BUTTON`],
+/// inputs and small controls [`Radius::SM`], cards [`Radius::MD`], docks and
+/// raised panels [`Radius::LG`] and the application frame [`Radius::XL`].
+/// Round meters and cards (slider rails, progress, toast) keep pill ends.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Radius;
 
 impl Radius {
+    /// Rectangle button radius: minimal corners on CTA and action buttons.
+    pub const BUTTON: u16 = 4;
     /// Small control radius (inputs, chips at rest).
     pub const SM: u16 = 6;
     /// Default card radius.
@@ -41,7 +44,7 @@ impl Radius {
     pub const LG: u16 = 14;
     /// Outer application frame radius.
     pub const XL: u16 = 18;
-    /// Pill radius for buttons, toggles and tags.
+    /// Pill radius for round meters and cards (slider rails, progress, toast).
     pub const PILL: u16 = 999;
 }
 

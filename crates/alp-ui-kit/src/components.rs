@@ -11,9 +11,10 @@
 //! scroll rails still take an explicit [`ThemeColors`] so they can draw on any
 //! panel.
 //!
-//! The language is a studio one: pill buttons, circular rail glyphs, graphite
-//! cards with hairline borders and one warm gold accent. Text helpers expose
-//! the type scale so views never pick their own sizes.
+//! The language is a studio one: rectangular buttons with minimal corners,
+//! rounded rail targets, graphite cards with hairline borders and one warm
+//! gold accent. Text helpers expose the type scale so views never pick their
+//! own sizes.
 
 use iced::widget::{
     button as raw_button, button::Status as ButtonStatus, button::Style as ButtonStyle, pick_list,
@@ -58,7 +59,7 @@ impl ButtonKind {
     }
 }
 
-/// A labelled pill button.
+/// A labelled rectangular button (minimal corners).
 pub fn button<'a, Message: Clone + 'a>(
     label: impl Into<String>,
     kind: ButtonKind,
@@ -67,7 +68,7 @@ pub fn button<'a, Message: Clone + 'a>(
     sized_button(label.into(), None, kind, on_press, None, Control::MD)
 }
 
-/// A labelled pill button that fills its parent width.
+/// A labelled button that fills its parent width.
 pub fn button_fill<'a, Message: Clone + 'a>(
     label: impl Into<String>,
     kind: ButtonKind,
@@ -83,7 +84,7 @@ pub fn button_fill<'a, Message: Clone + 'a>(
     )
 }
 
-/// A large pill button with a leading Lucide icon, for page-level actions.
+/// A large rectangular button with a leading Lucide icon, for page-level actions.
 pub fn button_large_icon<'a, Message: Clone + 'a>(
     label: impl Into<String>,
     icon: Glyph,
@@ -93,7 +94,7 @@ pub fn button_large_icon<'a, Message: Clone + 'a>(
     sized_button(label.into(), Some(icon), kind, on_press, None, Control::LG)
 }
 
-/// A large pill button for page-level actions.
+/// A large rectangular button for page-level actions.
 pub fn button_large<'a, Message: Clone + 'a>(
     label: impl Into<String>,
     kind: ButtonKind,
@@ -102,7 +103,7 @@ pub fn button_large<'a, Message: Clone + 'a>(
     sized_button(label.into(), None, kind, on_press, None, Control::LG)
 }
 
-/// A labelled pill button with a leading Lucide icon.
+/// A labelled rectangular button with a leading Lucide icon.
 pub fn button_icon<'a, Message: Clone + 'a>(
     label: impl Into<String>,
     icon: Glyph,
@@ -141,7 +142,7 @@ fn sized_button<'a, Message: Clone + 'a>(
         label.into()
     };
     // iced lays button content out from the top-left with padding only;
-    // centre it the way iced-cube does so labels sit mid-pill at any height.
+    // centre it the way iced-cube does so labels sit mid-button at any height.
     let content = iced::widget::container(content)
         .width(Length::Fill)
         .height(Length::Fill)
@@ -154,15 +155,15 @@ fn sized_button<'a, Message: Clone + 'a>(
         .on_press_maybe(on_press);
     // iced derives a fresh button's default sizing from its content's
     // `size_hint`; the fill-centred container above would leak `Fill` into
-    // every pill, so pin an explicit length: `Shrink` (natural pill width)
+    // every button, so pin an explicit length: `Shrink` (natural width)
     // unless the caller asked for one.
     widget = match width {
         Some(width) => widget.width(width),
         None => widget.width(Length::Shrink),
     };
     // iced lays button content out from the top-left with padding only;
-    // centre it the way iced-cube does so labels sit mid-pill at any height.
-    // The natural shell keeps the pinned pill at its natural width so rows
+    // centre it the way iced-cube does so labels sit mid-button at any height.
+    // The natural shell keeps the pinned button at its natural width so rows
     // overflow whole buttons instead of squeezing their labels.
     let element: Element<'a, Message> = widget.into();
     natural(element)
@@ -171,7 +172,7 @@ fn sized_button<'a, Message: Clone + 'a>(
 /// Wraps content so a [`Length::Shrink`] width is laid out without an upper
 /// width bound. Ported from iced-cube's `natural`: short labels such as
 /// buttons and chips overflow as a whole rather than being squeezed until
-/// their text breaks onto several lines or paints past the pill.
+/// their text breaks onto several lines or paints past the edges.
 fn natural<'a, Message: 'a>(content: impl Into<Element<'a, Message>>) -> Element<'a, Message> {
     Element::new(Natural {
         content: content.into(),
@@ -310,7 +311,7 @@ pub fn icon_button<'a, Message: Clone + 'a>(
     glyph_button(glyph, 16.0, ButtonKind::Icon, on_press)
 }
 
-/// A circular icon button used by the navigation rail.
+/// A rounded icon button used by the navigation rail.
 pub fn rail_button<'a, Message: Clone + 'a>(
     glyph: Glyph,
     active: bool,
@@ -561,7 +562,7 @@ pub fn tabs<'a, Message: Clone + 'a>(
     strip.into()
 }
 
-/// A segmented control: one recessed track, one selected pill.
+/// A segmented control: one recessed track, one selected segment.
 pub fn segmented<'a, Message: Clone + 'a>(
     labels: &[&'a str],
     active: usize,
@@ -826,11 +827,11 @@ pub fn kicker<'a, Message: 'a>(
         .into()
 }
 
-/// Button colours borrowed from iced-cube, with the studio pill radius.
+/// Button colours borrowed from iced-cube, with the studio button radius.
 fn cube_style(kind: ButtonKind, theme: &iced::Theme, status: ButtonStatus) -> ButtonStyle {
     let tokens = CubeTokens::of(theme);
     let mut style = cube_button::style(&tokens, kind.cube_variant(), status);
-    style.border.radius = f32::from(Radius::PILL).into();
+    style.border.radius = f32::from(Radius::BUTTON).into();
     style
 }
 
@@ -847,7 +848,7 @@ fn rail_button_style(active: bool, status: ButtonStatus) -> ButtonStyle {
         background: Some(background),
         text_color: Color::TRANSPARENT,
         border: Border {
-            radius: f32::from(Radius::PILL).into(),
+            radius: f32::from(Radius::BUTTON).into(),
             width: if active { 1.0 } else { 0.0 },
             color: if active {
                 Color::from_rgba(1.0, 1.0, 1.0, 0.08)
@@ -870,7 +871,7 @@ fn segment_style(selected: bool, colors: ThemeColors, status: ButtonStatus) -> B
         })),
         text_color: if selected { colors.text } else { colors.muted },
         border: Border {
-            radius: f32::from(Radius::SM).into(),
+            radius: f32::from(Radius::BUTTON).into(),
             width: if selected { 1.0 } else { 0.0 },
             color: if selected {
                 colors.border

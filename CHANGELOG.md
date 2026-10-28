@@ -5,6 +5,20 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+### Changed (button geometry)
+
+- **Rectangular buttons with minimal corners:** every CTA and action button
+  now draws as a rectangle with a minimal 4 px corner radius instead of a
+  pill/oval. A new `Radius::BUTTON` token (4 px) replaces `Radius::PILL`
+  (999) in the kit button styles — labelled buttons, icon buttons, the
+  navigation rail targets (now rounded squares, including the docked player's
+  gold transport button) and the segmented control (unified at 4 px).
+- **Pill keepers:** round surfaces that are not buttons keep their pill ends —
+  slider rails, the thin progress meter and the toast card. Avatars remain
+  circular.
+- **Docs:** `components`, `tokens`, `alp-ui-kit`, `alp-ui` and the user guide
+  reworded from pill to rectangular button language.
+
 ### Changed (Seven-workspace studio shell)
 
 - **Workspace shell:**
@@ -18,8 +32,9 @@ versions follow the release milestones in the build plan.
 - **Visual language:**
   - Studio graphite dark palette (near-black surfaces, graphite cards, one warm
     gold accent, dark ink on filled buttons) plus a paper light palette.
-  - 80 px round-icon rail, 18 px rounded app frame with a 34 px title strip,
-    pill buttons and chips, 6/10/14/18 px radii and hairline borders.
+  - 80 px icon rail, 18 px rounded app frame with a 34 px title strip,
+    rectangular buttons with minimal corners, chips, 4/6/10/14/18 px radii
+    and hairline borders.
   - Profile cards compacted to 128 px with avatar, kind chip, one-line
     description and compact glyph actions; `profile_grid` keeps partial rows at
     equal column width.

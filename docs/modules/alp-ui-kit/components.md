@@ -9,17 +9,18 @@ the application owns values and messages.
 
 Since the iced-cube adoption, the interactive controls (buttons, switches,
 checkboxes) borrow their colours from iced-cube's style functions resolved from
-the active `iced::Theme`; the kit keeps its own geometry (pill radius, control
+the active `iced::Theme`; the kit keeps its own geometry (rectangular button corners, control
 heights, rail targets) and its studio component language.
 
 ## Public API
 
 - `ButtonKind { Primary, Secondary, Ghost, Danger, Icon }` and
   `ButtonKind::cube_variant()` mapping.
-- `button(label, kind, on_press: Option<Message>)` — pill button, 36 px.
+- `button(label, kind, on_press: Option<Message>)` — rectangular button
+  with minimal (4 px) corners, 36 px.
 - `button_fill(label, kind, on_press)` — stretches to the row width.
 - `button_large(...)` — 44 px primary-height action.
-- `button_icon(label, icon: Glyph, kind, on_press)` — labelled pill with a
+- `button_icon(label, icon: Glyph, kind, on_press)` — labelled button with a
   leading Lucide icon.
 - `icon_button(glyph, on_press)`, `glyph_button(glyph, size, kind, on_press)`
   and `glyph_button_compact(...)` (28 px).
@@ -45,7 +46,8 @@ heights, rail targets) and its studio component language.
 
 Button-like builders map a semantic `ButtonKind` onto an iced-cube variant and
 call `iced_cube::primitives::button::style` with `Tokens::of(theme)` inside the
-style closure, overriding only the border radius with the studio pill value.
+style closure, overriding only the border radius with the studio button
+value (a minimal 4 px rectangle corner).
 Switch, toggle and checkbox delegate to the iced-cube widgets, which resolve
 the same tokens. Token-styled surfaces (sliders, inputs, dropdowns, segmented
 tracks, chips, avatars, scroll rails, progress) still close over an explicit
@@ -59,24 +61,24 @@ workspace shares the same scroller.
 
 iced's raw `Button` lays its content out from the top-left with padding only,
 and derives a fresh button's default length from its *content's* `size_hint`.
-The kit therefore does two things for every label pill:
+The kit therefore does two things for every label button:
 
 - The content is wrapped in a `Fill`/`Fill` container centred on both axes, so
-  labels and icons sit mid-pill at any control height (iced-cube's own
+  labels and icons sit mid-button at any control height (iced-cube's own
   behaviour). Disabled controls dim their icons via
   `iced_cube::icon::opacity`.
 - The button length is pinned explicitly (`Shrink` unless the caller passes a
   width): without the pin, the centring container would leak `Fill` into every
-  pill, and a row of such pills would split its row width evenly instead of
-  hugging their labels.
+  button, and a row of such buttons would split its row width evenly instead
+  of hugging their labels.
 
 The pinned `Shrink` button is additionally wrapped in a port of iced-cube's
 `natural` shell: a shrink-width widget is measured without an upper width
-bound, so when the parent row runs out of room the whole pill overflows
-instead of being squeezed until its label wraps or paints past the rounded
-ends. Sizes follow iced-cube's mapping onto the studio scale: 36 px pills use
-13 px text (cube `Size::Sm`), 44 px pills use 15 px text and larger horizontal
-padding (cube `Size::Lg`).
+bound, so when the parent row runs out of room the whole button overflows
+instead of being squeezed until its label wraps or paints past the edges.
+Sizes follow iced-cube's mapping onto the studio scale: 36 px buttons use
+13 px text (cube `Size::Sm`), 44 px buttons use 15 px text and larger
+horizontal padding (cube `Size::Lg`).
 
 ## Allowed dependencies
 
@@ -98,7 +100,7 @@ out-of-range slider value is clamped by iced's range widget.
 
 ## Testing
 
-Tests build labelled buttons with and without a message, icon-labelled pills,
+Tests build labelled buttons with and without a message, icon-labelled buttons,
 fill/large variants, rail and compact glyph buttons, toggle/switch/checkbox and
 slider with a message closure, text fields, tabs, a segmented strip and chips.
 The suite also ensures the components compile against the pinned iced and
@@ -107,7 +109,7 @@ iced-cube versions, which is the main compatibility risk.
 ## Known limits
 
 - Glyph buttons cannot change their icon tint on hover: iced `Svg` styling has
-  no hover status, so icons keep the variant's rest colour while the pill recolours.
+  no hover status, so icons keep the variant's rest colour while the button recolours.
 - Variants have immediate hover/pressed colours from iced-cube, not a
   per-button spring.
 - There is no loading/spinner button state yet.

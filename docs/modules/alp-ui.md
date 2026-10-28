@@ -11,7 +11,8 @@ place allowed to talk to the compositor through `glass`.
 
 The shell uses the studio palette from `alp-ui-kit`: near-black surfaces,
 graphite cards, a single warm gold accent with dark ink on filled buttons, an
-80 px icon rail, pill controls, 6/10/14/18 px radii and hairline borders. A
+80 px icon rail, rectangular controls with minimal corners,
+6/10/14/18 px radii and hairline borders. A
 light paper variant mirrors the roles, and every scrolling surface shares one
 themed scroller through `App::scroll`.
 

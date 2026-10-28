@@ -10,7 +10,7 @@ visual language and how the no-raw-button rule stays enforceable.
 
 The studio language is deliberately restrained: near-black surfaces, graphite
 cards, a single warm gold accent with dark ink on filled buttons, 6/10/14/18 px
-radii and pill controls, hairline white borders at 10% and soft shadows. Icons
+radii, rectangular controls with minimal (4 px) corners, hairline white borders at 10% and soft shadows. Icons
 are embedded Lucide SVGs rendered through iced-cube; buttons, switches,
 checkboxes and icon tints borrow iced-cube's style functions, resolved from the
 `iced::Theme` that `theme::ThemeColors::to_theme` builds from the studio
@@ -27,7 +27,7 @@ palette.
   `plain_style`.
 - `icons` — `Glyph`, `themed`, `tinted` and the Lucide constant vocabulary
   (`PLAY`, `GENERATE`, `WAVEFORM`, `TRIM`, …).
-- `components` — `ButtonKind`, pill and icon-labelled buttons, rail/glyph/
+- `components` — `ButtonKind`, rectangular and icon-labelled buttons, rail/glyph/
   compact buttons, iced-cube-powered toggle/switch/checkbox, sliders, text
   fields and areas, dropdowns, segmented control, tabs, chips, avatar, tooltip,
   progress, scrolling style and the page/card/section/field text helpers.
