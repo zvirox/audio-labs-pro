@@ -120,29 +120,186 @@ fn sized_button<'a, Message: Clone + 'a>(
     width: Option<Length>,
     height: u16,
 ) -> Element<'a, Message> {
-    let styled_text = |value: String| {
-        text(value)
-            .size(f32::from(TypeScale::LABEL))
-            .font(fonts::medium())
-            .line_height(1.2)
+    let enabled = on_press.is_some();
+    let large = height >= Control::LG;
+    let (text_size, icon_size, padding_x) = if large {
+        (TypeScale::BODY_STRONG, 18.0, f32::from(Spacing::XL))
+    } else {
+        // 36 px matches iced-cube's `Size::Sm`, whose text is 13 px.
+        (TypeScale::LABEL, 16.0, f32::from(Spacing::LG))
     };
-    let content: Element<'a, Message> = if let Some(icon) = icon {
-        row![icon_view::<Message>(icon, 14.0, kind), styled_text(label)]
-            .spacing(f32::from(Spacing::XS))
+    let label = text(label)
+        .size(f32::from(text_size))
+        .font(fonts::medium())
+        .wrapping(text::Wrapping::None);
+    let content: Element<'a, Message> = if let Some(glyph) = icon {
+        row![button_glyph(glyph, icon_size, kind, enabled), label,]
+            .spacing(f32::from(Spacing::SM))
             .align_y(iced::Alignment::Center)
             .into()
     } else {
-        styled_text(label).into()
+        label.into()
     };
+    // iced lays button content out from the top-left with padding only;
+    // centre it the way iced-cube does so labels sit mid-pill at any height.
+    let content = iced::widget::container(content)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .align_x(iced::Alignment::Center)
+        .align_y(iced::Alignment::Center);
     let mut widget = raw_button(content)
-        .padding([0.0, Spacing::LG as f32])
+        .padding([0.0, padding_x])
         .height(Length::Fixed(f32::from(height)))
         .style(move |theme, status| cube_style(kind, theme, status))
         .on_press_maybe(on_press);
-    if let Some(width) = width {
-        widget = widget.width(width);
+    // iced derives a fresh button's default sizing from its content's
+    // `size_hint`; the fill-centred container above would leak `Fill` into
+    // every pill, so pin an explicit length: `Shrink` (natural pill width)
+    // unless the caller asked for one.
+    widget = match width {
+        Some(width) => widget.width(width),
+        None => widget.width(Length::Shrink),
+    };
+    // iced lays button content out from the top-left with padding only;
+    // centre it the way iced-cube does so labels sit mid-pill at any height.
+    // The natural shell keeps the pinned pill at its natural width so rows
+    // overflow whole buttons instead of squeezing their labels.
+    let element: Element<'a, Message> = widget.into();
+    natural(element)
+}
+
+/// Wraps content so a [`Length::Shrink`] width is laid out without an upper
+/// width bound. Ported from iced-cube's `natural`: short labels such as
+/// buttons and chips overflow as a whole rather than being squeezed until
+/// their text breaks onto several lines or paints past the pill.
+fn natural<'a, Message: 'a>(content: impl Into<Element<'a, Message>>) -> Element<'a, Message> {
+    Element::new(Natural {
+        content: content.into(),
+    })
+}
+
+/// The limits a shrink-width child is laid out with: the parent's, with no
+/// upper bound on the width.
+fn unbounded_width(limits: &iced::advanced::layout::Limits) -> iced::advanced::layout::Limits {
+    iced::advanced::layout::Limits::with_compression(
+        limits.min(),
+        iced::Size::new(f32::INFINITY, limits.max().height),
+        limits.compression(),
+    )
+}
+
+struct Natural<'a, Message> {
+    content: Element<'a, Message>,
+}
+
+impl<Message> iced::advanced::Widget<Message, iced::Theme, iced::Renderer>
+    for Natural<'_, Message>
+{
+    fn size(&self) -> iced::Size<Length> {
+        self.content.as_widget().size()
     }
-    widget.into()
+
+    fn size_hint(&self) -> iced::Size<Length> {
+        self.content.as_widget().size_hint()
+    }
+
+    fn layout(
+        &mut self,
+        tree: &mut iced::advanced::widget::Tree,
+        renderer: &iced::Renderer,
+        limits: &iced::advanced::layout::Limits,
+    ) -> iced::advanced::layout::Node {
+        let content = self.content.as_widget_mut();
+        if content.size().width != Length::Shrink {
+            return content.layout(tree, renderer, limits);
+        }
+        content.layout(tree, renderer, &unbounded_width(limits))
+    }
+
+    fn draw(
+        &self,
+        tree: &iced::advanced::widget::Tree,
+        renderer: &mut iced::Renderer,
+        theme: &iced::Theme,
+        style: &iced::advanced::renderer::Style,
+        layout: iced::advanced::Layout<'_>,
+        cursor: iced::advanced::mouse::Cursor,
+        viewport: &iced::Rectangle,
+    ) {
+        self.content
+            .as_widget()
+            .draw(tree, renderer, theme, style, layout, cursor, viewport);
+    }
+
+    fn tag(&self) -> iced::advanced::widget::tree::Tag {
+        self.content.as_widget().tag()
+    }
+
+    fn state(&self) -> iced::advanced::widget::tree::State {
+        self.content.as_widget().state()
+    }
+
+    fn children(&self) -> Vec<iced::advanced::widget::Tree> {
+        self.content.as_widget().children()
+    }
+
+    fn diff(&self, tree: &mut iced::advanced::widget::Tree) {
+        self.content.as_widget().diff(tree);
+    }
+
+    fn operate(
+        &mut self,
+        tree: &mut iced::advanced::widget::Tree,
+        layout: iced::advanced::Layout<'_>,
+        renderer: &iced::Renderer,
+        operation: &mut dyn iced::advanced::widget::Operation,
+    ) {
+        self.content
+            .as_widget_mut()
+            .operate(tree, layout, renderer, operation);
+    }
+
+    fn update(
+        &mut self,
+        tree: &mut iced::advanced::widget::Tree,
+        event: &iced::Event,
+        layout: iced::advanced::Layout<'_>,
+        cursor: iced::advanced::mouse::Cursor,
+        renderer: &iced::Renderer,
+        clipboard: &mut dyn iced::advanced::Clipboard,
+        shell: &mut iced::advanced::Shell<'_, Message>,
+        viewport: &iced::Rectangle,
+    ) {
+        self.content.as_widget_mut().update(
+            tree, event, layout, cursor, renderer, clipboard, shell, viewport,
+        );
+    }
+
+    fn mouse_interaction(
+        &self,
+        tree: &iced::advanced::widget::Tree,
+        layout: iced::advanced::Layout<'_>,
+        cursor: iced::advanced::mouse::Cursor,
+        viewport: &iced::Rectangle,
+        renderer: &iced::Renderer,
+    ) -> iced::advanced::mouse::Interaction {
+        self.content
+            .as_widget()
+            .mouse_interaction(tree, layout, cursor, viewport, renderer)
+    }
+
+    fn overlay<'b>(
+        &'b mut self,
+        tree: &'b mut iced::advanced::widget::Tree,
+        layout: iced::advanced::Layout<'b>,
+        renderer: &iced::Renderer,
+        viewport: &iced::Rectangle,
+        translation: iced::Vector,
+    ) -> Option<iced::advanced::overlay::Element<'b, Message, iced::Theme, iced::Renderer>> {
+        self.content
+            .as_widget_mut()
+            .overlay(tree, layout, renderer, viewport, translation)
+    }
 }
 
 /// A compact icon button for toolbars and card actions.
@@ -159,6 +316,7 @@ pub fn rail_button<'a, Message: Clone + 'a>(
     active: bool,
     on_press: Option<Message>,
 ) -> Element<'a, Message> {
+    let enabled = on_press.is_some();
     let tint = move |theme: &iced::Theme| {
         let tokens = CubeTokens::of(theme);
         if active {
@@ -167,7 +325,13 @@ pub fn rail_button<'a, Message: Clone + 'a>(
             tokens.muted_foreground
         }
     };
-    raw_button(icons::themed(glyph, 18.0, 1.0, tint))
+    let icon = icons::themed(glyph, 18.0, iced_cube::icon::opacity(enabled), tint);
+    let content = iced::widget::container(icon)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .align_x(iced::Alignment::Center)
+        .align_y(iced::Alignment::Center);
+    raw_button(content)
         .width(Length::Fixed(f32::from(Rail::BUTTON)))
         .height(Length::Fixed(f32::from(Rail::BUTTON)))
         .padding(0.0)
@@ -203,13 +367,44 @@ fn sized_glyph<'a, Message: Clone + 'a>(
     on_press: Option<Message>,
     side: f32,
 ) -> Element<'a, Message> {
-    raw_button(icon_view(glyph, size, kind))
+    let enabled = on_press.is_some();
+    // Centre the glyph inside the square target; iced buttons lay content
+    // out from the top-left.
+    let content = iced::widget::container(button_glyph(glyph, size, kind, enabled))
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .align_x(iced::Alignment::Center)
+        .align_y(iced::Alignment::Center);
+    raw_button(content)
         .padding(0.0)
         .width(Length::Fixed(side))
         .height(Length::Fixed(side))
         .style(move |theme, status| cube_style(kind, theme, status))
         .on_press_maybe(on_press)
         .into()
+}
+
+/// A Lucide icon tinted with a variant's rest colour, dimmed when disabled.
+fn button_glyph<'a>(
+    glyph: Glyph,
+    size: f32,
+    kind: ButtonKind,
+    enabled: bool,
+) -> iced::widget::Svg<'a, iced::Theme> {
+    icons::themed(
+        glyph,
+        size,
+        iced_cube::icon::opacity(enabled),
+        move |theme| {
+            let tokens = CubeTokens::of(theme);
+            match kind {
+                ButtonKind::Primary => tokens.primary_foreground,
+                ButtonKind::Danger => tokens.destructive_foreground,
+                ButtonKind::Secondary => tokens.foreground,
+                ButtonKind::Ghost | ButtonKind::Icon => tokens.muted_foreground,
+            }
+        },
+    )
 }
 
 /// Draws a Lucide icon tinted with the rest colour of a button variant.
@@ -219,16 +414,7 @@ pub fn icon_view<'a, Message: 'a>(
     size: f32,
     kind: ButtonKind,
 ) -> Element<'a, Message> {
-    icons::themed(glyph, size, 1.0, move |theme| {
-        let tokens = CubeTokens::of(theme);
-        match kind {
-            ButtonKind::Primary => tokens.primary_foreground,
-            ButtonKind::Danger => tokens.destructive_foreground,
-            ButtonKind::Secondary => tokens.foreground,
-            ButtonKind::Ghost | ButtonKind::Icon => tokens.muted_foreground,
-        }
-    })
-    .into()
+    button_glyph(glyph, size, kind, true).into()
 }
 
 /// A labelled toggle switch.
@@ -387,14 +573,20 @@ pub fn segmented<'a, Message: Clone + 'a>(
         let selected = index == active;
         strip = strip.push(
             raw_button(
-                text(*label)
-                    .size(f32::from(TypeScale::LABEL))
-                    .font(if selected {
-                        fonts::semibold()
-                    } else {
-                        fonts::regular()
-                    })
-                    .color(if selected { colors.text } else { colors.muted }),
+                iced::widget::container(
+                    text(*label)
+                        .size(f32::from(TypeScale::BODY))
+                        .font(if selected {
+                            fonts::semibold()
+                        } else {
+                            fonts::regular()
+                        })
+                        .color(if selected { colors.text } else { colors.muted }),
+                )
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .align_x(iced::Alignment::Center)
+                .align_y(iced::Alignment::Center),
             )
             .width(Length::Fill)
             .height(Length::Fixed(38.0))

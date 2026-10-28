@@ -59,6 +59,26 @@ versions follow the release milestones in the build plan.
   - Built-in TTS ignores pitch/energy/emotion, STT emits placeholder segments,
     no model downloader exists, and MP3/OGG export stay disabled or deferred.
 
+### Fixed (iced-cube components and Lucide icons)
+
+- **Centred button content and cube-aligned metrics:** iced's raw `Button`
+  lays content out from the top-left, so pill labels and icons sat ~8–12 px
+  high (36/44 px pills) and icon-only circles hugged their top-left corner.
+  Every kit button now centres its content on both axes the way iced-cube
+  does, and disabled controls dim their icons (`iced_cube::icon::opacity`).
+- **Explicit button sizing:** iced derives a fresh button's default length from
+  its content's `size_hint`; the centring container would silently turn every
+  pill into a `Fill` button (equal-splitting rows instead of hugging labels).
+  Buttons pin `Shrink` unless the caller passes a width.
+- **Natural-width pills:** shrink-width buttons are measured without an upper
+  width bound (port of iced-cube's `natural` shell), so long labels such as
+  "Transcribe capture" overflow as a whole instead of being squeezed until the
+  text wrapped onto several lines or painted past the pill ends.
+- **Cube metric alignment:** 36 px pills now set 13 px text (cube `Size::Sm`)
+  and 44 px pills 15 px text with 24 px side padding (cube `Size::Lg`); the
+  segmented control uses 14 px centred labels. Fixes the Settings Delivery
+  card, where 14 px labels clipped the third export pill.
+
 ### Changed (iced-cube components and Lucide icons)
 
 - **`alp-ui-kit` engine swap to iced-cube 0.0.6:**

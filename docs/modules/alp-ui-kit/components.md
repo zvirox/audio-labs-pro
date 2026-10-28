@@ -55,6 +55,29 @@ without a second code path. The app sends the resulting message; the kit never
 stores application state. `scroll_style` is applied by `App::scroll` so every
 workspace shares the same scroller.
 
+### Button geometry contract
+
+iced's raw `Button` lays its content out from the top-left with padding only,
+and derives a fresh button's default length from its *content's* `size_hint`.
+The kit therefore does two things for every label pill:
+
+- The content is wrapped in a `Fill`/`Fill` container centred on both axes, so
+  labels and icons sit mid-pill at any control height (iced-cube's own
+  behaviour). Disabled controls dim their icons via
+  `iced_cube::icon::opacity`.
+- The button length is pinned explicitly (`Shrink` unless the caller passes a
+  width): without the pin, the centring container would leak `Fill` into every
+  pill, and a row of such pills would split its row width evenly instead of
+  hugging their labels.
+
+The pinned `Shrink` button is additionally wrapped in a port of iced-cube's
+`natural` shell: a shrink-width widget is measured without an upper width
+bound, so when the parent row runs out of room the whole pill overflows
+instead of being squeezed until its label wraps or paints past the rounded
+ends. Sizes follow iced-cube's mapping onto the studio scale: 36 px pills use
+13 px text (cube `Size::Sm`), 44 px pills use 15 px text and larger horizontal
+padding (cube `Size::Lg`).
+
 ## Allowed dependencies
 
 `iced` widgets, `iced-cube` primitives and theme tokens, and the crate's own
