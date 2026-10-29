@@ -1,7 +1,7 @@
 # Audio Labs Pro: Local Voice Studio & Multitrack Editor
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-v0.0.1--alpha.1-success.svg)](https://github.com/zvirox/audio-labs-pro/releases)
+[![Version](https://img.shields.io/badge/Version-v0.0.1--alpha.2-success.svg)](https://github.com/zvirox/audio-labs-pro/releases)
 [![Platform](https://img.shields.io/badge/Platform-Linux_(Wayland_&_X11)-orange.svg)](#3-minimum-requirements)
 [![Rust](https://img.shields.io/badge/Rust-1.89+-informational.svg)](https://www.rust-lang.org)
 [![UI](https://img.shields.io/badge/UI-iced_0.14_·_frosted_glass-indigo.svg)](docs/adr/0012-phase2-shell-and-glass.md)
@@ -178,7 +178,7 @@ no models — every dialog explains what it needs before touching hardware.
 ### Method 1: Packages from the release
 
 The
-[v0.0.1-alpha.1 release](https://github.com/zvirox/audio-labs-pro/releases)
+[v0.0.1-alpha.2 release](https://github.com/zvirox/audio-labs-pro/releases)
 ships `.deb`, `.rpm`, `.flatpak` and a `sha256sums.txt`.
 
 ```bash
@@ -186,13 +186,13 @@ ships `.deb`, `.rpm`, `.flatpak` and a `sha256sums.txt`.
 sha256sum -c sha256sums.txt   # (asset names may differ slightly from the manifest)
 
 # Debian / Ubuntu
-sudo apt install ./audio-labs-pro_0.0.1-alpha.1_amd64.deb
+sudo apt install ./audio-labs-pro_0.0.1-alpha.2_amd64.deb
 
-# Fedora / openSUSE (the RPM orders as a pre-release: 0.0.1~alpha.1)
-sudo dnf install ./audio-labs-pro-0.0.1~alpha.1-1.x86_64.rpm
+# Fedora / openSUSE (the RPM orders as a pre-release: 0.0.1~alpha.2)
+sudo dnf install ./audio-labs-pro-0.0.1~alpha.2-1.x86_64.rpm
 
 # Flatpak, any distribution (Freedesktop 24.08 runtime)
-flatpak install --user ./Audio-Labs-Pro-0.0.1-alpha.1-x86_64.flatpak
+flatpak install --user ./Audio-Labs-Pro-0.0.1-alpha.2-x86_64.flatpak
 ```
 
 The packages install `audio-labs-pro` (workstation), `alp-cli` and `alp-infer`,

@@ -5,6 +5,116 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+## [0.0.1-alpha.2] - 2026-10-29
+
+### Security & correctness
+
+- **alp-voice: profile-id traversal closed.** Imported bundle ids (and CLI-provided
+  profile ids) were joined into store paths unvalidated, so a crafted `.alpvoice`
+  could create or overwrite directories anywhere the user can write — and
+  `delete_profile` could `remove_dir_all` such a tree. Ids are now validated
+  (no separators, no `..`/absolute components) at every store boundary
+  (`get`/`save`/`delete`/`export`/`import`).
+- **alp-voice: export containment.** A `profile.json` `reference_audio` path
+  pointing outside the profile directory (e.g. `../../ssh/id_rsa`) was copied
+  into shared bundles on export; export now canonicalizes and refuses anything
+  that escapes the profile dir, and import no longer preserves bundle-declared
+  reference paths when the bundle did not ship the audio.
+- **alp-voice: consent gate honesty.** Save/import now enforce the same rules
+  `ConsentRecord::new` applies interactively (non-empty speaker/attester,
+  statement of minimum length) and kind/consent consistency in both directions;
+  ETHICS/SECURITY docs no longer overstate this as cryptographic enforcement.
+- **alp-voice: zip hardening.** Entry sizes are now validated against the real
+  bundle bounds (and a 512 MiB per-entry cap) before allocation, so a tiny
+  bundle can no longer abort the process in the allocator.
+- **alp-infer: socket hardening.** The worker now binds sockets `0600` (kernel
+  DAC refuses other users), refuses to unlink anything that is not a stale
+  socket owned by this user (regular files, symlinks and foreign sockets fail
+  closed instead of being blindly removed), and warns when `XDG_RUNTIME_DIR`
+  is unset and the `/tmp` fallback path is in use.
+- **alp-media: peak-cache bounds.** A crafted `.peaks` header could declare a
+  multi-petabyte bucket count and abort the process; counts are now also
+  bounded by the actual file size before any reservation.
+- **alp-media:** `PeakPyramid::peak_between` no longer underflows (panic in
+  dev, wrong range in release) on inverted frame ranges.
+- **alp-core: project duration cap.** Clip positions are validated against a
+  24-hour ceiling so a crafted project cannot make the renderer attempt an
+  arbitrary-size timeline allocation (process abort).
+- **alp-engine: frame-atomic capture.** On ring overflow the input callback
+  dropped samples mid-frame, permanently swapping channel interleave for the
+  rest of the take; handoff now drops whole frames only.
+- **alp-engine: committed-frame recovery.** `recover_capture` trusted the raw
+  spool length and ignored the fsynced manifest, finalizing post-crash garbage
+  into the WAV; recovery now truncates to the manifest's committed frames and
+  rejects manifests claiming more than the spool holds.
+- **alp-api: real render pipeline.** `export_audio` wrote a silent 48 kHz
+  buffer regardless of project content and `analyze_loudness` returned
+  fabricated constants; both now build a `MixScene` and render through
+  `alp-engine`, and loudness is measured with BS.1770 (`alp_dsp::measure_lufs`).
+- **alp-api audit honesty.** The audit log's `arg_digest` recorded a timestamp
+  in hex; operations now stage JSON arguments and log their real SHA-256 so a
+  trail identifies what was requested. Checkpoint and job ids are UUID-based,
+  ending same-millisecond collisions that could overwrite the session-start
+  rollback checkpoint.
+- **alp-api sandbox: symlinked New File escape.** Non-existent absolute
+  candidates were checked textually, so a symlinked intermediate directory
+  could smuggle a write outside the sandbox at creation time; the nearest
+  existing ancestor is canonicalized first.
+- **alp-api:** `ripple_delete_range` now errors on a trackless project instead
+  of reporting success without doing anything.
+- **alp-mcp: advertised behavior matches the dispatcher.** The `export_audio`
+  preset enum now lists only `podcast | audiobook | voice_over` (the
+  undocumented `master` default no longer masks a silent remap), unknown
+  presets are returned as tool errors instead of silently mapping to
+  `voice_over`, unknown `--tier` values fail closed instead of escalating to
+  `export` (trailing whitespace is tolerated), and tool arguments are staged
+  for the audit digest before dispatch.
+
+### Added (UI design polish)
+
+- **One card language for every panel.** Generate's take history and the
+  Stories list/detail panels were bare, edge-flush columns; they now use the
+  standard card header (tinted icon + title) and the same body inset as every
+  other panel. Story titles lead their card; the status line and Add/Render
+  actions moved into the body. The Stories composer stays its own card below
+  the list so its dropdown is never clipped by the card body.
+- **Inspector operations grouped.** Clip operations stack under labelled
+  groups — Clipboard, Edit, Arrange, Process, Envelope — with button kinds
+  normalized to ghost weight (Delete stays destructive, Apply stays
+  secondary).
+- **Mono digits for time.** New shared `timestamp` readout and `chip_mono`
+  helpers; every duration readout (playhead, capture list, segment chips)
+  uses the mono font so values no longer shift as they count. Track labels
+  and lane gutter numbers moved up to the 12 px caption role; the docked
+  player title is the semibold body-strong role. The type scale roles are
+  documented on `TypeScale`.
+
+### Fixed (UI)
+
+- **Pressed feedback on transparent buttons.** Ghost, icon and secondary
+  buttons painted exactly the hover colour while pressed; they now deepen the
+  hover tint so a click reads. Filled buttons keep iced-cube's own press
+  emphasis and disabled controls keep its fade.
+- **Toolbar rhythm in the Stories track editor.** Transport, edit tools and
+  the mixer toggle cluster with one gap rhythm; the ruler aligns with the
+  page gutter; the labelled mixer toggle optically centres on the
+  glyph-button band.
+- **Long names never wrap a row out of shape.** Capture and clip names
+  truncate on character boundaries with an ellipsis through one shared
+  helper.
+- **Insets snapped to the spacing scale.** The frame bezel was a one-off
+  10 px inset (now the 8 px token); list-panel header-to-body rhythm is
+  uniformly MD, empty-state wells LG, and the Stories tools overlay stacks
+  its cards at the workspace LG rhythm; a phantom zero-height spacer in the
+  Generate column is gone.
+
+### Documentation
+
+- README restructured around the crate topology, feature map and the three
+  install paths (deb, rpm, flatpak) for v0.0.1-alpha.2.
+
+## [0.0.1-alpha.1] - 2026-10-28
+
 ### Added (release engineering)
 
 - **GitHub release pipeline:** new `.github/workflows/release.yml` builds

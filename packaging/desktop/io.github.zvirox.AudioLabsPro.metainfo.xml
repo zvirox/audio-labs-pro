@@ -58,5 +58,10 @@
         <p>First published GitHub release: seven-workspace studio shell with per-workspace cyberpunk neon accents, rectangular buttons, GPU waveform, and Linux packaging (deb, rpm, AppImage, Flatpak).</p>
       </description>
     </release>
+    <release version="0.0.1-alpha.2" date="2026-10-29">
+      <description>
+        <p>Security and correctness hardening across voice bundles, capture recovery, export rendering and the automation sandbox, plus a studio UI polish pass: uniform panel cards, pressed button states, grouped inspector actions and mono-digit time readouts.</p>
+      </description>
+    </release>
   </releases>
 </component>
