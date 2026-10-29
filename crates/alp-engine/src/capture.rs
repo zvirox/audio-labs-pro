@@ -442,7 +442,18 @@ pub fn recover_capture(path: impl AsRef<Path>) -> Result<CaptureReport, EngineEr
     if frame_bytes == 0 {
         return Err(EngineError::Stream("capture has zero channels".into()));
     }
-    let frames = bytes / frame_bytes;
+    let spool_frames = bytes / frame_bytes;
+    if manifest.frames > spool_frames {
+        return Err(EngineError::Stream(format!(
+            "capture manifest commits {} frames but the spool only holds {}",
+            manifest.frames, spool_frames
+        )));
+    }
+    // The writer fsyncs the spool before each manifest write, so
+    // `manifest.frames` is the authoritative committed frame count. Spool
+    // blocks beyond the last sync were never acknowledged and may be zeros
+    // or stale garbage after a crash: never finalize them into the WAV.
+    let frames = manifest.frames;
     if frames == 0 {
         return Err(EngineError::Stream(
             "capture spool has no complete frames".into(),
@@ -510,16 +521,13 @@ fn push_input<T: Copy + Into<f32>>(
     meter: &InputMeter,
     channels: u16,
 ) {
+    let channels = channels.max(1) as usize;
+    // Meter the full callback first: meter coverage must not depend on ring
+    // space.
     let mut peak = 0.0f32;
     let mut sum = 0.0f32;
     for raw in data {
-        let value = (*raw).into();
-        if producer.push(value).is_err() {
-            stats.dropped.fetch_add(1, Ordering::Relaxed);
-        }
-        if let Some(monitor) = monitor {
-            let _ = monitor.push(value);
-        }
+        let value: f32 = (*raw).into();
         peak = peak.max(value.abs());
         sum += value * value;
     }
@@ -527,8 +535,37 @@ fn push_input<T: Copy + Into<f32>>(
     meter.update(
         peak,
         (sum / count).sqrt(),
-        u64::try_from(data.len() / usize::from(channels.max(1))).unwrap_or(0),
+        u64::try_from(data.len() / channels).unwrap_or(0),
     );
+
+    // Hand off whole frames only. If a sample-level push ever landed a
+    // partial frame during a ring overflow, every following frame in the
+    // take would play with swapped channels. When the ring cannot fit the
+    // next whole frame, the remaining audio of this callback is dropped
+    // frame-atomically instead.
+    for (offset, frame) in data.chunks_exact(channels).enumerate() {
+        let Ok(mut chunk) = producer.write_chunk(channels) else {
+            let dropped_samples = u64::try_from(data.len() - offset * channels).unwrap_or(0);
+            stats.dropped.fetch_add(dropped_samples, Ordering::Relaxed);
+            return;
+        };
+        let (first, second) = chunk.as_mut_slices();
+        let split = first.len();
+        for (slot, raw) in first.iter_mut().zip(&frame[..split]) {
+            *slot = (*raw).into();
+        }
+        for (slot, raw) in second.iter_mut().zip(&frame[split..]) {
+            *slot = (*raw).into();
+        }
+        chunk.commit_all();
+        if let Some(monitor) = monitor.as_mut() {
+            for raw in frame {
+                let _ = monitor.push((*raw).into());
+            }
+        }
+    }
+    // A trailing partial sample group (never produced by cpal's frame-aligned
+    // buffers) is ignored so interleave alignment can never drift.
 }
 
 fn write_spool(
@@ -790,7 +827,9 @@ mod tests {
             sample_rate: 48_000,
             channels,
             chunk_frames: 48_000,
-            frames: 0,
+            // The spool content is the last fsynced chunk state: what it
+            // holds is what the manifest committed.
+            frames,
             complete: false,
             started_at_ms: now_ms(),
         };
@@ -830,5 +869,86 @@ mod tests {
         assert!((meter.peak() - 0.75).abs() < f32::EPSILON);
         assert!((meter.rms() - 0.5).abs() < f32::EPSILON);
         assert_eq!(meter.frames(), 10);
+    }
+
+    #[test]
+    fn push_input_never_leaves_a_partial_frame_in_the_ring() {
+        let (mut producer, mut consumer) = RingBuffer::<f32>::new(5);
+        let stats = CaptureStats::default();
+        let meter = InputMeter::new();
+        let mut monitor = None;
+
+        // Stereo batches: right = left + 1, so a mispaired drain is
+        // instantly recognizable. The ring holds 5 slots; three frames need 6.
+        let batch_a = [10.0f32, 11.0, 20.0, 21.0, 30.0, 31.0];
+        let batch_b = [40.0f32, 41.0, 50.0, 51.0, 60.0, 61.0];
+        push_input(&batch_a, &mut producer, &mut monitor, &stats, &meter, 2);
+        push_input(&batch_b, &mut producer, &mut monitor, &stats, &meter, 2);
+
+        let drained: Vec<f32> = std::iter::from_fn(|| consumer.pop().ok()).collect();
+        assert_eq!(
+            drained.len() % 2,
+            0,
+            "a stereo take must never hold a dangling half frame, got {drained:?}"
+        );
+        for [left, right] in drained.as_chunks::<2>().0 {
+            assert_eq!(
+                *right,
+                *left + 1.0,
+                "left/right samples must drain as whole frames, got ({left}, {right})"
+            );
+        }
+        assert_eq!(drained, vec![10.0, 11.0, 20.0, 21.0]);
+        assert_eq!(
+            stats.dropped.load(Ordering::Relaxed),
+            8,
+            "overflow must drop whole frames: 2 samples from batch A, 6 from batch B"
+        );
+    }
+
+    #[test]
+    fn recovery_truncates_spool_tail_beyond_committed_frames() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let (_spool, manifest_path) = create_spool(dir.path(), 12, 1);
+        // The final chunk sync committed 9 frames; the spool's trailing
+        // frames were never acknowledged and are stale blocks after a crash.
+        let manifest = CaptureManifest {
+            version: MANIFEST_VERSION,
+            sample_rate: 48_000,
+            channels: 1,
+            chunk_frames: 48_000,
+            frames: 9,
+            complete: false,
+            started_at_ms: now_ms(),
+        };
+        write_manifest(&manifest_path, &manifest).expect("rewrite manifest");
+
+        let report = recover_capture(dir.path().join("take.wav")).expect("recover");
+        assert_eq!(
+            report.frames, 9,
+            "recovery must truncate to the manifest's committed frame count"
+        );
+    }
+
+    #[test]
+    fn recovery_rejects_manifest_committing_more_frames_than_spool_holds() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let (_spool, manifest_path) = create_spool(dir.path(), 2, 1);
+        let manifest = CaptureManifest {
+            version: MANIFEST_VERSION,
+            sample_rate: 48_000,
+            channels: 1,
+            chunk_frames: 48_000,
+            frames: 50,
+            complete: false,
+            started_at_ms: now_ms(),
+        };
+        write_manifest(&manifest_path, &manifest).expect("rewrite manifest");
+
+        let result = recover_capture(dir.path().join("take.wav"));
+        assert!(
+            result.is_err(),
+            "a manifest committing more frames than the spool holds is torn and must not be finalized"
+        );
     }
 }

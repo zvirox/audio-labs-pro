@@ -19,6 +19,10 @@ pub const DEFAULT_SAMPLE_RATE: u32 = 48_000;
 pub const MIN_SAMPLE_RATE: u32 = 8_000;
 /// Highest accepted project sample rate.
 pub const MAX_SAMPLE_RATE: u32 = 384_000;
+/// Longest accepted project duration in seconds. Bounds the render-time
+/// timeline allocation so a crafted project file cannot demand an
+/// arbitrary-size buffer.
+pub const MAX_PROJECT_DURATION_SECS: u64 = 24 * 60 * 60;
 
 /// Milliseconds since the Unix epoch, saturating at zero on clock errors.
 #[must_use]
@@ -242,6 +246,20 @@ impl Project {
                 )));
             }
             track.validate(&source_ids, &source_frames, &mut clip_ids)?;
+        }
+
+        // A clip parked at an extreme timeline position passes per-clip
+        // validation but would make the renderer allocate a buffer spanning
+        // the whole timeline. Cap the total project duration.
+        let max_frames = MAX_PROJECT_DURATION_SECS * u64::from(self.sample_rate);
+        for track in &self.tracks {
+            for clip in &track.clips {
+                if clip.timeline_end() > max_frames {
+                    return Err(CoreError::validation(format!(
+                        "project exceeds the maximum supported duration of {MAX_PROJECT_DURATION_SECS}s"
+                    )));
+                }
+            }
         }
         if !self.master_gain.is_finite() || self.master_gain < 0.0 {
             return Err(CoreError::validation("master gain is invalid"));
@@ -650,6 +668,27 @@ mod tests {
     fn invalid_sample_rate_is_rejected() {
         assert!(Project::new_with_rate("x", 1).is_err());
         assert!(Project::new_with_rate("x", 999_999).is_err());
+    }
+
+    #[test]
+    fn clip_beyond_max_duration_is_invalid() {
+        let mut project = Project::new("x").expect("project");
+        project.sources.push(sample_source());
+        let mut track = Track::new(TrackId::from_u128(2), "Track 1");
+        // Source range valid; timeline position ~6.4 days out: passes
+        // per-clip validation, must fail the duration cap.
+        track.clips.push(Clip::new(
+            ClipId::from_u128(3),
+            SourceId::from_u128(1),
+            FrameRange::new(0, 48_000).expect("range"),
+            1_000_000_000_000,
+        ));
+        project.tracks.push(track);
+
+        assert!(
+            project.validate().is_err(),
+            "a clip parked at an extreme timeline position must be rejected"
+        );
     }
 
     #[test]

@@ -147,7 +147,10 @@ impl PeakPyramid {
         let last = (end_frame.saturating_sub(1) / bucket) as usize;
         let mut min = i16::MAX;
         let mut max = i16::MIN;
-        for (low, high) in level.pairs.iter().skip(first).take(last + 1 - first) {
+        // `start > end` (an inverted range) must not underflow the span len:
+        // yield an empty window instead of wrapping into a huge take.
+        let span = last.saturating_add(1).saturating_sub(first);
+        for (low, high) in level.pairs.iter().skip(first).take(span) {
             min = min.min(*low);
             max = max.max(*high);
         }
@@ -271,5 +274,17 @@ mod tests {
         let pyramid = PeakPyramid::build_from_buffer(&buffer).expect("pyramid");
         assert_eq!(pyramid.level_for(1.0).bucket_samples(), BASE_BUCKET);
         assert_eq!(pyramid.level_for(2_000.0).bucket_samples(), 1024);
+    }
+
+    #[test]
+    fn peak_between_handles_inverted_range_without_panic() {
+        let buffer = PcmBuffer::new(48_000, 1, vec![0.5; 10_000]).expect("buffer");
+        let pyramid = PeakPyramid::build_from_buffer(&buffer).expect("pyramid");
+        let (min, max) = pyramid.peak_between(0, 5_000, 1_000);
+        assert_eq!(
+            (min, max),
+            (0, 0),
+            "an inverted frame range must yield an empty window, not an underflow"
+        );
     }
 }

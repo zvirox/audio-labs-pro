@@ -7,7 +7,7 @@ use alp_core::{
     Project, ProjectPaths, RemoveTrack, SetTrackEffects, SplitClip, Track, TrackId, frames_to_secs,
     now_ms, secs_to_frames,
 };
-use alp_media::{ExportPreset, PcmBuffer, export};
+use alp_media::{ExportPreset, export};
 
 use crate::audit::{AuditEntry, AuditLogger};
 use crate::checkpoint::CheckpointManager;
@@ -29,6 +29,9 @@ pub struct ApiSession {
     jobs: JobManager,
     client_id: String,
     dirty: bool,
+    /// SHA-256 of the most recently staged JSON arguments, consumed by the
+    /// next audit record so the log identifies what was actually requested.
+    pending_arg_digest: Option<String>,
 }
 
 impl ApiSession {
@@ -57,6 +60,7 @@ impl ApiSession {
             jobs: JobManager::new(),
             client_id,
             dirty: false,
+            pending_arg_digest: None,
         })
     }
 
@@ -75,6 +79,14 @@ impl ApiSession {
     #[must_use]
     pub fn revision(&self) -> u64 {
         self.revision
+    }
+
+    /// Stage the raw JSON arguments for the next operation so the audit log
+    /// can record a digest of what was actually requested. The staged digest
+    /// is consumed by the next audit record.
+    pub fn stage_arguments(&mut self, args: &serde_json::Value) {
+        let bytes = serde_json::to_vec(args).unwrap_or_default();
+        self.pending_arg_digest = Some(alp_voice::sha256::digest_hex(&bytes));
     }
 
     /// Background job manager.
@@ -96,12 +108,15 @@ impl ApiSession {
         Ok(())
     }
 
-    fn record_audit(&self, tool: &str, status: &str, rev_before: u64) {
+    fn record_audit(&mut self, tool: &str, status: &str, rev_before: u64) {
         let entry = AuditEntry {
             timestamp_ms: now_ms(),
             client_id: self.client_id.clone(),
             tool_name: tool.to_string(),
-            arg_digest: format!("{:x}", now_ms()),
+            arg_digest: self
+                .pending_arg_digest
+                .take()
+                .unwrap_or_else(|| "none".into()),
             tier: self.tier,
             status: status.to_string(),
             revision_before: rev_before,
@@ -318,56 +333,104 @@ impl ApiSession {
         )
     }
 
-    /// Ripple delete an in-out time range across all tracks.
+    /// Ripple delete an in-out time range on the first track.
     pub fn ripple_delete_range(&mut self, start_secs: f64, end_secs: f64) -> Result<(), ApiError> {
         let rate = self.project.sample_rate;
         let range = FrameRange::new(
             secs_to_frames(start_secs, rate),
             secs_to_frames(end_secs, rate),
         )?;
-        if let Some(track) = self.project.tracks.first() {
-            let track_id = track.id;
-            self.execute_command(
-                "range_edit",
-                Box::new(DeleteRange::new(track_id, range, true)),
-            )?;
-        }
-        Ok(())
+        let Some(track) = self.project.tracks.first() else {
+            return Err(ApiError::Validation(
+                "cannot delete a range: the project has no tracks".into(),
+            ));
+        };
+        let track_id = track.id;
+        self.execute_command(
+            "range_edit",
+            Box::new(DeleteRange::new(track_id, range, true)),
+        )
     }
 
     // --- Audio Rendering & Analysis ---
 
-    /// Run loudness analysis over the project or render.
+    /// Run loudness analysis over a real render of the project.
     pub fn analyze_loudness(&self) -> Result<AnalysisReport, ApiError> {
         self.check_permission(PermissionTier::Observe)?;
-        let (lufs, peak) = if !self.project.sources.is_empty() {
-            (-16.0f32, -1.0f32)
+        let buffer = self.render_project_mixdown()?;
+
+        let rate = buffer.sample_rate();
+        let channels = buffer.channels();
+        let samples = buffer.samples();
+
+        let integrated_lufs = alp_dsp::measure_lufs(samples, rate, channels);
+
+        // Linear peak → dBFS true-peak approximation (sample peak).
+        let linear_peak = samples.iter().fold(0.0f32, |m, s| m.max(s.abs()));
+        let true_peak_dbfs = if linear_peak > 0.0 {
+            20.0 * linear_peak.log10()
         } else {
-            (-70.0f32, -70.0f32)
+            -70.0
         };
 
+        let total = samples.len().max(1);
+        let silent = samples.iter().filter(|s| s.abs() < 1e-4).count();
+        let silence_ratio = silent as f32 / total as f32;
+
+        let non_zero_min = samples
+            .iter()
+            .map(|s| s.abs())
+            .filter(|a| *a > 0.0)
+            .fold(f32::INFINITY, f32::min);
+        let noise_floor_dbfs = if non_zero_min.is_finite() && non_zero_min > 0.0 {
+            20.0 * non_zero_min.log10()
+        } else {
+            -70.0
+        };
+
+        let clipping_spikes = samples.iter().filter(|s| s.abs() >= 1.0).count();
+
         Ok(AnalysisReport {
-            duration_secs: 10.0,
-            integrated_lufs: lufs,
-            true_peak_dbfs: peak,
-            noise_floor_dbfs: -60.0,
-            silence_ratio: 0.1,
-            clipping_spikes: 0,
+            duration_secs: buffer.duration_secs(),
+            integrated_lufs,
+            true_peak_dbfs,
+            noise_floor_dbfs,
+            silence_ratio,
+            clipping_spikes,
             detected_hum_hz: None,
         })
     }
 
+    /// Render the session's project to a mixed-down PCM buffer through the
+    /// real engine scene pipeline (decode sources, build scene, offline
+    /// render). This is the single path shared by export and analysis.
+    fn render_project_mixdown(&self) -> Result<alp_media::PcmBuffer, ApiError> {
+        let mut sources = std::collections::HashMap::new();
+        for source in &self.project.sources {
+            let path = self.paths.resolve_relative(&source.relative_path)?;
+            let buffer = alp_media::decode(&path)?;
+            sources.insert(
+                source.id,
+                std::sync::Arc::new(alp_engine::SourceAudio::from_pcm(&buffer)),
+            );
+        }
+        let scene = alp_engine::MixScene::from_project(&self.project, &sources)
+            .map_err(|e| ApiError::Validation(format!("failed to build mix scene: {e}")))?;
+        let buffer = alp_engine::render_scene(&scene, alp_engine::DEFAULT_BLOCK_FRAMES)
+            .map_err(|e| ApiError::Validation(format!("failed to render project: {e}")))?;
+        Ok(buffer)
+    }
+
     /// Export rendered audio to file.
     pub fn export_audio(
-        &self,
+        &mut self,
         preset: ExportPreset,
         target_path: impl AsRef<Path>,
     ) -> Result<String, ApiError> {
         self.check_permission(PermissionTier::Export)?;
         let path = self.sandbox.validate_path(target_path)?;
-
+        let buffer = self.render_project_mixdown()?;
         let settings = preset.settings();
-        let buffer = PcmBuffer::silence(48000, 2, 48000 * 2)?;
         export(&path, &buffer, &settings)?;
 
         let display = path.display().to_string();
@@ -447,6 +510,7 @@ impl ApiSession {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alp_core::{Clip, Source, SourceId};
     use tempfile::tempdir;
 
     #[test]
@@ -509,5 +573,195 @@ mod tests {
 
         let tracks = session.list_tracks().expect("tracks");
         assert_eq!(tracks.len(), 1);
+    }
+
+    /// Build a session whose project holds one 1-second sine source at t=0.
+    /// Returns the session, the project paths, and the audit log path.
+    fn session_with_sine_project(dir: &Path) -> (ApiSession, ProjectPaths, std::path::PathBuf) {
+        let proj_paths = ProjectPaths::new(dir);
+        proj_paths.ensure_layout().expect("layout");
+
+        let fixture_dir = proj_paths.media_dir();
+        std::fs::create_dir_all(&fixture_dir).expect("media dir");
+        let fixture = fixture_dir.join("sine.wav");
+        let samples: Vec<f32> = (0..48_000)
+            .map(|i| (f64::from(i) * 0.01).sin() as f32 * 0.5)
+            .collect();
+        let pcm = alp_media::PcmBuffer::new(48_000, 1, samples).expect("pcm");
+        alp_media::export(
+            &fixture,
+            &pcm,
+            &alp_media::ExportSettings {
+                format: alp_media::ExportFormat::Wav,
+                bit_depth: alp_media::WavBitDepth::Int16,
+                sample_rate: None,
+                dither: alp_media::DitherMode::None,
+                metadata: alp_media::AudioMetadata::default(),
+            },
+        )
+        .expect("write fixture wav");
+
+        let mut project = Project::new("Render Test").expect("project");
+        project.sources.push(
+            Source::new(
+                SourceId::from_u128(1),
+                "sine.wav",
+                "media/sine.wav",
+                48_000,
+                1,
+                48_000,
+            )
+            .expect("source"),
+        );
+        let mut track = Track::new(TrackId::from_u128(2), "A");
+        track.clips.push(Clip::new(
+            ClipId::from_u128(3),
+            SourceId::from_u128(1),
+            FrameRange::new(0, 48_000).expect("range"),
+            0,
+        ));
+        project.tracks.push(track);
+
+        let sandbox = WorkspaceSandbox::new([dir]).expect("sandbox");
+        let audit_path = dir.join("audit.jsonl");
+        let audit = AuditLogger::new(&audit_path).expect("audit");
+        let session = ApiSession::new(
+            project,
+            proj_paths.clone(),
+            PermissionTier::Export,
+            sandbox,
+            audit,
+            "test-agent",
+        )
+        .expect("session");
+        (session, proj_paths, audit_path)
+    }
+
+    #[test]
+    fn export_audio_writes_project_audio_not_silence() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let (mut session, _, _) = session_with_sine_project(dir.path());
+
+        let out = dir.path().join("master.wav");
+        let path = session
+            .export_audio(alp_media::ExportPreset::VoiceOver, &out)
+            .expect("export audio");
+
+        let rendered = alp_media::decode(std::path::Path::new(&path)).expect("decode out");
+        assert!(
+            (rendered.frames() as i64 - 48_000).abs() < 1_000,
+            "exported duration should match the project, got {} frames",
+            rendered.frames()
+        );
+        assert!(
+            rendered.peak() > 0.01,
+            "exported audio must contain the project's signal, peak was {}",
+            rendered.peak()
+        );
+    }
+
+    #[test]
+    fn analyze_loudness_reports_measured_values() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let (session, _, _) = session_with_sine_project(dir.path());
+
+        let report = session.analyze_loudness().expect("analysis");
+        assert!(
+            (report.duration_secs - 1.0).abs() < 0.1,
+            "duration must reflect the rendered project, got {}s",
+            report.duration_secs
+        );
+        assert!(
+            report.silence_ratio < 0.5,
+            "a sine project is not 90% silent, got {}",
+            report.silence_ratio
+        );
+        assert!(
+            report.integrated_lufs > -20.0 && report.integrated_lufs < -5.0,
+            "a 0.5-amplitude sine must measure in the −20..−5 LUFS band, got {} (the old stub returned exactly −16 or −70)",
+            report.integrated_lufs
+        );
+        assert!(
+            report.true_peak_dbfs > -20.0 && report.true_peak_dbfs <= 0.0,
+            "true peak must be a measured dBFS value near -6, got {}",
+            report.true_peak_dbfs
+        );
+    }
+
+    #[test]
+    fn audit_records_real_argument_digests() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let (mut session, _, audit_path) = session_with_sine_project(dir.path());
+
+        session.stage_arguments(&serde_json::json!({ "name": "Alpha" }));
+        session.add_track("Alpha").expect("add track");
+        session.stage_arguments(&serde_json::json!({ "name": "Beta" }));
+        session.add_track("Beta").expect("add track");
+
+        let log = std::fs::read_to_string(&audit_path).expect("audit log");
+        use crate::audit::AuditEntry;
+        let digests: Vec<String> = log
+            .lines()
+            .filter_map(|line| serde_json::from_str::<AuditEntry>(line).ok())
+            .map(|entry| entry.arg_digest)
+            .collect();
+        assert!(digests.len() >= 2, "expected add_track audit entries");
+        let last_two = &digests[digests.len() - 2..];
+        for digest in last_two {
+            assert_eq!(
+                digest.len(),
+                64,
+                "arg digest must be sha-256 hex, got {digest:?}"
+            );
+        }
+        assert_ne!(
+            last_two[0], last_two[1],
+            "different arguments must digest differently"
+        );
+    }
+
+    #[test]
+    fn checkpoint_ids_are_unique_for_rapid_creation() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let (mut session, _, _) = session_with_sine_project(dir.path());
+
+        let mut ids = Vec::new();
+        for i in 0..400 {
+            ids.push(
+                session
+                    .create_checkpoint(format!("cp {i}"))
+                    .expect("checkpoint"),
+            );
+        }
+        let unique: std::collections::HashSet<&String> = ids.iter().collect();
+        assert_eq!(
+            unique.len(),
+            ids.len(),
+            "checkpoints created within the same millisecond must still get distinct ids"
+        );
+    }
+
+    #[test]
+    fn ripple_delete_range_without_tracks_is_an_error() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let proj_paths = ProjectPaths::new(dir.path());
+        proj_paths.ensure_layout().expect("layout");
+        let project = Project::new("Empty").expect("project");
+        let sandbox = WorkspaceSandbox::new([dir.path()]).expect("sandbox");
+        let audit = AuditLogger::new(dir.path().join("audit.jsonl")).expect("audit");
+        let mut session = ApiSession::new(
+            project,
+            proj_paths,
+            PermissionTier::Edit,
+            sandbox,
+            audit,
+            "agent",
+        )
+        .expect("session");
+
+        assert!(
+            session.ripple_delete_range(0.0, 1.0).is_err(),
+            "deleting a range on a trackless project must fail instead of silently succeeding"
+        );
     }
 }

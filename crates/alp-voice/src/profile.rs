@@ -3,10 +3,30 @@
 use alp_core::{AppDirs, CoreError};
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use crate::VoiceKind;
 use crate::zip::{ZipReader, ZipWriter};
+
+/// Validate an untrusted profile identifier before it is ever used in a path.
+///
+/// Profile ids arrive from imported bundles, so they are attacker-controlled:
+/// reject empty ids, path separators, and any non-`Normal` component
+/// (`..`, `.`, absolute prefixes) so `root.join(id)` can never escape the store.
+fn validate_profile_id(id: &str) -> Result<(), CoreError> {
+    let invalid = id.trim().is_empty()
+        || id.contains('/')
+        || id.contains('\\')
+        || Path::new(id)
+            .components()
+            .any(|c| !matches!(c, Component::Normal(_)));
+    if invalid {
+        return Err(CoreError::validation(format!(
+            "invalid voice profile id {id:?}: ids must be plain names without path separators or traversal components"
+        )));
+    }
+    Ok(())
+}
 
 /// Parameters customizing speech generation for a voice profile.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -81,6 +101,29 @@ impl ConsentRecord {
             statement: stmt,
         })
     }
+}
+
+/// Validate a consent record obtained from an untrusted source (an imported
+/// bundle) against the same rules [`ConsentRecord::new`] enforces when a human
+/// creates one: the attestation must identify a speaker, an attester, and a
+/// meaningful statement.
+fn validate_consent_record(consent: &ConsentRecord) -> Result<(), CoreError> {
+    if consent.speaker_name.trim().is_empty() {
+        return Err(CoreError::validation(
+            "invalid consent record: speaker name cannot be empty",
+        ));
+    }
+    if consent.attested_by.trim().is_empty() {
+        return Err(CoreError::validation(
+            "invalid consent record: attesting user cannot be empty",
+        ));
+    }
+    if consent.statement.trim().len() < 10 {
+        return Err(CoreError::validation(
+            "invalid consent record: consent statement is too short",
+        ));
+    }
+    Ok(())
 }
 
 /// A reusable voice profile independent of any individual project.
@@ -221,6 +264,9 @@ impl ProfileStore {
     /// Get a profile by its ID.
     #[must_use]
     pub fn get_profile(&self, id: &str) -> Option<VoiceProfile> {
+        if validate_profile_id(id).is_err() {
+            return None;
+        }
         let profile_dir = self.root_dir.join(id);
         let json_path = profile_dir.join("profile.json");
         let content = fs::read_to_string(json_path).ok()?;
@@ -229,11 +275,23 @@ impl ProfileStore {
 
     /// Save or update a voice profile in the store.
     pub fn save_profile(&self, profile: &VoiceProfile) -> Result<(), CoreError> {
+        validate_profile_id(&profile.id)?;
+
         // Enforce consent for cloned profiles
         if profile.kind == VoiceKind::Cloned && profile.consent.is_none() {
             return Err(CoreError::validation(
                 "cannot save a cloned voice profile without a valid human consent record",
             ));
+        }
+
+        // A consent record only makes sense on a cloned profile.
+        if profile.kind != VoiceKind::Cloned && profile.consent.is_some() {
+            return Err(CoreError::validation(
+                "cannot save a non-cloned profile carrying a consent record",
+            ));
+        }
+        if let Some(consent) = &profile.consent {
+            validate_consent_record(consent)?;
         }
 
         let profile_dir = self.root_dir.join(&profile.id);
@@ -247,6 +305,7 @@ impl ProfileStore {
 
     /// Delete a voice profile by its ID.
     pub fn delete_profile(&self, id: &str) -> Result<bool, CoreError> {
+        validate_profile_id(id)?;
         let profile_dir = self.root_dir.join(id);
         if profile_dir.exists() {
             fs::remove_dir_all(profile_dir).map_err(CoreError::Io)?;
@@ -273,8 +332,17 @@ impl ProfileStore {
         // Attach reference audio if present
         if let Some(ref_rel) = &profile.reference_audio {
             let full_ref_path = profile_dir.join(ref_rel);
+            // A crafted profile.json can point anywhere; never export files
+            // from outside this profile's own directory.
             if full_ref_path.exists() {
-                let ref_bytes = fs::read(full_ref_path).map_err(CoreError::Io)?;
+                let profile_root = profile_dir.canonicalize().map_err(CoreError::Io)?;
+                let resolved_ref = full_ref_path.canonicalize().map_err(CoreError::Io)?;
+                if !resolved_ref.starts_with(&profile_root) {
+                    return Err(CoreError::validation(format!(
+                        "reference audio {ref_rel:?} points outside the profile directory"
+                    )));
+                }
+                let ref_bytes = fs::read(resolved_ref).map_err(CoreError::Io)?;
                 zip.add_file("reference.wav", &ref_bytes)?;
             }
         }
@@ -302,11 +370,24 @@ impl ProfileStore {
             .ok_or_else(|| CoreError::validation("missing profile.json in .alpvoice package"))?;
         let mut profile: VoiceProfile = serde_json::from_slice(json_bytes)?;
 
-        // Safety check: cloned profiles must have a valid consent record
+        validate_profile_id(&profile.id)?;
+
+        // Safety check: cloned profiles must carry a consent record, and an
+        // imported record must satisfy the same validations the app applies
+        // when a human creates consent. A bundle alone is not authority; it
+        // must at least be structurally truthful before it is stored.
         if profile.kind == VoiceKind::Cloned && profile.consent.is_none() {
             return Err(CoreError::validation(
                 "import rejected: cloned profile in package is missing required consent record",
             ));
+        }
+        if profile.kind != VoiceKind::Cloned && profile.consent.is_some() {
+            return Err(CoreError::validation(
+                "import rejected: consent record attached to a non-cloned profile",
+            ));
+        }
+        if let Some(consent) = &profile.consent {
+            validate_consent_record(consent)?;
         }
 
         let profile_dir = self.root_dir.join(&profile.id);
@@ -316,6 +397,10 @@ impl ProfileStore {
             let ref_path = profile_dir.join("reference.wav");
             fs::write(&ref_path, ref_data).map_err(CoreError::Io)?;
             profile.reference_audio = Some(PathBuf::from("reference.wav"));
+        } else {
+            // A bundle-declared reference path is untrusted: never preserve it
+            // when the bundle did not actually ship the audio it points at.
+            profile.reference_audio = None;
         }
 
         if let Some(emb_data) = reader.get("embedding.bin") {
@@ -401,5 +486,127 @@ mod tests {
 
         assert_eq!(imported.id, "aura");
         assert_eq!(imported.name, "Aura");
+    }
+
+    fn write_bundle(
+        dir: &Path,
+        name: &str,
+        profile: &VoiceProfile,
+        reference: Option<&[u8]>,
+    ) -> PathBuf {
+        let path = dir.join(name);
+        let file = fs::File::create(&path).expect("bundle file");
+        let mut zip = ZipWriter::new(file);
+        let json = serde_json::to_vec(profile).expect("serialize profile");
+        zip.add_file("profile.json", &json)
+            .expect("add profile.json");
+        if let Some(ref_data) = reference {
+            zip.add_file("reference.wav", ref_data)
+                .expect("add reference");
+        }
+        zip.finish().expect("finish zip");
+        path
+    }
+
+    #[test]
+    fn import_rejects_traversal_profile_id() {
+        let dir = tempdir().expect("tempdir");
+        let store = ProfileStore::new(dir.path().join("store")).expect("store");
+        let payload_dir = tempdir().expect("payloads");
+
+        for id in [
+            "../escape",
+            "/etc/pwned",
+            "nested/path",
+            "back\\slash",
+            "..",
+        ] {
+            let mut profile = VoiceProfile::builtin(id, "Evil", vec![]);
+            profile.kind = VoiceKind::Designed;
+            let bundle = write_bundle(payload_dir.path(), "evil.alpvoice", &profile, None);
+            assert!(
+                store.import_bundle(&bundle).is_err(),
+                "profile id {id:?} must be rejected on import"
+            );
+        }
+
+        // Nothing may have been created outside the store root.
+        assert!(!dir.path().join("escape").exists());
+        assert!(!dir.path().join("nested").exists());
+        assert!(!dir.path().join("back").exists());
+    }
+
+    #[test]
+    fn delete_profile_rejects_traversal_id() {
+        let dir = tempdir().expect("tempdir");
+        let store = ProfileStore::new(dir.path().join("store")).expect("store");
+
+        let victim = dir.path().join("victim");
+        fs::create_dir_all(&victim).expect("victim dir");
+        fs::write(victim.join("keep.txt"), b"precious").expect("victim file");
+
+        assert!(
+            store.delete_profile("../victim").is_err(),
+            "a traversal id must not delete outside the store"
+        );
+        assert!(victim.exists(), "victim directory must survive");
+    }
+
+    #[test]
+    fn export_bundle_rejects_reference_audio_outside_profile_dir() {
+        let dir = tempdir().expect("tempdir");
+        let store = ProfileStore::new(dir.path().join("store")).expect("store");
+
+        let secret = dir.path().join("secret.wav");
+        fs::write(&secret, b"do not share").expect("secret file");
+
+        let mut profile = VoiceProfile::builtin("leaky", "Leaky", vec![]);
+        profile.reference_audio = Some(PathBuf::from("../../secret.wav"));
+        store.save_profile(&profile).expect("save leaky profile");
+
+        let bundle_path = dir.path().join("leaky.alpvoice");
+        assert!(
+            store.export_bundle("leaky", &bundle_path).is_err(),
+            "reference_audio escaping the profile dir must be refused"
+        );
+        assert!(secret.exists(), "secret file must be untouched");
+    }
+
+    #[test]
+    fn import_enforces_consent_content_validation() {
+        let dir = tempdir().expect("tempdir");
+        let store = ProfileStore::new(dir.path().join("store")).expect("store");
+        let payload_dir = tempdir().expect("payloads");
+
+        // Cloned profile whose consent record is structurally invalid.
+        let mut forged = VoiceProfile::builtin("forged-clone", "Forged", vec![]);
+        forged.kind = VoiceKind::Cloned;
+        forged.consent = Some(ConsentRecord {
+            speaker_name: String::new(),
+            attested_by: "x".into(),
+            timestamp: 1,
+            statement: "short".into(),
+        });
+        let bundle = write_bundle(payload_dir.path(), "forged.alpvoice", &forged, None);
+        assert!(
+            store.import_bundle(&bundle).is_err(),
+            "a consent record with empty speaker / short statement must be rejected"
+        );
+        assert!(store.get_profile("forged-clone").is_none());
+
+        // A non-cloned profile carrying a consent record is inconsistent.
+        let mut stray = VoiceProfile::builtin("stray-consent", "Stray", vec![]);
+        stray.kind = VoiceKind::Designed;
+        stray.consent = Some(ConsentRecord {
+            speaker_name: "Someone".into(),
+            attested_by: "me".into(),
+            timestamp: 2,
+            statement: "a perfectly long consent statement".into(),
+        });
+        let bundle = write_bundle(payload_dir.path(), "stray.alpvoice", &stray, None);
+        assert!(
+            store.import_bundle(&bundle).is_err(),
+            "consent attached to a non-cloned profile must be rejected"
+        );
     }
 }

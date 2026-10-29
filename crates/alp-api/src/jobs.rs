@@ -57,7 +57,9 @@ impl JobManager {
 
     /// Submit a job and return its `JobId`.
     pub fn submit(&self, label: impl Into<String>) -> String {
-        let id = format!("job_{:x}", now_ms());
+        // UUID-based ids: submissions within the same millisecond must not
+        // overwrite each other in the job map.
+        let id = format!("job_{}", uuid::Uuid::new_v4().simple());
         let info = JobInfo {
             id: id.clone(),
             label: label.into(),
@@ -161,5 +163,19 @@ mod tests {
         manager.complete(&job_id, "render.wav");
         let completed = manager.get_status(&job_id).expect("status");
         assert!(matches!(completed.state, JobState::Completed { .. }));
+    }
+
+    #[test]
+    fn job_ids_are_unique_for_rapid_submissions() {
+        let manager = JobManager::new();
+        let ids: Vec<String> = (0..300)
+            .map(|i| manager.submit(format!("job {i}")))
+            .collect();
+        let unique: std::collections::HashSet<&String> = ids.iter().collect();
+        assert_eq!(
+            unique.len(),
+            ids.len(),
+            "jobs submitted within the same millisecond must not collide"
+        );
     }
 }

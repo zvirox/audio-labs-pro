@@ -42,4 +42,4 @@ Exercised by workspace tests and verified end-to-end in `scripts/phase8-demo.sh`
 
 ## Known limits
 
-- Interactive consent dialog is human-only in the UI; automated CLI cloning cannot bypass speaker attestation.
+- Interactive consent dialog is human-only in the UI. CLI profile import is automatable and enforces the library's structural consent gate — a cloned profile must carry a well-formed consent record, and kind/consent mismatches are rejected — but records are not cryptographically signed, so structural enforcement is not proof of authenticity.

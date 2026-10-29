@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use crate::error::ApiError;
-
 /// An immutable saved state snapshot of a project.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Checkpoint {
@@ -42,7 +41,10 @@ impl CheckpointManager {
         label: impl Into<String>,
         creator: impl Into<String>,
     ) -> String {
-        let id = format!("chk_{:x}", now_ms());
+        // UUID-based ids: back-to-back checkpoints can land in the same
+        // millisecond, and `now_ms`-derived ids would silently overwrite the
+        // session-start checkpoint that rollback depends on.
+        let id = format!("chk_{}", uuid::Uuid::new_v4().simple());
         let cp = Checkpoint {
             id: id.clone(),
             label: label.into(),

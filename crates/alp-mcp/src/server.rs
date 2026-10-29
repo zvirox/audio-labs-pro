@@ -225,7 +225,7 @@ impl McpServer {
                 },
                 McpTool {
                     name: "range_delete".into(),
-                    description: "Delete an audio range and ripple cut subsequent audio".into(),
+                    description: "Delete an audio range on the first track and ripple cut subsequent audio on that track".into(),
                     input_schema: json!({
                         "type": "object",
                         "properties": {
@@ -241,11 +241,11 @@ impl McpServer {
         if self.tier >= PermissionTier::Export {
             tools.push(McpTool {
                 name: "export_audio".into(),
-                description: "Export audio master using a delivery preset ('master', 'podcast', 'voice_over')".into(),
+                description: "Export audio master using a delivery preset ('podcast', 'audiobook', 'voice_over')".into(),
                 input_schema: json!({
                     "type": "object",
                     "properties": {
-                        "preset": { "type": "string", "enum": ["master", "podcast", "voice_over"] },
+                        "preset": { "type": "string", "enum": ["podcast", "audiobook", "voice_over"] },
                         "output_path": { "type": "string", "description": "Destination file path" }
                     },
                     "required": ["preset", "output_path"]
@@ -270,6 +270,10 @@ impl McpServer {
                 );
             }
         };
+
+        // Record what the client actually asked for so the audit trail can
+        // reconstruct the request arguments, not just the timing.
+        session.stage_arguments(&arguments);
 
         let result = match tool_name {
             "project_info" => match session.project_info() {
@@ -477,7 +481,9 @@ impl McpServer {
                     .unwrap_or(0.0);
                 match session.ripple_delete_range(start, end) {
                     Ok(()) => ToolCallResult::success(
-                        format!("Deleted range [{start:.2}s - {end:.2}s] and rippled audio"),
+                        format!(
+                            "Deleted range [{start:.2}s - {end:.2}s] on the first track and rippled that track"
+                        ),
                         json!({ "deleted": true }),
                     ),
                     Err(e) => ToolCallResult::failure(format!("Range delete failed: {e}")),
@@ -487,7 +493,7 @@ impl McpServer {
                 let preset_str = arguments
                     .get("preset")
                     .and_then(Value::as_str)
-                    .unwrap_or("master");
+                    .unwrap_or("voice_over");
                 let output_path = arguments
                     .get("output_path")
                     .and_then(Value::as_str)
@@ -495,7 +501,16 @@ impl McpServer {
                 let preset = match preset_str {
                     "podcast" => ExportPreset::Podcast,
                     "audiobook" => ExportPreset::Audiobook,
-                    _ => ExportPreset::VoiceOver,
+                    "voice_over" => ExportPreset::VoiceOver,
+                    other => {
+                        return JsonRpcResponse::success(
+                            id,
+                            serde_json::to_value(ToolCallResult::failure(format!(
+                                "unknown export preset '{other}': use 'podcast', 'audiobook' or 'voice_over'"
+                            )))
+                            .unwrap(),
+                        );
+                    }
                 };
                 match session.export_audio(preset, output_path) {
                     Ok(path) => ToolCallResult::success(

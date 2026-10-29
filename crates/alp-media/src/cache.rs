@@ -198,6 +198,16 @@ fn read_cache(path: &Path) -> Result<PeakPyramid, MediaError> {
         if count == 0 || count > maximum {
             return Err(MediaError::InvalidCache("bucket count out of range".into()));
         }
+        // The declared bound above is attacker-controlled too (it comes from
+        // the same file). A pair costs 4 bytes on disk, so the real file size
+        // bounds how many pairs can possibly follow — never reserve more than
+        // that, or a 60-byte cache file can abort the process in the allocator.
+        let file_len = reader.get_ref().metadata()?.len();
+        if count > file_len / 4 {
+            return Err(MediaError::InvalidCache(
+                "bucket count beyond file size".into(),
+            ));
+        }
         let count = usize::try_from(count)
             .map_err(|_| MediaError::InvalidCache("bucket count too large".into()))?;
         let mut pairs = Vec::with_capacity(count);
@@ -264,5 +274,29 @@ mod tests {
         std::fs::write(&path, b"corrupt").expect("corrupt");
         let (_, status, _) = cache.load_or_build(&source).expect("rebuild");
         assert_eq!(status, CacheStatus::Miss);
+    }
+
+    #[test]
+    fn cache_declaring_impossible_bucket_count_is_rejected() {
+        // A 36-byte crafted header must not drive a multi-megabyte reserve:
+        // the count bound has to come from the file size, not the header.
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("evil.peaks");
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(CACHE_MAGIC);
+        bytes.extend_from_slice(&CACHE_VERSION.to_le_bytes());
+        bytes.extend_from_slice(&48_000u32.to_le_bytes());
+        bytes.extend_from_slice(&(4_000_000_000u64).to_le_bytes());
+        bytes.extend_from_slice(&1u32.to_le_bytes());
+        bytes.extend_from_slice(&BASE_BUCKET.to_le_bytes());
+        bytes.extend_from_slice(&500_000u64.to_le_bytes());
+        std::fs::write(&path, &bytes).expect("write crafted cache");
+
+        let err =
+            read_cache(&path).expect_err("a header count beyond the file size must be rejected");
+        assert!(
+            matches!(err, MediaError::InvalidCache(ref msg) if msg.contains("beyond file size")),
+            "expected the file-size bound error, got {err:?}"
+        );
     }
 }

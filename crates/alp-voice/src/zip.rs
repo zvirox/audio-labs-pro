@@ -10,6 +10,10 @@ use std::io::{Cursor, Read, Seek, SeekFrom, Write};
 const LOCAL_FILE_HEADER_SIG: u32 = 0x0403_4b50;
 const CENTRAL_DIR_HEADER_SIG: u32 = 0x0201_4b50;
 const END_OF_CENTRAL_DIR_SIG: u32 = 0x0605_4b50;
+/// Upper bound for a single archive entry's declared size. Voice bundles only
+/// ever carry small `profile.json` / `reference.wav` / `embedding.bin` payloads;
+/// a bundle declaring more than this is malicious or corrupt.
+const MAX_ENTRY_BYTES: usize = 512 * 1024 * 1024;
 
 /// Standard IEEE 802.3 CRC-32 checksum calculation.
 #[must_use]
@@ -314,6 +318,17 @@ impl ZipReader {
             let loc_extra_len = u16::from_le_bytes([local_head[28], local_head[29]]) as usize;
             let data_offset = local_offset + 30 + loc_name_len + loc_extra_len;
 
+            // Never allocate from attacker-declared sizes. The central
+            // directory can claim arbitrary entry lengths; require the
+            // declared data range to lie inside the bytes we actually hold
+            // before allocating for it.
+            let data_end = data_offset.saturating_add(size);
+            if size > MAX_ENTRY_BYTES || data_end > total_len {
+                return Err(CoreError::validation(format!(
+                    "archive entry {filename} declares {size} bytes beyond the bundle bounds"
+                )));
+            }
+
             cursor
                 .seek(SeekFrom::Start(data_offset as u64))
                 .map_err(CoreError::Io)?;
@@ -359,6 +374,37 @@ mod tests {
         let text = b"123456789";
         // Standard CRC-32 for "123456789" is 0xcbf43926
         assert_eq!(crc32(text), 0xcbf4_3926);
+    }
+
+    #[test]
+    fn entry_declaring_data_beyond_the_bundle_is_rejected() {
+        let mut buf = Cursor::new(Vec::new());
+        let mut writer = ZipWriter::new(&mut buf);
+        writer
+            .add_file("hello.txt", b"Hello, Audio Labs Pro!")
+            .expect("add file");
+        writer.finish().expect("finish");
+        let mut bytes = buf.into_inner();
+
+        // Patch the central directory's declared entry size to a bogus 4 GiB
+        // so it claims data that does not exist in the bundle. The size field
+        // sits 20 bytes after the signature (sig excluded from the header
+        // buffer the reader parses).
+        let cd_sig = [0x50u8, 0x4b, 0x01, 0x02];
+        let position = bytes
+            .windows(4)
+            .position(|window| window == cd_sig)
+            .expect("central directory header");
+        bytes[position + 20..position + 24].copy_from_slice(&0xFFFF_FFFFu32.to_le_bytes());
+
+        let error = match ZipReader::new(&bytes) {
+            Ok(_) => panic!("an impossible declared size must be rejected"),
+            Err(error) => error,
+        };
+        assert!(
+            error.to_string().contains("beyond the bundle bounds"),
+            "expected the bundle-bounds error, got {error}"
+        );
     }
 
     #[test]

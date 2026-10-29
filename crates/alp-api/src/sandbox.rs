@@ -64,7 +64,36 @@ impl WorkspaceSandbox {
         let resolved = if candidate.exists() {
             candidate.canonicalize()?
         } else if candidate.is_absolute() {
-            candidate.to_path_buf()
+            // The candidate does not exist yet, so `canonicalize` cannot
+            // resolve it. Canonicalize the nearest existing ancestor instead:
+            // without this, a symlinked intermediate directory would pass the
+            // textual `starts_with` check and smuggle a write outside the
+            // sandbox when the file is created.
+            let mut parts: Vec<std::ffi::OsString> = Vec::new();
+            let mut ancestor = candidate.to_path_buf();
+            while !ancestor.exists() {
+                match ancestor.parent() {
+                    Some(parent) => {
+                        if let Some(name) = ancestor.file_name() {
+                            parts.push(name.to_os_string());
+                        }
+                        ancestor = parent.to_path_buf();
+                    }
+                    None => break,
+                }
+            }
+            let mut resolved = if ancestor.exists() {
+                ancestor.canonicalize()?
+            } else {
+                return Err(ApiError::SandboxEscape(format!(
+                    "no existing ancestor to resolve for path '{}'",
+                    candidate.display()
+                )));
+            };
+            for part in parts.iter().rev() {
+                resolved.push(part);
+            }
+            resolved
         } else {
             // Relative candidate against first root
             self.allowed_roots[0].join(candidate)
@@ -120,5 +149,29 @@ mod tests {
         let outside = Path::new("/etc/passwd");
         let result = sandbox.validate_path(outside);
         assert!(result.is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn sandbox_resolves_symlinked_ancestors_for_new_files() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempdir().expect("tempdir");
+        let outside = tempdir().expect("outside");
+        let sandbox = WorkspaceSandbox::new([dir.path()]).expect("sandbox");
+
+        let link = dir.path().join("link");
+        symlink(outside.path(), &link).expect("symlink");
+        let candidate = dir.path().join("link").join("newfile.wav");
+        // The candidate itself does not exist, so only ancestor resolution
+        // can catch that its directory points outside the sandbox.
+        assert!(
+            sandbox.validate_path(&candidate).is_err(),
+            "a symlinked intermediate directory must not smuggle a new file outside the sandbox"
+        );
+
+        // A genuinely new file under the real root is still allowed.
+        let inside_new = dir.path().join("sub").join("newfile.wav");
+        assert!(sandbox.validate_path(&inside_new).is_ok());
     }
 }

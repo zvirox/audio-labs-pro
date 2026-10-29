@@ -37,14 +37,22 @@ struct Args {
     client_id: String,
 }
 
+/// Parse a permission-tier CLI value. Unknown values fail closed instead of
+/// silently escalating to the most permissive tier.
+fn parse_tier(value: &str) -> anyhow::Result<PermissionTier> {
+    match value.trim().to_lowercase().as_str() {
+        "observe" => Ok(PermissionTier::Observe),
+        "edit" => Ok(PermissionTier::Edit),
+        "export" => Ok(PermissionTier::Export),
+        other => Err(anyhow::anyhow!(
+            "unknown permission tier '{other}': use observe, edit or export"
+        )),
+    }
+}
+
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-
-    let tier = match args.tier.to_lowercase().as_str() {
-        "observe" => PermissionTier::Observe,
-        "edit" => PermissionTier::Edit,
-        _ => PermissionTier::Export,
-    };
+    let tier = parse_tier(&args.tier)?;
 
     let workspace_path = args.workspace.canonicalize().unwrap_or(args.workspace);
     std::fs::create_dir_all(&workspace_path)?;
@@ -148,5 +156,87 @@ mod tests {
         assert!(tools.iter().any(|t| t["name"] == "project_info"));
         assert!(tools.iter().any(|t| t["name"] == "clip_split"));
         assert!(tools.iter().any(|t| t["name"] == "export_audio"));
+    }
+
+    fn export_session_server() -> McpServer {
+        let dir = tempdir().expect("tempdir");
+        let path = dir.path().to_path_buf();
+        std::mem::forget(dir); // keep the tempdir alive for the process lifetime
+        let proj_paths = ProjectPaths::new(&path);
+        proj_paths.ensure_layout().expect("layout");
+        let project = Project::new("Export Test").expect("project");
+        let sandbox = WorkspaceSandbox::new([&path]).expect("sandbox");
+        let audit = AuditLogger::new(path.join("audit.jsonl")).expect("audit");
+        let session = ApiSession::new(
+            project,
+            proj_paths,
+            PermissionTier::Export,
+            sandbox,
+            audit,
+            "agent",
+        )
+        .expect("session");
+        McpServer::new(Arc::new(Mutex::new(session)), PermissionTier::Export)
+    }
+
+    #[test]
+    fn export_audio_advertises_only_real_presets() {
+        let server = export_session_server();
+        let resp = server.handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".into(),
+            id: Some(serde_json::json!(1)),
+            method: "tools/list".into(),
+            params: serde_json::Value::Null,
+        });
+        let tools = resp.result.expect("result")["tools"]
+            .as_array()
+            .expect("tools")
+            .clone();
+        let export_tool = tools
+            .iter()
+            .find(|t| t["name"] == "export_audio")
+            .expect("export tool");
+        let enum_values: Vec<&str> = export_tool["inputSchema"]["properties"]["preset"]["enum"]
+            .as_array()
+            .expect("preset enum")
+            .iter()
+            .filter_map(|v| v.as_str())
+            .collect();
+        assert_eq!(
+            enum_values,
+            vec!["podcast", "audiobook", "voice_over"],
+            "the advertised preset enum must match what the dispatcher actually supports"
+        );
+    }
+
+    #[test]
+    fn unknown_export_preset_is_rejected_not_silently_mapped() {
+        let server = export_session_server();
+        let resp = server.handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".into(),
+            id: Some(serde_json::json!(2)),
+            method: "tools/call".into(),
+            params: serde_json::json!({
+                "name": "export_audio",
+                "arguments": { "preset": "not_a_preset", "output_path": "out.wav" }
+            }),
+        });
+        let result = resp.result.expect("tool result payload");
+        assert_eq!(
+            result["isError"], true,
+            "an unknown preset must be reported as a tool error, not silently mapped to a delivery preset"
+        );
+    }
+
+    #[test]
+    fn unknown_tier_fails_closed() {
+        assert!(parse_tier("observe").is_ok());
+        assert!(parse_tier("EDIT").is_ok());
+        assert!(parse_tier("export ").is_ok());
+        assert!(
+            parse_tier("Observatory").is_err(),
+            "typos must not escalate to the most permissive tier"
+        );
+        assert!(parse_tier("").is_err());
     }
 }
