@@ -1,4 +1,4 @@
-# 0019 — Polish, Packaging, and 1.0 Release Standards
+# 0019 — Polish, Packaging, and Release Standards
 
 - Status: accepted
 - Date: 2026-10-27
@@ -51,4 +51,4 @@ Phase 9 transitions Audio Labs Pro from feature-complete releases into a product
 
 ## Consequences
 
-Audio Labs Pro meets all v1.0 milestone criteria: reproducible release packaging, crash-resilient project recovery, fluid accessible user interface, and complete platform documentation.
+Audio Labs Pro meets all Phase 9 milestone criteria: reproducible release packaging, crash-resilient project recovery, fluid accessible user interface, and complete platform documentation.

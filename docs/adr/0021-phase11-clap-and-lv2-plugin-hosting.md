@@ -7,7 +7,7 @@
 
 ## Context and Problem Statement
 
-Audio Labs Pro (v1.0 / v1.1) provides a comprehensive suite of built-in DSP effects (5-band parametric voice EQ, noise gate, optical-style compressor, peak limiter, transient de-clicker, multi-harmonic de-hum, sibilance detector, and ITU-R BS.1770 LUFS normalizer). However, professional podcast producers, voice actors, and mastering engineers frequently rely on specialized external third-party audio plugins for creative processing, analog emulation, noise reduction (e.g. RNNoise, iZotope, FabFilter), and acoustic correction.
+Audio Labs Pro provides a comprehensive suite of built-in DSP effects (5-band parametric voice EQ, noise gate, optical-style compressor, peak limiter, transient de-clicker, multi-harmonic de-hum, sibilance detector, and ITU-R BS.1770 LUFS normalizer). However, professional podcast producers, voice actors, and mastering engineers frequently rely on specialized external third-party audio plugins for creative processing, analog emulation, noise reduction (e.g. RNNoise, iZotope, FabFilter), and acoustic correction.
 
 On Linux, the two modern open audio plugin formats are:
 1. **CLAP (CLever Audio Plugin):** An open, non-proprietary C ABI specification with comprehensive thread safety, explicit audio bus negotiation, parameter automation, and state management.

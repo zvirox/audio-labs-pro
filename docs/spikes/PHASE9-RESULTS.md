@@ -1,4 +1,4 @@
-# Phase 9 Spike Results — Polish, Packaging, and 1.0 Release
+# Phase 9 Spike Results — Polish and Packaging
 
 - Date: 2026-10-27
 - Deliverables: Packaging pipelines (AppImage, Flatpak, Debian), desktop integration, fuzzing/stress benchmarks, first-run wizard, user documentation, and release checklist.

@@ -1,5 +1,7 @@
 Package: audio-labs-pro
-Version: 1.0.0
+# Stamped from the release tag by .github/workflows/release.yml; the value
+# below is the workspace default used by manual builds.
+Version: 0.1.0
 Section: sound
 Priority: optional
 Architecture: amd64

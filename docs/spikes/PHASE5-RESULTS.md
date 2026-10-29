@@ -1,4 +1,4 @@
-# Phase 5 results — effects and voice cleanup (Release v0.1 "Editor")
+# Phase 5 results — effects and voice cleanup
 
 Status: Effects suite, Voice Cleanup composite chain, ITU-R BS.1770 LUFS metering and normalization completed.
 

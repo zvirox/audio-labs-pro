@@ -19,7 +19,7 @@ profiles. Licensed Apache-2.0.
 | [spikes/PHASE6-RESULTS.md](spikes/PHASE6-RESULTS.md) | Phase 6 model manager, alp-infer worker and built-in TTS results |
 | [spikes/PHASE7-RESULTS.md](spikes/PHASE7-RESULTS.md) | Phase 7 dictation, VAD, subtitle export, and text-based editing results |
 | [spikes/PHASE8-RESULTS.md](spikes/PHASE8-RESULTS.md) | Phase 8 voice profiles, cloning safety, voice design, and .alpvoice results |
-| [spikes/PHASE9-RESULTS.md](spikes/PHASE9-RESULTS.md) | Phase 9 polish, packaging, first-run wizard, and 1.0 release results |
+| [spikes/PHASE9-RESULTS.md](spikes/PHASE9-RESULTS.md) | Phase 9 polish, packaging, and first-run wizard results |
 | [spikes/PHASE10-RESULTS.md](spikes/PHASE10-RESULTS.md) | Phase 10 MCP server, automation layer, session rollback, and AI attach results |
 | [spikes/PHASE11-RESULTS.md](spikes/PHASE11-RESULTS.md) | Phase 11 CLAP and LV2 audio plugin hosting engine, CLI, UI, and MCP results |
 | [mcp/TOOLS.md](mcp/TOOLS.md) | Model Context Protocol tool catalog, schemas, and permission tiers |
@@ -48,9 +48,9 @@ profiles. Licensed Apache-2.0.
 | 6 — model manager and built-in TTS | complete: ModelManager, SHA-256 verification, licensing, out-of-process alp-infer daemon over Unix socket, text normalizer, pronunciation dictionary, script mode (dirty line regen & stems), CLI tools, and UI Voice Lab integration |
 | 7 — dictation and transcription | complete: dual-threshold VAD speech segmentation, streaming DictationSession with sub-second feedback, Transcript document model with TXT/SRT/VTT export & parsing, text-based ripple cutting, CLI commands, and UI Voice & Dictation Lab integration |
 | 8 — voice profiles, cloning, and voice generation | complete: ProfileStore, prebuilt voices ("Aura", "Atlas", "Echo", "Sol"), .alpvoice ZIP packaging, enforced human consent gate for clones, reference quality audit, voice design from prompt, generation cache, A/B comparison, and hardware tiering |
-| 9 — polish, packaging, and 1.0 | complete: Decision D12 (io.github.zvirox.AudioLabsPro), AppImage/Flatpak/Debian packaging, desktop/MIME integration, fuzzing/stress benchmarks, first-run wizard, keyboard shortcuts modal, user guide, and 1.0 release |
-| 10 — MCP: AI-driven editing, creation, and export | complete: Release v1.1 "Agent", alp-api automation layer, alp-mcp server (spec revision 2026-07-28), 14 core tools, 8 prompt workflows, sandboxing, session rollback, and UI live attach control panel |
-| 11 — CLAP & LV2 Audio Plugin Hosting | complete: Release v1.2 "Plugins", alp-plugin engine, C ABI loaders for CLAP and LV2, real-time safety, scanner/cache, CLI scan/list/inspect, MCP tools, and the hosted-plugin browser in the Effects workspace |
+| 9 — polish, packaging, and docs | complete: Decision D12 (io.github.zvirox.AudioLabsPro), AppImage/Flatpak/Debian packaging, desktop/MIME integration, fuzzing/stress benchmarks, first-run wizard, keyboard shortcuts modal, and the user guide |
+| 10 — MCP: AI-driven editing, creation, and export | complete: alp-api automation layer, alp-mcp server (spec revision 2026-07-28), 14 core tools, 8 prompt workflows, sandboxing, session rollback, and UI live attach control panel |
+| 11 — CLAP & LV2 Audio Plugin Hosting | complete: alp-plugin engine, C ABI loaders for CLAP and LV2, real-time safety, scanner/cache, CLI scan/list/inspect, MCP tools, and the hosted-plugin browser in the Effects workspace |
 | Unreleased — seven-workspace studio shell | in progress: Generate, Stories, Captures, Voices, Effects, Models and Settings workspaces on the studio palette, plus the Create Voice dialog and Stories track editor; see `modules/alp-ui/app/` |
 
 ## Phase 11 acceptance

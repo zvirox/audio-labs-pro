@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-27
-- Phase: 5 (Effects and voice cleanup / Release v0.1 "Editor")
+- Phase: 5 (Effects and voice cleanup)
 
 ## Context
 

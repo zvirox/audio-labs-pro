@@ -33,34 +33,14 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
-    <release version="1.0.0" date="2026-10-27">
+    <release version="0.0.1-alpha.2" date="2026-10-29">
       <description>
-        <p>Audio Labs Pro 1.0.0 release: production-ready multitrack editing, complete voice DSP chain, TTS, STT dictation, voice profiles, and packaging.</p>
-      </description>
-    </release>
-    <release version="0.3.0" date="2026-10-26">
-      <description>
-        <p>Voice profiles, cloning consent gate, reference audio quality auditing, and prompt-based voice design.</p>
-      </description>
-    </release>
-    <release version="0.2.0" date="2026-10-25">
-      <description>
-        <p>Built-in acoustic TTS, script mode stitching, and offline dictation transcription.</p>
-      </description>
-    </release>
-    <release version="0.1.0" date="2026-10-24">
-      <description>
-        <p>Initial release: multitrack timeline, mixer, DSP effects chain, and WAV/FLAC/MP3 export.</p>
+        <p>Security and correctness hardening across voice bundles, capture recovery, export rendering and the automation sandbox, plus a studio UI polish pass: uniform panel cards, pressed button states, grouped inspector actions and mono-digit time readouts.</p>
       </description>
     </release>
     <release version="0.0.1-alpha.1" date="2026-10-28">
       <description>
         <p>First published GitHub release: seven-workspace studio shell with per-workspace cyberpunk neon accents, rectangular buttons, GPU waveform, and Linux packaging (deb, rpm, AppImage, Flatpak).</p>
-      </description>
-    </release>
-    <release version="0.0.1-alpha.2" date="2026-10-29">
-      <description>
-        <p>Security and correctness hardening across voice bundles, capture recovery, export rendering and the automation sandbox, plus a studio UI polish pass: uniform panel cards, pressed button states, grouped inspector actions and mono-digit time readouts.</p>
       </description>
     </release>
   </releases>
