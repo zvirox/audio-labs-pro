@@ -52,6 +52,8 @@ impl App {
             }
             Message::Frame(now) => {
                 self.jobs.poll();
+                self.poll_model_jobs();
+                self.drain_engine_probe();
                 self.poll_generation();
                 self.session.poll_autosave();
                 if self.session.poll_import() {
@@ -643,6 +645,18 @@ impl App {
             }
             Message::RemoveModel(id) => {
                 self.remove_model(&id);
+                Task::none()
+            }
+            Message::DownloadModel(id) => {
+                self.download_model(&id);
+                Task::none()
+            }
+            Message::LoadNeuralModel(id) => {
+                self.load_neural_model(&id);
+                Task::none()
+            }
+            Message::CheckEngine => {
+                self.check_engine();
                 Task::none()
             }
             Message::ToggleOfflineModels => {

@@ -362,6 +362,14 @@ pub enum ModelCommand {
         /// Model identifier (e.g. kokoro-82m).
         model: String,
     },
+    /// Download model files with resume support and SHA-256 verification.
+    Download {
+        /// Model identifier (e.g. kitten-nano).
+        model: String,
+        /// Refuse any network access and fail fast.
+        #[arg(long)]
+        offline: bool,
+    },
     /// Acknowledge and accept the license terms for a model.
     AcceptLicense {
         /// Model identifier.

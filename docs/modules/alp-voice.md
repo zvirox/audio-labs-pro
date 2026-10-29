@@ -36,6 +36,7 @@ Defines speech synthesis (TTS), speech-to-text (STT), and voice profile traits; 
 
 - `alp-core`, `alp-media`
 - `dirs`, `serde`, `serde_json`, `thiserror`, `uuid`
+- `ureq` (rustls, gzip), `fs4` (sync) for model downloads - ADR 0022
 - Standard library
 
 ## Threading / real-time notes

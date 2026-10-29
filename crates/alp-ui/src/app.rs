@@ -42,6 +42,7 @@ mod create_voice_views;
 mod effects_views;
 mod export_handlers;
 mod generate_views;
+mod model_actions;
 mod settings_views;
 mod stories_views;
 mod studio;
@@ -349,6 +350,12 @@ pub enum Message {
     AcceptModelLicense(String),
     /// Remove an installed model from disk.
     RemoveModel(String),
+    /// Start (or resume) a background download for a model.
+    DownloadModel(String),
+    /// Ask the alp-infer daemon to load a model as its active engine.
+    LoadNeuralModel(String),
+    /// Probe the alp-infer daemon for its current engine state.
+    CheckEngine,
     /// Toggle offline-only model mode.
     ToggleOfflineModels,
     /// Rescan available CLAP and LV2 audio plugins.
@@ -469,6 +476,16 @@ pub struct App {
     discovered_plugins: Vec<alp_plugin::PluginDescriptor>,
     models_offline: bool,
     model_manager: ModelManager,
+    /// Model id to job id for running background downloads.
+    model_jobs: HashMap<String, u64>,
+    /// Model id to the last failed download's inline error.
+    model_errors: HashMap<String, String>,
+    /// Last observed alp-infer daemon state.
+    engine: model_actions::EngineState,
+    /// Slot worker threads use to hand back engine probes.
+    engine_probe: Arc<Mutex<Option<model_actions::EngineState>>>,
+    /// Whether an engine probe is in flight.
+    engine_checking: bool,
     profiles: Vec<VoiceProfile>,
     profile_store: Option<ProfileStore>,
     selected_profile: String,
@@ -752,6 +769,11 @@ impl App {
             discovered_plugins: alp_plugin::PluginHost::new().list_plugins(),
             models_offline: true,
             model_manager,
+            model_jobs: HashMap::new(),
+            model_errors: HashMap::new(),
+            engine: model_actions::EngineState::default(),
+            engine_probe: Arc::new(Mutex::new(None)),
+            engine_checking: false,
             profiles,
             profile_store,
             selected_profile,

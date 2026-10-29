@@ -20,7 +20,7 @@ fn kind_label(kind: alp_voice::ModelKind) -> &'static str {
     }
 }
 
-fn status_label(status: &alp_voice::ModelStatus) -> String {
+pub(super) fn status_label(status: &alp_voice::ModelStatus) -> String {
     match status {
         alp_voice::ModelStatus::NotInstalled => "not installed".into(),
         alp_voice::ModelStatus::Downloading { progress } => {
@@ -88,8 +88,15 @@ impl App {
                 format!("{} · {}", manifest.license.name, manifest.license.spdx)
             };
             rows = rows.push(
-                container(
-                    column![
+                container({
+                    let model_id = manifest.id.0.clone();
+                    let download_job = self
+                        .model_jobs
+                        .get(&model_id)
+                        .and_then(|job_id| self.jobs.jobs().iter().find(|job| job.id == *job_id));
+                    let downloading = download_job.is_some_and(|job| job.status.is_running());
+
+                    let mut body = column![
                         row![
                             text(manifest.name.clone())
                                 .size(f32::from(TypeScale::BODY_STRONG))
@@ -102,45 +109,77 @@ impl App {
                         .align_y(Alignment::Center),
                         components::muted(manifest.description.clone(), colors),
                         components::muted(
-                            format!("{} · v{} · {}", manifest.author, manifest.version, license),
+                            format!(
+                                "{} - v{} - {} - {} - {}",
+                                manifest.author,
+                                manifest.version,
+                                license,
+                                kind_label(manifest.kind),
+                                size
+                            ),
                             colors
                         ),
-                        row![
-                            components::chip(kind_label(manifest.kind), colors),
-                            components::chip(size, colors),
-                            Space::new().width(Length::Fill),
-                            if manifest.is_builtin {
-                                components::chip("built in · no download", colors)
-                            } else {
-                                self.action_btn(
-                                    if manifest.license.accepted {
-                                        "License accepted"
-                                    } else {
-                                        "Accept license"
-                                    },
-                                    if manifest.license.accepted {
-                                        ButtonKind::Ghost
-                                    } else {
-                                        ButtonKind::Secondary
-                                    },
-                                    Message::AcceptModelLicense(manifest.id.0.clone()),
-                                )
-                            },
-                            if !manifest.is_builtin && installed {
-                                self.action_btn(
-                                    "Remove",
-                                    ButtonKind::Ghost,
-                                    Message::RemoveModel(manifest.id.0.clone()),
-                                )
-                            } else {
-                                Space::new().width(Length::Fixed(0.0)).into()
-                            },
-                        ]
-                        .spacing(f32::from(Spacing::XS))
-                        .align_y(Alignment::Center),
                     ]
-                    .spacing(f32::from(Spacing::XS)),
-                )
+                    .spacing(f32::from(Spacing::XS));
+
+                    if let Some(job) = download_job
+                        && downloading
+                    {
+                        body = body.push(
+                            column![
+                                components::progress(job.progress, colors),
+                                components::muted(
+                                    format!(
+                                        "{}% - {}",
+                                        (job.progress * 100.0) as usize,
+                                        job.detail
+                                    ),
+                                    colors
+                                ),
+                            ]
+                            .spacing(f32::from(Spacing::XXS)),
+                        );
+                    }
+
+                    let mut actions = row![]
+                        .spacing(f32::from(Spacing::XS))
+                        .align_y(Alignment::Center);
+                    if manifest.is_builtin {
+                        actions = actions.push(components::chip("built in - no download", colors));
+                    } else if !manifest.license.accepted {
+                        actions = actions.push(self.action_btn(
+                            "Accept license",
+                            ButtonKind::Secondary,
+                            Message::AcceptModelLicense(model_id.clone()),
+                        ));
+                    } else if !downloading && !installed {
+                        actions = actions.push(self.action_btn(
+                            "Download",
+                            ButtonKind::Primary,
+                            Message::DownloadModel(model_id.clone()),
+                        ));
+                    }
+                    if !manifest.is_builtin && installed {
+                        actions = actions.push(self.action_btn(
+                            "Remove",
+                            ButtonKind::Ghost,
+                            Message::RemoveModel(model_id.clone()),
+                        ));
+                    }
+                    actions = actions.push(Space::new().width(Length::Fill));
+                    body = body.push(actions);
+
+                    // Errors surface next to the action that caused them.
+                    if let Some(error) = self.model_errors.get(&model_id) {
+                        body = body.push(
+                            text(error.clone())
+                                .size(f32::from(TypeScale::CAPTION))
+                                .color(colors.danger),
+                        );
+                    }
+
+                    body
+                })
                 .padding(Spacing::MD)
                 .style(move |_theme| colors.well_style()),
             );

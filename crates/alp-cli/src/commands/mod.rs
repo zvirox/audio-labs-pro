@@ -146,6 +146,7 @@ pub fn dispatch(command: Command) -> Result<()> {
         Command::Model(model_cmd) => match model_cmd {
             ModelCommand::List { json } => voice::model_list(json),
             ModelCommand::Verify { model } => voice::model_verify(&model),
+            ModelCommand::Download { model, offline } => voice::model_download(&model, offline),
             ModelCommand::AcceptLicense { model } => voice::model_accept_license(&model),
         },
         Command::Script(script_cmd) => match script_cmd {

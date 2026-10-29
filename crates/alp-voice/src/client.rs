@@ -56,6 +56,51 @@ impl InferClient {
         }
     }
 
+    /// Query the daemon's active model and engine readiness.
+    pub fn status(&self) -> Result<(Option<String>, bool), CoreError> {
+        let mut stream = UnixStream::connect(&self.socket_path)?;
+        stream.set_read_timeout(Some(Duration::from_millis(500)))?;
+
+        write_message(&mut stream, &InferRequest::GetStatus)?;
+        let resp: InferResponse = read_message(&mut stream)?;
+        match resp {
+            InferResponse::Status {
+                active_model,
+                ready,
+            } => Ok((active_model, ready)),
+            other => Err(CoreError::validation(format!(
+                "unexpected response: {other:?}"
+            ))),
+        }
+    }
+
+    /// Ask the daemon to load a model into its active engine.
+    ///
+    /// The returned `ready` refers to the *requested* model: `false` means the
+    /// daemon declined (unknown model, load failure) and kept its previous
+    /// engine.
+    pub fn load_model(&self, model_id: &str) -> Result<(Option<String>, bool), CoreError> {
+        let mut stream = UnixStream::connect(&self.socket_path)?;
+        stream.set_read_timeout(Some(Duration::from_millis(500)))?;
+
+        write_message(
+            &mut stream,
+            &InferRequest::LoadModel {
+                model_id: model_id.to_string(),
+            },
+        )?;
+        let resp: InferResponse = read_message(&mut stream)?;
+        match resp {
+            InferResponse::Status {
+                active_model,
+                ready,
+            } => Ok((active_model, ready)),
+            other => Err(CoreError::validation(format!(
+                "unexpected response: {other:?}"
+            ))),
+        }
+    }
+
     /// Send a synthesis request to the daemon.
     pub fn synthesize(&self, request: &TtsRequest) -> Result<PcmBuffer, VoiceError> {
         let mut stream = UnixStream::connect(&self.socket_path)
@@ -355,6 +400,74 @@ impl TtsBackend for BuiltinAcousticBackend {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Spawn a fake daemon on a tempdir socket that answers each incoming
+    /// request with the supplied response, for `accepts` connections.
+    fn fake_daemon(
+        reply: InferResponse,
+        accepts: usize,
+    ) -> (std::path::PathBuf, std::thread::JoinHandle<()>) {
+        use crate::protocol::{read_message, write_message};
+        use tempfile::tempdir;
+
+        let dir = tempdir().expect("tempdir");
+        let path = dir.path().join("infer.sock");
+        let listener = std::os::unix::net::UnixListener::bind(&path).expect("bind unix socket");
+        let socket = path.clone();
+        let handle = std::thread::spawn(move || {
+            // The tempdir lives as long as this thread, keeping the socket file valid.
+            let _dir_owned = dir;
+            for _ in 0..accepts {
+                let Ok((mut stream, _)) = listener.accept() else {
+                    break;
+                };
+                stream
+                    .set_read_timeout(Some(Duration::from_millis(2_000)))
+                    .ok();
+                let _request: InferRequest = read_message(&mut stream).expect("read request");
+                let _ = write_message(&mut stream, &reply);
+            }
+        });
+        (socket, handle)
+    }
+
+    #[test]
+    fn status_and_load_model_round_trip_through_socket() {
+        let (socket, handle) = fake_daemon(
+            InferResponse::Status {
+                active_model: Some("kokoro-82m".into()),
+                ready: true,
+            },
+            2,
+        );
+        let client = InferClient::with_socket(&socket);
+
+        let (active, ready) = client.status().expect("status");
+        assert_eq!(active.as_deref(), Some("kokoro-82m"));
+        assert!(ready);
+
+        let (loaded, ready) = client.load_model("kokoro-82m").expect("load");
+        assert!(loaded.is_some());
+        assert!(ready);
+        handle.join().expect("daemon thread");
+    }
+
+    #[test]
+    fn ping_mismatched_reply_is_an_error() {
+        let (socket, handle) = fake_daemon(
+            InferResponse::Status {
+                active_model: None,
+                ready: false,
+            },
+            2,
+        );
+        let client = InferClient::with_socket(&socket);
+        assert!(client.ping().is_err(), "a Status reply is not a Pong");
+        // A Pong-shaped expectation against a Status reply stays an error on
+        // the next call too; the client surfaces it instead of panicking.
+        assert!(client.ping().is_err());
+        handle.join().expect("daemon thread");
+    }
 
     #[test]
     fn builtin_acoustic_synthesizes_valid_audio() {

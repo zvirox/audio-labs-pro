@@ -7,10 +7,155 @@ use alp_ui_kit::{ButtonKind, ThemeColors, fonts};
 use iced::widget::{Space, column, row, text};
 use iced::{Alignment, Element, Length};
 
+use super::settings_views::status_label;
 use super::workspace_layout::{card_auto, header, metric_badge};
 use super::{App, Message};
 
 impl App {
+    /// Neural-tier card: what is installed, what it offers, and how to load it.
+    ///
+    /// One row per neural-capable model, each with its voices, a live status
+    /// chip and the single next action (download, load, or nothing when the
+    /// daemon already serves it). The engine line names the daemon state so
+    /// the user never guesses why a load failed.
+    fn neural_tier_card(&self, colors: ThemeColors) -> Element<'_, Message> {
+        let mut rows = column![].spacing(f32::from(Spacing::SM));
+        let tts_models = self
+            .model_manager
+            .catalogue()
+            .iter()
+            .filter(|manifest| {
+                !manifest.is_builtin
+                    && matches!(
+                        manifest.kind,
+                        alp_voice::ModelKind::TtsMedium | alp_voice::ModelKind::TtsLight
+                    )
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+
+        for manifest in &tts_models {
+            let status = self.model_manager.status(&manifest.id);
+            let ready = status.is_ready();
+            let model_id = manifest.id.0.clone();
+            let download_job = self
+                .model_jobs
+                .get(&model_id)
+                .and_then(|job_id| self.jobs.jobs().iter().find(|job| job.id == *job_id));
+            let downloading = download_job.is_some_and(|job| job.status.is_running());
+
+            let voices = if manifest.voice_names.is_empty() {
+                "No voice vectors listed.".to_owned()
+            } else {
+                manifest.voice_names.join(" , ")
+            };
+
+            let mut body = column![
+                row![
+                    text(manifest.name.clone())
+                        .size(f32::from(TypeScale::BODY_STRONG))
+                        .font(fonts::bold())
+                        .color(colors.text),
+                    Space::new().width(Length::Fill),
+                    components::chip(status_label(&status), colors),
+                ]
+                .spacing(f32::from(Spacing::XS))
+                .align_y(Alignment::Center),
+                components::muted(voices, colors),
+            ]
+            .spacing(f32::from(Spacing::XXS));
+
+            if let Some(job) = download_job
+                && downloading
+            {
+                body = body.push(
+                    column![
+                        components::progress(job.progress, colors),
+                        components::muted(
+                            format!("{}% - {}", (job.progress * 100.0) as usize, job.detail),
+                            colors
+                        ),
+                    ]
+                    .spacing(f32::from(Spacing::XXS)),
+                );
+            } else if let Some(error) = self.model_errors.get(&model_id) {
+                body = body.push(
+                    text(error.clone())
+                        .size(f32::from(TypeScale::CAPTION))
+                        .color(colors.danger),
+                );
+            }
+
+            let mut actions = row![]
+                .spacing(f32::from(Spacing::XS))
+                .align_y(Alignment::Center);
+            if !downloading {
+                if !ready {
+                    if manifest.license.accepted {
+                        actions = actions.push(components::button(
+                            "Download",
+                            ButtonKind::Secondary,
+                            Some(Message::DownloadModel(model_id.clone())),
+                        ));
+                    } else {
+                        actions = actions.push(components::muted(
+                            "Accept the license in the Models panel to enable the download",
+                            colors,
+                        ));
+                    }
+                } else if !self.engine.ready
+                    || self.engine.active_model.as_deref() != Some(model_id.as_str())
+                {
+                    actions = actions.push(components::button(
+                        "Load engine",
+                        ButtonKind::Primary,
+                        Some(Message::LoadNeuralModel(model_id.clone())),
+                    ));
+                } else {
+                    actions = actions.push(components::chip("active engine", colors));
+                }
+            }
+            actions = actions.push(Space::new().width(Length::Fill));
+            body = body.push(actions);
+            rows = rows.push(body);
+        }
+
+        card_auto(
+            "Neural Tier",
+            icons::MODELS,
+            column![
+                row![
+                    components::kicker("alp-infer daemon", colors),
+                    Space::new().width(Length::Fill),
+                    components::muted(self.engine.label(), colors),
+                    components::button(
+                        if self.engine_checking {
+                            "Checking..."
+                        } else {
+                            "Check engine"
+                        },
+                        ButtonKind::Ghost,
+                        if self.engine_checking {
+                            None
+                        } else {
+                            Some(Message::CheckEngine)
+                        },
+                    ),
+                ]
+                .spacing(f32::from(Spacing::XS))
+                .align_y(Alignment::Center),
+                self.scroll(rows, colors).height(Length::Shrink),
+                components::muted(
+                    "Generate routes through the daemon when it runs; the built-in engine covers offline work. Downloads resume from the byte boundary if interrupted.",
+                    colors
+                ),
+            ]
+            .spacing(f32::from(Spacing::XS))
+            .into(),
+            colors,
+        )
+    }
+
     /// Voice library, inspector and the consent gate for clones.
     pub(super) fn voices_workspace(&self, colors: ThemeColors) -> Element<'_, Message> {
         let grid = self.profile_grid(4, colors);
@@ -26,6 +171,7 @@ impl App {
         .height(Length::Fill);
 
         let inspector = self.voice_inspector(colors);
+        let neural = self.neural_tier_card(colors);
         let gate = card_auto(
             "Cloning Gate",
             icons::HEART,
@@ -71,7 +217,7 @@ impl App {
 
         let right = self
             .scroll(
-                column![inspector, gate, storage]
+                column![inspector, neural, gate, storage]
                     .spacing(f32::from(Spacing::LG))
                     .width(Length::Fill),
                 colors,

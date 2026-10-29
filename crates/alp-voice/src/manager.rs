@@ -43,11 +43,47 @@ impl ModelManager {
     }
 
     /// Create a model manager with specific configuration.
+    ///
+    /// License acceptance markers previously written under
+    /// `<storage_dir>/licenses/` are restored into the catalogue, so gates set
+    /// by one process (`alp-cli model accept-license`) stay open for the next
+    /// (daemon, UI, retries). Read failures (e.g. a missing directory) are
+    /// silently treated as "nothing accepted yet".
     #[must_use]
     pub fn with_config(config: ModelManagerConfig) -> Self {
-        Self {
+        let mut manager = Self {
             config,
             catalogue: standard_catalogue(),
+        };
+        manager.load_license_markers();
+        manager
+    }
+
+    /// Path to the directory holding per-model license acceptance markers.
+    fn licenses_dir(&self) -> PathBuf {
+        self.config.storage_dir.join("licenses")
+    }
+
+    /// Restore persisted `<model-id>.accepted` markers into the catalogue.
+    fn load_license_markers(&mut self) {
+        let Ok(entries) = fs::read_dir(self.licenses_dir()) else {
+            return;
+        };
+        for entry in entries.flatten() {
+            let file_name = entry.file_name();
+            let Some(name) = file_name.to_str() else {
+                continue;
+            };
+            let Some(model_id) = name.strip_suffix(".accepted") else {
+                continue;
+            };
+            if let Some(manifest) = self
+                .catalogue
+                .iter_mut()
+                .find(|m| m.id.as_str() == model_id)
+            {
+                manifest.license.accepted = true;
+            }
         }
     }
 
@@ -94,6 +130,13 @@ impl ModelManager {
             .find(|m| &m.id == id)
             .ok_or_else(|| CoreError::validation(format!("model {id} not found")))?;
         manifest.license.accepted = true;
+        // Persist the acceptance so later processes (CLI reruns, the daemon,
+        // the UI) keep the gate open without re-prompting.
+        fs::create_dir_all(self.licenses_dir())?;
+        fs::write(
+            self.licenses_dir().join(format!("{}.accepted", id.0)),
+            b"accepted\n",
+        )?;
         Ok(())
     }
 
@@ -196,6 +239,12 @@ impl ModelManager {
         }
         Ok(())
     }
+
+    /// Register an extra manifest (test helper for custom catalogues).
+    #[cfg(test)]
+    pub(crate) fn register_manifest(&mut self, manifest: ModelManifest) {
+        self.catalogue.push(manifest);
+    }
 }
 
 impl Default for ModelManager {
@@ -214,6 +263,33 @@ mod tests {
         let mgr = ModelManager::new();
         let builtin_id = ModelId::new("builtin-acoustic");
         assert!(mgr.status(&builtin_id).is_ready());
+    }
+
+    #[test]
+    fn license_acceptance_persists_across_managers() {
+        let temp = tempdir().expect("tempdir");
+        let id = ModelId::new("kokoro-82m");
+
+        let mut first = ModelManager::with_config(ModelManagerConfig {
+            storage_dir: temp.path().to_path_buf(),
+            offline_mode: false,
+        });
+        assert!(!first.get_manifest(&id).expect("manifest").license.accepted);
+        first.accept_license(&id).expect("accept");
+
+        // A fresh instance (e.g. the next CLI invocation) keeps the gate open.
+        let second = ModelManager::with_config(ModelManagerConfig {
+            storage_dir: temp.path().to_path_buf(),
+            offline_mode: false,
+        });
+        assert!(second.get_manifest(&id).expect("manifest").license.accepted);
+        assert!(
+            !second
+                .get_manifest(&ModelId::new("moonshine-tiny"))
+                .expect("manifest")
+                .license
+                .accepted
+        );
     }
 
     #[test]

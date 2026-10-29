@@ -1,7 +1,13 @@
 //! `alp-infer` — the out-of-process inference worker for Audio Labs Pro.
 //!
 //! Listens on a Unix domain socket, processes synthesis requests, and isolates
-//! model memory and compute from the main application.
+//! model memory and compute from the main application. Engines live for the
+//! daemon's lifetime: a loaded neural model is reused across connections, and
+//! the builtin tier serves requests before (and after) any model load.
+
+mod kitten;
+mod kokoro;
+mod style_tts2;
 
 use std::fs;
 use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
@@ -15,7 +21,12 @@ use alp_voice::client::BuiltinAcousticBackend;
 use alp_voice::protocol::{
     InferRequest, InferResponse, default_socket_path, read_message, write_message,
 };
-use alp_voice::{BuiltinSttBackend, SttBackend, TtsBackend};
+use alp_voice::{
+    BuiltinSttBackend, ModelId, ModelManager, SttBackend, TtsBackend, TtsRequest, VoiceError,
+};
+
+use kitten::KittenEngine;
+use kokoro::KokoroEngine;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut socket_path = default_socket_path();
@@ -73,11 +84,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let running = Arc::new(AtomicBool::new(true));
 
+    // One worker for the daemon's lifetime: the builtin tier is constructed
+    // once, and a loaded neural model survives across consecutive client
+    // connections instead of being reloaded per request.
+    let mut worker = Worker::new();
+
     while running.load(Ordering::SeqCst) {
         match listener.accept() {
             Ok((stream, _addr)) => {
                 let running_clone = running.clone();
-                handle_client(stream, running_clone);
+                handle_client(stream, &mut worker, running_clone);
                 if run_once {
                     break;
                 }
@@ -98,14 +114,115 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn handle_client(mut stream: UnixStream, running: Arc<AtomicBool>) {
+/// The synthesis engine currently serving requests. The builtin acoustic
+/// tier always exists; the neural tier takes over only after a successful
+/// `LoadModel`, and a failed load keeps the previously active engine.
+enum TtsEngine {
+    Builtin(BuiltinAcousticBackend),
+    /// A loaded `style_text_to_speech_2` engine (Kokoro-82M, Kitten Nano),
+    /// dispatched through the shared [`TtsBackend`] trait (ADR 0023).
+    Neural(Box<dyn TtsBackend>),
+}
+
+/// Per-daemon state shared by all connections. Clients are handled
+/// sequentially on the accept loop, so a loaded model is constructed once
+/// and no locking is needed.
+struct Worker {
+    engine: TtsEngine,
+    stt: BuiltinSttBackend,
+    active_model: Option<String>,
+}
+
+impl Worker {
+    fn new() -> Self {
+        Self {
+            engine: TtsEngine::Builtin(BuiltinAcousticBackend::new()),
+            stt: BuiltinSttBackend::new(),
+            active_model: Some("builtin-acoustic".into()),
+        }
+    }
+
+    /// Status response reflecting the engine actually serving requests.
+    fn status(&self) -> InferResponse {
+        InferResponse::Status {
+            active_model: self.active_model.clone(),
+            ready: true,
+        }
+    }
+
+    /// Status after a declined or failed load: the requested model is not
+    /// ready, and the previously active engine keeps serving.
+    fn declined(&self) -> InferResponse {
+        InferResponse::Status {
+            active_model: self.active_model.clone(),
+            ready: false,
+        }
+    }
+
+    /// Handle `LoadModel` for the requested model.
+    ///
+    /// The response's `ready` refers to the *requested* model: `true` only
+    /// when it is now the active engine. On failure the previous engine
+    /// keeps serving and `ready` is `false`.
+    fn load_model(&mut self, model_id: &str) -> InferResponse {
+        let dir = ModelManager::new().model_dir(&ModelId::new(model_id));
+        self.load_model_from(model_id, &dir)
+    }
+
+    /// Load a model from an explicit directory (injected for tests).
+    fn load_model_from(&mut self, model_id: &str, model_dir: &Path) -> InferResponse {
+        if model_id == "builtin-acoustic" || model_id.is_empty() {
+            self.engine = TtsEngine::Builtin(BuiltinAcousticBackend::new());
+            self.active_model = Some("builtin-acoustic".into());
+            return self.status();
+        }
+
+        // Each wired neural model maps to one engine constructor; anything
+        // else is declined honestly and the active engine keeps serving.
+        let loaded = match model_id {
+            kokoro::MODEL_ID => {
+                KokoroEngine::load(model_dir).map(|engine| Box::new(engine) as Box<dyn TtsBackend>)
+            }
+            kitten::MODEL_ID => {
+                KittenEngine::load(model_dir).map(|engine| Box::new(engine) as Box<dyn TtsBackend>)
+            }
+            _ => {
+                eprintln!("worker: LoadModel {model_id}: no engine is wired for this model yet");
+                return self.declined();
+            }
+        };
+
+        match loaded {
+            Ok(engine) => {
+                self.engine = TtsEngine::Neural(engine);
+                self.active_model = Some(model_id.to_owned());
+                eprintln!("worker: {model_id} loaded; neural synthesis active");
+                self.status()
+            }
+            Err(error) => {
+                eprintln!(
+                    "worker: loading {model_id} failed, keeping {}: {error}",
+                    self.active_model.as_deref().unwrap_or("no engine")
+                );
+                self.declined()
+            }
+        }
+    }
+
+    /// Synthesize with whichever engine is active.
+    fn synthesize(&self, request: &TtsRequest) -> Result<PcmBuffer, VoiceError> {
+        match &self.engine {
+            TtsEngine::Builtin(backend) => backend.synthesize(request),
+            TtsEngine::Neural(engine) => engine.synthesize(request),
+        }
+    }
+}
+
+fn handle_client(mut stream: UnixStream, worker: &mut Worker, running: Arc<AtomicBool>) {
     // The socket is created 0600, so the kernel refuses connect() from any
     // other user before this loop is ever reached. A per-peer credential
     // check on accept would additionally need an unsafe getsockopt call,
     // which the workspace `unsafe_code = deny` lint excludes.
-    let mut active_model: Option<String> = Some("builtin-acoustic".into());
-    let backend = BuiltinAcousticBackend::new();
-
     loop {
         let request: Result<InferRequest, _> = read_message(&mut stream);
         let req = match request {
@@ -120,20 +237,13 @@ fn handle_client(mut stream: UnixStream, running: Arc<AtomicBool>) {
                 }
             }
             InferRequest::GetStatus => {
-                let resp = InferResponse::Status {
-                    active_model: active_model.clone(),
-                    ready: true,
-                };
+                let resp = worker.status();
                 if write_message(&mut stream, &resp).is_err() {
                     break;
                 }
             }
             InferRequest::LoadModel { model_id } => {
-                active_model = Some(model_id);
-                let resp = InferResponse::Status {
-                    active_model: active_model.clone(),
-                    ready: true,
-                };
+                let resp = worker.load_model(&model_id);
                 if write_message(&mut stream, &resp).is_err() {
                     break;
                 }
@@ -141,7 +251,7 @@ fn handle_client(mut stream: UnixStream, running: Arc<AtomicBool>) {
             InferRequest::Synthesize { id, request } => {
                 let _ = write_message(&mut stream, &InferResponse::Progress { id, progress: 0.2 });
 
-                match backend.synthesize(&request) {
+                match worker.synthesize(&request) {
                     Ok(pcm) => {
                         let _ = write_message(
                             &mut stream,
@@ -176,30 +286,27 @@ fn handle_client(mut stream: UnixStream, running: Arc<AtomicBool>) {
             } => {
                 let _ = write_message(&mut stream, &InferResponse::Progress { id, progress: 0.2 });
                 match PcmBuffer::new(sample_rate, channels, samples) {
-                    Ok(pcm) => {
-                        let stt_backend = BuiltinSttBackend::new();
-                        match stt_backend.transcribe(&pcm) {
-                            Ok(segments) => {
-                                let _ = write_message(
-                                    &mut stream,
-                                    &InferResponse::Progress { id, progress: 1.0 },
-                                );
-                                let resp = InferResponse::Transcript { id, segments };
-                                if write_message(&mut stream, &resp).is_err() {
-                                    break;
-                                }
-                            }
-                            Err(e) => {
-                                let resp = InferResponse::Error {
-                                    id,
-                                    message: e.to_string(),
-                                };
-                                if write_message(&mut stream, &resp).is_err() {
-                                    break;
-                                }
+                    Ok(pcm) => match worker.stt.transcribe(&pcm) {
+                        Ok(segments) => {
+                            let _ = write_message(
+                                &mut stream,
+                                &InferResponse::Progress { id, progress: 1.0 },
+                            );
+                            let resp = InferResponse::Transcript { id, segments };
+                            if write_message(&mut stream, &resp).is_err() {
+                                break;
                             }
                         }
-                    }
+                        Err(e) => {
+                            let resp = InferResponse::Error {
+                                id,
+                                message: e.to_string(),
+                            };
+                            if write_message(&mut stream, &resp).is_err() {
+                                break;
+                            }
+                        }
+                    },
                     Err(e) => {
                         let resp = InferResponse::Error {
                             id,
@@ -380,5 +487,116 @@ mod tests {
             "the probe must report the uid of sockets we bind"
         );
         drop(listener);
+    }
+
+    #[test]
+    fn a_fresh_worker_reports_the_builtin_engine_as_ready() {
+        let worker = Worker::new();
+        assert_eq!(
+            worker.status(),
+            InferResponse::Status {
+                active_model: Some("builtin-acoustic".into()),
+                ready: true,
+            }
+        );
+    }
+
+    #[test]
+    fn a_failed_model_load_keeps_the_builtin_engine() {
+        let mut worker = Worker::new();
+
+        // The load must fail honestly when the model directory is absent.
+        assert_eq!(
+            worker.load_model_from("kokoro-82m", Path::new("/nonexistent/alp-models")),
+            InferResponse::Status {
+                active_model: Some("builtin-acoustic".into()),
+                ready: false,
+            }
+        );
+
+        // The previously active engine keeps synthesizing after the failure.
+        let request = TtsRequest {
+            text: "Test line".into(),
+            voice_id: "aura".into(),
+            speed: 1.0,
+        };
+        assert!(worker.synthesize(&request).is_ok());
+
+        // Unknown identifiers never leave the current engine.
+        assert_eq!(
+            worker.load_model("zz-not-a-model"),
+            InferResponse::Status {
+                active_model: Some("builtin-acoustic".into()),
+                ready: false,
+            }
+        );
+
+        // Switching back to the builtin tier always succeeds.
+        assert_eq!(
+            worker.load_model("builtin-acoustic"),
+            InferResponse::Status {
+                active_model: Some("builtin-acoustic".into()),
+                ready: true,
+            }
+        );
+    }
+
+    #[test]
+    fn a_kitten_load_without_files_declines_and_keeps_serving() {
+        let mut worker = Worker::new();
+
+        // The wired kitten model fails honestly when its directory is absent
+        // (no downloaded weights), and the builtin tier keeps serving.
+        assert_eq!(
+            worker.load_model_from("kitten-nano", Path::new("/nonexistent/alp-models")),
+            InferResponse::Status {
+                active_model: Some("builtin-acoustic".into()),
+                ready: false,
+            }
+        );
+        let request = TtsRequest {
+            text: "Still here".into(),
+            voice_id: "aura".into(),
+            speed: 1.0,
+        };
+        assert!(worker.synthesize(&request).is_ok());
+
+        // An unregistered mode id is declined for exactly the same reason.
+        assert_eq!(
+            worker.load_model_from("moonshine-tiny", Path::new("/nonexistent/alp-models")),
+            InferResponse::Status {
+                active_model: Some("builtin-acoustic".into()),
+                ready: false,
+            }
+        );
+    }
+
+    #[test]
+    fn a_corrupt_kitten_graph_declines_and_keeps_serving() {
+        // Fixture models cannot provide a real ONNX graph in-process here
+        // (weights are binary artifacts, not derivable), so this covers only
+        // the dispatch contract: the kitten branch is reached and reports
+        // ready:false with its honest reason when the graph is invalid, and
+        // the previous engine survives. The real activation path is pinned
+        // by the kitten smoke test and the socket-level daemon tests.
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut worker = Worker::new();
+
+        // A tokenizer-only directory satisfies the file presence checks but
+        // fails at the vocabulary stage; either way the load is declined
+        // rather than silently accepted.
+        std::fs::create_dir(dir.path().join("onnx")).expect("fixture dirs");
+        std::fs::create_dir(dir.path().join("voices")).expect("fixture dirs");
+        std::fs::write(dir.path().join("onnx/model_quantized.onnx"), b"not a graph")
+            .expect("fixture");
+        std::fs::write(dir.path().join("tokenizer.json"), b"{}").expect("fixture");
+
+        assert_eq!(
+            worker.load_model_from("kitten-nano", dir.path()),
+            InferResponse::Status {
+                active_model: Some("builtin-acoustic".into()),
+                ready: false,
+            }
+        );
     }
 }

@@ -6,13 +6,14 @@ Provides `InferClient` for communicating with the out-of-process `alp-infer` dae
 
 ## Public API
 
-- `InferClient`: `new`, `with_socket`, `is_alive`, `ping`, `synthesize`
+- `InferClient`: `new`, `with_socket`, `is_alive`, `ping`, `status`, `load_model`, `synthesize`
 - `BuiltinAcousticBackend`: `new`, `with_sample_rate`, implements `TtsBackend`
 
 ## Data flow
 
 1. `InferClient::synthesize` connects to Unix socket, sends `InferRequest::Synthesize`, and reads `InferResponse::Audio`.
-2. `BuiltinAcousticBackend` normalizes input text with `TextNormalizer`, resolves vowel formants and consonant noise profiles, and synthesizes 48 kHz PCM audio with natural amplitude envelopes and word pauses.
+2. `InferClient::status` / `load_model` exchange `InferRequest::GetStatus` / `LoadModel` for `InferResponse::Status` (`active_model`, `ready`); a `ready: false` load means the daemon declined and kept its previous engine.
+3. `BuiltinAcousticBackend` normalizes input text with `TextNormalizer`, resolves vowel formants and consonant noise profiles, and synthesizes 48 kHz PCM audio with natural amplitude envelopes and word pauses.
 
 ## Allowed dependencies
 

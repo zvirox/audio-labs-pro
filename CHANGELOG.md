@@ -5,6 +5,70 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+### Added
+
+- **The neural TTS tier is wired.** `alp-infer` now hosts a real Kokoro-82M
+  engine (`ort` 2.0.0-rc.15 CPU ONNX Runtime per ADR 0008; MIT
+  `piper-plus-g2p` phonemization with the crate's bundled CMUdict per
+  ADR 0010): `LoadModel kokoro-82m` loads the v1.0 weights once per daemon
+  and serves 24 kHz synthesis over the socket protocol; a failed load keeps
+  the previously active engine and answers `ready: false` honestly. Measured
+  end-to-end: 3.83 s of speech in 1.14 s (RTF 0.30, debug build).
+- **Manifest truth pass.** The downloadable-model catalogue now carries
+  SHA-256 digests of locally verified bytes, cross-checked against upstream
+  LFS ids: Kokoro points at `onnx-community/Kokoro-82M-v1.0-ONNX` (v1.0,
+  326 MB fp32 — previously stale v0.19 with a nonexistent `voices.bin`);
+  `kitten-nano` points at the Apache-2.0 `onnx-community/kitten-tts-nano-0.1-ONNX`
+  export (previously a fabricated `models.audiolabspro.internal` URL with a
+  placeholder checksum); `moonshine-tiny` lists the real encoder +
+  `decoder_model_merged.onnx` + tokenizer/configs (previously encoder-only
+  with an invented size and hash).
+- Engine and worker tests: tokenizer/vocabulary parsing, style-row selection,
+  voice resolution, per-request state transitions for `LoadModel` (failure
+  keeps the builtin tier), and an installed-model smoke test asserting
+  non-silent 24 kHz mono speech (skipped when the model is absent).
+- **`alp-cli model download` is real (ADR 0022).** `alp-voice` gained a
+  resumable downloader: per-file `.part` continuation from the byte boundary
+  already on disk, upstream-length agreement with the manifest before a single
+  byte transfers, SHA-256 verification before the atomic rename, early
+  disk-space refusal, injected transport for tests, and a throttled progress
+  line in the CLI. Gates run before any bytes move (unknown model, built-in,
+  offline, license); a mid-stream failure keeps the resumable `.part`, while a
+  digest mismatch removes it. `ModelManager::accept_license` now persists
+  `<storage>/licenses/<id>.accepted` markers restored on startup, so the
+  license gate outlives the process that accepted it. Verified live against
+  Hugging Face: kitten-nano (12 files, 22.7 MB) downloads and verifies, a
+  rerun skips all files with zero network, and a pre-seeded `.part` resumed
+  over a real CDN 206, fetching exactly the missing 21.7 MB.
+- **The neural tier is visible in the app (ADR 0022 follow-on).** The Models
+  panel grew real download affordances: per-model Download buttons behind the
+  persisted license gate, a live progress bar with percentage and current
+  file, and inline danger-colored errors right under the action that caused
+  them (interrupted streams state the exact byte boundary and the
+  retry-to-resume contract). Voice Lab gained a Neural Tier card listing each
+  TTS model with its voices, install status, and one clear next action
+  (accept license, then download, then load engine); the daemon line (`Check engine`)
+  reports live `alp-infer` state (not detected / builtin tier / loaded /
+  ready) probed on demand, never in the background. Generation surfaces
+  (Generate and Story renders) now route through the daemon when it runs and
+  fall back to the built-in acoustic engine otherwise, with the job's detail
+  line naming the engine that actually rendered the audio. `InferClient`
+  gained `status` / `load_model` (both pinned by fake-socket-daemon tests).
+- **Kitten Nano is wired, and long text renders fully (ADRs 0023/0024).**
+  The daemon's neural tier hosts a second engine: `KittenEngine` executes the
+  Apache-2.0 quantized `kitten-tts-nano-0.1-ONNX` graph (24 kHz, the eight
+  expr-voice style vectors) through a `style_text_to_speech_2` layer shared
+  with Kokoro (vocabulary parse, `$`=0 padding, style rows, tensor-signature
+  validation), so manifest display names like "Expr Voice 3 (F)" resolve to
+  their style bins and *Load engine* in the app genuinely works. Both engines
+  now reconstruct long text: requests past a 320-character budget are split
+  sentence-first (clause, then word fallbacks), each chunk phonemized and
+  styled by its own length bucket, and concatenated with 0.15 s pauses -
+  the old "clamp to the last style bucket" behavior is gone. Measured on the
+  installed models: single-line RTF 0.12 (kitten) / 0.32 (Kokoro), and one
+  ~360-character paragraph request renders 20-22 s of continuous speech in
+  both engines.
+
 ### Removed
 
 - Removed a fabricated pre-alpha release history (`1.2.0` … `1.0.0`, `0.3.0` …

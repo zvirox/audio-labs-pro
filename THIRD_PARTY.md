@@ -26,6 +26,8 @@ editing, **P4-P8** used by multitrack, DSP, TTS, dictation, and voice profiles,
 | ort | 2.0.0-rc.15 | MIT OR Apache-2.0 | P0 | ONNX Runtime bindings; Phase 6 |
 | ONNX Runtime (binary) | 1.31 | MIT | P0 | downloaded by `ort` |
 | piper-plus-g2p | 0.5.2 | MIT | P0 | English G2P (eSpeak-free) |
+| ureq | 3.5.0 | MIT OR Apache-2.0 | P0 | blocking HTTPS model downloads (rustls, resumable) |
+| fs4 | 1.1.0 | MIT OR Apache-2.0 | P1 | free-disk-space checks (pure-Rust statvfs) |
 | serde / serde_json | 1.0 | MIT OR Apache-2.0 | P1 | serialization |
 | thiserror | 2.0 | MIT OR Apache-2.0 | P1 | typed errors |
 | clap | 4.6 | MIT OR Apache-2.0 | P1 | CLI grammar |
@@ -55,6 +57,7 @@ F5-TTS weights (CC-BY-NC), XTTS-v2 (CPML), KittenTTS 2 (custom license + AUP).
 | onnx-community/Kokoro-82M-v1.0-ONNX | main TTS | Apache-2.0 (HF cardData) | P0, ran end-to-end |
 | hexgrad/Kokoro-82M (weights origin) | main TTS | Apache-2.0 (HF cardData) | reference |
 | KittenML/kitten-tts-nano-0.8-fp32 | instant TTS | Apache-2.0 (model card front matter) | approved, not run |
+| onnx-community/kitten-tts-nano-0.1-ONNX | instant TTS (downloadable via `kitten-nano` manifest) | Apache-2.0 (HF cardData) | P6, files hash-verified, engine not wired |
 | onnx-community/moonshine-tiny-ONNX | dictation | MIT (HF cardData) | approved, not run |
 | Qwen/Qwen3-TTS-12Hz-0.6B-Base | clone "Fast" | Apache-2.0 (HF cardData) | Phase 8, not run |
 | Qwen/Qwen3-TTS-12Hz-1.7B-Base | clone "Best" | Apache-2.0 (HF cardData) | Phase 8, not run |

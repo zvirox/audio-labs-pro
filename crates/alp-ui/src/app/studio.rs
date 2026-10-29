@@ -11,8 +11,8 @@ use std::sync::Arc;
 use alp_engine::{MixScene, SceneClip, SourceAudio};
 use alp_media::{ExportSettings, PcmBuffer, WavBitDepth, decode, export};
 use alp_voice::{
-    BuiltinAcousticBackend, BuiltinSttBackend, ConsentRecord, SttBackend, TtsBackend, TtsRequest,
-    VoiceDesignRequest, VoiceKind, VoiceProfile, design_voice,
+    BuiltinSttBackend, ConsentRecord, SttBackend, TtsRequest, VoiceDesignRequest, VoiceKind,
+    VoiceProfile, design_voice,
 };
 
 use super::{App, CaptureItem, GeneratedTake, GenerationKind, HistoryItem, RenderOutput};
@@ -118,15 +118,17 @@ impl App {
         };
         let voice_name = profile.name.clone();
         self.jobs.spawn("Generate speech", move |reporter| {
-            reporter.detail("Synthesizing with the local acoustic engine");
-            let backend = BuiltinAcousticBackend::new();
-            let buffer = backend.synthesize(&request).map_err(|error| {
-                let message = error.to_string();
-                if let Ok(mut guard) = slot.lock() {
-                    *guard = Some(Err(message.clone()));
-                }
-                message
-            })?;
+            let buffer =
+                super::model_actions::synthesize_via_tier(&request, &mut |line: String| {
+                    reporter.detail(line)
+                })
+                .map_err(|error| {
+                    let message = error.to_string();
+                    if let Ok(mut guard) = slot.lock() {
+                        *guard = Some(Err(message.clone()));
+                    }
+                    message
+                })?;
             reporter.progress(80.0);
             let settings = ExportSettings::wav(WavBitDepth::Int24);
             if let Err(error) = export(&path, &buffer, &settings) {
@@ -584,7 +586,6 @@ impl App {
         let total = story.lines.len().max(1);
 
         self.jobs.spawn("Render story", move |reporter| {
-            let backend = BuiltinAcousticBackend::new();
             let mut rendered = story;
             for (index, line) in rendered.lines.iter_mut().enumerate() {
                 if reporter.is_cancelled() {
@@ -600,7 +601,9 @@ impl App {
                     voice_id: line.voice_id.clone(),
                     speed: line.speed.max(0.25),
                 };
-                match backend.synthesize(&request) {
+                match super::model_actions::synthesize_via_tier(&request, &mut |line: String| {
+                    reporter.detail(line)
+                }) {
                     Ok(buffer) => line.set_audio(buffer),
                     Err(error) => {
                         let message = error.to_string();

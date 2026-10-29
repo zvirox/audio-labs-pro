@@ -23,6 +23,106 @@ impl TextNormalizer {
             .collect()
     }
 
+    /// Split a paragraph or text into pieces of at most `max_chars`
+    /// characters, on sentence boundaries first, then clause punctuation,
+    /// then word boundaries.
+    ///
+    /// Chunked neural synthesis (ADR 0024) feeds each piece through the
+    /// engine separately and concatenates the waveforms, so a long paragraph
+    /// never becomes one oversized token sequence clamped to the last style
+    /// bucket. The pieces preserve their punctuation and always cover the
+    /// whole text.
+    #[must_use]
+    pub fn sentence_chunks(text: &str, max_chars: usize) -> Vec<String> {
+        let max_chars = max_chars.max(1);
+        let mut units: Vec<String> = Vec::new();
+        for sentence in Self::split_sentences(text) {
+            if sentence.chars().count() <= max_chars {
+                units.push(sentence);
+                continue;
+            }
+            // A single oversized sentence splits on clause punctuation and,
+            // failing that, on word boundaries.
+            let mut piece = String::new();
+            for clause in Self::split_clauses(&sentence) {
+                if !piece.is_empty()
+                    && piece.chars().count() + 1 + clause.chars().count() > max_chars
+                {
+                    units.push(std::mem::take(&mut piece));
+                }
+                if !piece.is_empty() {
+                    piece.push(' ');
+                }
+                if clause.chars().count() <= max_chars {
+                    piece.push_str(&clause);
+                } else {
+                    // Emit clause pieces as word-boundary fragments; a single
+                    // word longer than the budget is emitted as-is.
+                    for fragment in Self::wrap_words(&clause, max_chars) {
+                        units.push(fragment);
+                    }
+                }
+            }
+            if !piece.is_empty() {
+                units.push(piece);
+            }
+        }
+
+        // Greedy packing: adjacent short sentences share one chunk while the
+        // budget allows, keeping pauses where sentences end anyway.
+        let mut chunks: Vec<String> = Vec::new();
+        for unit in units {
+            match chunks.last_mut() {
+                Some(last) if last.chars().count() + 1 + unit.chars().count() <= max_chars => {
+                    last.push(' ');
+                    last.push_str(&unit);
+                }
+                _ => chunks.push(unit),
+            }
+        }
+        chunks
+    }
+
+    /// Split a sentence on clause punctuation, keeping each marker with the
+    /// piece before it.
+    fn split_clauses(sentence: &str) -> Vec<String> {
+        let mut clauses = Vec::new();
+        let mut current = String::new();
+        for c in sentence.chars() {
+            current.push(c);
+            if c == ',' || c == ';' || c == ':' {
+                clauses.push(std::mem::take(&mut current).trim().to_string());
+            }
+        }
+        if !current.trim().is_empty() {
+            clauses.push(current.trim().to_string());
+        }
+        clauses.retain(|clause| !clause.is_empty());
+        clauses
+    }
+
+    /// Break an oversized clause at word boundaries.
+    fn wrap_words(clause: &str, max_chars: usize) -> Vec<String> {
+        let mut fragments = Vec::new();
+        let mut fragment = String::new();
+        for word in clause.split_whitespace() {
+            if !fragment.is_empty()
+                && fragment.chars().count() + 1 + word.chars().count() > max_chars
+            {
+                fragments.push(std::mem::take(&mut fragment));
+            }
+            if !fragment.is_empty() {
+                fragment.push(' ');
+            }
+            fragment.push_str(word);
+        }
+        if !fragment.is_empty() {
+            fragments.push(fragment);
+        }
+        fragments.retain(|fragment| !fragment.is_empty());
+        fragments
+    }
+
     /// Split a paragraph or text into individual sentences.
     #[must_use]
     pub fn split_sentences(text: &str) -> Vec<String> {
@@ -394,6 +494,69 @@ fn chunk_to_words(chunk: i64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sentence_chunks_keep_short_texts_in_one_piece() {
+        let text = "Hello there. General greetings.";
+        assert_eq!(
+            TextNormalizer::sentence_chunks(text, 320),
+            vec!["Hello there. General greetings."]
+        );
+    }
+
+    #[test]
+    fn sentence_chunks_split_on_sentences_when_over_budget() {
+        let text = "The quick brown fox jumps over the lazy dog. \
+                    Pack my box with five dozen liquor jugs. \
+                    How vexingly quick daft zebras jump!";
+        let chunks = TextNormalizer::sentence_chunks(text, 60);
+        assert!(chunks.len() >= 2, "expected a real split, got {chunks:?}");
+        for chunk in &chunks {
+            assert!(chunk.chars().count() <= 60, "oversized: {chunk:?}");
+        }
+        // The reassembled pieces carry all the original words.
+        let reassembled = chunks.join(" ");
+        for word in ["fox", "liquor", "zebras"] {
+            assert!(reassembled.contains(word), "lost {word}: {reassembled:?}");
+        }
+    }
+
+    #[test]
+    fn sentence_chunks_fall_back_to_clauses_then_words() {
+        // One enormous sentence with commas: splits at the commas.
+        let comma_rich = "alpha bravo charlie delta, echo foxtrot golf hotel, \
+                          india juliet kilo lima, mike november oscar papa.";
+        let chunks = TextNormalizer::sentence_chunks(comma_rich, 30);
+        assert!(chunks.len() >= 3, "comma split expected, got {chunks:?}");
+        for chunk in &chunks {
+            assert!(chunk.chars().count() <= 30, "oversized: {chunk:?}");
+        }
+
+        // One enormous sentence with no punctuation: hard word wrap. A word
+        // longer than the budget itself is emitted as-is (the documented
+        // degenerate case).
+        let run_on = "supercalifragilisticexpialidocious antidisestablishmentarianism \
+                      floccinaucinihilipilification pessimism enthusiasm";
+        let wrapped = TextNormalizer::sentence_chunks(run_on, 24);
+        assert!(wrapped.len() >= 3, "word wrap expected, got {wrapped:?}");
+        for chunk in &wrapped {
+            let lone_word = !chunk.contains(' ');
+            if lone_word && chunk.chars().count() > 24 {
+                continue; // single oversized word emitted as-is
+            }
+            assert!(chunk.chars().count() <= 24, "oversized: {chunk:?}");
+        }
+    }
+
+    #[test]
+    fn sentence_chunks_handle_empty_and_tiny_budgets() {
+        assert!(TextNormalizer::sentence_chunks("", 320).is_empty());
+        assert!(TextNormalizer::sentence_chunks("   \n  ", 320).is_empty());
+
+        // A budget smaller than any word still emits every word exactly once.
+        let tiny = TextNormalizer::sentence_chunks("alpha beta", 1);
+        assert_eq!(tiny, vec!["alpha", "beta"]);
+    }
 
     #[test]
     fn normalizes_abbreviations_and_numbers() {

@@ -12,9 +12,11 @@ publish.workspace = true
 alp-core.workspace = true
 alp-media.workspace = true
 dirs.workspace = true
+fs4.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 thiserror.workspace = true
+ureq.workspace = true
 uuid.workspace = true
 
 [dev-dependencies]

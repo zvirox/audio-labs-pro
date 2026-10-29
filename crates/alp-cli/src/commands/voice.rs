@@ -139,6 +139,96 @@ pub fn model_accept_license(model_str: &str) -> Result<()> {
     Ok(())
 }
 
+/// Human-readable byte count (e.g. `12.3 MB`).
+fn human_bytes(value: u64) -> String {
+    const MIB: f64 = 1024.0 * 1024.0;
+    const KIB: f64 = 1024.0;
+    let v = value as f64;
+    if v >= MIB {
+        format!("{:.1} MB", v / MIB)
+    } else if v >= KIB {
+        format!("{:.1} KB", v / KIB)
+    } else {
+        format!("{value} B")
+    }
+}
+
+/// Download model files from their manifest URLs (resumable, SHA-256 verified).
+pub fn model_download(model_str: &str, offline_flag: bool) -> Result<()> {
+    let mut manager = ModelManager::new();
+    if offline_flag || std::env::var("ALP_OFFLINE").is_ok_and(|v| v == "1") {
+        manager.set_offline(true);
+    }
+    let id = ModelId::new(model_str);
+
+    let Some(manifest) = manager.get_manifest(&id) else {
+        bail!("unknown model {model_str}; run `alp-cli model list` for the catalogue");
+    };
+    if manifest.is_builtin {
+        println!("model {model_str}: built into the application; there is nothing to download");
+        return Ok(());
+    }
+
+    let downloader = alp_voice::ModelDownloader::new();
+    let outcome = downloader.download(&manager, &id, &mut |progress| {
+        eprint!(
+            "\rdownloading {} / {} {} ({} of {})",
+            progress.file_index + 1,
+            progress.file_count,
+            progress.file_name,
+            human_bytes(progress.overall_done),
+            human_bytes(progress.overall_total),
+        );
+    });
+
+    match outcome {
+        Ok(report) => {
+            eprintln!(); // finish the in-place progress line
+            if report.bytes_downloaded == 0 {
+                println!(
+                    "model {model_str}: already complete ({} file(s) reused)",
+                    report.files_skipped.len()
+                );
+            } else {
+                println!(
+                    "model {model_str}: fetched {} file(s) ({}), reused {} file(s)",
+                    report.files_fetched.len(),
+                    human_bytes(report.bytes_downloaded),
+                    report.files_skipped.len()
+                );
+            }
+        }
+        Err(alp_voice::DownloadError::ShortStream {
+            expected, received, ..
+        }) => {
+            bail!(
+                "download of {model_str} ended early ({received} of {expected} bytes); \
+                 partial data was kept - rerun the same command to resume"
+            );
+        }
+        Err(alp_voice::DownloadError::LicenseNotAccepted { id: pending }) => {
+            bail!(
+                "the license for {pending} must be accepted first; \
+                 run `alp-cli model accept-license {pending}`"
+            );
+        }
+        Err(err) => bail!("download of {model_str} failed: {err}"),
+    }
+
+    // Verify in the same breath so no second command is needed to learn whether
+    // the install is usable.
+    match manager.verify(&id)? {
+        alp_voice::ModelStatus::Verified { path } => {
+            println!("model {model_str}: VERIFIED ({})", path.display());
+            Ok(())
+        }
+        alp_voice::ModelStatus::Corrupt { reason } => {
+            bail!("model {model_str}: CORRUPT after download: {reason}");
+        }
+        _ => bail!("model {model_str} did not reach a verified state after download"),
+    }
+}
+
 /// Render a JSON script to audio (stitched single file or folder of stem files).
 pub fn script_render(script_path: &Path, output: &Path, stitch: bool) -> Result<()> {
     let text = fs::read_to_string(script_path)

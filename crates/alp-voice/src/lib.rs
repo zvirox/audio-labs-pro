@@ -4,6 +4,7 @@ pub mod cache;
 pub mod client;
 pub mod compare;
 pub mod design;
+pub mod download;
 pub mod hardware;
 pub mod lexicon;
 pub mod manager;
@@ -23,6 +24,10 @@ pub use cache::VoiceGenerationCache;
 pub use client::{BuiltinAcousticBackend, InferClient};
 pub use compare::{VoiceComparison, compare_audio};
 pub use design::{VoiceDesignRequest, design_voice};
+pub use download::{
+    ByteSource, DownloadError, DownloadProgress, DownloadReport, HttpSource, ModelDownloader,
+    USER_AGENT,
+};
 pub use hardware::{HardwareProfile, ModelTier};
 pub use lexicon::{MarkupParser, PronunciationDictionary, SpeechToken};
 pub use manager::{ModelManager, ModelManagerConfig};
