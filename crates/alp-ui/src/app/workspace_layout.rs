@@ -275,7 +275,7 @@ impl App {
                     "Keyboard shortcuts".to_string(),
                     colors,
                 ),
-                text("v1.2")
+                text(concat!("v", env!("CARGO_PKG_VERSION")))
                     .size(f32::from(TypeScale::CAPTION))
                     .color(colors.faint),
             ]
