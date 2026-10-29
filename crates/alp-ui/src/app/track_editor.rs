@@ -12,7 +12,7 @@ use alp_ui_kit::{ButtonKind, ThemeColors, fonts};
 use iced::widget::{Space, column, container, mouse_area, row, text};
 use iced::{Alignment, Background, Border, Element, Length};
 
-use super::{App, Message, format_time};
+use super::{App, Message, format_time, shorten};
 
 const LANE_HEIGHT: f32 = 44.0;
 const GUTTER_WIDTH: f32 = 44.0;
@@ -27,23 +27,32 @@ impl App {
             icons::PLAY
         };
 
-        let toolbar = row![
+        let time = components::timestamp(
+            format!(
+                "{} / {}",
+                format_time(self.position_secs),
+                format_time(total_secs as f32)
+            ),
+            colors,
+        );
+
+        // Transport cluster first, edit tools after the flexible gap, view
+        // toggle last; clusters sit MD apart while buttons inside a cluster
+        // keep XS, so group boundaries read without dividers.
+        let transport = row![
             components::glyph_button(
                 play_icon,
                 15.0,
                 ButtonKind::Primary,
                 Some(Message::PlayPause)
             ),
-            components::glyph_button(icons::STOP, 13.0, ButtonKind::Ghost, Some(Message::Stop)),
-            text(format!(
-                "{} / {}",
-                format_time(self.position_secs),
-                format_time(total_secs as f32)
-            ))
-            .size(f32::from(TypeScale::CAPTION))
-            .font(fonts::mono())
-            .color(colors.muted),
-            Space::new().width(Length::Fill),
+            components::glyph_button(icons::STOP, 14.0, ButtonKind::Ghost, Some(Message::Stop)),
+            time,
+        ]
+        .spacing(f32::from(Spacing::XS))
+        .align_y(Alignment::Center);
+
+        let edit_tools = row![
             components::with_tooltip(
                 components::glyph_button(
                     icons::TRIM,
@@ -74,26 +83,38 @@ impl App {
                 "Delete the selection".to_string(),
                 colors,
             ),
-            Space::new().width(Length::Fixed(f32::from(Spacing::MD))),
-            components::with_tooltip(
-                components::button(
-                    if self.stories_tools_open {
-                        "Hide mixer"
-                    } else {
-                        "Mixer"
-                    },
-                    if self.stories_tools_open {
-                        ButtonKind::Secondary
-                    } else {
-                        ButtonKind::Ghost
-                    },
-                    Some(Message::ToggleStoriesTools)
-                ),
-                "Mixer and inspector".to_string(),
-                colors,
-            ),
         ]
         .spacing(f32::from(Spacing::XS))
+        .align_y(Alignment::Center);
+
+        // Labelled buttons are 36 px tall while glyph buttons are 38; centre
+        // the toggle on the same optical band so the row reads as one strip.
+        let mixer_toggle = components::with_tooltip(
+            container(components::button(
+                if self.stories_tools_open {
+                    "Hide mixer"
+                } else {
+                    "Mixer"
+                },
+                if self.stories_tools_open {
+                    ButtonKind::Secondary
+                } else {
+                    ButtonKind::Ghost
+                },
+                Some(Message::ToggleStoriesTools),
+            ))
+            .center_y(38.0),
+            "Mixer and inspector".to_string(),
+            colors,
+        );
+
+        let toolbar = row![
+            transport,
+            Space::new().width(Length::Fill),
+            edit_tools,
+            mixer_toggle,
+        ]
+        .spacing(f32::from(Spacing::MD))
         .align_y(Alignment::Center);
 
         let mut lanes = column![].spacing(1.0);
@@ -152,7 +173,7 @@ impl App {
                 .align_y(Alignment::Center),
         )
         .width(Length::Fill)
-        .padding([Spacing::XS, Spacing::MD])
+        .padding([Spacing::XS, Spacing::LG])
         .style(move |_theme| container::Style {
             border: Border {
                 width: 1.0,
@@ -204,7 +225,7 @@ impl App {
                         container(
                             column![
                                 text(label)
-                                    .size(10.0)
+                                    .size(f32::from(TypeScale::CAPTION))
                                     .font(fonts::semibold())
                                     .color(colors.text),
                                 components::progress(clip.gain.clamp(0.0, 1.0), colors),
@@ -233,7 +254,7 @@ impl App {
         let gutter = mouse_area(
             container(
                 text(format!("{:02}", index + 1))
-                    .size(11.0)
+                    .size(f32::from(TypeScale::CAPTION))
                     .font(fonts::mono())
                     .color(if index == self.selected_track {
                         colors.accent
@@ -304,15 +325,6 @@ fn portion(secs: f32, total_secs: f32) -> u16 {
     ((ratio * 1_000.0).round() as u16).max(1)
 }
 
-fn shorten(text: &str, max: usize) -> String {
-    if text.chars().count() > max {
-        let short: String = text.chars().take(max).collect();
-        format!("{short}…")
-    } else {
-        text.to_owned()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::{portion, shorten};
@@ -325,7 +337,7 @@ mod tests {
     }
 
     #[test]
-    fn labels_shorten_on_char_boundaries() {
+    fn clip_labels_shorten_on_char_boundaries() {
         assert_eq!(shorten("Notch", 8), "Notch");
         assert_eq!(shorten("Linus Sebastian", 5), "Linus…");
     }

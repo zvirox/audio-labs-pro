@@ -8,7 +8,7 @@ use iced::widget::{Space, column, container, mouse_area, row, text};
 use iced::{Alignment, Background, Border, Element, Length};
 
 use super::workspace_layout::{card, card_auto, header};
-use super::{App, Message, format_time};
+use super::{App, Message, format_time, shorten};
 
 impl App {
     /// Captures workspace: record, audit levels and edit the transcript.
@@ -104,12 +104,12 @@ impl App {
                     .width(Length::Fixed(16.0))
                     .align_x(Alignment::Center),
                     column![
-                        text(capture.name.clone())
+                        text(shorten(&capture.name, 48))
                             .size(f32::from(TypeScale::BODY_STRONG))
                             .font(fonts::semibold())
                             .color(colors.text),
                         row![
-                            components::chip(format_time(capture.duration_secs), colors),
+                            components::chip_mono(format_time(capture.duration_secs), colors),
                             components::chip(format!("peak {:.0}%", capture.peak * 100.0), colors),
                         ]
                         .spacing(f32::from(Spacing::XXS)),
@@ -197,7 +197,7 @@ impl App {
             "Recordings",
             icons::CAPTURES,
             column![controls, self.scroll(rows, colors).height(Length::Fill)]
-                .spacing(f32::from(Spacing::SM))
+                .spacing(f32::from(Spacing::MD))
                 .into(),
             colors,
         )
@@ -244,7 +244,7 @@ impl App {
                     .font(fonts::regular())
                     .color(colors.text),
                 Space::new().width(Length::Fill),
-                components::chip(format!("{:.2}s", (end - start).max(0.0)), colors),
+                components::chip_mono(format!("{:.2}s", (end - start).max(0.0)), colors),
                 components::with_tooltip(
                     components::glyph_button(
                         icons::PLAY,

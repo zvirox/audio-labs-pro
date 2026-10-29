@@ -91,7 +91,7 @@ const fn raw_luma(color: Color) -> f32 {
 }
 
 /// Mix two colors in RGB space.
-const fn mix(from: Color, to: Color, amount: f32) -> Color {
+pub(crate) const fn mix(from: Color, to: Color, amount: f32) -> Color {
     Color::from_rgb(
         from.r + (to.r - from.r) * amount,
         from.g + (to.g - from.g) * amount,

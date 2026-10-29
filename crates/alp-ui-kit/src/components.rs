@@ -28,7 +28,7 @@ use iced_cube::theme::Tokens as CubeTokens;
 
 use crate::fonts;
 use crate::icons::{self, Glyph};
-use crate::theme::ThemeColors;
+use crate::theme::{self, ThemeColors};
 use crate::tokens::{Control, Radius, Rail, Spacing, TypeScale};
 
 /// Semantic button variants.
@@ -625,10 +625,28 @@ pub fn chip<'a, Message: 'a>(
     label: impl Into<String>,
     colors: ThemeColors,
 ) -> Element<'a, Message> {
+    chip_styled(label.into(), colors, fonts::medium())
+}
+
+/// A status chip for numeric readouts such as durations and sizes: the same
+/// surface as [`chip`], with mono digits so values of different widths stay
+/// legible instead of shifting as they change.
+pub fn chip_mono<'a, Message: 'a>(
+    label: impl Into<String>,
+    colors: ThemeColors,
+) -> Element<'a, Message> {
+    chip_styled(label.into(), colors, fonts::mono())
+}
+
+fn chip_styled<'a, Message: 'a>(
+    label: String,
+    colors: ThemeColors,
+    font: iced::Font,
+) -> Element<'a, Message> {
     iced::widget::container(
-        text(label.into())
+        text(label)
             .size(f32::from(TypeScale::CAPTION))
-            .font(fonts::medium())
+            .font(font)
             .color(colors.muted),
     )
     .padding([2.0, Spacing::SM as f32])
@@ -827,11 +845,43 @@ pub fn kicker<'a, Message: 'a>(
         .into()
 }
 
+/// A timestamp readout: fixed-width mono digits on the muted tone. Use it for
+/// playhead and duration values so they never shift as they count.
+pub fn timestamp<'a, Message: 'a>(
+    label: impl Into<String>,
+    colors: ThemeColors,
+) -> Element<'a, Message> {
+    text(label.into())
+        .size(f32::from(TypeScale::CAPTION))
+        .font(fonts::mono())
+        .color(colors.muted)
+        .into()
+}
+
 /// Button colours borrowed from iced-cube, with the studio button radius.
+///
+/// iced-cube deepens the fill on press for filled variants only; transparent
+/// variants (ghost, icon, outline) would otherwise paint the exact same
+/// background pressed as hovered, so this deepens the hover tint further on
+/// press. Disabled buttons keep iced-cube's fade and never lean into either.
 fn cube_style(kind: ButtonKind, theme: &iced::Theme, status: ButtonStatus) -> ButtonStyle {
     let tokens = CubeTokens::of(theme);
     let mut style = cube_button::style(&tokens, kind.cube_variant(), status);
     style.border.radius = f32::from(Radius::BUTTON).into();
+    if status == ButtonStatus::Pressed
+        && matches!(
+            kind,
+            ButtonKind::Ghost | ButtonKind::Icon | ButtonKind::Secondary
+        )
+        && let Some(Background::Color(color)) = style.background
+    {
+        let target = if tokens.is_dark {
+            Color::BLACK
+        } else {
+            Color::WHITE
+        };
+        style.background = Some(Background::Color(theme::mix(color, target, 0.12)));
+    }
     style
 }
 
@@ -1011,5 +1061,78 @@ mod tests {
     #[test]
     fn tabs_build_for_each_item() {
         let _ = tabs(&["A", "B", "C"], 1, |index| Msg::Slide(index as f32));
+    }
+
+    #[test]
+    fn transparent_variants_paint_a_distinct_pressed_state() {
+        for kind in [ButtonKind::Ghost, ButtonKind::Icon, ButtonKind::Secondary] {
+            for theme in [iced::Theme::Dark, iced::Theme::Light] {
+                let hovered = cube_style(kind, &theme, ButtonStatus::Hovered);
+                let pressed = cube_style(kind, &theme, ButtonStatus::Pressed);
+                assert_ne!(
+                    hovered.background, pressed.background,
+                    "{kind:?} pressed must differ from hovered ({theme:?})"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn pressed_enhancement_leaves_filled_variants_to_iced_cube() {
+        for theme in [iced::Theme::Dark, iced::Theme::Light] {
+            let tokens = CubeTokens::of(&theme);
+            for kind in [ButtonKind::Primary, ButtonKind::Danger] {
+                let ours = cube_style(kind, &theme, ButtonStatus::Pressed);
+                let cube = cube_button::style(&tokens, kind.cube_variant(), ButtonStatus::Pressed);
+                assert_eq!(
+                    ours.background, cube.background,
+                    "{kind:?} press emphasis belongs to iced-cube ({theme:?})"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn pressed_enhancement_deepens_only_transparent_variants() {
+        for theme in [iced::Theme::Dark, iced::Theme::Light] {
+            let tokens = CubeTokens::of(&theme);
+            for kind in [ButtonKind::Ghost, ButtonKind::Icon, ButtonKind::Secondary] {
+                let ours = cube_style(kind, &theme, ButtonStatus::Pressed);
+                let cube = cube_button::style(&tokens, kind.cube_variant(), ButtonStatus::Pressed);
+                assert_ne!(
+                    ours.background, cube.background,
+                    "{kind:?} pressed should differ from iced-cube's ({theme:?})"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn disabled_state_comes_straight_from_iced_cube() {
+        for kind in [
+            ButtonKind::Primary,
+            ButtonKind::Danger,
+            ButtonKind::Ghost,
+            ButtonKind::Icon,
+            ButtonKind::Secondary,
+        ] {
+            let active = cube_style(kind, &iced::Theme::Dark, ButtonStatus::Active);
+            let disabled = cube_style(kind, &iced::Theme::Dark, ButtonStatus::Disabled);
+            // Transparent variants have no rest fill; their disabled state is
+            // carried entirely by the faded foreground.
+            let active_foreground = active.text_color;
+            let disabled_foreground = disabled.text_color;
+            assert_ne!(active_foreground, disabled_foreground, "{kind:?}");
+            if active.background.is_some() {
+                assert_ne!(active.background, disabled.background, "{kind:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn timestamp_and_mono_chip_build() {
+        let _: Element<'_, Msg> = timestamp("1:01", ThemeColors::DARK);
+        let _: Element<'_, Msg> = chip_mono("0:42", ThemeColors::DARK);
+        let _: Element<'_, Msg> = chip("en", ThemeColors::DARK);
     }
 }

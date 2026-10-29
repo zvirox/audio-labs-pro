@@ -449,19 +449,21 @@ impl App {
                 components::icon_button(icons::SKIP_BACK, Some(Message::Stop)),
                 column![
                     row![
+                        // Project name role: the strongest label on the dock,
+                        // one clear step above the timestamp readout.
                         text(self.player_title.clone())
-                            .size(f32::from(TypeScale::BODY))
-                            .font(fonts::medium())
+                            .size(f32::from(TypeScale::BODY_STRONG))
+                            .font(fonts::semibold())
                             .color(colors.text),
                         Space::new().width(Length::Fill),
-                        text(format!(
-                            "{} / {}",
-                            format_time(self.position_secs),
-                            format_time(self.media_duration)
-                        ))
-                        .size(f32::from(TypeScale::CAPTION))
-                        .font(fonts::mono())
-                        .color(colors.muted),
+                        components::timestamp(
+                            format!(
+                                "{} / {}",
+                                format_time(self.position_secs),
+                                format_time(self.media_duration)
+                            ),
+                            colors,
+                        ),
                     ]
                     .align_y(Alignment::Center),
                     waveform,

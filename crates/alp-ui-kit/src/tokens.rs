@@ -167,6 +167,15 @@ impl ThemeMode {
 }
 
 /// Type scale in logical pixels.
+///
+/// Roles stay stable across screens: `DISPLAY` carries page titles
+/// ([`page_title`](crate::components::page_title)), `TITLE` section titles
+/// and `HEADING` card titles. Project and player names sit at `BODY_STRONG`
+/// semibold; track labels and secondary controls use `LABEL` medium; and
+/// every timestamp or duration is `CAPTION` in the mono font
+/// ([`timestamp`](crate::components::timestamp) and
+/// [`chip_mono`](crate::components::chip_mono)) so digits never shift as
+/// they count.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TypeScale;
 

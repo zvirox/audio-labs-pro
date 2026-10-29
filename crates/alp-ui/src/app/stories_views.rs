@@ -145,21 +145,35 @@ impl App {
         .padding(Spacing::MD)
         .style(move |_theme| colors.card_style());
 
-        column![self.scroll(items, colors).height(Length::Fill), composer,]
-            .spacing(f32::from(Spacing::MD))
-            .height(Length::Fill)
-            .into()
+        column![
+            card(
+                "Stories",
+                icons::STORIES,
+                column![self.scroll(items, colors).height(Length::Fill)].into(),
+                colors,
+            ),
+            composer,
+        ]
+        .spacing(f32::from(Spacing::LG))
+        .height(Length::Fill)
+        .into()
     }
 
     fn story_detail(&self, colors: ThemeColors) -> Element<'_, Message> {
         let story = self.stories.get(self.selected_story);
         let Some(story) = story else {
-            return container(components::muted("Select a story on the left.", colors))
-                .padding(Spacing::XL)
-                .into();
+            return card(
+                "Story",
+                icons::FILE_TEXT,
+                column![
+                    components::muted("Select a story on the left.", colors),
+                    Space::new().height(Length::Fill),
+                ]
+                .into(),
+                colors,
+            );
         };
 
-        let title = story.title.clone();
         let line_count = story.lines.len();
         let ready = story
             .lines
@@ -168,17 +182,10 @@ impl App {
             .count();
 
         let head = row![
-            column![
-                text(title)
-                    .size(f32::from(TypeScale::TITLE))
-                    .font(fonts::bold())
-                    .color(colors.text),
-                components::muted(
-                    format!("{line_count} line(s) · {ready} ready · rendered locally"),
-                    colors
-                ),
-            ]
-            .spacing(f32::from(Spacing::XXS)),
+            components::muted(
+                format!("{line_count} line(s) · {ready} ready · rendered locally"),
+                colors
+            ),
             Space::new().width(Length::Fill),
             components::button_icon(
                 "Add",
@@ -216,7 +223,7 @@ impl App {
                     ]
                     .spacing(f32::from(Spacing::XS)),
                 )
-                .padding(Spacing::XL)
+                .padding(Spacing::LG)
                 .style(move |_theme| colors.well_style()),
             );
         }
@@ -292,10 +299,14 @@ impl App {
             lines = lines.push(mouse_area(line_card).on_press(Message::SelectStoryLine(index)));
         }
 
-        column![head, self.scroll(lines, colors).height(Length::Fill)]
-            .spacing(f32::from(Spacing::LG))
-            .height(Length::Fill)
-            .into()
+        card(
+            story.title.clone(),
+            icons::FILE_TEXT,
+            column![head, self.scroll(lines, colors).height(Length::Fill)]
+                .spacing(f32::from(Spacing::MD))
+                .into(),
+            colors,
+        )
     }
 
     fn stories_tools_overlay(&self, colors: ThemeColors) -> Element<'_, Message> {
@@ -321,7 +332,9 @@ impl App {
                     colors
                 ),
             ]
-            .spacing(f32::from(Spacing::MD)),
+            // Panel stacking rhythm: the same LG gap the workspaces use
+            // between stacked cards.
+            .spacing(f32::from(Spacing::LG)),
         )
         .width(Length::Fixed(460.0))
         .height(Length::Fill)

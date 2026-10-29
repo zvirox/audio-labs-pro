@@ -50,7 +50,7 @@ impl App {
         let backdrop = container(frame)
             .width(Length::Fill)
             .height(Length::Fill)
-            .padding(10)
+            .padding(Spacing::SM)
             .style(move |_theme| container::Style {
                 background: Some(Background::Color(colors.background)),
                 ..container::Style::default()
@@ -407,30 +407,34 @@ impl App {
                     ),
                 ]
                 .spacing(f32::from(Spacing::XS)),
+                // The operation stack, one labelled group per undoable family.
+                components::kicker("Clipboard", colors),
                 row![
-                    self.action_btn("Cut", ButtonKind::Secondary, Message::CutSelection),
+                    self.action_btn("Cut", ButtonKind::Ghost, Message::CutSelection),
                     self.action_btn("Copy", ButtonKind::Ghost, Message::CopySelection),
                     self.action_btn("Paste", ButtonKind::Ghost, Message::PasteClipboard),
                     self.action_btn("Delete", ButtonKind::Danger, Message::DeleteSelection),
                 ]
                 .spacing(f32::from(Spacing::XXS)),
+                components::kicker("Edit", colors),
                 row![
-                    self.action_btn("Silence", ButtonKind::Secondary, Message::SilenceSelection),
-                    self.action_btn("Trim", ButtonKind::Secondary, Message::TrimSelection),
-                    self.action_btn("Split", ButtonKind::Secondary, Message::SplitSelection),
+                    self.action_btn("Silence", ButtonKind::Ghost, Message::SilenceSelection),
+                    self.action_btn("Trim", ButtonKind::Ghost, Message::TrimSelection),
+                    self.action_btn("Split", ButtonKind::Ghost, Message::SplitSelection),
                     self.action_btn(
                         "XFade 0.5s",
-                        ButtonKind::Secondary,
+                        ButtonKind::Ghost,
                         Message::CrossfadeSelection(0.5)
                     ),
                     self.action_btn(
                         "XFade 1.0s",
-                        ButtonKind::Secondary,
+                        ButtonKind::Ghost,
                         Message::CrossfadeSelection(1.0)
                     ),
                     self.action_btn("Duplicate", ButtonKind::Ghost, Message::DuplicateSelection),
                 ]
                 .spacing(f32::from(Spacing::XXS)),
+                components::kicker("Arrange", colors),
                 row![
                     self.action_btn(
                         "Move up a track",
@@ -444,12 +448,14 @@ impl App {
                     ),
                 ]
                 .spacing(f32::from(Spacing::XXS)),
+                components::kicker("Process", colors),
                 row![
                     self.action_btn("Normalize", ButtonKind::Ghost, Message::NormalizeSelection),
                     self.action_btn("Reverse", ButtonKind::Ghost, Message::ToggleReverse),
                     self.action_btn("Invert", ButtonKind::Ghost, Message::ToggleInvert),
                 ]
                 .spacing(f32::from(Spacing::XXS)),
+                components::kicker("Envelope", colors),
                 row![
                     self.action_btn("Dip envelope", ButtonKind::Ghost, Message::DipEnvelope),
                     self.action_btn("Flat envelope", ButtonKind::Ghost, Message::ResetEnvelope),

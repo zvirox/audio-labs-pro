@@ -962,6 +962,18 @@ fn format_time(seconds: f32) -> String {
     format!("{}:{:02}", whole / 60, whole % 60)
 }
 
+/// Shorten a label to `max` characters on a char boundary, suffixing an
+/// ellipsis. Shared by every list row that shows a file name so long media
+/// names never wrap their row out of shape.
+pub(crate) fn shorten(text: &str, max: usize) -> String {
+    if text.chars().count() > max {
+        let short: String = text.chars().take(max).collect();
+        format!("{short}…")
+    } else {
+        text.to_owned()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

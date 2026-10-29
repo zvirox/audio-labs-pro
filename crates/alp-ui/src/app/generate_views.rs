@@ -7,7 +7,7 @@ use alp_ui_kit::{ButtonKind, ThemeColors, fonts};
 use iced::widget::{Space, column, container, row, text};
 use iced::{Alignment, Element, Length};
 
-use super::workspace_layout::header;
+use super::workspace_layout::{card, header};
 use super::{App, Message, format_time};
 
 impl App {
@@ -15,13 +15,9 @@ impl App {
     pub(super) fn generate_workspace(&self, colors: ThemeColors) -> Element<'_, Message> {
         let grid = self.profile_grid(3, colors);
 
-        let left = column![
-            grid,
-            self.generate_box(colors),
-            Space::new().height(Length::Fixed(0.0)),
-        ]
-        .spacing(f32::from(Spacing::LG))
-        .width(Length::FillPortion(11));
+        let left = column![grid, self.generate_box(colors)]
+            .spacing(f32::from(Spacing::LG))
+            .width(Length::FillPortion(11));
 
         let right = column![self.history_panel(colors)]
             .width(Length::FillPortion(9))
@@ -138,19 +134,25 @@ impl App {
             rows = rows.push(self.history_row(index, item, colors));
         }
 
-        let header = row![
-            components::card_title("History", colors),
-            Space::new().width(Length::Fill),
+        // The take-count and Clear action live at the top of the card body,
+        // matching the Recordings panel controls row; the standard card header
+        // (icon + title) above keeps every panel's chrome identical.
+        let actions = row![
             components::muted(format!("{} take(s)", self.history.len()), colors),
+            Space::new().width(Length::Fill),
             components::button("Clear", ButtonKind::Ghost, Some(Message::ClearHistory)),
         ]
         .spacing(f32::from(Spacing::XS))
         .align_y(Alignment::Center);
 
-        column![header, self.scroll(rows, colors).height(Length::Fill),]
-            .spacing(f32::from(Spacing::MD))
-            .height(Length::Fill)
-            .into()
+        card(
+            "History",
+            icons::LIBRARY,
+            column![actions, self.scroll(rows, colors).height(Length::Fill)]
+                .spacing(f32::from(Spacing::MD))
+                .into(),
+            colors,
+        )
     }
 
     fn history_row(
