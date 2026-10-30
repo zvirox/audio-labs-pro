@@ -35,7 +35,7 @@ pub use model::{
     ModelFile, ModelId, ModelKind, ModelLicense, ModelManifest, ModelStatus, standard_catalogue,
 };
 pub use profile::{ConsentRecord, ProfileStore, VoiceParams, VoiceProfile};
-pub use protocol::{InferRequest, InferResponse, default_socket_path};
+pub use protocol::{InferRequest, InferResponse, InferStatus, default_socket_path};
 pub use reference::{ReferenceQualityReport, analyze_reference_quality};
 pub use script::{LineStatus, Script, ScriptLine};
 pub use stt::{BuiltinSttBackend, DictationEvent, DictationSession};

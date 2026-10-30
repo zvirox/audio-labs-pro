@@ -9,7 +9,9 @@ use std::time::Duration;
 
 use crate::{
     TtsBackend, TtsRequest, VoiceError, VoiceInfo, VoiceKind,
-    protocol::{InferRequest, InferResponse, default_socket_path, read_message, write_message},
+    protocol::{
+        InferRequest, InferResponse, InferStatus, default_socket_path, read_message, write_message,
+    },
     text::TextNormalizer,
 };
 
@@ -56,8 +58,8 @@ impl InferClient {
         }
     }
 
-    /// Query the daemon's active model and engine readiness.
-    pub fn status(&self) -> Result<(Option<String>, bool), CoreError> {
+    /// Query the daemon's active engines and readiness.
+    pub fn status(&self) -> Result<InferStatus, CoreError> {
         let mut stream = UnixStream::connect(&self.socket_path)?;
         stream.set_read_timeout(Some(Duration::from_millis(500)))?;
 
@@ -67,7 +69,12 @@ impl InferClient {
             InferResponse::Status {
                 active_model,
                 ready,
-            } => Ok((active_model, ready)),
+                active_stt_model,
+            } => Ok(InferStatus {
+                active_model,
+                ready,
+                active_stt_model,
+            }),
             other => Err(CoreError::validation(format!(
                 "unexpected response: {other:?}"
             ))),
@@ -78,8 +85,10 @@ impl InferClient {
     ///
     /// The returned `ready` refers to the *requested* model: `false` means the
     /// daemon declined (unknown model, load failure) and kept its previous
-    /// engine.
-    pub fn load_model(&self, model_id: &str) -> Result<(Option<String>, bool), CoreError> {
+    /// engine. The status describes the engine tiers after the attempt, so an
+    /// STT model load leaves `active_model` (synthesis) untouched and fills
+    /// `active_stt_model` instead.
+    pub fn load_model(&self, model_id: &str) -> Result<InferStatus, CoreError> {
         let mut stream = UnixStream::connect(&self.socket_path)?;
         stream.set_read_timeout(Some(Duration::from_millis(500)))?;
 
@@ -94,7 +103,12 @@ impl InferClient {
             InferResponse::Status {
                 active_model,
                 ready,
-            } => Ok((active_model, ready)),
+                active_stt_model,
+            } => Ok(InferStatus {
+                active_model,
+                ready,
+                active_stt_model,
+            }),
             other => Err(CoreError::validation(format!(
                 "unexpected response: {other:?}"
             ))),
@@ -437,18 +451,20 @@ mod tests {
             InferResponse::Status {
                 active_model: Some("kokoro-82m".into()),
                 ready: true,
+                active_stt_model: Some("moonshine-tiny".into()),
             },
             2,
         );
         let client = InferClient::with_socket(&socket);
 
-        let (active, ready) = client.status().expect("status");
-        assert_eq!(active.as_deref(), Some("kokoro-82m"));
-        assert!(ready);
+        let status = client.status().expect("status");
+        assert_eq!(status.active_model.as_deref(), Some("kokoro-82m"));
+        assert_eq!(status.active_stt_model.as_deref(), Some("moonshine-tiny"));
+        assert!(status.ready);
 
-        let (loaded, ready) = client.load_model("kokoro-82m").expect("load");
-        assert!(loaded.is_some());
-        assert!(ready);
+        let loaded = client.load_model("kokoro-82m").expect("load");
+        assert_eq!(loaded.active_model.as_deref(), Some("kokoro-82m"));
+        assert!(loaded.ready);
         handle.join().expect("daemon thread");
     }
 
@@ -458,6 +474,7 @@ mod tests {
             InferResponse::Status {
                 active_model: None,
                 ready: false,
+                active_stt_model: None,
             },
             2,
         );

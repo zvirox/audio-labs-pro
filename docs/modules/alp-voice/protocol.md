@@ -7,8 +7,9 @@ Defines the IPC message framing and request/response schema used between the app
 ## Public API
 
 - `default_socket_path() -> PathBuf`
-- `InferRequest`: `Ping`, `GetStatus`, `LoadModel`, `Synthesize`, `Cancel`, `Shutdown`
-- `InferResponse`: `Pong`, `Status`, `Progress`, `Audio`, `Error`
+- `InferRequest`: `Ping`, `GetStatus`, `LoadModel`, `Synthesize`, `Transcribe`, `DesignVoice`, `Cancel`, `Shutdown`
+- `InferResponse`: `Pong`, `Status`, `Progress`, `Audio`, `Transcript`, `VoiceDesigned`, `Error`
+- `InferStatus`: the `Status` payload as a struct - `active_model` (synthesis tier), `ready` (last load attempt), `active_stt_model` (transcription tier; `None` while the built-in acoustic backend serves). The two engine slots are independent (ADR 0025)
 - `write_message<W: Write, T: Serialize>(writer: &mut W, msg: &T) -> Result<(), CoreError>`
 - `read_message<R: Read, T: Deserialize>(reader: &mut R) -> Result<T, CoreError>`
 

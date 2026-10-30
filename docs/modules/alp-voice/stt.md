@@ -39,4 +39,4 @@ Unit tests in `stt.rs` verify batch transcription segmentation and streaming dic
 
 ## Known limits
 
-- `BuiltinSttBackend` provides an acoustic energy/duration baseline when external models are not downloaded. Neural models (Moonshine, Whisper) can be connected via the Model Manager.
+- `BuiltinSttBackend` provides an acoustic energy/duration baseline; it is also the daemon-side and in-process fallback whenever a neural transcription model is not loaded. Neural STT (Moonshine Tiny) loads into the `alp-infer` daemon's transcription tier and serves through the same `SttBackend` trait (ADR 0025).

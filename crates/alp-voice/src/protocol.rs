@@ -42,6 +42,25 @@ pub enum InferRequest {
     Shutdown,
 }
 
+/// Reply to `GetStatus` / `LoadModel`: which engines are active and whether
+/// the last load succeeded.
+///
+/// `active_model` is the synthesis (TTS) tier; `active_stt_model` is the
+/// transcription (STT) tier. The slots are independent: loading one does
+/// not disturb the other.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct InferStatus {
+    /// Synthesis tier: the model currently serving `Synthesize`, or
+    /// `builtin-acoustic` when the neural tier is not loaded.
+    pub active_model: Option<String>,
+    /// Whether the last `LoadModel` succeeded (the requested model is now
+    /// active). `false` after a declined or failed load.
+    pub ready: bool,
+    /// Transcription tier: the STT model currently serving `Transcribe`,
+    /// `None` while the built-in acoustic backend serves it.
+    pub active_stt_model: Option<String>,
+}
+
 /// Response messages sent from `alp-infer` to the client.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum InferResponse {
@@ -51,6 +70,7 @@ pub enum InferResponse {
     Status {
         active_model: Option<String>,
         ready: bool,
+        active_stt_model: Option<String>,
     },
     /// Streaming progress update (0.0 to 1.0) for an ongoing request.
     Progress { id: u64, progress: f32 },

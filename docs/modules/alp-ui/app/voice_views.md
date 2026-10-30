@@ -4,21 +4,30 @@
 
 Renders the Voices workspace: the profile library grid, the selected-profile
 inspector, the cloning gate and the profile storage card. Import Voice and
-Create Voice actions live in the page header above both columns.
+Create Voice actions live in the page header above both columns. The
+`Neural Tier` card (also in this file) lists the downloadable neural models
+per daemon engine slot - synthesis (`kokoro-82m`, `kitten-nano`) and
+transcription (`moonshine-tiny`, ADR 0025) - with download, license gate, and
+`Load engine` actions.
 
 ## Public API
 
 - `App::voices_workspace(&self, colors: ThemeColors) -> Element<'_, Message>`
-- Private helper `voice_inspector`.
+- Private helpers `neural_tier_card` and `voice_inspector`.
 
 ## Data flow
 
 1. Reads `profiles` via `profile_grid(4, colors)`, `selected_profile`,
    `profile_store`, `hardware_summary` and the derived consent state.
-2. Emits `SelectProfile`, `ExportProfile`, `DeleteProfile`,
+2. The `neural_tier_card` reads the model catalogue and `EngineState`: each
+   neural model row judges its engine chip by its own daemon slot
+   (`active_model` for synthesis rows, `active_stt_model` for STT rows), so
+   a declined load of one model never un-chips an engine that still serves.
+3. Emits `SelectProfile`, `ExportProfile`, `DeleteProfile`,
    `OpenCreateVoice`, `ImportVoice`, `OpenConsentDialog`,
-   `AuditReferenceAudio` and `SelectProfile` (Use in Generate).
-3. Library and inspector columns both scroll through `App::scroll`; design and
+   `AuditReferenceAudio` and `SelectProfile` (Use in Generate), plus
+   `DownloadModel` / `LoadNeuralModel` / `CheckEngine` from the tier card.
+4. Library and inspector columns both scroll through `App::scroll`; design and
    clone creation run in `studio.rs`, so the view never touches disk.
 
 ## Allowed dependencies

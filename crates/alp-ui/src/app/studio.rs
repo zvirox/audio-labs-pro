@@ -11,8 +11,8 @@ use std::sync::Arc;
 use alp_engine::{MixScene, SceneClip, SourceAudio};
 use alp_media::{ExportSettings, PcmBuffer, WavBitDepth, decode, export};
 use alp_voice::{
-    BuiltinSttBackend, ConsentRecord, SttBackend, TtsRequest, VoiceDesignRequest, VoiceKind,
-    VoiceProfile, design_voice,
+    BuiltinSttBackend, ConsentRecord, InferClient, SttBackend, TtsRequest, VoiceDesignRequest,
+    VoiceKind, VoiceProfile, design_voice,
 };
 
 use super::{App, CaptureItem, GeneratedTake, GenerationKind, HistoryItem, RenderOutput};
@@ -692,7 +692,11 @@ impl App {
         self.selected_capture = 0;
     }
 
-    /// Transcribe the selected capture with the built-in VAD segmenter.
+    /// Transcribe the selected capture, daemon-first: the `alp-infer` worker
+    /// serves whichever transcription tier is active (Moonshine when loaded,
+    /// its built-in segmenter otherwise), and the in-process acoustic
+    /// backend covers an absent daemon — mirroring `synthesize_via_tier`.
+    /// The toast names the engine that actually ran.
     pub(super) fn transcribe_capture(&mut self) {
         let Some(capture) = self.captures.get(self.selected_capture) else {
             self.show_toast("Select a capture first");
@@ -708,20 +712,52 @@ impl App {
                 return;
             }
         };
-        let backend = BuiltinSttBackend::new();
-        match backend.transcribe(&buffer) {
-            Ok(segments) => {
-                self.transcript = alp_voice::Transcript { segments };
-                let count = self.transcript.segments.len();
-                if let Some(capture) = self.captures.get_mut(self.selected_capture) {
-                    capture.transcript = self.transcript.to_plain_text();
+
+        let mut result: Option<(Vec<_>, String)> = None;
+        let client = InferClient::new();
+        if client.is_alive() {
+            match client.transcribe(&buffer) {
+                Ok(segments) => {
+                    // Ask the same daemon which tier served the request: a
+                    // neural model is named; the daemon-side built-in keeps
+                    // its placeholder-words admission.
+                    let note = match client.status().ok().and_then(|s| s.active_stt_model) {
+                        Some(model) => format!(" — transcribed by {model}"),
+                        None => " — built-in STT emits placeholder words".to_owned(),
+                    };
+                    result = Some((segments, note));
                 }
-                self.show_toast(format!(
-                    "Detected {count} speech region(s) — built-in STT emits placeholder words"
-                ));
+                Err(error) => {
+                    self.show_toast(format!(
+                        "daemon transcription failed ({error}); using the built-in segmenter"
+                    ));
+                }
             }
-            Err(error) => self.show_toast(format!("Transcription failed: {error}")),
         }
+
+        let (segments, note) = match result {
+            Some(segments) => segments,
+            None => {
+                let backend = BuiltinSttBackend::new();
+                match backend.transcribe(&buffer) {
+                    Ok(segments) => (
+                        segments,
+                        " — built-in STT emits placeholder words".to_owned(),
+                    ),
+                    Err(error) => {
+                        self.show_toast(format!("Transcription failed: {error}"));
+                        return;
+                    }
+                }
+            }
+        };
+
+        self.transcript = alp_voice::Transcript { segments };
+        let count = self.transcript.segments.len();
+        if let Some(capture) = self.captures.get_mut(self.selected_capture) {
+            capture.transcript = self.transcript.to_plain_text();
+        }
+        self.show_toast(format!("Detected {count} speech region(s){note}"));
     }
 
     /// Write the current transcript to `exports/` as SRT or plain text.

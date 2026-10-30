@@ -7,6 +7,24 @@ versions follow the release milestones in the build plan.
 
 ### Added
 
+- **Neural speech-to-text is wired (ADR 0025).** `alp-infer` gained a second,
+  independent engine slot for transcription: `LoadModel moonshine-tiny`
+  loads the MIT `moonshine-tiny-ONNX` export into a new `MoonshineEngine`
+  (`SttBackend`) without disturbing a loaded synthesis model, and
+  `Status`/`InferStatus` now report both tiers (`active_model` plus
+  `active_stt_model`; the `builtin-acoustic` reset touches synthesis only).
+  The engine pins the export's empirically discovered decode convention:
+  encoder + merged decoder with `use_cache_branch` prefill/cache steps,
+  frozen cross-attention KV cache (the cache branch emits constant-empty
+  encoder presents), Llama-style BPE decode with byte fallback, 300 s /
+  448-step guards, and one whole-buffer transcript segment in the caller's
+  frame space. Studio transcription is daemon-first and its toast names the
+  engine that actually ran (the built-in segmenter keeps its
+  placeholder-words admission wherever it serves); the Neural Tier card
+  lists the STT model with a per-slot active-engine chip. Round-trip
+  verified: synthesized speech resampled to 16 kHz is transcribed in ~90 ms
+  of CPU decode, with gated real-model tests skipped when the download is
+  absent.
 - **The neural TTS tier is wired.** `alp-infer` now hosts a real Kokoro-82M
   engine (`ort` 2.0.0-rc.15 CPU ONNX Runtime per ADR 0008; MIT
   `piper-plus-g2p` phonemization with the crate's bundled CMUdict per

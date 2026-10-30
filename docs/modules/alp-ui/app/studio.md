@@ -28,6 +28,12 @@ rendering, capture bookkeeping, transcript export and model policy.
    audio, and reports through the toast/status line.
 4. History playback builds a one-clip `MixScene`; insertion decodes the take and
    calls `EditSession::import_buffer`, so the edit is an undoable command.
+5. `transcribe_capture` is daemon-first (ADR 0025): it decodes the capture,
+   asks `InferClient` to transcribe when the daemon listens (naming the
+   engine from the same daemon's `active_stt_model` in the toast), and falls
+   back to the in-process `BuiltinSttBackend` otherwise. The
+   placeholder-words admission stays whenever the acoustic segmenter - on
+   either side - did the transcribing.
 
 ## Allowed dependencies
 

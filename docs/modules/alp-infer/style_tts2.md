@@ -19,8 +19,12 @@ chunked synthesis flow (ADR 0024), and waveform concatenation. `kokoro.rs` and
 - `voice_path(dir, id, table)` / `list_voices(dir, table)`: stem, alias,
   tail/contains, then canonical (letters+digits) resolution so manifest
   display names like `Expr Voice 2 (F)` match `expr-voice-2-f.bin`
-- `NeuralSession`: `load(path, env_name, required_inputs)` with signature
-  validation, `has_input`, `synthesize_tokens(ids, style, speed)`
+- `NeuralSession`: `load(path, _environment_name, required_inputs)` with
+  signature validation, `has_input`, `synthesize_tokens(ids, style, speed)`;
+  the environment argument is accepted-and-ignored since ADR 0025 - every
+  engine shares the single process-wide `ort::Environment` (rc.15 permits
+  one live environment per process) created lazily by
+  `runtime_environment()` (`pub(crate)` for the STT engines too)
 - `synthesize_text(session, phonemizer, vocab, request, sample_rate,
   log_prefix, style_for)`: normalize, chunk (ADR 0024), phonemize, run each
   chunk, concatenate with 0.15 s gaps

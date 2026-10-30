@@ -9,7 +9,7 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Mutex, OnceLock};
 
 use alp_media::PcmBuffer;
 use alp_voice::text::TextNormalizer;
@@ -19,6 +19,23 @@ use ort::session::Session;
 use ort::value::Tensor;
 use piper_plus_g2p::Phonemizer;
 use piper_plus_g2p::english::EnglishPhonemizer;
+
+/// The process-wide ONNX Runtime environment.
+///
+/// ONNX Runtime permits only one live `OrtEnv` per process, so every engine
+/// session shares this single instance instead of building its own (an early
+/// per-engine environment survived dual-engine tests only by drop timing).
+static RUNTIME_ENV: OnceLock<Environment> = OnceLock::new();
+
+/// Borrow (initializing once) the shared runtime environment.
+pub(crate) fn runtime_environment() -> &'static Environment {
+    RUNTIME_ENV.get_or_init(|| {
+        ort::init()
+            .with_name("alp-infer")
+            .build()
+            .expect("ONNX Runtime environment init")
+    })
+}
 
 /// Bytes per style row: 256 f32 lanes.
 const STYLE_ROW_BYTES: usize = 256 * std::mem::size_of::<f32>();
@@ -209,13 +226,13 @@ pub(super) fn phonemize(phonemizer: &EnglishPhonemizer, text: &str) -> Result<St
     Ok(tokens.concat())
 }
 
-/// A loaded `style_text_to_speech_2` ONNX graph plus the runtime it lives on.
+/// A loaded `style_text_to_speech_2` ONNX graph plus its runtime session.
 ///
-/// `run` needs `&mut Session`, so the session sits behind a mutex; the daemon
-/// serves one request at a time on its accept loop.
+/// The graph hangs off the shared [`runtime_environment`]; `run` needs
+/// `&mut Session`, so the session sits behind a mutex; the daemon serves one
+/// request at a time on its accept loop.
 pub(super) struct NeuralSession {
     session: Mutex<Session>,
-    _environment: Environment,
     input_names: Vec<String>,
 }
 
@@ -224,15 +241,11 @@ impl NeuralSession {
     /// do not cover every name in `required`.
     pub(super) fn load(
         model_path: &Path,
-        environment_name: &str,
+        _environment_name: &str,
         required: &[&str],
     ) -> Result<Self, VoiceError> {
-        let environment = ort::init()
-            .with_name(environment_name)
-            .build()
-            .map_err(|e| VoiceError::Backend(format!("ONNX Runtime init failed: {e}")))?;
         let started = std::time::Instant::now();
-        let mut builder = Session::builder(&environment).map_err(|e| {
+        let mut builder = Session::builder(runtime_environment()).map_err(|e| {
             VoiceError::Backend(format!("ONNX Runtime session builder failed: {e}"))
         })?;
         let session = builder
@@ -262,7 +275,6 @@ impl NeuralSession {
 
         Ok(Self {
             session: Mutex::new(session),
-            _environment: environment,
             input_names,
         })
     }

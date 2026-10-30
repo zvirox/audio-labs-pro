@@ -20,7 +20,7 @@ impl App {
     /// the user never guesses why a load failed.
     fn neural_tier_card(&self, colors: ThemeColors) -> Element<'_, Message> {
         let mut rows = column![].spacing(f32::from(Spacing::SM));
-        let tts_models = self
+        let neural_models = self
             .model_manager
             .catalogue()
             .iter()
@@ -28,16 +28,27 @@ impl App {
                 !manifest.is_builtin
                     && matches!(
                         manifest.kind,
-                        alp_voice::ModelKind::TtsMedium | alp_voice::ModelKind::TtsLight
+                        alp_voice::ModelKind::TtsMedium
+                            | alp_voice::ModelKind::TtsLight
+                            | alp_voice::ModelKind::Stt
                     )
             })
             .cloned()
             .collect::<Vec<_>>();
 
-        for manifest in &tts_models {
+        for manifest in &neural_models {
             let status = self.model_manager.status(&manifest.id);
             let ready = status.is_ready();
             let model_id = manifest.id.0.clone();
+            // The daemon keeps synthesis and transcription slots; each row's
+            // activity is judged by its own slot, so a declined load of one
+            // model never un-chips an engine that still serves.
+            let is_stt = manifest.kind == alp_voice::ModelKind::Stt;
+            let slot_active = if is_stt {
+                self.engine.active_stt_model.as_deref() == Some(model_id.as_str())
+            } else {
+                self.engine.active_model.as_deref() == Some(model_id.as_str())
+            };
             let download_job = self
                 .model_jobs
                 .get(&model_id)
@@ -103,9 +114,7 @@ impl App {
                             colors,
                         ));
                     }
-                } else if !self.engine.ready
-                    || self.engine.active_model.as_deref() != Some(model_id.as_str())
-                {
+                } else if !slot_active {
                     actions = actions.push(components::button(
                         "Load engine",
                         ButtonKind::Primary,

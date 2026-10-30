@@ -26,10 +26,14 @@ use super::App;
 pub(crate) struct EngineState {
     /// The daemon answered the last probe.
     pub alive: bool,
-    /// Model id of the engine currently active in the daemon.
+    /// Model id of the synthesis engine currently active in the daemon
+    /// (`builtin-acoustic` when the neural tier is not loaded).
     pub active_model: Option<String>,
-    /// Whether the active model reports itself ready.
+    /// Whether the last load attempt reports itself ready.
     pub ready: bool,
+    /// Model id of the transcription (STT) engine, `None` while the built-in
+    /// acoustic backend serves it. The slots are independent (ADR 0025).
+    pub active_stt_model: Option<String>,
 }
 
 impl EngineState {
@@ -38,10 +42,14 @@ impl EngineState {
         if !self.alive {
             return "daemon not detected".to_owned();
         }
+        let stt = match &self.active_stt_model {
+            Some(model) => format!("; STT {model}"),
+            None => String::new(),
+        };
         match (&self.active_model, self.ready) {
-            (Some(model), true) => format!("ready - active model {model}"),
-            (Some(model), false) => format!("loaded - {model} not ready"),
-            (None, _) => "alive - builtin tier".to_owned(),
+            (Some(model), true) => format!("ready - active model {model}{stt}"),
+            (Some(model), false) => format!("loaded - {model} not ready{stt}"),
+            (None, _) => format!("alive - builtin tier{stt}"),
         }
     }
 }
@@ -162,10 +170,11 @@ impl App {
             reporter.detail("Pinging the alp-infer daemon");
             let client = InferClient::new();
             let state = match client.status() {
-                Ok((active_model, ready)) => EngineState {
+                Ok(status) => EngineState {
                     alive: true,
-                    active_model,
-                    ready,
+                    active_model: status.active_model,
+                    ready: status.ready,
+                    active_stt_model: status.active_stt_model,
                 },
                 Err(_) => EngineState::default(),
             };
@@ -192,10 +201,11 @@ impl App {
                 reporter.detail(format!("Sending LoadModel for {model_id}"));
                 let client = InferClient::new();
                 let state = match client.load_model(&model_id) {
-                    Ok((active_model, ready)) => EngineState {
+                    Ok(status) => EngineState {
                         alive: true,
-                        active_model,
-                        ready,
+                        active_model: status.active_model,
+                        ready: status.ready,
+                        active_stt_model: status.active_stt_model,
                     },
                     Err(error) => return Err(format!("the daemon refused the load: {error}")),
                 };
@@ -258,20 +268,45 @@ mod tests {
             alive: true,
             active_model: None,
             ready: false,
+            active_stt_model: None,
         };
         assert_eq!(alive_builtin.label(), "alive - builtin tier");
         let warming = EngineState {
             alive: true,
             active_model: Some("kokoro-82m".into()),
             ready: false,
+            active_stt_model: None,
         };
         assert_eq!(warming.label(), "loaded - kokoro-82m not ready");
         let ready = EngineState {
             alive: true,
             active_model: Some("kokoro-82m".into()),
             ready: true,
+            active_stt_model: None,
         };
         assert_eq!(ready.label(), "ready - active model kokoro-82m");
+        // The transcription tier is reported alongside, whatever the load
+        // outcome of the synthesis slot was.
+        let both = EngineState {
+            alive: true,
+            active_model: Some("kitten-nano".into()),
+            ready: true,
+            active_stt_model: Some("moonshine-tiny".into()),
+        };
+        assert_eq!(
+            both.label(),
+            "ready - active model kitten-nano; STT moonshine-tiny"
+        );
+        let declined_tts = EngineState {
+            alive: true,
+            active_model: Some("kokoro-82m".into()),
+            ready: false,
+            active_stt_model: Some("moonshine-tiny".into()),
+        };
+        assert_eq!(
+            declined_tts.label(),
+            "loaded - kokoro-82m not ready; STT moonshine-tiny"
+        );
     }
 
     #[test]

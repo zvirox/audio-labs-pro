@@ -6,9 +6,9 @@ Neural-tier actions for the UI: resumable model downloads with inline progress, 
 
 ## Public API
 
-- `EngineState`: `alive`, `active_model`, `ready`; `label()` renders the one-line daemon summary
+- `EngineState`: `alive`, `active_model` (synthesis), `ready`, `active_stt_model` (transcription, ADR 0025); `label()` renders the one-line daemon summary naming both tiers
 - `App::download_model(id)`: starts a background `ModelDownloader` job (gates re-checked on the worker from a fresh `ModelManager`)
-- `App::load_neural_model(id)`: sends `LoadModel` through `InferClient` and records the resulting `EngineState`
+- `App::load_neural_model(id)`: sends `LoadModel` through `InferClient` and records the resulting `EngineState` (an STT model fills `active_stt_model` without touching the synthesis slot)
 - `App::check_engine()`: single `GetStatus` probe recorded into the engine state
 - `App::poll_model_jobs()` / `App::drain_engine_probe()`: per-frame drains of the job queue and the engine probe slot
 - `synthesize_via_tier(request, detail)`: daemon-first synthesis with built-in fallback (used by the Generate and Story renderers)
@@ -35,7 +35,7 @@ Worker errors return `Err(String)` through the job queue and land next to the ac
 
 ## Testing
 
-Unit tests cover `EngineState::label` across all four daemon states (not detected, builtin tier, loaded not ready, ready) and `synthesize_via_tier` falling back to the built-in engine when no daemon listens (non-empty mono output, detail lines recorded). Protocol framing for `status` / `load_model` is pinned by `alp-voice` client tests against a fake socket daemon; download resume/progress behavior is covered by `alp-voice` downloader tests.
+Unit tests cover `EngineState::label` across the daemon states (not detected, builtin tier, loaded not ready, ready) including the `; STT <model>` suffix when a transcription model is active, and `synthesize_via_tier` falling back to the built-in engine when no daemon listens (non-empty mono output, detail lines recorded). Protocol framing for `status` / `load_model` (both slot fields, ADR 0025) is pinned by `alp-voice` client tests against a fake socket daemon; download resume/progress behavior is covered by `alp-voice` downloader tests.
 
 ## Known limits
 

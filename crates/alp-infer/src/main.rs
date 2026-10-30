@@ -7,6 +7,7 @@
 
 mod kitten;
 mod kokoro;
+mod moonshine;
 mod style_tts2;
 
 use std::fs;
@@ -22,11 +23,13 @@ use alp_voice::protocol::{
     InferRequest, InferResponse, default_socket_path, read_message, write_message,
 };
 use alp_voice::{
-    BuiltinSttBackend, ModelId, ModelManager, SttBackend, TtsBackend, TtsRequest, VoiceError,
+    BuiltinSttBackend, ModelId, ModelManager, SttBackend, TranscriptSegment, TtsBackend,
+    TtsRequest, VoiceError,
 };
 
 use kitten::KittenEngine;
 use kokoro::KokoroEngine;
+use moonshine::MoonshineEngine;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut socket_path = default_socket_path();
@@ -124,38 +127,54 @@ enum TtsEngine {
     Neural(Box<dyn TtsBackend>),
 }
 
+/// The two STT tiers mirror [`TtsEngine`]: the built-in acoustic backend is
+/// always available, and a neural STT model (Moonshine Tiny, ADR 0025) takes
+/// over only after a successful `LoadModel`.
+enum SttEngine {
+    Builtin(BuiltinSttBackend),
+    /// A loaded neural STT engine dispatched through [`SttBackend`].
+    Neural(Box<dyn SttBackend>),
+}
+
 /// Per-daemon state shared by all connections. Clients are handled
 /// sequentially on the accept loop, so a loaded model is constructed once
 /// and no locking is needed.
+///
+/// The synthesis (`engine`) and transcription (`stt`) slots are independent:
+/// loading one never disturbs the other.
 struct Worker {
     engine: TtsEngine,
-    stt: BuiltinSttBackend,
+    stt: SttEngine,
     active_model: Option<String>,
+    active_stt: Option<String>,
 }
 
 impl Worker {
     fn new() -> Self {
         Self {
             engine: TtsEngine::Builtin(BuiltinAcousticBackend::new()),
-            stt: BuiltinSttBackend::new(),
+            stt: SttEngine::Builtin(BuiltinSttBackend::new()),
             active_model: Some("builtin-acoustic".into()),
+            active_stt: None,
         }
     }
 
-    /// Status response reflecting the engine actually serving requests.
+    /// Status response reflecting the engines actually serving requests.
     fn status(&self) -> InferResponse {
         InferResponse::Status {
             active_model: self.active_model.clone(),
             ready: true,
+            active_stt_model: self.active_stt.clone(),
         }
     }
 
     /// Status after a declined or failed load: the requested model is not
-    /// ready, and the previously active engine keeps serving.
+    /// ready, and the previously active engines keep serving.
     fn declined(&self) -> InferResponse {
         InferResponse::Status {
             active_model: self.active_model.clone(),
             ready: false,
+            active_stt_model: self.active_stt.clone(),
         }
     }
 
@@ -170,11 +189,38 @@ impl Worker {
     }
 
     /// Load a model from an explicit directory (injected for tests).
+    ///
+    /// Model ids dispatch by tier: STT models (`moonshine-tiny`) load into
+    /// the transcription slot without touching synthesis; everything else
+    /// loads into the synthesis slot. `builtin-acoustic` resets synthesis
+    /// only — the built-in STT backend never unloads, it is simply
+    /// shadowed while a neural STT model is loaded.
     fn load_model_from(&mut self, model_id: &str, model_dir: &Path) -> InferResponse {
         if model_id == "builtin-acoustic" || model_id.is_empty() {
             self.engine = TtsEngine::Builtin(BuiltinAcousticBackend::new());
             self.active_model = Some("builtin-acoustic".into());
             return self.status();
+        }
+
+        // Neural STT slot first (ADR 0025): independent of the TTS slot.
+        if model_id == moonshine::MODEL_ID {
+            let loaded = MoonshineEngine::load(model_dir)
+                .map(|engine| Box::new(engine) as Box<dyn SttBackend>);
+            return match loaded {
+                Ok(engine) => {
+                    self.stt = SttEngine::Neural(engine);
+                    self.active_stt = Some(model_id.to_owned());
+                    eprintln!("worker: {model_id} loaded; neural transcription active");
+                    self.status()
+                }
+                Err(error) => {
+                    eprintln!(
+                        "worker: loading {model_id} failed, keeping {}: {error}",
+                        self.active_stt.as_deref().unwrap_or("builtin STT")
+                    );
+                    self.declined()
+                }
+            };
         }
 
         // Each wired neural model maps to one engine constructor; anything
@@ -214,6 +260,14 @@ impl Worker {
         match &self.engine {
             TtsEngine::Builtin(backend) => backend.synthesize(request),
             TtsEngine::Neural(engine) => engine.synthesize(request),
+        }
+    }
+
+    /// Transcribe with whichever STT engine is active.
+    fn transcribe(&self, pcm: &PcmBuffer) -> Result<Vec<TranscriptSegment>, VoiceError> {
+        match &self.stt {
+            SttEngine::Builtin(backend) => backend.transcribe(pcm),
+            SttEngine::Neural(engine) => engine.transcribe(pcm),
         }
     }
 }
@@ -286,7 +340,7 @@ fn handle_client(mut stream: UnixStream, worker: &mut Worker, running: Arc<Atomi
             } => {
                 let _ = write_message(&mut stream, &InferResponse::Progress { id, progress: 0.2 });
                 match PcmBuffer::new(sample_rate, channels, samples) {
-                    Ok(pcm) => match worker.stt.transcribe(&pcm) {
+                    Ok(pcm) => match worker.transcribe(&pcm) {
                         Ok(segments) => {
                             let _ = write_message(
                                 &mut stream,
@@ -497,6 +551,7 @@ mod tests {
             InferResponse::Status {
                 active_model: Some("builtin-acoustic".into()),
                 ready: true,
+                active_stt_model: None,
             }
         );
     }
@@ -511,6 +566,7 @@ mod tests {
             InferResponse::Status {
                 active_model: Some("builtin-acoustic".into()),
                 ready: false,
+                active_stt_model: None,
             }
         );
 
@@ -528,6 +584,7 @@ mod tests {
             InferResponse::Status {
                 active_model: Some("builtin-acoustic".into()),
                 ready: false,
+                active_stt_model: None,
             }
         );
 
@@ -537,6 +594,7 @@ mod tests {
             InferResponse::Status {
                 active_model: Some("builtin-acoustic".into()),
                 ready: true,
+                active_stt_model: None,
             }
         );
     }
@@ -552,6 +610,7 @@ mod tests {
             InferResponse::Status {
                 active_model: Some("builtin-acoustic".into()),
                 ready: false,
+                active_stt_model: None,
             }
         );
         let request = TtsRequest {
@@ -560,13 +619,35 @@ mod tests {
             speed: 1.0,
         };
         assert!(worker.synthesize(&request).is_ok());
+    }
 
-        // An unregistered mode id is declined for exactly the same reason.
+    #[test]
+    fn a_moonshine_decline_keeps_builtin_stt_and_the_status_reports_it() {
+        let mut worker = Worker::new();
+
+        // Moonshine is a wired STT model, so a missing directory fails
+        // honestly at its tier: ready is false and the built-in STT keeps
+        // transcribing. The synthesis slot is untouched by the attempt.
         assert_eq!(
             worker.load_model_from("moonshine-tiny", Path::new("/nonexistent/alp-models")),
             InferResponse::Status {
                 active_model: Some("builtin-acoustic".into()),
                 ready: false,
+                active_stt_model: None,
+            }
+        );
+
+        // The built-in STT backend still answers through the dispatch helper.
+        let silence = PcmBuffer::new(16_000, 1, Vec::new()).expect("pcm");
+        assert!(worker.transcribe(&silence).is_ok());
+
+        // An unregistered identifier is declined for both tiers alike.
+        assert_eq!(
+            worker.load_model("zz-not-a-model"),
+            InferResponse::Status {
+                active_model: Some("builtin-acoustic".into()),
+                ready: false,
+                active_stt_model: None,
             }
         );
     }
@@ -596,6 +677,76 @@ mod tests {
             InferResponse::Status {
                 active_model: Some("builtin-acoustic".into()),
                 ready: false,
+                active_stt_model: None,
+            }
+        );
+    }
+
+    /// With both real models installed, the two slots must load and serve
+    /// independently: loading Moonshine never unloads a loaded synthesis
+    /// model, and the `builtin-acoustic` reset touches synthesis only.
+    /// Skipped when either model is absent (standard XDG location or
+    /// `ALP_MOONSHINE_DIR` / `ALP_KITTEN_DIR`).
+    #[test]
+    fn two_engine_slots_load_and_reset_independently_when_installed() {
+        let storage = alp_voice::ModelManagerConfig::default().storage_dir;
+        let moonshine_dir = std::env::var("ALP_MOONSHINE_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| storage.join("moonshine-tiny"));
+        let kitten_dir = std::env::var("ALP_KITTEN_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| storage.join("kitten-nano"));
+        if !moonshine_dir.join(moonshine::ENCODER_FILE).is_file()
+            || !kitten_dir.join("onnx/model_quantized.onnx").is_file()
+        {
+            eprintln!("skip: moonshine-tiny / kitten-nano not both installed");
+            return;
+        }
+
+        let mut worker = Worker::new();
+
+        // Slot 1: the synthesis tier takes kitten.
+        assert_eq!(
+            worker.load_model_from("kitten-nano", &kitten_dir),
+            InferResponse::Status {
+                active_model: Some("kitten-nano".into()),
+                ready: true,
+                active_stt_model: None,
+            }
+        );
+
+        // Slot 2: loading the STT model leaves synthesis untouched.
+        assert_eq!(
+            worker.load_model_from("moonshine-tiny", &moonshine_dir),
+            InferResponse::Status {
+                active_model: Some("kitten-nano".into()),
+                ready: true,
+                active_stt_model: Some("moonshine-tiny".into()),
+            }
+        );
+
+        // Both tiers serve through the dispatch helpers.
+        let spoken = worker
+            .synthesize(&TtsRequest {
+                text: "Hello there".into(),
+                voice_id: "expr-voice-2-f".into(),
+                speed: 1.0,
+            })
+            .expect("kitten synthesis alongside STT");
+        let segments = worker.transcribe(&spoken).expect("moonshine transcription");
+        assert!(
+            segments.iter().all(|s| !s.text.trim().is_empty()),
+            "the neural STT tier produced text: {segments:?}"
+        );
+
+        // The reset id restores the builtin synthesis tier and leaves the
+        // transcription slot alone.
+        assert_eq!(
+            worker.load_model("builtin-acoustic"),
+            InferResponse::Status {
+                active_model: Some("builtin-acoustic".into()),
+                ready: true,
+                active_stt_model: Some("moonshine-tiny".into()),
             }
         );
     }
