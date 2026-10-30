@@ -668,16 +668,76 @@ Per-release checklist: all acceptance criteria met · guard scripts green (file 
 | Too many tools or oversized results hurt AI performance | Low success rate, wasted tokens | Tier-based tool exposure, merged tools, pagination and size caps, eval harness to prune |
 | Human and AI edit at the same time | Conflicts, surprises | One command queue, project revisions, conflict errors, visible AI-activity indicator |
 
-## 11. Phase handoff template (agent fills at the end of each phase)
-```
-Phase N — summary
-- Completed: …
-- Acceptance results: (criterion → pass/fail + evidence)
-- Guard checks: file length / dependency directions / module docs (pass/fail)
-- Docs updated: modules touched and any architecture-diagram changes
-- Public interfaces changed: project format version, CLI flags, MCP tool schemas (snapshots updated)
-- Deviations from plan and ADRs written: …
-- Known issues / tech debt: …
-- Open decisions needing the human: …
-- Proposed adjustments to the next phase: …
-```
+## X. Reference-app comparison: VoiceStudio (installed on this machine)
+
+Created from the installed build at `~/.local/bin/VoiceStudio` (267 MB static-pie ELF) and its runtime files in `~/.config/VoiceStudio`, plus the two project blog posts that already document it from first-hand use (`2026-10-23-voicestudio-review-local-ai-voice-cloning.md`, `2026-10-26-from-elevenlabs-to-voicestudio-migration-guide.md`). This section is intentionally separate from the ALP phases because VoiceStudio's feature set, licensing model, and subtitle/track approach are useful borrowing candidates, not ALP commitments.
+
+
+### X.1 What VoiceStudio is
+
+- Local-first, open-source AI voice studio (formerly OmniVoice Studio), AGPL-3.0 for OSS, with a commercial Pro seat and an optional hosted Cloud tier. Installers cover Windows, macOS, Linux, and Docker; on this machine it landed as a single self-contained Linux binary.
+- Seven core capabilities in a numbered feature carousel: (01) Voice Clone from ~3 seconds, (02) Voice Design from a text description, (03) Video Dubbing into many languages with preserved timing, (04) Stories, (05) Audiobook pipeline (book-in → chapters-out), (06) Voice Gallery of ready-made voices, (07) Transcripts from audio.
+- Beyond the core features: a desktop workflow app (WorkflowStudio), a Local API for programmatic access, and an optional Cloud tier. Public numbers cited in the project's own write-ups: ~596k GitHub release downloads, ~50k stars, latest v0.5.6.
+- Language coverage is the headline differentiator against ElevenLabs in the project's marketing: 646 languages in the OSS/Pro local tiers.
+
+
+### X.2 Workflow and UI model (as described from use + install layout)
+
+- Launchpad-first onboarding into the seven core features, then library/projects, then a dedicated Studio workspace for work on a single project.
+- Voice creation is split across a Clone experience (very short reference sample) and a Voice Design experience (text description → synthetic voice). The Create Voice modal reviewed in the project posts uses a clean two-column layout: method segmented control (Upload / Record / System Audio), a recording box with visualizer, timer, stop button and countdown caption on the left; avatar, name, description and language on the right; Cancel and a warm-gold Create Profile primary action in the footer.
+- Stories are cast scripts: one voice per role/line, then generate and assemble. In the reviewed screenshots Stories share a multitrack-style editor whose bottom section has a transport bar (play/stop, position `0:08 / 0:21`), tool icons (split, duplicate, delete, zoom controls), a ruler with clear second markers, track lanes with rounded waveform clips and a vertical playhead.
+- Voice library is a profile grid with avatar/icon, name, description snippet, language badge, and hover actions (preview/download/edit/delete). A Floating Generate Box sits at the bottom of that list: voice selector pill, text-to-speak input, language dropdown, model tier dropdown, and a circular gold generate button.
+- Generated work appears in a right-hand history feed with profile badge, duration, relative timestamp, transcript snippet, and an overflow menu.
+
+
+### X.3 VoiceStudio UX notes worth borrowing
+
+- Four-part spatial split is readable: (1) top header with title + two top-right actions, (2) main canvas, (3) a floating generate/input affordance, (4) a side history/feed. ALP already has the header + docked player; the floating generate box and the always-visible history feed are the clearest UX lifts.
+- Warm-gold acrylic accents + rounded waveform clips + circular icon buttons give the create/generate actions a clear visual weight without shouting. ALP is going cyberpunk-neon, so borrow the *contrast pattern* (one warm accent family for primary create actions, muted body text, strong surface separation), not the color.
+- Segmented method tabs on the clone dialog (Upload / Record / System Audio) and a live timer + countdown caption reduce the "how do I start?" friction for first-time users.
+- Story workflow as first-class concept: cast a script, voice each role, generate, stitch. ALP Stories already aims at this; VoiceStudio shows the shape users arrive expecting.
+- History as a feed, not a hidden list: duration, relative time, snippet, overflow menu. Makes generated takes feel like a draft shelf, not a log.
+
+
+### X.4 What VoiceStudio does that ALP explicitly does NOT target or cannot copy
+
+- Video dubbing and audiobook chapter pipelines are out of ALP scope for v1 (video editing is explicitly out; audiobook-style workflows can be a later MCP recipe, but not a core workspace).
+- 646-language coverage. ALP is English-only by decision; do not treat multilingual coverage as a parity goal. If ALP ever broadens languages, that is a separate decision with model/licensing review.
+- Proprietary models and cloud/hosted tiers. ALP is local-only and does not plan accounts, cloud upload, or hosted inference. VoiceStudio's Local API is the only part that maps conceptually, and ALP's analog is the Phase 10 local MCP server, not a general REST voice API.
+- Any UI/behavior sourced from VoiceStudio's AGPL build must be studied for behavior only; copy the interaction pattern, not the code. The ALP plan already forbids copying from GPL-incompatible or GPL projects.
+
+
+### X.5 Concrete borrowing candidates for ALP
+- **Generate workspace as a floating generate box + side history feed.** Map VoiceStudio's floating generate affordance onto ALP's Generate workspace so the prompt box and take history read as one continuous draft surface rather than separate tabs. This is the highest-value UX borrow and fits the existing docked-player model.
+- **Clone dialog layout.** Adopt the two-column clone form as the interaction target for ALP's Create Voice modal: method tabs (Upload / Record / System Audio), recording visualizer + timer + countdown on one side, avatar + name + description + language on the other, Cancel + primary Create in the footer. ALP's current Create Voice dialog is similar in purpose but can borrow the cleaner two-column split and the countdown remaining caption. Keep ALP's own consent gate as-is; VoiceStudio's UX does not change ALP's human-only cloning policy.
+- **Stories as casted script with role-per-line and a clear stitch/assemble step.** Keep ALP Stories' current model but align the narrative so it reads like a script-casting tool: line cards with speaker/voice badges, durations, and per-line regenerate, with a prominent stitch/assemble action. VoiceStudio's screenshots are a good reference for what a non-engineer expects.
+- **History feed as a first-class take shelf.** Surface generated/recent takes with profile badge, relative time, duration, snippet and overflow actions. ALP already has a take history; make it read like a recent-drafts feed.
+- **Primary-action affordance discipline.** Use one warm gold-toned primary action for the main create/generate operation per screen, with a ghost/cancel opposite it. Borrow the pattern, implement it in ALP's existing token system.
+
+### X.6 What not to borrow / what to avoid
+
+1. **Licensing and feature claims.** VoiceStudio's AGPL-3.0 code and its ~646-language marketing figures are not ALP commitments. Borrow UX patterns and workflow ideas, not code, model weights, licensing posture, or unsubstantiated product claims.
+2. **Cloud-first generation model.** VoiceStudio leans on a remote Cloud tier as the headline generate path. ALP's LLM/ TTS value is the local, self-contained desktop daemon running on the user's machine; keep ALP's generate surface local-first and avoid building ALP to depend on an external render service.
+3. **Subscription-gated premium voices as a default.** VoiceStudio's Pro/ Cloud story sells premium voices behind a seat; ALP's differentiator is owned local voices, free system voices, and an explicit consent gate on cloning. Do not fold a premium-voice upsell into ALP's core generate flow.
+4. **Heavy onboarding into a single giant carousel of seven completely different products.** VoiceStudio's numbered carousel (clone, design, dub, stories, audiobook, gallery, transcripts) is a marketing/ home-launch device that bundles a lot of surface area. ALP already has a small, focused set of workspaces; instead of copying the carousel wholesale, borrow only the specific screen patterns (clone two-column form, generate floating box, story script cards) in the relevant ALP workspace.
+5. **Local-API and WorkflowStudio as separate products to replicate directly.** VoiceStudio ships a Local API and a WorkflowStudio desktop app as additional products. ALP already has an MCP voice toolset and articulated workspace routing; treat these as the comparable surfaces, not as reason to spin up a separate API desktop app or a separate workflow authoring product right now.
+6. **Dubbing as a first-class local feature without an ALP video track model.** VoiceStudio's video dubbing flow is a strong feature and a useful reference, but ALP currently has no first-class video-track / subtitle / timing model wired through the workstation. Borrow the UX vocabulary if/when a video layer is added; do not port the feature on top of a workstation that has no video substrate yet.
+7. **Gallery as a storefront-style browsing surface.** VoiceStudio's Voice Gallery is a browsing/preview surface for ready-made voices. ALP's Profiles gallery is already present and serves a similar browsing role; reuse that existing gallery rather than importing VoiceStudio's gallery chrome verbatim, and keep the ALP distinction between system profiles, user profiles, and cloning consent explicit.
+
+- Do not bring in VoiceStudio's video dubbing, audiobook chapter pipeline, multilingual model strategy, or any cloud/account flow. They are outside ALP's scope and/or incompatible with ALP's Linux-only, English-only, local-only stance for v1.
+- Do not copy visual assets, icons, or implementation code from the installed OSS build. Use the screenshots/blog as interaction and layout reference only.
+- Do not let VoiceStudio's AGPL lineage become an ALP license decision. The ALP license is still open (D1); VoiceStudio's AGPL is a reference for why license review matters, not a recommendation.
+
+
+### X.7 Porting notes / sequencing
+
+- Highest value, lowest risk: Generate workspace layout (floating generate box + history feed) and the Create Voice two-column clone dialog. Both are UX refactors of surfaces ALP already has, so they fit naturally into Phase 2 (UI shell) follow-ups rather than requiring new backends.
+- Medium value, medium risk: Stories workflow narrative and history-feed polish. Good to fold into the Stories workspace iteration, again as UX, not new engine work.
+- Only after licensing/model scope decisions: anything that implies broader language or cloud/API surface. Not scheduled.
+
+
+### X.8 Verification for this section
+
+- Source of truth for VoiceStudio behavior here is the installed binary path, the config layout, and the two project posts already on disk. The installed binary is a stripped static-pie ELF, so this comparison is UI/workflow-level, not a code decompilation.
+- Anything in this section that later touches shipped behavior needs its own ADR and, if it copies interaction patterns from an AGPL build, a note that only behavior was borrowed.
+
