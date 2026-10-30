@@ -105,6 +105,46 @@ impl McpServer {
                     "properties": {}
                 }),
             },
+            McpTool {
+                name: "media_list".into(),
+                description: "List imported project media sources: duration, sample rate, channels, peak, and whether each file exists".into(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {}
+                }),
+            },
+            McpTool {
+                name: "tts_voices".into(),
+                description: "List known TTS voices (builtin, designed, cloned) plus daemon synthesis state. Cloned profiles are visible but can never be created or imported through MCP".into(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {}
+                }),
+            },
+            McpTool {
+                name: "voice_profile_get".into(),
+                description: "Inspect one voice profile by id: kind, backend, tags, default parameters. Consent records are reported only as a boolean".into(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "voice_id": { "type": "string", "description": "Voice profile handle (see tts_voices)" }
+                    },
+                    "required": ["voice_id"]
+                }),
+            },
+            McpTool {
+                name: "transcribe".into(),
+                description: "Transcribe a workspace audio file (daemon STT when available; the built-in segmenter emits placeholder 'Speech segment N' words and says so in the result). Optionally writes text/srt/vtt output".into(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "path": { "type": "string", "description": "Audio file path inside the workspace sandbox" },
+                        "format": { "type": "string", "enum": ["text", "srt", "vtt"], "description": "Transcript format when writing `out` (default text)" },
+                        "out": { "type": "string", "description": "Optional destination path for the transcript file (inside the sandbox)" }
+                    },
+                    "required": ["path"]
+                }),
+            },
         ];
 
         if self.tier >= PermissionTier::Edit {
@@ -233,6 +273,60 @@ impl McpServer {
                             "end_secs": { "type": "number", "description": "Range end in seconds" }
                         },
                         "required": ["start_secs", "end_secs"]
+                    }),
+                },
+                McpTool {
+                    name: "tts_generate".into(),
+                    description: "Synthesize speech into the project media dir as a WAV file. Reports the engine that actually ran (daemon model or built-in acoustic)".into(),
+                    input_schema: json!({
+                        "type": "object",
+                        "properties": {
+                            "text": { "type": "string", "description": "Text to speak" },
+                            "voice_id": { "type": "string", "description": "Voice profile handle (see tts_voices)" },
+                            "speed": { "type": "number", "description": "Speed multiplier, 0.25 to 4.0 (default 1.0)" }
+                        },
+                        "required": ["text", "voice_id"]
+                    }),
+                },
+                McpTool {
+                    name: "voice_design".into(),
+                    description: "Design a new voice from a natural-language brief and persist it. Designed profiles only: cloned voice creation and import are never available through MCP".into(),
+                    input_schema: json!({
+                        "type": "object",
+                        "properties": {
+                            "name": { "type": "string", "description": "Friendly name for the voice" },
+                            "prompt": { "type": "string", "description": "Descriptive brief, e.g. 'warm, deep BBC documentary narrator with calm pacing'" },
+                            "tags": { "type": "array", "items": { "type": "string" }, "description": "Optional category tags" }
+                        },
+                        "required": ["name", "prompt"]
+                    }),
+                },
+                McpTool {
+                    name: "media_import".into(),
+                    description: "Import a sandboxed audio file into the project media dir and register it as a source. Stored under a fresh generated name, so it never overwrites existing media".into(),
+                    input_schema: json!({
+                        "type": "object",
+                        "properties": {
+                            "path": { "type": "string", "description": "Audio file path inside the workspace sandbox" },
+                            "name": { "type": "string", "description": "Display name (defaults to the file's stem)" }
+                        },
+                        "required": ["path"]
+                    }),
+                },
+                McpTool {
+                    name: "clip_add".into(),
+                    description: "Place media on a track as a new clip at a timeline position (extends to the end of the source unless a duration is given). Overlapping clips are legal and summed by the mix engine".into(),
+                    input_schema: json!({
+                        "type": "object",
+                        "properties": {
+                            "track_id": { "type": "string", "description": "Track handle (see track_list)" },
+                            "source_id": { "type": "string", "description": "Media source handle (see media_list)" },
+                            "start_secs": { "type": "number", "description": "Timeline start in seconds" },
+                            "duration_secs": { "type": "number", "description": "Clip length in seconds (default: whole remaining source)" },
+                            "source_offset_secs": { "type": "number", "description": "Offset into the source in seconds (default 0)" },
+                            "gain": { "type": "number", "description": "Linear clip gain, 0.0 to 4.0 (default 1.0)" }
+                        },
+                        "required": ["track_id", "source_id", "start_secs"]
                     }),
                 },
             ]);
@@ -520,6 +614,187 @@ impl McpServer {
                     Err(e) => ToolCallResult::failure(format!("Export audio failed: {e}")),
                 }
             }
+            "tts_voices" => match session.tts_voices() {
+                Ok(report) => {
+                    let daemon_state = match (&report.daemon_active_model, report.daemon_alive) {
+                        (Some(model), _) => format!("active model {model}"),
+                        (None, true) => "alive (builtin tier)".to_owned(),
+                        (None, false) => "not detected".to_owned(),
+                    };
+                    let summary = format!(
+                        "Found {} voice(s); synthesis daemon: {daemon_state}",
+                        report.voices.len()
+                    );
+                    ToolCallResult::success(summary, serde_json::to_value(report).unwrap())
+                }
+                Err(e) => ToolCallResult::failure(format!("Failed to list voices: {e}")),
+            },
+            "voice_profile_get" => {
+                let voice_id = arguments
+                    .get("voice_id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                match session.voice_profile_get(voice_id) {
+                    Ok(profile) => ToolCallResult::success(
+                        format!(
+                            "Voice '{}' ({}, backend {})",
+                            profile.name, profile.kind, profile.backend
+                        ),
+                        serde_json::to_value(profile).unwrap(),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Failed to inspect voice: {e}")),
+                }
+            }
+            "tts_generate" => {
+                let text = arguments.get("text").and_then(Value::as_str).unwrap_or("");
+                let voice_id = arguments
+                    .get("voice_id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                let speed = arguments
+                    .get("speed")
+                    .and_then(Value::as_f64)
+                    .map(|v| v as f32);
+                match session.tts_generate(text, voice_id, speed) {
+                    Ok(report) => ToolCallResult::success(
+                        format!(
+                            "Synthesized {:.2}s of speech with {} ({}) to {}",
+                            report.duration_secs, report.engine, voice_id, report.path
+                        ),
+                        serde_json::to_value(report).unwrap(),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Speech synthesis failed: {e}")),
+                }
+            }
+            "voice_design" => {
+                let name = arguments.get("name").and_then(Value::as_str).unwrap_or("");
+                let prompt = arguments
+                    .get("prompt")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                let tags: Vec<String> = arguments
+                    .get("tags")
+                    .and_then(Value::as_array)
+                    .map(|items| {
+                        items
+                            .iter()
+                            .filter_map(Value::as_str)
+                            .map(String::from)
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                match session.voice_design(name, prompt, tags) {
+                    Ok(profile) => ToolCallResult::success(
+                        format!(
+                            "Designed voice '{}' ({}) and saved it to the profile store",
+                            profile.name, profile.id
+                        ),
+                        serde_json::to_value(profile).unwrap(),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Voice design failed: {e}")),
+                }
+            }
+            "transcribe" => {
+                let path = arguments.get("path").and_then(Value::as_str).unwrap_or("");
+                let format = arguments.get("format").and_then(Value::as_str);
+                let out = arguments.get("out").and_then(Value::as_str);
+                match session.transcribe(path, format, out) {
+                    Ok(report) => {
+                        let mut summary = format!(
+                            "Transcribed by {} ({} segment(s))",
+                            report.engine,
+                            report.segments.len()
+                        );
+                        if report.engine.ends_with("builtin") {
+                            summary.push_str("; note: the built-in STT emits placeholder words");
+                        }
+                        ToolCallResult::success(summary, serde_json::to_value(report).unwrap())
+                    }
+                    Err(e) => ToolCallResult::failure(format!("Transcription failed: {e}")),
+                }
+            }
+            "media_list" => match session.media_list() {
+                Ok(report) => {
+                    let missing = report.media.iter().filter(|m| !m.file_exists).count();
+                    let summary = if missing == 0 {
+                        format!("Project has {} media source(s)", report.media.len())
+                    } else {
+                        format!(
+                            "Project has {} media source(s) ({missing} file(s) missing on disk)",
+                            report.media.len()
+                        )
+                    };
+                    ToolCallResult::success(summary, serde_json::to_value(report).unwrap())
+                }
+                Err(e) => ToolCallResult::failure(format!("Failed to list media: {e}")),
+            },
+            "media_import" => {
+                let path = arguments.get("path").and_then(Value::as_str).unwrap_or("");
+                let name = arguments.get("name").and_then(Value::as_str);
+                match session.media_import(path, name) {
+                    Ok(report) => ToolCallResult::success(
+                        format!(
+                            "Imported '{}' ({:.2}s, {} Hz, {} channel(s)) as source {} ({})",
+                            report.name,
+                            report.duration_secs,
+                            report.sample_rate,
+                            report.channels,
+                            report.source_id,
+                            report.relative_path
+                        ),
+                        serde_json::to_value(report).unwrap(),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Media import failed: {e}")),
+                }
+            }
+            "clip_add" => {
+                let track_id = arguments
+                    .get("track_id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                let source_id = arguments
+                    .get("source_id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                let start_secs = arguments.get("start_secs").and_then(Value::as_f64);
+                let duration_secs = arguments.get("duration_secs").and_then(Value::as_f64);
+                let source_offset_secs =
+                    arguments.get("source_offset_secs").and_then(Value::as_f64);
+                let gain = arguments
+                    .get("gain")
+                    .and_then(Value::as_f64)
+                    .map(|g| g as f32);
+                let Some(start_secs) = start_secs else {
+                    return JsonRpcResponse::success(
+                        id,
+                        serde_json::to_value(ToolCallResult::failure(
+                            "missing 'start_secs': clips need a timeline start in seconds",
+                        ))
+                        .unwrap(),
+                    );
+                };
+                match session.clip_add(
+                    track_id,
+                    source_id,
+                    start_secs,
+                    duration_secs,
+                    source_offset_secs,
+                    gain,
+                ) {
+                    Ok(report) => ToolCallResult::success(
+                        format!(
+                            "Placed clip {} on track {} at {:.2}s ({:.2}s long from source {})",
+                            report.clip_id,
+                            report.track_id,
+                            report.start_secs,
+                            report.duration_secs,
+                            report.source_id
+                        ),
+                        serde_json::to_value(report).unwrap(),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Clip placement failed: {e}")),
+                }
+            }
             _ => ToolCallResult::failure(format!("tool '{tool_name}' not recognized")),
         };
 
@@ -542,6 +817,11 @@ impl McpServer {
                         "mimeType": "application/json"
                     },
                     {
+                        "uri": "alp://voices",
+                        "name": "Voice Profiles and Synthesis State",
+                        "mimeType": "application/json"
+                    },
+                    {
                         "uri": "alp://docs/agent-guide",
                         "name": "AI Agent Guide & Workflows",
                         "mimeType": "text/markdown"
@@ -554,6 +834,64 @@ impl McpServer {
     fn handle_resources_read(&self, id: Value, params: Value) -> JsonRpcResponse {
         let uri = params.get("uri").and_then(Value::as_str).unwrap_or("");
         match uri {
+            "alp://project/active" => {
+                let summary = self
+                    .session
+                    .lock()
+                    .map(|session| session.project_info())
+                    .unwrap_or_else(|_| {
+                        Err(alp_api::ApiError::Validation(
+                            "failed to acquire session lock".into(),
+                        ))
+                    });
+                match summary {
+                    Ok(info) => JsonRpcResponse::success(
+                        id,
+                        json!({
+                            "contents": [{
+                                "uri": uri,
+                                "mimeType": "application/json",
+                                "text": serde_json::to_string(&info).unwrap_or_default()
+                            }]
+                        }),
+                    ),
+                    Err(e) => JsonRpcResponse::error(
+                        id,
+                        -32602,
+                        format!("failed to read active project: {e}"),
+                        None,
+                    ),
+                }
+            }
+            "alp://voices" => {
+                let voices = self
+                    .session
+                    .lock()
+                    .map(|session| session.tts_voices())
+                    .unwrap_or_else(|_| {
+                        Err(alp_api::ApiError::Validation(
+                            "failed to acquire session lock".into(),
+                        ))
+                    });
+                match voices {
+                    Ok(report) => JsonRpcResponse::success(
+                        id,
+                        json!({
+                            "contents": [{
+                                "uri": uri,
+                                "mimeType": "application/json",
+                                "text": serde_json::to_string(&report).unwrap_or_default()
+                            }]
+                        }),
+                    ),
+                    Err(e) => JsonRpcResponse::error(
+                        id,
+                        -32602,
+                        format!("failed to read voices: {e}"),
+                        None,
+                    ),
+                }
+            }
             "alp://docs/agent-guide" => JsonRpcResponse::success(
                 id,
                 json!({

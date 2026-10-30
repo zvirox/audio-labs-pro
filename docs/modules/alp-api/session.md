@@ -19,6 +19,7 @@ The primary automation session coordinator managing project state, undoable comm
 - `ApiSession::remove_track(&mut self, track_id) -> Result<(), ApiError>`
 - `ApiSession::split_clip(&mut self, clip_id, split_secs) -> Result<(), ApiError>`
 - `ApiSession::ripple_delete_range(&mut self, start_secs, end_secs) -> Result<(), ApiError>`
+- `ApiSession::clip_add(&mut self, track_id, source_id, start_secs, duration_secs?, source_offset_secs?, gain?) -> Result<ClipPlacementReport, ApiError>` (Phase 10 `clip_add`; appended via the undoable `AddClip` command; see `media.md`)
 - `ApiSession::analyze_loudness(&self) -> Result<AnalysisReport, ApiError>`
 - `ApiSession::export_audio(&self, preset, target_path) -> Result<String, ApiError>`
 

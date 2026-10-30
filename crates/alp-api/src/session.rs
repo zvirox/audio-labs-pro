@@ -1,11 +1,11 @@
 //! Unified automation session coordinator over audio domain crates.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use alp_core::{
-    AddTrack, ClipId, Command, CommandStack, CoreError, DeleteRange, EffectRef, FrameRange,
-    Project, ProjectPaths, RemoveTrack, SetTrackEffects, SplitClip, Track, TrackId, frames_to_secs,
-    now_ms, secs_to_frames,
+    AddClip, AddTrack, Clip, ClipId, Command, CommandStack, CoreError, DeleteRange, EffectRef,
+    FrameRange, Project, ProjectPaths, RemoveTrack, SetTrackEffects, SourceId, SplitClip, Track,
+    TrackId, frames_to_secs, now_ms, secs_to_frames,
 };
 use alp_media::{ExportPreset, export};
 
@@ -18,17 +18,20 @@ use crate::types::{AnalysisReport, PermissionTier, ProjectSummary, TrackSummary}
 
 /// Primary automation session managing project state, operations, and safety.
 pub struct ApiSession {
-    project: Project,
-    paths: ProjectPaths,
+    pub(crate) project: Project,
+    pub(crate) paths: ProjectPaths,
     stack: CommandStack,
     revision: u64,
     tier: PermissionTier,
-    sandbox: WorkspaceSandbox,
+    pub(crate) sandbox: WorkspaceSandbox,
     audit: AuditLogger,
     checkpoints: CheckpointManager,
     jobs: JobManager,
     client_id: String,
     dirty: bool,
+    /// Voice profile store override directory; `None` keeps the default XDG
+    /// user store (`alp-api/src/voice.rs`).
+    pub(crate) voice_store_dir: Option<PathBuf>,
     /// SHA-256 of the most recently staged JSON arguments, consumed by the
     /// next audit record so the log identifies what was actually requested.
     pending_arg_digest: Option<String>,
@@ -60,6 +63,7 @@ impl ApiSession {
             jobs: JobManager::new(),
             client_id,
             dirty: false,
+            voice_store_dir: None,
             pending_arg_digest: None,
         })
     }
@@ -108,7 +112,7 @@ impl ApiSession {
         Ok(())
     }
 
-    fn record_audit(&mut self, tool: &str, status: &str, rev_before: u64) {
+    pub(crate) fn record_audit(&mut self, tool: &str, status: &str, rev_before: u64) {
         let entry = AuditEntry {
             timestamp_ms: now_ms(),
             client_id: self.client_id.clone(),
@@ -350,6 +354,117 @@ impl ApiSession {
             "range_edit",
             Box::new(DeleteRange::new(track_id, range, true)),
         )
+    }
+
+    /// Place media on the timeline as a new clip appended to the end of the
+    /// track's clip list (Phase 10 `clip_add`). Source range math uses the
+    /// source's own sample rate; the timeline position uses the project rate.
+    /// Overlaps are legal (the mix engine sums them), so the response carries
+    /// the written range for callers that need to detect them.
+    pub fn clip_add(
+        &mut self,
+        track_id: &str,
+        source_id: &str,
+        start_secs: f64,
+        duration_secs: Option<f64>,
+        source_offset_secs: Option<f64>,
+        gain: Option<f32>,
+    ) -> Result<crate::media::ClipPlacementReport, ApiError> {
+        self.check_permission(PermissionTier::Edit)?;
+
+        let rate = self.project.sample_rate;
+        if !start_secs.is_finite() || start_secs < 0.0 {
+            return Err(ApiError::Validation(format!(
+                "invalid start {start_secs}: must be a non-negative number of seconds"
+            )));
+        }
+        let offset_secs = source_offset_secs.unwrap_or(0.0);
+        if !offset_secs.is_finite() || offset_secs < 0.0 {
+            return Err(ApiError::Validation(format!(
+                "invalid source offset {offset_secs}: must be a non-negative number of seconds"
+            )));
+        }
+        let applied_gain = match gain {
+            Some(gain) if !gain.is_finite() => {
+                return Err(ApiError::Validation(format!(
+                    "invalid gain {gain}: must be a finite number"
+                )));
+            }
+            Some(gain) => gain.clamp(0.0, 4.0),
+            None => 1.0,
+        };
+
+        let parsed_source: SourceId = source_id.parse().map_err(|_| {
+            ApiError::NotFound(format!(
+                "source '{source_id}' not found; call media_list for the known ids"
+            ))
+        })?;
+        let (source_rate, source_frames) = {
+            let source = self.project.source(parsed_source).ok_or_else(|| {
+                ApiError::NotFound(format!(
+                    "source '{source_id}' not found; call media_list for the known ids"
+                ))
+            })?;
+            (source.sample_rate, source.frames)
+        };
+        let track_index = self
+            .project
+            .tracks
+            .iter()
+            .position(|trk| trk.id.to_string() == track_id)
+            .ok_or_else(|| {
+                ApiError::NotFound(format!(
+                    "track '{track_id}' not found; call track_list for the known ids"
+                ))
+            })?;
+        let append_index = self.project.tracks[track_index].clips.len();
+        let track_actual_id = self.project.tracks[track_index].id;
+
+        let offset_frames = secs_to_frames(offset_secs, source_rate);
+        if offset_frames >= source_frames {
+            return Err(ApiError::Validation(format!(
+                "source offset {:.3}s is beyond the end of the source ({:.3}s long)",
+                offset_secs,
+                frames_to_secs(source_frames, source_rate)
+            )));
+        }
+        let remaining = source_frames - offset_frames;
+        let length = match duration_secs {
+            Some(duration) => {
+                if !duration.is_finite() || duration <= 0.0 {
+                    return Err(ApiError::Validation(format!(
+                        "invalid duration {duration}: must be a positive number of seconds"
+                    )));
+                }
+                secs_to_frames(duration, source_rate).clamp(1, remaining)
+            }
+            None => remaining,
+        };
+        let range = FrameRange::new(offset_frames, offset_frames + length)?;
+
+        let clip_id = ClipId::new();
+        let mut clip = Clip::new(
+            clip_id,
+            parsed_source,
+            range,
+            secs_to_frames(start_secs, rate),
+        );
+        clip.gain = applied_gain;
+
+        self.execute_command(
+            "clip_add",
+            Box::new(AddClip::new(track_actual_id, clip, append_index)),
+        )?;
+
+        Ok(crate::media::ClipPlacementReport {
+            clip_id: clip_id.to_string(),
+            track_id: track_id.to_string(),
+            source_id: parsed_source.to_string(),
+            start_secs,
+            duration_secs: frames_to_secs(length, source_rate),
+            source_offset_secs: offset_secs,
+            gain: applied_gain,
+        })
     }
 
     // --- Audio Rendering & Analysis ---

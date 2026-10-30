@@ -7,6 +7,36 @@ versions follow the release milestones in the build plan.
 
 ### Added
 
+- **MCP media-to-timeline toolset (ADR 0027).** `media_list` (Observe),
+  `media_import` (Edit), and `clip_add` (Edit) complete the
+  generate-to-timeline chain over MCP: synthesized speech can now be
+  imported onto the timeline headlessly. Imports decode to prove they are
+  audio, re-encode Float32 WAV under a fresh source id (an import can never
+  overwrite existing media), measure the peak, and register through the
+  existing undoable `AddSource` command - so imports participate in undo,
+  redo, and the audit log exactly like editor actions. `clip_add` appends a
+  clip with source-rate-aware range math (offsets and durations interpret at
+  the source's own sample rate; the timeline start uses the project rate),
+  clamps gain to 0.0-4.0, allows legal overlaps, and reports the written
+  range so callers can detect them. Zero `alp-core` changes: the tools reuse
+  the already-validated `AddSource`/`AddClip` commands, and storage
+  conventions match the editor's own importer byte-for-byte.
+- **MCP voice toolset (ADR 0026).** `alp-api` gained a voice module backing
+  five new `alp-mcp` tools: `tts_voices` and `voice_profile_get` (Observe —
+  profile list with daemon state; consent reported only as a boolean and
+  `cached_embedding` never exposed), `transcribe` (Observe — sandboxed
+  daemon-first transcription with optional `text`/`srt`/`vtt` output and the
+  built-in segmenter's placeholder-words admission kept honest), and
+  `tts_generate` plus `voice_design` (Edit — WAV synthesis into the project
+  `media/` directory with the engine that actually ran named in the result;
+  voice design persists Designed profiles only, so cloned voice creation and
+  import stay unreachable through MCP at any tier). `alp://project/active`
+  is now actually served (it was advertised but unread), and a new
+  `alp://voices` resource serves the same voice summary. Engine results run
+  daemon-first with built-in fallback, mirroring the Phase 7 UI pattern;
+  `tts_script_generate`, `tts_regenerate`, `transcript_get`,
+  `export_transcript`, and the job tools are deferred with reasons rather
+  than stubbed.
 - **Neural speech-to-text is wired (ADR 0025).** `alp-infer` gained a second,
   independent engine slot for transcription: `LoadModel moonshine-tiny`
   loads the MIT `moonshine-tiny-ONNX` export into a new `MoonshineEngine`

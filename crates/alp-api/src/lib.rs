@@ -8,18 +8,25 @@ pub mod audit;
 pub mod checkpoint;
 pub mod error;
 pub mod jobs;
+pub mod media;
 pub mod sandbox;
 pub mod session;
 pub mod types;
+pub mod voice;
 
 pub use alp_media::ExportPreset;
 pub use audit::{AuditEntry, AuditLogger};
 pub use checkpoint::{Checkpoint, CheckpointManager};
 pub use error::ApiError;
 pub use jobs::{JobInfo, JobManager, JobState};
+pub use media::{ClipPlacementReport, MediaImportReport, MediaListReport, MediaSummary};
 pub use sandbox::WorkspaceSandbox;
 pub use session::ApiSession;
 pub use types::{
     AnalysisReport, ApprovalMode, ClipSummary, PermissionTier, ProjectSummary, TrackSummary,
     format_timestamp,
+};
+pub use voice::{
+    TranscriptionReport, TranscriptionSegmentReport, TtsGenerationReport, TtsVoicesReport,
+    VoiceParamsDetail, VoiceProfileDetail, VoiceSummary,
 };
