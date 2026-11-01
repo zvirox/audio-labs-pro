@@ -1,5 +1,10 @@
 /target
 /spikes/target
+
+# Planning & status working notes (local only)
+/plan.md
+/ALP_BUILD_PLAN.md
+/ALP_STATUS_REPORT.md
 *.alp
 *.wav.tmp
 *.tmp
