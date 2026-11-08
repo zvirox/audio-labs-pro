@@ -41,6 +41,10 @@ versions follow the release milestones in the build plan.
   `project_ops`, `script_voice_ops`, `smart_edit_ops`, `track_clip_ops`), `alp-dsp::denoise`,
   `alp-infer::qwen3`, and `alp-mcp::tool_defs` with all 8 required sections, satisfying
   `check-docs.sh` (157 documents valid) and all workspace architecture guards.
+- **Packaging and release build hardening.** Updated Flatpak runtime to Freedesktop 25.08
+  with Rust 1.98.1 to satisfy modern inference dependency requirements (`ort 2.0.0-rc.15`
+  MSRV 1.92), stripped comments from Debian binary control metadata for strict `dpkg-deb`
+  conformance, and aligned workspace `rust-version = "1.92"`.
 - **MCP media-to-timeline toolset (ADR 0027).** `media_list` (Observe),
   `media_import` (Edit), and `clip_add` (Edit) complete the
   generate-to-timeline chain over MCP: synthesized speech can now be

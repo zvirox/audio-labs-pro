@@ -108,7 +108,7 @@ jobs:
           PKG=target/deb-root
           mkdir -p "$PKG/DEBIAN"
           cp -r target/stage/usr "$PKG/"
-          sed "s/^Version:.*/Version: $VERSION/" packaging/deb/control > "$PKG/DEBIAN/control"
+          grep -v '^#' packaging/deb/control | sed "s/^Version:.*/Version: $VERSION/" > "$PKG/DEBIAN/control"
           grep -q "^Version: $VERSION$" "$PKG/DEBIAN/control"
           dpkg-deb --root-owner-group --build "$PKG" \
             "audio-labs-pro_${VERSION}_amd64.deb"
@@ -179,9 +179,9 @@ jobs:
           flatpak --user remote-add --if-not-exists flathub \
             https://dl.flathub.org/repo/flathub.flatpakrepo
           flatpak --user install --noninteractive flathub \
-            org.freedesktop.Platform//24.08 \
-            org.freedesktop.Sdk//24.08 \
-            org.freedesktop.Sdk.Extension.rust-stable//24.08
+            org.freedesktop.Platform//25.08 \
+            org.freedesktop.Sdk//25.08 \
+            org.freedesktop.Sdk.Extension.rust-stable//25.08
 
       - name: Flatpak build
         run: |
@@ -246,7 +246,7 @@ jobs:
             echo "## Packages"
             echo "- \`.deb\` — Debian/Ubuntu (amd64)"
             echo "- \`.rpm\` — Fedora/openSUSE (x86_64)"
-            echo "- \`.flatpak\` — any distribution (Freedesktop 24.08 runtime)"
+            echo "- \`.flatpak\` — any distribution (Freedesktop 25.08 runtime)"
             echo
             echo "Verify with \`sha256sums.txt\`. See CHANGELOG.md for details."
           } > release-notes.md

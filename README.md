@@ -191,7 +191,7 @@ sudo apt install ./audio-labs-pro_0.0.1-alpha.3_amd64.deb
 # Fedora / openSUSE (the RPM orders as a pre-release: 0.0.1~alpha.3)
 sudo dnf install ./audio-labs-pro-0.0.1~alpha.3-1.x86_64.rpm
 
-# Flatpak, any distribution (Freedesktop 24.08 runtime)
+# Flatpak, any distribution (Freedesktop 25.08 runtime)
 flatpak install --user ./Audio-Labs-Pro-0.0.1-alpha.3-x86_64.flatpak
 ```
 
