@@ -19,7 +19,7 @@ use std::path::Path;
 use std::sync::Mutex;
 
 use alp_media::{PcmBuffer, resample};
-use alp_voice::{SttBackend, TranscriptSegment, VoiceError};
+use alp_voice::{SttBackend, TranscriptSegment, VoiceError, WordTimestamp};
 use ort::environment::Environment;
 use ort::session::{Session, SessionInputValue};
 use ort::value::Tensor;
@@ -185,6 +185,114 @@ fn decode_ids(table: &HashMap<i64, String>, ids: &[i64]) -> String {
         out.push_str(&String::from_utf8_lossy(&bytes));
     }
     out
+}
+
+/// A decoded word with its average token confidence.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct DecodedWord {
+    pub word: String,
+    pub probability: f32,
+}
+
+fn flush_bytes(word_buf: &mut String, bytes: &mut Vec<u8>) {
+    if !bytes.is_empty() {
+        word_buf.push_str(&String::from_utf8_lossy(bytes));
+        bytes.clear();
+    }
+}
+
+fn flush_word(words: &mut Vec<DecodedWord>, word_buf: &mut String, probs_buf: &mut Vec<f32>) {
+    let trimmed = word_buf.trim();
+    if !trimmed.is_empty() {
+        let avg_prob = if probs_buf.is_empty() {
+            1.0
+        } else {
+            probs_buf.iter().sum::<f32>() / probs_buf.len() as f32
+        };
+        words.push(DecodedWord {
+            word: trimmed.to_string(),
+            probability: avg_prob.clamp(0.0, 1.0),
+        });
+    }
+    word_buf.clear();
+    probs_buf.clear();
+}
+
+/// Decode token IDs and their probabilities into discrete words.
+fn decode_words(table: &HashMap<i64, String>, ids: &[i64], probs: &[f32]) -> Vec<DecodedWord> {
+    let mut words: Vec<DecodedWord> = Vec::new();
+    let mut current_word = String::new();
+    let mut current_probs = Vec::new();
+    let mut bytes: Vec<u8> = Vec::new();
+
+    for (idx, &id) in ids.iter().enumerate() {
+        let prob = probs.get(idx).copied().unwrap_or(1.0);
+        let token = table.get(&id).map(String::as_str).unwrap_or("");
+
+        if token.starts_with("<0x")
+            && token.ends_with('>')
+            && token.len() == 6
+            && let Ok(byte) = u8::from_str_radix(&token[3..5], 16)
+        {
+            bytes.push(byte);
+            current_probs.push(prob);
+            continue;
+        }
+
+        flush_bytes(&mut current_word, &mut bytes);
+
+        match token {
+            "<s>" | "</s>" | "<unk>" => {}
+            special if special.starts_with("<<ST_") => {}
+            other => {
+                if other.starts_with(SPACE_MARK) {
+                    flush_word(&mut words, &mut current_word, &mut current_probs);
+                    let part = &other[SPACE_MARK.len_utf8()..];
+                    if !part.is_empty() {
+                        current_word.push_str(part);
+                        current_probs.push(prob);
+                    }
+                } else if other.contains(SPACE_MARK) {
+                    let parts: Vec<&str> = other.split(SPACE_MARK).collect();
+                    for (p_i, p) in parts.iter().enumerate() {
+                        if p_i > 0 {
+                            flush_word(&mut words, &mut current_word, &mut current_probs);
+                        }
+                        if !p.is_empty() {
+                            current_word.push_str(p);
+                            current_probs.push(prob);
+                        }
+                    }
+                } else {
+                    current_word.push_str(other);
+                    current_probs.push(prob);
+                }
+            }
+        }
+    }
+
+    flush_bytes(&mut current_word, &mut bytes);
+    flush_word(&mut words, &mut current_word, &mut current_probs);
+
+    words
+}
+
+/// Compute stable softmax probability for the chosen token from raw logits.
+fn token_prob(slice: &[f32], chosen: i64) -> f32 {
+    let idx = chosen as usize;
+    if idx >= slice.len() {
+        return 1.0;
+    }
+    let max_logit = slice[idx];
+    let mut sum_exp = 0.0f32;
+    for &l in slice {
+        sum_exp += (l - max_logit).exp();
+    }
+    if sum_exp > 0.0 {
+        (1.0 / sum_exp).clamp(0.0, 1.0)
+    } else {
+        1.0
+    }
 }
 
 /// Downmix interleaved multi-channel samples to their per-frame average.
@@ -392,8 +500,12 @@ impl MoonshineEngine {
         Ok((logits_shape, logits, present))
     }
 
-    /// Greedy decode an encoded utterance into token ids.
-    fn greedy_decode(&self, hidden: &[f32], hidden_shape: &[i64]) -> Result<String, VoiceError> {
+    /// Greedy decode an encoded utterance into text and discrete words with probabilities.
+    fn greedy_decode(
+        &self,
+        hidden: &[f32],
+        hidden_shape: &[i64],
+    ) -> Result<(String, Vec<DecodedWord>), VoiceError> {
         let mut cache = KvCache::empty()?;
 
         // Prefill: decoder start token, cache branch off, empty pasts.
@@ -409,8 +521,11 @@ impl MoonshineEngine {
         if vocab == 0 || seq_len == 0 {
             return Err(VoiceError::Backend("decoder produced empty logits".into()));
         }
-        let first = argmax(&logits[(seq_len - 1) * vocab..seq_len * vocab]);
+        let slice = &logits[(seq_len - 1) * vocab..seq_len * vocab];
+        let first = argmax(slice);
+        let first_prob = token_prob(slice, first);
         let mut generated = vec![first];
+        let mut probs = vec![first_prob];
         // The prefill produced valid cross-attention KV; freeze them and roll
         // only the self-attention half from here on.
         cache.roll(present)?;
@@ -427,12 +542,17 @@ impl MoonshineEngine {
             if vocab == 0 || seq_len == 0 {
                 return Err(VoiceError::Backend("decoder produced empty logits".into()));
             }
-            next = argmax(&logits[(seq_len - 1) * vocab..seq_len * vocab]);
+            let slice = &logits[(seq_len - 1) * vocab..seq_len * vocab];
+            next = argmax(slice);
+            let prob = token_prob(slice, next);
             generated.push(next);
+            probs.push(prob);
             cache.roll(present)?;
         }
 
-        Ok(decode_ids(&self.tokenizer, &generated).trim().to_owned())
+        let full_text = decode_ids(&self.tokenizer, &generated).trim().to_owned();
+        let decoded_words = decode_words(&self.tokenizer, &generated, &probs);
+        Ok((full_text, decoded_words))
     }
 }
 
@@ -455,14 +575,55 @@ impl SttBackend for MoonshineEngine {
         }
 
         let (hidden_shape, hidden) = self.encode(&mono)?;
-        let text = self.greedy_decode(&hidden, &hidden_shape)?;
+        let (text, decoded_words) = self.greedy_decode(&hidden, &hidden_shape)?;
         if text.is_empty() {
             return Ok(Vec::new());
         }
+
+        let total_frames = pcm.frames();
+        let speech_ranges = alp_voice::segment_speech(pcm, &alp_voice::VadConfig::default());
+        let (speech_start, speech_end) =
+            if let (Some(first), Some(last)) = (speech_ranges.first(), speech_ranges.last()) {
+                (
+                    first.start.min(total_frames),
+                    last.end.min(total_frames).max(first.start + 1),
+                )
+            } else {
+                (0, total_frames)
+            };
+
+        let active_frames = speech_end.saturating_sub(speech_start).max(1);
+        let mut words = Vec::new();
+        if !decoded_words.is_empty() {
+            let total_chars: usize = decoded_words
+                .iter()
+                .map(|w| w.word.chars().count().max(1))
+                .sum();
+
+            let mut cum_chars = 0usize;
+            for dw in &decoded_words {
+                let char_len = dw.word.chars().count().max(1);
+                let w_start = speech_start
+                    + (active_frames as u128 * cum_chars as u128 / total_chars as u128) as u64;
+                cum_chars += char_len;
+                let w_end = speech_start
+                    + (active_frames as u128 * cum_chars as u128 / total_chars as u128) as u64;
+                let w_end = w_end.max(w_start + 1).min(total_frames);
+
+                words.push(WordTimestamp {
+                    word: dw.word.clone(),
+                    start_frame: w_start,
+                    end_frame: w_end,
+                    probability: dw.probability,
+                });
+            }
+        }
+
         Ok(vec![TranscriptSegment {
-            start_frame: 0,
-            end_frame: pcm.frames(),
+            start_frame: speech_start,
+            end_frame: speech_end,
             text,
+            words,
         }])
     }
 
@@ -552,6 +713,34 @@ mod tests {
         // The leading space is faithful BPE output ("`<0x2581>`The" starts
         // with the space mark); `greedy_decode` trims the final text.
         assert_eq!(text, " The AB");
+    }
+
+    #[test]
+    fn decode_words_extracts_words_and_confidences() {
+        let table: HashMap<i64, String> = [
+            (0, "<unk>".into()),
+            (1, "<s>".into()),
+            (2, "</s>".into()),
+            (3, "<0x41>".into()), // 'A'
+            (4, "<0x42>".into()), // 'B'
+            (450, "\u{2581}The".into()),
+            (500, "\u{2581}quick".into()),
+            (29871, "\u{2581}".into()),
+        ]
+        .into_iter()
+        .collect();
+
+        let ids = [1, 450, 500, 29871, 3, 4, 2];
+        let probs = [1.0, 0.95, 0.90, 1.0, 0.80, 0.80, 1.0];
+        let words = decode_words(&table, &ids, &probs);
+
+        assert_eq!(words.len(), 3);
+        assert_eq!(words[0].word, "The");
+        assert!((words[0].probability - 0.95).abs() < 1e-4);
+        assert_eq!(words[1].word, "quick");
+        assert!((words[1].probability - 0.90).abs() < 1e-4);
+        assert_eq!(words[2].word, "AB");
+        assert!((words[2].probability - 0.80).abs() < 1e-4);
     }
 
     #[test]

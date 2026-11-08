@@ -5,6 +5,50 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Write as _;
 
 use crate::TranscriptSegment;
+pub use crate::WordTimestamp;
+
+impl TranscriptSegment {
+    /// Create a segment without word-level timestamps.
+    #[must_use]
+    pub fn new(start_frame: u64, end_frame: u64, text: impl Into<String>) -> Self {
+        Self {
+            start_frame,
+            end_frame,
+            text: text.into(),
+            words: Vec::new(),
+        }
+    }
+
+    /// Create a segment with word-level timestamps.
+    #[must_use]
+    pub fn with_words(
+        start_frame: u64,
+        end_frame: u64,
+        text: impl Into<String>,
+        words: Vec<WordTimestamp>,
+    ) -> Self {
+        Self {
+            start_frame,
+            end_frame,
+            text: text.into(),
+            words,
+        }
+    }
+
+    /// Word-level timestamps for this segment.
+    #[must_use]
+    pub fn words(&self) -> &[WordTimestamp] {
+        &self.words
+    }
+
+    /// Find the word spanning the given frame, if any.
+    #[must_use]
+    pub fn find_word_at_frame(&self, frame: u64) -> Option<&WordTimestamp> {
+        self.words
+            .iter()
+            .find(|w| frame >= w.start_frame && frame < w.end_frame)
+    }
+}
 
 /// A formatted transcription document.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -24,11 +68,45 @@ impl Transcript {
 
     /// Add a segment to the transcript.
     pub fn add_segment(&mut self, start_frame: u64, end_frame: u64, text: impl Into<String>) {
-        self.segments.push(TranscriptSegment {
+        self.segments
+            .push(TranscriptSegment::new(start_frame, end_frame, text));
+    }
+
+    /// Add a segment with explicit word timestamps to the transcript.
+    pub fn add_segment_with_words(
+        &mut self,
+        start_frame: u64,
+        end_frame: u64,
+        text: impl Into<String>,
+        words: Vec<WordTimestamp>,
+    ) {
+        self.segments.push(TranscriptSegment::with_words(
             start_frame,
             end_frame,
-            text: text.into(),
-        });
+            text,
+            words,
+        ));
+    }
+
+    /// All word timestamps across all segments in chronological order.
+    pub fn all_words(&self) -> impl Iterator<Item = &WordTimestamp> {
+        self.segments.iter().flat_map(|seg| seg.words.iter())
+    }
+
+    /// Find the word spanning the given frame across all segments.
+    #[must_use]
+    pub fn find_word_at_frame(&self, frame: u64) -> Option<&WordTimestamp> {
+        self.segments
+            .iter()
+            .find_map(|seg| seg.find_word_at_frame(frame))
+    }
+
+    /// Calculate the timeline frame range to cut/delete corresponding to a word in a segment.
+    #[must_use]
+    pub fn cut_range_for_word(&self, segment_idx: usize, word_idx: usize) -> Option<FrameRange> {
+        let seg = self.segments.get(segment_idx)?;
+        let word = seg.words.get(word_idx)?;
+        FrameRange::new(word.start_frame, word.end_frame).ok()
     }
 
     /// Total duration in seconds based on sample rate.
@@ -235,5 +313,74 @@ mod tests {
         let range = transcript.cut_range_for_segment(0).expect("cut range");
         assert_eq!(range.start, 1000);
         assert_eq!(range.end, 5000);
+    }
+
+    #[test]
+    fn word_timestamps_and_queries() {
+        let mut transcript = Transcript::new();
+        let words = vec![
+            WordTimestamp {
+                word: "Hello".to_string(),
+                start_frame: 1000,
+                end_frame: 2500,
+                probability: 0.98,
+            },
+            WordTimestamp {
+                word: "world".to_string(),
+                start_frame: 2500,
+                end_frame: 4000,
+                probability: 0.95,
+            },
+        ];
+        transcript.add_segment_with_words(1000, 4000, "Hello world", words);
+
+        assert_eq!(transcript.all_words().count(), 2);
+
+        let w1 = transcript.find_word_at_frame(1500).expect("word at 1500");
+        assert_eq!(w1.word, "Hello");
+        assert_eq!(w1.start_frame, 1000);
+
+        let w2 = transcript.find_word_at_frame(3000).expect("word at 3000");
+        assert_eq!(w2.word, "world");
+
+        assert!(transcript.find_word_at_frame(5000).is_none());
+
+        let cut = transcript
+            .cut_range_for_word(0, 1)
+            .expect("cut range for word");
+        assert_eq!(cut.start, 2500);
+        assert_eq!(cut.end, 4000);
+    }
+
+    #[test]
+    fn serde_backward_compatibility() {
+        // Old JSON without words field
+        let json_without_words = r#"{"start_frame":0,"end_frame":1000,"text":"Old segment"}"#;
+        let seg: TranscriptSegment =
+            serde_json::from_str(json_without_words).expect("deserialize old segment");
+        assert_eq!(seg.words, Vec::new());
+
+        // Serializing segment with empty words should omit the words field
+        let serialized = serde_json::to_string(&seg).expect("serialize segment");
+        assert!(!serialized.contains("\"words\""));
+
+        // With words field
+        let seg_with_words = TranscriptSegment::with_words(
+            0,
+            1000,
+            "Hi",
+            vec![WordTimestamp {
+                word: "Hi".into(),
+                start_frame: 0,
+                end_frame: 1000,
+                probability: 1.0,
+            }],
+        );
+        let serialized_with_words =
+            serde_json::to_string(&seg_with_words).expect("serialize with words");
+        assert!(serialized_with_words.contains("\"words\""));
+        let round_trip: TranscriptSegment =
+            serde_json::from_str(&serialized_with_words).expect("deserialize with words");
+        assert_eq!(round_trip, seg_with_words);
     }
 }

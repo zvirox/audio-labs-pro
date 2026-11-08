@@ -8,7 +8,7 @@ tags and atomic replacement.
 ## Public API
 
 - `ExportFormat::{Wav, Flac}`
-- `AudioMetadata { title, artist, album, comment }`
+- `AudioMetadata { title, artist, album, comment, synthetic, watermark }`
 - `ExportSettings { format, bit_depth, sample_rate, dither, metadata }`
 - `ExportReport { frames, sample_rate, channels, bits_per_sample, format, peak, rms }`
 - `export(path, buffer, settings)`
@@ -16,7 +16,10 @@ tags and atomic replacement.
 ## Data flow
 
 `export` resamples to the requested rate, then dispatches to the WAV writer or
-the FLAC writer. WAV writes RIFF `INFO` tags; FLAC writes a Vorbis comment block.
+the FLAC writer. WAV writes RIFF `INFO` tags (`INAM`, `IART`, `IPRD`, `ICMT`,
+plus `ISFT` and synthetic provenance markers when `synthetic` is enabled); FLAC
+writes a Vorbis comment block (including `SYNTHETIC_VOICE=true` and `PROVENANCE=...`
+when `synthetic` is enabled).
 Both paths write a sibling temporary file and rename it atomically.
 
 ## Allowed dependencies

@@ -3,7 +3,7 @@
 use alp_media::PcmBuffer;
 
 use crate::{
-    SttBackend, TranscriptSegment, VoiceError,
+    SttBackend, TranscriptSegment, VoiceError, WordTimestamp,
     vad::{VadConfig, segment_speech},
 };
 
@@ -56,10 +56,32 @@ impl SttBackend for BuiltinSttBackend {
             // Generate transcription approximation for the acoustic speech burst
             let text = format!("Speech segment {}", idx + 1);
 
+            let words_vec: Vec<&str> = text.split_whitespace().collect();
+            let total_dur = range.end.saturating_sub(range.start);
+            let mut words = Vec::new();
+            if !words_vec.is_empty() {
+                let step = total_dur / words_vec.len() as u64;
+                for (w_i, &w_str) in words_vec.iter().enumerate() {
+                    let w_start = range.start + w_i as u64 * step;
+                    let w_end = if w_i + 1 == words_vec.len() {
+                        range.end
+                    } else {
+                        w_start + step
+                    };
+                    words.push(WordTimestamp {
+                        word: w_str.to_string(),
+                        start_frame: w_start,
+                        end_frame: w_end,
+                        probability: 1.0,
+                    });
+                }
+            }
+
             segments.push(TranscriptSegment {
                 start_frame: range.start,
                 end_frame: range.end,
                 text,
+                words,
             });
             let _ = est_words;
             let _ = slice;
@@ -167,14 +189,14 @@ impl DictationSession {
             if self.silence_frames >= self.hangover_frames {
                 // Speech finished: finalize segment
                 let end_frame = self.total_frames_processed + frames.len() as u64;
-                let seg = TranscriptSegment {
-                    start_frame: self.start_frame,
+                let seg = TranscriptSegment::new(
+                    self.start_frame,
                     end_frame,
-                    text: format!(
+                    format!(
                         "Transcribed speech ({:.1}s)",
                         (end_frame - self.start_frame) as f64 / self.sample_rate as f64
                     ),
-                };
+                );
                 events.push(DictationEvent::Final(seg));
                 self.in_speech = false;
                 self.active_samples.clear();

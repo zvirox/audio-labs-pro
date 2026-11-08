@@ -2,6 +2,7 @@
 
 use crate::Effect;
 use crate::biquad::FilterType;
+use crate::denoise::NoiseReduction;
 use crate::dynamics::{Compressor, NoiseGate};
 use crate::eq::{EqBand, ParametricEq};
 use crate::limiter::Limiter;
@@ -73,13 +74,14 @@ impl Effect for EffectChain {
 ///
 /// Runs an optimized vocal sequence:
 /// 1. High-Pass Filter (80 Hz) - cuts handling thumps and HVAC rumble
-/// 2. De-Hum (50/60 Hz) - removes powerline mains noise
-/// 3. De-Click - repairs mouth clicks and transients
-/// 4. Noise Gate - suppresses room ambience during pauses
-/// 5. Parametric EQ - gentle boxiness scoop and vocal presence lift
-/// 6. De-Esser - attenuates harsh sibilance
-/// 7. Vocal Compressor - evens out vocal dynamics
-/// 8. True Peak Limiter - guarantees ceiling at -1 dBFS
+/// 2. Neural Noise Reduction (RNNoise) - suppresses ambient background noise
+/// 3. De-Hum (50/60 Hz) - removes powerline mains noise
+/// 4. De-Click - repairs mouth clicks and transients
+/// 5. Noise Gate - suppresses room ambience during pauses
+/// 6. Parametric EQ - gentle boxiness scoop and vocal presence lift
+/// 7. De-Esser - attenuates harsh sibilance
+/// 8. Vocal Compressor - evens out vocal dynamics
+/// 9. True Peak Limiter - guarantees ceiling at -1 dBFS
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VoiceCleanup;
 
@@ -98,7 +100,10 @@ impl VoiceCleanup {
         ];
         chain.add(Box::new(ParametricEq::with_bands(eq_bands)));
 
-        // 2. De-Hum
+        // 2. Neural Noise Reduction (RNNoise)
+        chain.add(Box::new(NoiseReduction::rnnoise()));
+
+        // 3. De-Hum
         chain.add(Box::new(DeHum::new(mains_frequency)));
 
         // 3. De-Click

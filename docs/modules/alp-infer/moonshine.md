@@ -16,9 +16,9 @@ its loads and vice versa.
   `tokenizer.json`, `config.json`); fails before touching ONNX Runtime when
   files are missing, naming the `alp-cli model download moonshine-tiny` fix
 - `SttBackend for MoonshineEngine`: `transcribe` resamples to 16 kHz, mixes
-  channels to mono, encodes, greedy-decodes, and emits ONE whole-buffer
-  `TranscriptSegment` in the caller's frame space (no timestamps);
-  `streaming()` is `false`
+  channels to mono, encodes, greedy-decodes, aligns word boundaries to speech frames,
+  and emits `TranscriptSegment` with word-level timestamps (`WordTimestamp`) in
+  the caller's frame space; `streaming()` is `false`
 
 ## Data flow
 
@@ -40,16 +40,18 @@ its loads and vice versa.
    rolls only the 12 self-attn slots; non-empty encoder presents are adopted
    (future-export safety).
 6. BPE decode: id-to-token table from `tokenizer.json`; specials skipped,
-   `<0xNN>` byte-fallback runs fused as UTF-8, `\u{2581}` mapped to space;
-   the text is trimmed and becomes one whole-buffer segment spanning
-   `0..pcm.frames()`.
+   `<0xNN>` byte-fallback runs fused as UTF-8, `\u{2581}` mapped to space.
+   Token IDs and confidence probabilities are decoded into discrete words.
+   Speech intervals are detected via VAD (`alp_voice::segment_speech`), and
+   word boundaries are distributed proportionally across active speech frames,
+   populating `TranscriptSegment.words` with monotonic `WordTimestamp`s.
 
 ## Allowed dependencies
 
 - `ort` 2.0.0-rc.15 CPU (shared process-wide environment via
   `style_tts2::runtime_environment`; rc.15 allows one live `Environment`)
 - `alp_media` (`resample`, `PcmBuffer`), `alp_voice`
-  (`SttBackend`, `TranscriptSegment`, `VoiceError`)
+  (`SttBackend`, `TranscriptSegment`, `WordTimestamp`, `VoiceError`, `segment_speech`, `VadConfig`)
 - `serde_json` for tokenizer/config reads
 
 ## Threading / real-time notes

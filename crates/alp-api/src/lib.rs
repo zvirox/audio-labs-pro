@@ -4,13 +4,21 @@
 //! and headless scripts to interact with projects, media, tracks, clips, DSP,
 //! voice synthesis, transcription, and mastering export.
 
+pub mod analysis_ops;
 pub mod audit;
 pub mod checkpoint;
+pub mod effect_ops;
 pub mod error;
+pub mod export_ops;
+pub mod job_ops;
 pub mod jobs;
 pub mod media;
+pub mod project_ops;
 pub mod sandbox;
+pub mod script_voice_ops;
 pub mod session;
+pub mod smart_edit_ops;
+pub mod track_clip_ops;
 pub mod types;
 pub mod voice;
 
@@ -20,6 +28,7 @@ pub use checkpoint::{Checkpoint, CheckpointManager};
 pub use error::ApiError;
 pub use jobs::{JobInfo, JobManager, JobState};
 pub use media::{ClipPlacementReport, MediaImportReport, MediaListReport, MediaSummary};
+pub use project_ops::{HistoryEntry, ProjectListItem};
 pub use sandbox::WorkspaceSandbox;
 pub use session::ApiSession;
 pub use types::{

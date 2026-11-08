@@ -212,7 +212,7 @@ fn synthesize_daemon_first(
 
 /// Transcribe daemon-first; falls back to the in-process segmenter and names
 /// the engine that actually read the audio.
-fn transcribe_daemon_first(
+pub(crate) fn transcribe_daemon_first(
     buffer: &PcmBuffer,
     engine_out: &mut String,
 ) -> Result<Vec<TranscriptSegment>, ApiError> {
@@ -354,7 +354,12 @@ impl ApiSession {
             bit_depth: WavBitDepth::Int16,
             sample_rate: Some(buffer.sample_rate()),
             dither: DitherMode::Triangular,
-            metadata: AudioMetadata::default(),
+            metadata: AudioMetadata {
+                synthetic: true,
+                watermark: Some(format!("Audio Labs Pro ({engine})")),
+                comment: Some(format!("synthetic_voice: true; engine: {engine}")),
+                ..AudioMetadata::default()
+            },
         };
         export(&target, &buffer, &settings)?;
 
@@ -544,6 +549,14 @@ mod tests {
             report.engine == "builtin-acoustic" || report.engine.starts_with("daemon:"),
             "engine must be named honestly: {}",
             report.engine
+        );
+
+        let bytes = std::fs::read(&report.path).expect("read");
+        let content = String::from_utf8_lossy(&bytes);
+        assert!(content.contains("ISFT"), "WAV header contains ISFT tag");
+        assert!(
+            content.contains("synthetic_voice: true"),
+            "WAV header contains synthetic watermark"
         );
     }
 

@@ -7,7 +7,9 @@
 use std::path::PathBuf;
 
 use alp_core::{AddSource, Source, SourceId, frames_to_secs};
-use alp_media::{WavBitDepth, decode, write_wav};
+use alp_media::{
+    AudioMetadata, DitherMode, ExportFormat, ExportSettings, WavBitDepth, decode, export,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::error::ApiError;
@@ -172,7 +174,23 @@ impl ApiSession {
         let target: PathBuf = self
             .sandbox
             .validate_path(self.paths.media_dir().join(&file_name))?;
-        write_wav(&target, &buffer, WavBitDepth::Float32)?;
+
+        let mut metadata = AudioMetadata::default();
+        if let Ok(bytes) = std::fs::read(&input) {
+            let s = String::from_utf8_lossy(&bytes);
+            if s.contains("synthetic_voice: true") || s.contains("SYNTHETIC_VOICE=true") {
+                metadata.synthetic = true;
+                metadata.watermark = Some("Audio Labs Pro (Synthetic Audio Source)".into());
+            }
+        }
+        let settings = ExportSettings {
+            format: ExportFormat::Wav,
+            bit_depth: WavBitDepth::Float32,
+            sample_rate: Some(buffer.sample_rate()),
+            dither: DitherMode::None,
+            metadata,
+        };
+        export(&target, &buffer, &settings)?;
         let relative_path = format!("media/{file_name}");
 
         let source = Source::new(

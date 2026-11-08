@@ -6,6 +6,7 @@
 
 pub mod biquad;
 pub mod chain;
+pub mod denoise;
 pub mod dynamics;
 pub mod eq;
 pub mod limiter;
@@ -16,6 +17,7 @@ use alp_core::CoreError;
 
 pub use biquad::{Biquad, Coefficients, FilterType};
 pub use chain::{EffectChain, VoiceCleanup};
+pub use denoise::{DenoiseMode, NoiseReduction, RnnoiseDenoiser, SpectralDenoiser};
 pub use dynamics::{Compressor, NoiseGate};
 pub use eq::{EqBand, ParametricEq};
 pub use limiter::Limiter;

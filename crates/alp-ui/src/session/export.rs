@@ -32,6 +32,8 @@ impl EditSession {
                 artist: Some("Audio Labs Pro".into()),
                 album: Some("Demo session".into()),
                 comment: None,
+                synthetic: false,
+                watermark: None,
             },
         }
     }

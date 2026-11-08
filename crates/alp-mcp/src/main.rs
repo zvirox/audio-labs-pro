@@ -13,6 +13,7 @@ use clap::Parser;
 
 mod protocol;
 mod server;
+mod tool_defs;
 
 use protocol::{JsonRpcRequest, JsonRpcResponse};
 use server::McpServer;

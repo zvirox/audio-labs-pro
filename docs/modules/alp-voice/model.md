@@ -16,7 +16,7 @@ Defines model identifiers, manifest schema, file metadata, licensing records, st
 
 ## Data flow
 
-1. `standard_catalogue` provides definitions for built-in and downloadable models (Kokoro-82M, Kitten Nano).
+1. `standard_catalogue` provides definitions for built-in and downloadable models (Kokoro-82M, Kitten Nano, Moonshine Tiny, Qwen3-TTS).
 2. Manifests provide size, voice listings, and verification hashes used by `ModelManager`.
 
 ## Allowed dependencies

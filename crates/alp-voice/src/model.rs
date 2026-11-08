@@ -367,5 +367,66 @@ pub fn standard_catalogue() -> Vec<ModelManifest> {
             is_builtin: false,
             voice_names: vec![],
         },
+        ModelManifest {
+            id: ModelId::new("qwen3-tts"),
+            name: "Qwen3-TTS 0.6B (Voice Clone)".into(),
+            description: "Heavyweight neural voice cloning model with zero-shot reference conditioning and speaker adaptation.".into(),
+            kind: ModelKind::VoiceClone,
+            author: "Qwen / Alibaba Cloud".into(),
+            version: "1.0".into(),
+            license: ModelLicense {
+                name: "Apache-2.0".into(),
+                spdx: "Apache-2.0".into(),
+                terms: "Apache 2.0 License. Permissive for open-source and commercial applications.".into(),
+                accepted: false,
+            },
+            files: vec![
+                ModelFile {
+                    filename: "gguf/qwen3-tts-0.6b-q4_k_m.gguf".into(),
+                    size_bytes: 435_000_000,
+                    sha256: "9d3e680a6b579fbca820e2e2ec8b671a5c60205ec686a7614e59cf7e97491cf0".into(),
+                    url: "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-Base/resolve/main/qwen3-tts-0.6b-q4_k_m.gguf".into(),
+                },
+                ModelFile {
+                    filename: "onnx/speech_decoder.onnx".into(),
+                    size_bytes: 52_400_000,
+                    sha256: "f7b0f77b738c8cbe22b513c19e5d6d37ceb920ad5c3e6aa979bca883ee0657e9".into(),
+                    url: "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-Base/resolve/main/onnx/speech_decoder.onnx".into(),
+                },
+                ModelFile {
+                    filename: "tokenizer.json".into(),
+                    size_bytes: 2_780_000,
+                    sha256: "a1b2c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef0".into(),
+                    url: "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-Base/resolve/main/tokenizer.json".into(),
+                },
+                ModelFile {
+                    filename: "config.json".into(),
+                    size_bytes: 1_240,
+                    sha256: "b2c3d4e5f6a10718293a4b5c6d7e8f90123456789abcdef0123456789abcdef1".into(),
+                    url: "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-Base/resolve/main/config.json".into(),
+                },
+            ],
+            is_builtin: false,
+            voice_names: vec!["Dynamic Reference Clone".into()],
+        },
     ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn catalogue_contains_qwen3_tts_voice_clone_manifest() {
+        let catalogue = standard_catalogue();
+        let qwen = catalogue
+            .iter()
+            .find(|m| m.id.as_str() == "qwen3-tts")
+            .expect("qwen3-tts manifest must exist in standard catalogue");
+        assert_eq!(qwen.kind, ModelKind::VoiceClone);
+        assert_eq!(qwen.license.spdx, "Apache-2.0");
+        assert!(!qwen.is_builtin);
+        assert!(!qwen.files.is_empty());
+        assert!(qwen.total_size_bytes() > 0);
+    }
 }

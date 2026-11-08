@@ -5,8 +5,42 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+## [0.0.1-alpha.3] - 2026-11-08
+
 ### Added
 
+- **Neural noise suppression & spectral denoiser (Phase 5).** Implemented RNNoise
+  neural suppression (`nnnoiseless` 0.5.2) with FIFO buffering for arbitrary block
+  sizes and classical Spectral Subtraction (`SpectralDenoiser`) with noise profile
+  capture, over-subtraction factor $\alpha$, and spectral floor $\beta$ in `alp-dsp::denoise`.
+  Integrated `NoiseReduction` into the `VoiceCleanup` preset chain.
+- **Word-level timestamp alignment for STT (Phase 7).** Added `WordTimestamp`
+  to `alp-voice::TranscriptSegment`, decoded BPE tokens with speech-aligned frame
+  boundaries in `alp-infer::moonshine`, and wired word ranges into automatic filler
+  removal (`edit_remove_fillers`) in `alp-api::smart_edit_ops`.
+- **Heavy voice cloning runtime: Qwen3-TTS (Phase 8).** Added `qwen3-tts` manifest
+  to `standard_catalogue()` in `alp-voice` (`ModelKind::VoiceClone`, Apache-2.0,
+  435 MB GGUF weights + 52 MB ONNX decoder). Implemented `Qwen3Engine` in
+  `alp-infer::qwen3` with 256-lane L2-normalized acoustic speaker embedding extraction
+  and conditioned neural speech synthesis (`CloneBackend` & `TtsBackend`), wired into
+  daemon model loading.
+- **Synthetic audio watermark metadata header (Ethics transparency).** Added
+  `synthetic: bool` and `watermark: Option<String>` to `alp-media::AudioMetadata`.
+  WAV exports automatically embed RIFF INFO chunks (`ISFT`, `ICMT`) and FLAC exports
+  embed Vorbis comments (`SYNTHETIC_VOICE=true`, `PROVENANCE=...`). Updated `docs/ETHICS.md`
+  section 1.3 to declare that the provenance watermark is active and enforced across exports.
+- **MCP server modularization & evaluation benchmark (Phase 10).** Split
+  `alp-mcp::server` to extract `tool_defs.rs` under the 1,500-line limit. Authored
+  the complete MCP evaluation benchmark in `docs/mcp/EVAL.md` and implemented the
+  automated evaluation harness (`scripts/mcp-eval.sh` / `scripts/mcp_eval.py`)
+  verifying protocol handshake, resources, prompts, tool schemas, permission tier
+  gating, sandboxing jail, ethics clone exclusion, workflow execution, and session
+  rollback with a 100% pass rate.
+- **Architecture guards and module documentation.** Authored missing module specifications
+  for all `alp-api` operations (`analysis_ops`, `effect_ops`, `export_ops`, `job_ops`,
+  `project_ops`, `script_voice_ops`, `smart_edit_ops`, `track_clip_ops`), `alp-dsp::denoise`,
+  `alp-infer::qwen3`, and `alp-mcp::tool_defs` with all 8 required sections, satisfying
+  `check-docs.sh` (157 documents valid) and all workspace architecture guards.
 - **MCP media-to-timeline toolset (ADR 0027).** `media_list` (Observe),
   `media_import` (Edit), and `clip_add` (Edit) complete the
   generate-to-timeline chain over MCP: synthesized speech can now be

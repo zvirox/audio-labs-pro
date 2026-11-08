@@ -118,7 +118,7 @@ impl FromStr for ExportPreset {
     }
 }
 
-/// Basic file tags.
+/// Basic file tags and synthetic audio provenance.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct AudioMetadata {
     /// Track title.
@@ -129,6 +129,10 @@ pub struct AudioMetadata {
     pub album: Option<String>,
     /// Free-form comment.
     pub comment: Option<String>,
+    /// Whether this audio contains AI-synthesized or cloned speech.
+    pub synthetic: bool,
+    /// Watermark or provenance attribution string for synthetic speech.
+    pub watermark: Option<String>,
 }
 
 impl AudioMetadata {
@@ -139,6 +143,8 @@ impl AudioMetadata {
             && self.artist.is_none()
             && self.album.is_none()
             && self.comment.is_none()
+            && !self.synthetic
+            && self.watermark.is_none()
     }
 
     fn vorbis_comments(&self) -> Vec<String> {
@@ -155,22 +161,58 @@ impl AudioMetadata {
         if let Some(value) = &self.comment {
             comments.push(format!("COMMENT={value}"));
         }
+        if self.synthetic {
+            comments.push("SYNTHETIC_VOICE=true".into());
+            let prov = self
+                .watermark
+                .as_deref()
+                .unwrap_or("Audio Labs Pro Synthesized Speech");
+            comments.push(format!("PROVENANCE={prov}"));
+        }
         comments
     }
 
-    pub(crate) fn riff_tags(&self) -> Vec<(&'static [u8; 4], &str)> {
+    pub(crate) fn riff_tags(&self) -> Vec<(&'static [u8; 4], std::borrow::Cow<'_, str>)> {
         let mut tags = Vec::new();
         if let Some(value) = &self.title {
-            tags.push((b"INAM", value.as_str()));
+            tags.push((b"INAM", std::borrow::Cow::Borrowed(value.as_str())));
         }
         if let Some(value) = &self.artist {
-            tags.push((b"IART", value.as_str()));
+            tags.push((b"IART", std::borrow::Cow::Borrowed(value.as_str())));
         }
         if let Some(value) = &self.album {
-            tags.push((b"IPRD", value.as_str()));
+            tags.push((b"IPRD", std::borrow::Cow::Borrowed(value.as_str())));
         }
         if let Some(value) = &self.comment {
-            tags.push((b"ICMT", value.as_str()));
+            if self.synthetic {
+                let prov = self
+                    .watermark
+                    .as_deref()
+                    .unwrap_or("Audio Labs Pro Synthesized Speech");
+                tags.push((
+                    b"ICMT",
+                    std::borrow::Cow::Owned(format!(
+                        "{value}; synthetic_voice: true; provenance: {prov}"
+                    )),
+                ));
+            } else {
+                tags.push((b"ICMT", std::borrow::Cow::Borrowed(value.as_str())));
+            }
+        } else if self.synthetic {
+            let prov = self
+                .watermark
+                .as_deref()
+                .unwrap_or("Audio Labs Pro Synthesized Speech");
+            tags.push((
+                b"ICMT",
+                std::borrow::Cow::Owned(format!("synthetic_voice: true; provenance: {prov}")),
+            ));
+        }
+        if self.synthetic {
+            tags.push((
+                b"ISFT",
+                std::borrow::Cow::Borrowed("Audio Labs Pro (Synthetic Audio)"),
+            ));
         }
         tags
     }
@@ -449,5 +491,45 @@ mod tests {
         let mut settings = ExportSettings::wav(WavBitDepth::Float32);
         settings.format = ExportFormat::Flac;
         assert!(export(&path, &buffer(), &settings).is_err());
+    }
+
+    #[test]
+    fn export_writes_synthetic_watermark_in_wav_and_flac() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let pcm = PcmBuffer::new(48_000, 1, vec![0.0; 4800]).expect("pcm");
+        let metadata = AudioMetadata {
+            synthetic: true,
+            watermark: Some("Audio Labs Pro (qwen3-tts)".into()),
+            ..AudioMetadata::default()
+        };
+
+        let wav_path = dir.path().join("synth.wav");
+        let wav_settings = ExportSettings {
+            format: ExportFormat::Wav,
+            bit_depth: WavBitDepth::Int16,
+            sample_rate: None,
+            dither: DitherMode::None,
+            metadata: metadata.clone(),
+        };
+        export(&wav_path, &pcm, &wav_settings).expect("export wav");
+        let wav_bytes = std::fs::read(&wav_path).expect("read wav");
+        let wav_str = String::from_utf8_lossy(&wav_bytes);
+        assert!(wav_str.contains("ISFT"));
+        assert!(wav_str.contains("Audio Labs Pro"));
+        assert!(wav_str.contains("synthetic_voice: true"));
+
+        let flac_path = dir.path().join("synth.flac");
+        let flac_settings = ExportSettings {
+            format: ExportFormat::Flac,
+            bit_depth: WavBitDepth::Int16,
+            sample_rate: None,
+            dither: DitherMode::None,
+            metadata,
+        };
+        export(&flac_path, &pcm, &flac_settings).expect("export flac");
+        let flac_bytes = std::fs::read(&flac_path).expect("read flac");
+        let flac_str = String::from_utf8_lossy(&flac_bytes);
+        assert!(flac_str.contains("SYNTHETIC_VOICE=true"));
+        assert!(flac_str.contains("PROVENANCE=Audio Labs Pro (qwen3-tts)"));
     }
 }

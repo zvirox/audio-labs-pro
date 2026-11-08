@@ -124,6 +124,19 @@ pub trait CloneBackend: TtsBackend {
     ) -> Result<PcmBuffer, VoiceError>;
 }
 
+/// A word-level timestamp within a transcription segment.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct WordTimestamp {
+    /// The recognized word text.
+    pub word: String,
+    /// Absolute start frame in the audio stream.
+    pub start_frame: u64,
+    /// Absolute end frame in the audio stream.
+    pub end_frame: u64,
+    /// Alignment confidence or token probability (0.0 to 1.0).
+    pub probability: f32,
+}
+
 /// A transcription segment with timestamps in frames.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TranscriptSegment {
@@ -133,6 +146,9 @@ pub struct TranscriptSegment {
     pub end_frame: u64,
     /// Recognized text.
     pub text: String,
+    /// Word-level timestamps and frame alignments.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub words: Vec<WordTimestamp>,
 }
 
 /// A speech-to-text backend.

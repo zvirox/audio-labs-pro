@@ -10,6 +10,8 @@ publish.workspace = true
 
 [dependencies]
 alp-core.workspace = true
+nnnoiseless.workspace = true
+realfft.workspace = true
 
 [lints]
 workspace = true

@@ -519,7 +519,7 @@ impl ApiSession {
     /// Render the session's project to a mixed-down PCM buffer through the
     /// real engine scene pipeline (decode sources, build scene, offline
     /// render). This is the single path shared by export and analysis.
-    fn render_project_mixdown(&self) -> Result<alp_media::PcmBuffer, ApiError> {
+    pub(crate) fn render_project_mixdown(&self) -> Result<alp_media::PcmBuffer, ApiError> {
         let mut sources = std::collections::HashMap::new();
         for source in &self.project.sources {
             let path = self.paths.resolve_relative(&source.relative_path)?;
@@ -545,7 +545,27 @@ impl ApiSession {
         self.check_permission(PermissionTier::Export)?;
         let path = self.sandbox.validate_path(target_path)?;
         let buffer = self.render_project_mixdown()?;
-        let settings = preset.settings();
+        let mut settings = preset.settings();
+
+        let mut has_synthetic = false;
+        for source in &self.project.sources {
+            if let Ok(src_path) = self.paths.resolve_relative(&source.relative_path)
+                && let Ok(bytes) = std::fs::read(&src_path)
+            {
+                let content = String::from_utf8_lossy(&bytes);
+                if content.contains("synthetic_voice: true")
+                    || content.contains("SYNTHETIC_VOICE=true")
+                {
+                    has_synthetic = true;
+                    break;
+                }
+            }
+        }
+        if has_synthetic {
+            settings.metadata.synthetic = true;
+            settings.metadata.watermark = Some("Audio Labs Pro (Synthetic Audio Mix)".into());
+        }
+
         export(&path, &buffer, &settings)?;
 
         let display = path.display().to_string();

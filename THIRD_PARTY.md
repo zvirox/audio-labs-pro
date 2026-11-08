@@ -40,10 +40,10 @@ editing, **P4-P8** used by multitrack, DSP, TTS, dictation, and voice profiles,
 | tracing-subscriber | 0.3 | MIT | P1 | log filter and formatting |
 | wayland-client | 0.31.15 | MIT | P0 | compositor capability probe |
 | ebur128 | 0.1.10 | MIT | planned | LUFS |
-| nnnoiseless | 0.5.2 | BSD-3-Clause | planned | RNNoise denoise |
+| nnnoiseless | 0.5.2 | BSD-3-Clause | P5 | RNNoise denoise |
 | flacenc | 0.5.1 | Apache-2.0 | P3 | FLAC encoding (`default-features = false`) |
 | vorbis_rs | 0.5.6 | BSD-3-Clause | planned | OGG Vorbis encoding |
-| rustfft / realfft | 6.4.1 / 3.5.0 | MIT / MIT OR Apache-2.0 | P1 (transitive) | FFT (via rubato) |
+| rustfft / realfft | 6.4.1 / 3.5.0 | MIT / MIT OR Apache-2.0 | P5 | FFT (rubato, alp-dsp spectral denoiser) |
 | fundsp | 0.23.0 | MIT OR Apache-2.0 | candidate | DSP blocks (own biquads preferred) |
 
 Rejected: `mp3lame-encoder`/LAME (LGPL-3.0), espeak-ng (GPL-3.0),
@@ -59,7 +59,7 @@ F5-TTS weights (CC-BY-NC), XTTS-v2 (CPML), KittenTTS 2 (custom license + AUP).
 | KittenML/kitten-tts-nano-0.8-fp32 | instant TTS | Apache-2.0 (model card front matter) | approved, not run |
 | onnx-community/kitten-tts-nano-0.1-ONNX | instant TTS (downloadable via `kitten-nano` manifest) | Apache-2.0 (HF cardData) | P6, files hash-verified, engine not wired |
 | onnx-community/moonshine-tiny-ONNX | dictation | MIT (HF cardData) | approved, not run |
-| Qwen/Qwen3-TTS-12Hz-0.6B-Base | clone "Fast" | Apache-2.0 (HF cardData) | Phase 8, not run |
+| Qwen/Qwen3-TTS-12Hz-0.6B-Base | clone "Fast" | Apache-2.0 (HF cardData) | P8, packaged and integrated |
 | Qwen/Qwen3-TTS-12Hz-1.7B-Base | clone "Best" | Apache-2.0 (HF cardData) | Phase 8, not run |
 | openbmb/VoxCPM2 | voice design | Apache-2.0 (HF cardData) | Phase 8, verify weights on model card |
 | OmniVoice | clone | **unverified** | blocked until license verified |

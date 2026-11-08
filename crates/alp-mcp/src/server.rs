@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 
 use alp_api::{ApiSession, ExportPreset, PermissionTier};
 
-use crate::protocol::{JsonRpcRequest, JsonRpcResponse, McpTool, ToolCallResult};
+use crate::protocol::{JsonRpcRequest, JsonRpcResponse, ToolCallResult};
 
 /// MCP Server handling JSON-RPC 2.0 requests over an active `ApiSession`.
 pub struct McpServer {
@@ -72,281 +72,7 @@ impl McpServer {
     }
 
     fn handle_tools_list(&self, id: Value) -> JsonRpcResponse {
-        let mut tools = vec![
-            McpTool {
-                name: "project_info".into(),
-                description: "Get summary information about the active project (sample rate, tracks, clips, revision, duration)".into(),
-                input_schema: json!({
-                    "type": "object",
-                    "properties": {}
-                }),
-            },
-            McpTool {
-                name: "track_list".into(),
-                description: "List all tracks in the active project timeline with volume and pan state".into(),
-                input_schema: json!({
-                    "type": "object",
-                    "properties": {}
-                }),
-            },
-            McpTool {
-                name: "analyze_loudness".into(),
-                description: "Analyze integrated loudness (LUFS) and true peak level according to ITU-R BS.1770".into(),
-                input_schema: json!({
-                    "type": "object",
-                    "properties": {}
-                }),
-            },
-            McpTool {
-                name: "plugin_list".into(),
-                description: "List discovered CLAP and LV2 audio plugins installed on the host system".into(),
-                input_schema: json!({
-                    "type": "object",
-                    "properties": {}
-                }),
-            },
-            McpTool {
-                name: "media_list".into(),
-                description: "List imported project media sources: duration, sample rate, channels, peak, and whether each file exists".into(),
-                input_schema: json!({
-                    "type": "object",
-                    "properties": {}
-                }),
-            },
-            McpTool {
-                name: "tts_voices".into(),
-                description: "List known TTS voices (builtin, designed, cloned) plus daemon synthesis state. Cloned profiles are visible but can never be created or imported through MCP".into(),
-                input_schema: json!({
-                    "type": "object",
-                    "properties": {}
-                }),
-            },
-            McpTool {
-                name: "voice_profile_get".into(),
-                description: "Inspect one voice profile by id: kind, backend, tags, default parameters. Consent records are reported only as a boolean".into(),
-                input_schema: json!({
-                    "type": "object",
-                    "properties": {
-                        "voice_id": { "type": "string", "description": "Voice profile handle (see tts_voices)" }
-                    },
-                    "required": ["voice_id"]
-                }),
-            },
-            McpTool {
-                name: "transcribe".into(),
-                description: "Transcribe a workspace audio file (daemon STT when available; the built-in segmenter emits placeholder 'Speech segment N' words and says so in the result). Optionally writes text/srt/vtt output".into(),
-                input_schema: json!({
-                    "type": "object",
-                    "properties": {
-                        "path": { "type": "string", "description": "Audio file path inside the workspace sandbox" },
-                        "format": { "type": "string", "enum": ["text", "srt", "vtt"], "description": "Transcript format when writing `out` (default text)" },
-                        "out": { "type": "string", "description": "Optional destination path for the transcript file (inside the sandbox)" }
-                    },
-                    "required": ["path"]
-                }),
-            },
-        ];
-
-        if self.tier >= PermissionTier::Edit {
-            tools.extend(vec![
-                McpTool {
-                    name: "plugin_insert".into(),
-                    description: "Insert a CLAP or LV2 audio plugin onto a track's effect chain".into(),
-                    input_schema: json!({
-                        "type": "object",
-                        "properties": {
-                            "track_id": { "type": "string", "description": "Track ID" },
-                            "plugin_id": { "type": "string", "description": "CLAP ID, LV2 URI, or plugin identifier" }
-                        },
-                        "required": ["track_id", "plugin_id"]
-                    }),
-                },
-                McpTool {
-                    name: "plugin_param_set".into(),
-                    description: "Set an audio parameter value on an inserted plugin".into(),
-                    input_schema: json!({
-                        "type": "object",
-                        "properties": {
-                            "track_id": { "type": "string", "description": "Track ID" },
-                            "effect_id": { "type": "string", "description": "Effect ID on the track" },
-                            "param_name": { "type": "string", "description": "Parameter name (e.g. gain, drive, mix)" },
-                            "value": { "type": "number", "description": "Parameter numeric value" }
-                        },
-                        "required": ["track_id", "effect_id", "param_name", "value"]
-                    }),
-                },
-                McpTool {
-                    name: "project_save".into(),
-                    description: "Save the current project to disk immediately".into(),
-                    input_schema: json!({
-                        "type": "object",
-                        "properties": {}
-                    }),
-                },
-                McpTool {
-                    name: "history_undo".into(),
-                    description: "Revert the most recent edit command".into(),
-                    input_schema: json!({
-                        "type": "object",
-                        "properties": {}
-                    }),
-                },
-                McpTool {
-                    name: "history_redo".into(),
-                    description: "Reapply the most recently undone command".into(),
-                    input_schema: json!({
-                        "type": "object",
-                        "properties": {}
-                    }),
-                },
-                McpTool {
-                    name: "checkpoint_create".into(),
-                    description: "Create a named checkpoint of the project state for rollback".into(),
-                    input_schema: json!({
-                        "type": "object",
-                        "properties": {
-                            "label": { "type": "string", "description": "Human-readable label" }
-                        },
-                        "required": ["label"]
-                    }),
-                },
-                McpTool {
-                    name: "checkpoint_restore".into(),
-                    description: "Restore project state to a previously captured checkpoint".into(),
-                    input_schema: json!({
-                        "type": "object",
-                        "properties": {
-                            "checkpoint_id": { "type": "string", "description": "Checkpoint handle" }
-                        },
-                        "required": ["checkpoint_id"]
-                    }),
-                },
-                McpTool {
-                    name: "rollback_session".into(),
-                    description: "Rollback all edits made during the current AI session (restores session-start checkpoint)".into(),
-                    input_schema: json!({
-                        "type": "object",
-                        "properties": {}
-                    }),
-                },
-                McpTool {
-                    name: "track_add".into(),
-                    description: "Add a new track to the timeline".into(),
-                    input_schema: json!({
-                        "type": "object",
-                        "properties": {
-                            "name": { "type": "string", "description": "Track name" }
-                        },
-                        "required": ["name"]
-                    }),
-                },
-                McpTool {
-                    name: "track_remove".into(),
-                    description: "Remove a track from the timeline by track ID".into(),
-                    input_schema: json!({
-                        "type": "object",
-                        "properties": {
-                            "track_id": { "type": "string", "description": "Track handle" }
-                        },
-                        "required": ["track_id"]
-                    }),
-                },
-                McpTool {
-                    name: "clip_split".into(),
-                    description: "Split an existing clip at a timeline timestamp in seconds".into(),
-                    input_schema: json!({
-                        "type": "object",
-                        "properties": {
-                            "clip_id": { "type": "string", "description": "Clip handle" },
-                            "split_secs": { "type": "number", "description": "Split timestamp in seconds" }
-                        },
-                        "required": ["clip_id", "split_secs"]
-                    }),
-                },
-                McpTool {
-                    name: "range_delete".into(),
-                    description: "Delete an audio range on the first track and ripple cut subsequent audio on that track".into(),
-                    input_schema: json!({
-                        "type": "object",
-                        "properties": {
-                            "start_secs": { "type": "number", "description": "Range start in seconds" },
-                            "end_secs": { "type": "number", "description": "Range end in seconds" }
-                        },
-                        "required": ["start_secs", "end_secs"]
-                    }),
-                },
-                McpTool {
-                    name: "tts_generate".into(),
-                    description: "Synthesize speech into the project media dir as a WAV file. Reports the engine that actually ran (daemon model or built-in acoustic)".into(),
-                    input_schema: json!({
-                        "type": "object",
-                        "properties": {
-                            "text": { "type": "string", "description": "Text to speak" },
-                            "voice_id": { "type": "string", "description": "Voice profile handle (see tts_voices)" },
-                            "speed": { "type": "number", "description": "Speed multiplier, 0.25 to 4.0 (default 1.0)" }
-                        },
-                        "required": ["text", "voice_id"]
-                    }),
-                },
-                McpTool {
-                    name: "voice_design".into(),
-                    description: "Design a new voice from a natural-language brief and persist it. Designed profiles only: cloned voice creation and import are never available through MCP".into(),
-                    input_schema: json!({
-                        "type": "object",
-                        "properties": {
-                            "name": { "type": "string", "description": "Friendly name for the voice" },
-                            "prompt": { "type": "string", "description": "Descriptive brief, e.g. 'warm, deep BBC documentary narrator with calm pacing'" },
-                            "tags": { "type": "array", "items": { "type": "string" }, "description": "Optional category tags" }
-                        },
-                        "required": ["name", "prompt"]
-                    }),
-                },
-                McpTool {
-                    name: "media_import".into(),
-                    description: "Import a sandboxed audio file into the project media dir and register it as a source. Stored under a fresh generated name, so it never overwrites existing media".into(),
-                    input_schema: json!({
-                        "type": "object",
-                        "properties": {
-                            "path": { "type": "string", "description": "Audio file path inside the workspace sandbox" },
-                            "name": { "type": "string", "description": "Display name (defaults to the file's stem)" }
-                        },
-                        "required": ["path"]
-                    }),
-                },
-                McpTool {
-                    name: "clip_add".into(),
-                    description: "Place media on a track as a new clip at a timeline position (extends to the end of the source unless a duration is given). Overlapping clips are legal and summed by the mix engine".into(),
-                    input_schema: json!({
-                        "type": "object",
-                        "properties": {
-                            "track_id": { "type": "string", "description": "Track handle (see track_list)" },
-                            "source_id": { "type": "string", "description": "Media source handle (see media_list)" },
-                            "start_secs": { "type": "number", "description": "Timeline start in seconds" },
-                            "duration_secs": { "type": "number", "description": "Clip length in seconds (default: whole remaining source)" },
-                            "source_offset_secs": { "type": "number", "description": "Offset into the source in seconds (default 0)" },
-                            "gain": { "type": "number", "description": "Linear clip gain, 0.0 to 4.0 (default 1.0)" }
-                        },
-                        "required": ["track_id", "source_id", "start_secs"]
-                    }),
-                },
-            ]);
-        }
-
-        if self.tier >= PermissionTier::Export {
-            tools.push(McpTool {
-                name: "export_audio".into(),
-                description: "Export audio master using a delivery preset ('podcast', 'audiobook', 'voice_over')".into(),
-                input_schema: json!({
-                    "type": "object",
-                    "properties": {
-                        "preset": { "type": "string", "enum": ["podcast", "audiobook", "voice_over"] },
-                        "output_path": { "type": "string", "description": "Destination file path" }
-                    },
-                    "required": ["preset", "output_path"]
-                }),
-            });
-        }
-
+        let tools = crate::tool_defs::tools_for_tier(self.tier);
         JsonRpcResponse::success(id, json!({ "tools": tools }))
     }
 
@@ -793,6 +519,531 @@ impl McpServer {
                         serde_json::to_value(report).unwrap(),
                     ),
                     Err(e) => ToolCallResult::failure(format!("Clip placement failed: {e}")),
+                }
+            }
+            // --- Project lifecycle ---
+            "project_list" => match session.project_list() {
+                Ok(list) => ToolCallResult::success(
+                    format!("Found {} project(s)", list.len()),
+                    serde_json::to_value(list).unwrap(),
+                ),
+                Err(e) => ToolCallResult::failure(format!("Failed to list projects: {e}")),
+            },
+            "project_create" => {
+                let name = arguments.get("name").and_then(Value::as_str).unwrap_or("");
+                let sample_rate = arguments.get("sample_rate").and_then(Value::as_u64);
+                match session.project_create(name, sample_rate.map(|v| v as u32)) {
+                    Ok(project_id) => ToolCallResult::success(
+                        format!("Created project '{name}' with handle {project_id}"),
+                        json!({ "project_id": project_id }),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Project creation failed: {e}")),
+                }
+            }
+            "project_open" => {
+                let path = arguments.get("path").and_then(Value::as_str).unwrap_or("");
+                match session.project_open(path) {
+                    Ok(project_id) => ToolCallResult::success(
+                        format!("Opened project at '{path}' with handle {project_id}"),
+                        json!({ "project_id": project_id }),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Project open failed: {e}")),
+                }
+            }
+            "project_close" => match session.project_close() {
+                Ok(()) => ToolCallResult::success(
+                    "Project closed, reverted to empty draft",
+                    json!({ "closed": true }),
+                ),
+                Err(e) => ToolCallResult::failure(format!("Project close failed: {e}")),
+            },
+            "history_list" => match session.history_list() {
+                Ok(entries) => ToolCallResult::success(
+                    format!("History has {} entries", entries.len()),
+                    serde_json::to_value(entries).unwrap(),
+                ),
+                Err(e) => ToolCallResult::failure(format!("Failed to list history: {e}")),
+            },
+            // --- Track & Clip updates ---
+            "track_update" => {
+                let track_id = arguments
+                    .get("track_id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                let name = arguments
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .map(String::from);
+                let gain = arguments
+                    .get("gain")
+                    .and_then(Value::as_f64)
+                    .map(|v| v as f32);
+                let pan = arguments
+                    .get("pan")
+                    .and_then(Value::as_f64)
+                    .map(|v| v as f32);
+                let muted = arguments.get("muted").and_then(Value::as_bool);
+                let solo = arguments.get("solo").and_then(Value::as_bool);
+                let armed = arguments.get("armed").and_then(Value::as_bool);
+                match session.track_update(track_id, name, gain, pan, muted, solo, armed) {
+                    Ok(()) => ToolCallResult::success(
+                        format!("Updated track {track_id}"),
+                        json!({ "updated": true }),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Track update failed: {e}")),
+                }
+            }
+            "clip_update" => {
+                let clip_id = arguments
+                    .get("clip_id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                let start_secs = arguments.get("start_secs").and_then(Value::as_f64);
+                let gain = arguments
+                    .get("gain")
+                    .and_then(Value::as_f64)
+                    .map(|v| v as f32);
+                let fade_in_secs = arguments.get("fade_in_secs").and_then(Value::as_f64);
+                let fade_out_secs = arguments.get("fade_out_secs").and_then(Value::as_f64);
+                match session.clip_update(clip_id, start_secs, gain, fade_in_secs, fade_out_secs) {
+                    Ok(()) => ToolCallResult::success(
+                        format!("Updated clip {clip_id}"),
+                        json!({ "updated": true }),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Clip update failed: {e}")),
+                }
+            }
+            "clip_remove" => {
+                let clip_id = arguments
+                    .get("clip_id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                match session.clip_remove(clip_id) {
+                    Ok(()) => ToolCallResult::success(
+                        format!("Removed clip {clip_id}"),
+                        json!({ "removed": true }),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Clip removal failed: {e}")),
+                }
+            }
+            "marker_add" => {
+                let name = arguments.get("name").and_then(Value::as_str).unwrap_or("");
+                let position_secs = arguments
+                    .get("position_secs")
+                    .and_then(Value::as_f64)
+                    .unwrap_or(0.0);
+                match session.marker_add(name, position_secs) {
+                    Ok(marker_id) => ToolCallResult::success(
+                        format!(
+                            "Added marker '{name}' at {position_secs:.3}s with handle {marker_id}"
+                        ),
+                        json!({ "marker_id": marker_id }),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Marker add failed: {e}")),
+                }
+            }
+            "edit_batch" => {
+                let label = arguments
+                    .get("label")
+                    .and_then(Value::as_str)
+                    .unwrap_or("Batch");
+                match session.edit_batch(label) {
+                    Ok(report) => ToolCallResult::success(
+                        format!(
+                            "Executed batch '{label}': {} operations",
+                            report.operations_applied
+                        ),
+                        serde_json::to_value(report).unwrap(),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Batch execution failed: {e}")),
+                }
+            }
+            // --- Effects & Presets ---
+            "effect_catalog" => match session.effect_catalog() {
+                Ok(report) => ToolCallResult::success(
+                    format!(
+                        "Found {} effects and {} presets",
+                        report.effects.len(),
+                        report.presets.len()
+                    ),
+                    serde_json::to_value(report).unwrap(),
+                ),
+                Err(e) => ToolCallResult::failure(format!("Effect catalog failed: {e}")),
+            },
+            "effect_apply" => {
+                let track_id = arguments
+                    .get("track_id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                let effect_id = arguments
+                    .get("effect_id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                let params = arguments.get("params").cloned().unwrap_or(Value::Null);
+                match session.effect_apply(track_id, effect_id, params) {
+                    Ok(fx_id) => ToolCallResult::success(
+                        format!("Applied effect {effect_id} on track {track_id} as {fx_id}"),
+                        json!({ "effect_id": fx_id, "track_id": track_id }),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Effect apply failed: {e}")),
+                }
+            }
+            "effect_update" => {
+                let track_id = arguments
+                    .get("track_id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                let effect_id = arguments
+                    .get("effect_id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                let params = arguments.get("params").cloned().unwrap_or(Value::Null);
+                match session.effect_update(track_id, effect_id, params) {
+                    Ok(()) => ToolCallResult::success(
+                        format!("Updated effect {effect_id} on track {track_id}"),
+                        json!({ "updated": true }),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Effect update failed: {e}")),
+                }
+            }
+            "effect_remove" => {
+                let track_id = arguments
+                    .get("track_id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                let effect_id = arguments
+                    .get("effect_id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                match session.effect_remove(track_id, effect_id) {
+                    Ok(()) => ToolCallResult::success(
+                        format!("Removed effect {effect_id} from track {track_id}"),
+                        json!({ "removed": true }),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Effect removal failed: {e}")),
+                }
+            }
+            "preset_apply" => {
+                let track_id = arguments
+                    .get("track_id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                let preset = arguments
+                    .get("preset")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                match session.preset_apply(track_id, preset) {
+                    Ok(()) => ToolCallResult::success(
+                        format!("Applied preset '{preset}' to track {track_id}"),
+                        json!({ "applied": true }),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Preset apply failed: {e}")),
+                }
+            }
+            // --- Smart Edits ---
+            "edit_trim_silence" => {
+                let track_id = arguments
+                    .get("track_id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                let threshold_db = arguments
+                    .get("threshold_db")
+                    .and_then(Value::as_f64)
+                    .unwrap_or(-30.0) as f32;
+                let min_silence_secs = arguments
+                    .get("min_silence_secs")
+                    .and_then(Value::as_f64)
+                    .unwrap_or(0.1);
+                match session.edit_trim_silence(track_id, threshold_db, min_silence_secs) {
+                    Ok(report) => ToolCallResult::success(
+                        format!(
+                            "Trimmed {:.2}s of silence from track {track_id}",
+                            report.silence_trimmed_secs
+                        ),
+                        serde_json::to_value(report).unwrap(),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Silence trim failed: {e}")),
+                }
+            }
+            "edit_shorten_pauses" => {
+                let track_id = arguments
+                    .get("track_id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                let max_pause_secs = arguments
+                    .get("max_pause_secs")
+                    .and_then(Value::as_f64)
+                    .unwrap_or(0.5);
+                let crossfade_ms = arguments
+                    .get("crossfade_ms")
+                    .and_then(Value::as_u64)
+                    .unwrap_or(10);
+                match session.edit_shorten_pauses(track_id, max_pause_secs, crossfade_ms) {
+                    Ok(report) => ToolCallResult::success(
+                        format!(
+                            "Shortened {:.2}s of pauses on track {track_id}",
+                            report.seconds_removed
+                        ),
+                        serde_json::to_value(report).unwrap(),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Pause shorten failed: {e}")),
+                }
+            }
+            "edit_remove_fillers" => {
+                let track_id = arguments
+                    .get("track_id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                let filler_words = arguments
+                    .get("filler_word_ids")
+                    .and_then(Value::as_array)
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(Value::as_str)
+                            .map(String::from)
+                            .collect()
+                    });
+                match session.edit_remove_fillers(track_id, filler_words) {
+                    Ok(report) => ToolCallResult::success(
+                        format!(
+                            "Removed {} filler words from track {track_id}",
+                            report.fillers_removed
+                        ),
+                        serde_json::to_value(report).unwrap(),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Filler removal failed: {e}")),
+                }
+            }
+            "edit_match_loudness" => {
+                let target_lufs = arguments
+                    .get("target_lufs")
+                    .and_then(Value::as_f64)
+                    .unwrap_or(-16.0) as f32;
+                match session.edit_match_loudness(target_lufs) {
+                    Ok(report) => ToolCallResult::success(
+                        format!(
+                            "Matched loudness to {target_lufs:.1} LUFS (actual {actual:.1} LUFS)",
+                            actual = report.actual_lufs
+                        ),
+                        serde_json::to_value(report).unwrap(),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Loudness match failed: {e}")),
+                }
+            }
+            // --- Analysis ---
+            "analyze_silence" => match session.analyze_silence() {
+                Ok(report) => ToolCallResult::success(
+                    format!(
+                        "Found {} silence intervals ({:.2}s total)",
+                        report.silence_count, report.total_silence_secs
+                    ),
+                    serde_json::to_value(report).unwrap(),
+                ),
+                Err(e) => ToolCallResult::failure(format!("Silence analysis failed: {e}")),
+            },
+            "analyze_quality" => match session.analyze_quality() {
+                Ok(report) => ToolCallResult::success(
+                    format!(
+                        "Quality: LUFS={:.1}, Peak={:.1}dB, Noise={:.1}dB, Clips={}, Speech={:.0}%",
+                        report.integrated_lufs,
+                        report.true_peak_dbfs,
+                        report.noise_floor_dbfs,
+                        report.clipping_spikes,
+                        report.speech_ratio * 100.0
+                    ),
+                    serde_json::to_value(report).unwrap(),
+                ),
+                Err(e) => ToolCallResult::failure(format!("Quality analysis failed: {e}")),
+            },
+            "analyze_spectrum" => match session.analyze_spectrum() {
+                Ok(report) => ToolCallResult::success(
+                    format!("Spectrum: {} frequency bins", report.bins.len()),
+                    serde_json::to_value(report).unwrap(),
+                ),
+                Err(e) => ToolCallResult::failure(format!("Spectrum analysis failed: {e}")),
+            },
+            "render_waveform" => {
+                let width = arguments.get("width").and_then(Value::as_u64).unwrap_or(80) as usize;
+                let height = arguments
+                    .get("height")
+                    .and_then(Value::as_u64)
+                    .unwrap_or(20) as usize;
+                match session.render_waveform(width, height) {
+                    Ok(report) => ToolCallResult::success(
+                        format!("Rendered waveform ({}x{})", width, height),
+                        serde_json::to_value(report).unwrap(),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Waveform render failed: {e}")),
+                }
+            }
+            "render_spectrogram" => {
+                let width = arguments.get("width").and_then(Value::as_u64).unwrap_or(80) as usize;
+                let height = arguments
+                    .get("height")
+                    .and_then(Value::as_u64)
+                    .unwrap_or(40) as usize;
+                match session.render_spectrogram(width, height) {
+                    Ok(report) => ToolCallResult::success(
+                        format!("Rendered spectrogram ({}x{})", width, height),
+                        serde_json::to_value(report).unwrap(),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Spectrogram render failed: {e}")),
+                }
+            }
+            "compare_renders" => {
+                let path_a = arguments
+                    .get("path_a")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                let path_b = arguments
+                    .get("path_b")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                match session.compare_renders(path_a, path_b) {
+                    Ok(report) => ToolCallResult::success(
+                        format!(
+                            "Similarity: {:.1}% - {}",
+                            report.similarity * 100.0,
+                            report.recommendation
+                        ),
+                        serde_json::to_value(report).unwrap(),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Comparison failed: {e}")),
+                }
+            }
+            // --- Export ---
+            "export_presets" => match session.export_presets() {
+                Ok(report) => ToolCallResult::success(
+                    format!("Found {} export presets", report.presets.len()),
+                    serde_json::to_value(report).unwrap(),
+                ),
+                Err(e) => ToolCallResult::failure(format!("Export presets failed: {e}")),
+            },
+            "export_stems" => {
+                let output_dir = arguments
+                    .get("output_dir")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                let preset_id = arguments
+                    .get("preset_id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("voice_over");
+                match session.export_stems(output_dir, preset_id) {
+                    Ok(reports) => ToolCallResult::success(
+                        format!("Exported {} stems to {output_dir}", reports.len()),
+                        serde_json::to_value(reports).unwrap(),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Stem export failed: {e}")),
+                }
+            }
+            "export_transcript" => {
+                let format = arguments
+                    .get("format")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                let path = arguments.get("path").and_then(Value::as_str).unwrap_or("");
+                match session.export_transcript(format, path) {
+                    Ok(report) => ToolCallResult::success(
+                        format!(
+                            "Exported transcript in {} format to {}",
+                            report.format, report.path
+                        ),
+                        serde_json::to_value(report).unwrap(),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Transcript export failed: {e}")),
+                }
+            }
+            "preview_render" => {
+                let start_secs = arguments
+                    .get("start_secs")
+                    .and_then(Value::as_f64)
+                    .unwrap_or(0.0);
+                let duration_secs = arguments
+                    .get("duration_secs")
+                    .and_then(Value::as_f64)
+                    .unwrap_or(10.0);
+                match session.preview_render(start_secs, duration_secs) {
+                    Ok(report) => ToolCallResult::success(
+                        format!(
+                            "Preview render: {:.2}s from {:.2}s",
+                            report.duration_secs, report.start_secs
+                        ),
+                        serde_json::to_value(report).unwrap(),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Preview render failed: {e}")),
+                }
+            }
+            // --- Jobs ---
+            "job_status" => {
+                let job_id = arguments
+                    .get("job_id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                match session.job_status(job_id) {
+                    Ok(report) => ToolCallResult::success(
+                        format!(
+                            "Job {job_id}: {} ({:.0}%)",
+                            report.state,
+                            report.progress * 100.0
+                        ),
+                        serde_json::to_value(report).unwrap(),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Job status failed: {e}")),
+                }
+            }
+            "job_cancel" => {
+                let job_id = arguments
+                    .get("job_id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                match session.job_cancel(job_id) {
+                    Ok(()) => ToolCallResult::success(
+                        format!("Cancelled job {job_id}"),
+                        json!({ "cancelled": true }),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Job cancel failed: {e}")),
+                }
+            }
+            // --- Script & Voice ---
+            "tts_script_generate" => {
+                let script_json = arguments
+                    .get("script_json")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                match session.tts_script_generate(script_json) {
+                    Ok(()) => ToolCallResult::success(
+                        "Script generated and placed on timeline",
+                        json!({ "generated": true }),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Script generation failed: {e}")),
+                }
+            }
+            "tts_regenerate" => {
+                let clip_id = arguments
+                    .get("clip_id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                let new_text = arguments
+                    .get("new_text")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                let voice_id = arguments
+                    .get("voice_id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                let speed = arguments
+                    .get("speed")
+                    .and_then(Value::as_f64)
+                    .map(|v| v as f32);
+                match session.tts_regenerate(clip_id, new_text, voice_id, speed) {
+                    Ok(report) => ToolCallResult::success(
+                        format!(
+                            "Regenerated clip {clip_id} with new text ({:.2}s)",
+                            report.duration_secs
+                        ),
+                        serde_json::to_value(report).unwrap(),
+                    ),
+                    Err(e) => ToolCallResult::failure(format!("Regeneration failed: {e}")),
                 }
             }
             _ => ToolCallResult::failure(format!("tool '{tool_name}' not recognized")),

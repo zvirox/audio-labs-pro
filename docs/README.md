@@ -27,6 +27,7 @@ profiles. Licensed Apache-2.0.
 | [mcp/AGENT_GUIDE.md](mcp/AGENT_GUIDE.md) | Operational guidelines and principles for LLM agents interacting with ALP |
 | [mcp/WORKFLOWS.md](mcp/WORKFLOWS.md) | Multi-step agent workflow recipes (cleaning, podcast, audiobook, narration) |
 | [mcp/SECURITY.md](mcp/SECURITY.md) | Security model, sandboxing, audit trails, and human-only consent invariants |
+| [mcp/EVAL.md](mcp/EVAL.md) | MCP evaluation framework, benchmark suites, and automated test harness |
 | [USER_GUIDE.md](USER_GUIDE.md) | Comprehensive workstation manual for recording, editing, voice, and export |
 | [KEYBOARD_SHORTCUTS.md](KEYBOARD_SHORTCUTS.md) | Full hotkey cheat sheet |
 | [ETHICS.md](ETHICS.md) | Voice cloning ethics, human consent gate, and acceptable-use policies |

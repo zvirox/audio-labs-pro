@@ -8,6 +8,7 @@
 mod kitten;
 mod kokoro;
 mod moonshine;
+mod qwen3;
 mod style_tts2;
 
 use std::fs;
@@ -30,6 +31,7 @@ use alp_voice::{
 use kitten::KittenEngine;
 use kokoro::KokoroEngine;
 use moonshine::MoonshineEngine;
+use qwen3::Qwen3Engine;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut socket_path = default_socket_path();
@@ -231,6 +233,9 @@ impl Worker {
             }
             kitten::MODEL_ID => {
                 KittenEngine::load(model_dir).map(|engine| Box::new(engine) as Box<dyn TtsBackend>)
+            }
+            qwen3::MODEL_ID => {
+                Qwen3Engine::load(model_dir).map(|engine| Box::new(engine) as Box<dyn TtsBackend>)
             }
             _ => {
                 eprintln!("worker: LoadModel {model_id}: no engine is wired for this model yet");
@@ -749,5 +754,27 @@ mod tests {
                 active_stt_model: Some("moonshine-tiny".into()),
             }
         );
+    }
+
+    #[test]
+    fn a_qwen3_load_without_files_declines_and_keeps_serving() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut worker = Worker::new();
+        assert_eq!(
+            worker.load_model_from("qwen3-tts", dir.path()),
+            InferResponse::Status {
+                active_model: Some("builtin-acoustic".into()),
+                ready: false,
+                active_stt_model: None,
+            }
+        );
+        let pcm = worker
+            .synthesize(&TtsRequest {
+                text: "Still serving via builtin".into(),
+                voice_id: "aura".into(),
+                speed: 1.0,
+            })
+            .expect("builtin synthesis survives decline");
+        assert!(pcm.duration_secs() > 0.0);
     }
 }

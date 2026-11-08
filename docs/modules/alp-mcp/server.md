@@ -26,7 +26,8 @@ The primary MCP request dispatcher routing protocol methods, tool executions, an
 - `std::sync::{Arc, Mutex}`
 - `serde_json::{Value, json}`
 - `alp_api::{ApiSession, ExportPreset, PermissionTier}`
-- `crate::protocol::{JsonRpcRequest, JsonRpcResponse, McpTool, ToolCallResult}`
+- `crate::protocol::{JsonRpcRequest, JsonRpcResponse, ToolCallResult}`
+- `crate::tool_defs::tools_for_tier`
 
 ## Threading / real-time notes
 

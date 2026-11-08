@@ -6,15 +6,16 @@ Provides the core transcript document model, timecode formatting, subtitle expor
 
 ## Public API
 
-- `Transcript`: `new`, `add_segment`, `duration_frames`, `duration_secs`, `to_plain_text`, `to_srt`, `to_vtt`, `parse_srt`, `cut_range_for_segment`
-- `TranscriptSegment`: `start_frame`, `end_frame`, `text`
+- `Transcript`: `new`, `add_segment`, `add_segment_with_words`, `all_words`, `find_word_at_frame`, `cut_range_for_word`, `duration_secs`, `to_plain_text`, `to_srt`, `to_vtt`, `parse_srt`, `cut_range_for_segment`
+- `TranscriptSegment`: `start_frame`, `end_frame`, `text`, `words`, `new`, `with_words`, `words()`, `find_word_at_frame`
+- `WordTimestamp`: `word`, `start_frame`, `end_frame`, `probability`
 
 ## Data flow
 
-1. Speech-to-text recognizers or VAD engines produce sequences of `TranscriptSegment` objects with frame-accurate boundaries.
+1. Speech-to-text recognizers or VAD engines produce sequences of `TranscriptSegment` objects with frame-accurate boundaries and optional word-level `WordTimestamp` alignments.
 2. `Transcript` formats segments into TXT, SRT (`00:00:01,234`), or WebVTT (`00:00:01.234`) formats.
 3. SubRip SRT files can be parsed back into `Transcript` objects with sample-rate aware frame calculation.
-4. When a user deletes or trims text in the transcript, `cut_range_for_segment` calculates the exact `FrameRange` to execute ripple deletion on the timeline.
+4. When a user deletes or trims text in the transcript, `cut_range_for_segment` or `cut_range_for_word` calculates the exact `FrameRange` to execute ripple deletion on the timeline.
 
 ## Allowed dependencies
 
