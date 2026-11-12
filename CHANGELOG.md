@@ -5,6 +5,83 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+### Added
+
+- **A working acoustic clone tier (P0, ADR 0028).** `CloneBackend` now has a
+  real implementation. `alp-voice::voiceprint` measures a reference recording
+  with actual signal analysis — normalized-autocorrelation pitch tracking
+  (with octave correction and parabolic interpolation), a hand-written radix-2
+  FFT for the long-term average spectrum, and 16 log-spaced band gains
+  between 100 Hz and 8 kHz — and encodes the result into the existing
+  256-dimensional `VoiceProfile::cached_embedding` slot, so a cloned profile
+  stays a plain portable profile JSON. `alp-voice::acoustic`
+  (`AcousticCloneBackend`) renders speech as a 48 kHz harmonic stack whose
+  per-harmonic weights are the product of a three-formant resonance envelope,
+  the measured band gains, and a glottal `1/k` rolloff: the output genuinely
+  tracks the reference's timbre rather than imitating it by ear. This tier
+  needs no model download, so cloned voices work on a clean machine.
+- **Profile-conditioned synthesis over the daemon protocol.** A cloned
+  profile's speaker conditioning cannot be expressed by a voice id, so
+  `InferRequest::SynthesizeWithProfile` carries the whole profile and
+  `InferClient::synthesize_with_profile` sends it. `alp-infer` gained a third
+  engine slot (`CloneEngine`) beside synthesis and transcription; loading
+  `qwen3-tts` populates it without disturbing the other two. The daemon
+  enforces the human-only consent gate when it receives a cloned profile, and
+  the in-process fallbacks in `alp-api` and `alp-ui` enforce the same rule so
+  the guarantee does not depend on the daemon being reachable.
+- **The clone tier is reachable headlessly.** `alp-cli tts --profile <id>`
+  renders any stored profile, including a cloned one, with the same
+  daemon-first routing and acoustic fallback. *Creating* a cloned profile
+  stays GUI-only, as the build plan requires: the consent attestation must be
+  human-only, and the CLI must not satisfy it.
+- **One source for the synthetic-voice provenance tag.** Added
+  `AudioMetadata::synthetic_speech(engine)`, which builds the watermark, the
+  comment and the synthetic flag together. Every TTS export path now uses it
+  — the API, the CLI (`tts` and `script render`) and the UI — so the tag
+  cannot be dropped by a path that forgot to set it. The MCP `export_audio`
+  tool still exposes no metadata flags, so the tag remains impossible to
+  disable through MCP.
+- **A dependency-free GGUF header reader.** `alp-infer::gguf` parses a GGUF
+  v3 header (magic, version, counts and metadata) without any new crate, so
+  a heavy-model installation can be validated before its runtime is loaded.
+
+### Fixed
+
+- **The Qwen3-TTS model manifest pointed at files that do not exist.** The
+  catalogue entry listed `gguf/qwen3-tts-0.6b-q4_k_m.gguf` and
+  `onnx/speech_decoder.onnx` under `Qwen/Qwen3-TTS-12Hz-0.6B-Base` — that
+  repository ships neither GGUF nor ONNX — and carried a placeholder SHA-256
+  (`a1b2c3d4…`). The manifest now lists the real Apache-2.0 files: the
+  `Serveurperso/Qwen3-TTS-GGUF` talker and 12 Hz tokenizer exports, plus the
+  upstream text-side tokenizer files, with every size and digest read back
+  from the upstream LFS pointers.
+- **The heavy clone engine reported synthesis it could not perform.** The
+  previous `qwen3` engine described a "reference-conditioned acoustic mode"
+  that did not exist and presented formant synthesis as neural output.
+  `Qwen3Engine` now validates the installation for real (files present, GGUF
+  headers parsed, architecture `qwen3-tts` and 28 talker blocks checked) and
+  returns `VoiceError::Unavailable` naming the missing runtime. It never
+  produces audio, so its output can never be mistaken for neural speech.
+- **The GUI's clone dialog saved a profile with no voiceprint.** It now
+  measures the reference through `AcousticCloneBackend::create_profile`, so
+  the saved profile carries real conditioning. The GUI's generation and story
+  renders route cloned profiles through the profile-conditioned request.
+- **The CLI's TTS exports carried no synthetic-voice tag.** `alp-cli tts` and
+  `alp-cli script render` wrote untagged WAVs.
+
+### Known gaps
+
+- **The Qwen3-TTS neural runtime is not implemented.** Qwen3-TTS is a bespoke
+  three-part architecture (a Res2Net speaker encoder, a 28-block Qwen3 talker
+  with interleaved mRoPE, and a 5-block code predictor) plus a separate 12 Hz
+  codec decoder. `candle-transformers` 0.11 has no `qwen3-tts` model and no
+  upstream Rust implementation exists, so executing it is a separate project.
+  The engine validates and defers honestly; see ADR 0028.
+- **The acoustic clone tier reproduces timbre, not identity.** It does not
+  model accent, phrasing or prosody, and the result is clearly synthetic next
+  to a neural voice. Every surface names it `acoustic-clone` so the
+  distinction is never blurred.
+
 ## [0.0.1-alpha.3] - 2026-11-08
 
 ### Added
@@ -24,6 +101,12 @@ versions follow the release milestones in the build plan.
   `alp-infer::qwen3` with 256-lane L2-normalized acoustic speaker embedding extraction
   and conditioned neural speech synthesis (`CloneBackend` & `TtsBackend`), wired into
   daemon model loading.
+  > **Corrected in Unreleased.** The manifest's file URLs and digests did not
+  > correspond to any real file, and the engine did not execute the model — the
+  > "conditioned neural speech synthesis" it described was formant synthesis
+  > presented as neural output. The manifest now lists verified Apache-2.0
+  > files, and the engine validates the installation and reports the missing
+  > runtime honestly. See ADR 0028.
 - **Synthetic audio watermark metadata header (Ethics transparency).** Added
   `synthetic: bool` and `watermark: Option<String>` to `alp-media::AudioMetadata`.
   WAV exports automatically embed RIFF INFO chunks (`ISFT`, `ICMT`) and FLAC exports

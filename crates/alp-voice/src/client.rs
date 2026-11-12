@@ -15,6 +15,18 @@ use crate::{
     text::TextNormalizer,
 };
 
+/// The request identifier carried by a synthesis request.
+fn request_id(request: &InferRequest) -> u64 {
+    match request {
+        InferRequest::Synthesize { id, .. }
+        | InferRequest::SynthesizeWithProfile { id, .. }
+        | InferRequest::Transcribe { id, .. }
+        | InferRequest::DesignVoice { id, .. }
+        | InferRequest::Cancel { id } => *id,
+        _ => 0,
+    }
+}
+
 /// High-level client communicating with the `alp-infer` worker over Unix domain sockets.
 pub struct InferClient {
     socket_path: PathBuf,
@@ -117,18 +129,36 @@ impl InferClient {
 
     /// Send a synthesis request to the daemon.
     pub fn synthesize(&self, request: &TtsRequest) -> Result<PcmBuffer, VoiceError> {
+        self.synthesize_with(InferRequest::Synthesize {
+            id: self.next_id.fetch_add(1, Ordering::SeqCst),
+            request: request.clone(),
+        })
+    }
+
+    /// Send a profile-conditioned synthesis request to the daemon.
+    ///
+    /// Cloned voices carry speaker conditioning (a measured voiceprint or a
+    /// neural speaker embedding) inside the profile, so they need their own
+    /// request variant; [`InferClient::synthesize`] cannot express them.
+    pub fn synthesize_with_profile(
+        &self,
+        profile: &crate::profile::VoiceProfile,
+        request: &TtsRequest,
+    ) -> Result<PcmBuffer, VoiceError> {
+        self.synthesize_with(InferRequest::SynthesizeWithProfile {
+            id: self.next_id.fetch_add(1, Ordering::SeqCst),
+            profile: Box::new(profile.clone()),
+            request: request.clone(),
+        })
+    }
+
+    /// Write one request to the daemon and collect the matching answer.
+    fn synthesize_with(&self, request: InferRequest) -> Result<PcmBuffer, VoiceError> {
         let mut stream = UnixStream::connect(&self.socket_path)
             .map_err(|e| VoiceError::Unavailable(format!("alp-infer daemon unreachable: {e}")))?;
 
-        let id = self.next_id.fetch_add(1, Ordering::SeqCst);
-        write_message(
-            &mut stream,
-            &InferRequest::Synthesize {
-                id,
-                request: request.clone(),
-            },
-        )
-        .map_err(|e| VoiceError::Backend(e.to_string()))?;
+        let id = request_id(&request);
+        write_message(&mut stream, &request).map_err(|e| VoiceError::Backend(e.to_string()))?;
 
         loop {
             let resp: InferResponse = read_message(&mut stream)

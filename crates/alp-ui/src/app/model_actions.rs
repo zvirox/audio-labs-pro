@@ -11,8 +11,9 @@ use std::sync::Arc;
 
 use alp_media::PcmBuffer;
 use alp_voice::{
-    BuiltinAcousticBackend, DownloadError, InferClient, ModelDownloader, ModelId, ModelManager,
-    ModelManagerConfig, TtsBackend as _, TtsRequest, VoiceError,
+    AcousticCloneBackend, BuiltinAcousticBackend, CloneBackend as _, DownloadError, InferClient,
+    ModelDownloader, ModelId, ModelManager, ModelManagerConfig, TtsBackend as _, TtsRequest,
+    VoiceError, VoiceKind, VoiceProfile,
 };
 
 use super::App;
@@ -255,6 +256,37 @@ pub(crate) fn synthesize_via_tier(
     }
     detail("Synthesizing with the built-in acoustic engine".to_owned());
     BuiltinAcousticBackend::new().synthesize(request)
+}
+
+/// Synthesis for a *cloned* voice: the profile carries the speaker
+/// conditioning, so it has to travel with the request instead of being
+/// referenced by id alone.
+///
+/// The daemon enforces the human-only consent gate; the in-process fallback
+/// enforces it here so the guarantee holds with or without the daemon.
+pub(crate) fn synthesize_clone_via_tier(
+    profile: &VoiceProfile,
+    request: &TtsRequest,
+    detail: &mut dyn FnMut(String),
+) -> Result<PcmBuffer, VoiceError> {
+    if profile.kind == VoiceKind::Cloned && profile.consent.is_none() {
+        return Err(VoiceError::Backend(
+            "refusing to render a cloned voice without a human consent record".into(),
+        ));
+    }
+
+    let client = InferClient::new();
+    if client.is_alive() {
+        detail("Synthesizing the clone via the alp-infer engine".to_owned());
+        match client.synthesize_with_profile(profile, request) {
+            Ok(buffer) => return Ok(buffer),
+            Err(error) => detail(format!(
+                "daemon clone synthesis failed ({error}); using the acoustic clone tier"
+            )),
+        }
+    }
+    detail("Synthesizing the clone with the acoustic clone tier".to_owned());
+    AcousticCloneBackend::new().synthesize_with(profile, request)
 }
 
 #[cfg(test)]

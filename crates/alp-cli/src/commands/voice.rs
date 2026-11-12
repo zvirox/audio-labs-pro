@@ -1,38 +1,96 @@
 //! Voice, model manager, and script rendering CLI commands.
 
-use alp_media::{ExportSettings, WavBitDepth, export};
+use alp_media::{AudioMetadata, ExportSettings, WavBitDepth, export};
 use alp_voice::client::{BuiltinAcousticBackend, InferClient};
 use alp_voice::model::ModelId;
-use alp_voice::{ModelManager, Script, TtsBackend, TtsRequest};
+use alp_voice::{
+    AcousticCloneBackend, CloneBackend, ModelManager, ProfileStore, Script, TtsBackend, TtsRequest,
+};
 use anyhow::{Context, Result, bail};
 use std::fs;
 use std::path::Path;
 use std::time::Instant;
 
 /// Synthesize speech from text and write the output WAV.
-pub fn tts(text: &str, output: &Path, voice: &str, speed: f32) -> Result<()> {
+///
+/// When `profile_id` is given, the voice is rendered from that stored profile:
+/// a cloned profile carries its measured speaker conditioning, so it has to
+/// travel with the request instead of being referenced by id alone.
+pub fn tts(
+    text: &str,
+    output: &Path,
+    voice: &str,
+    profile_id: Option<&str>,
+    speed: f32,
+) -> Result<()> {
     let started = Instant::now();
     let request = TtsRequest {
         text: text.to_string(),
-        voice_id: voice.to_string(),
+        voice_id: profile_id.unwrap_or(voice).to_string(),
         speed,
     };
 
-    // Try communicating with alp-infer over Unix socket first, fall back to in-process acoustic
     let client = InferClient::new();
-    let buffer = if client.is_alive() {
-        println!("synthesizing via alp-infer worker...");
-        client
-            .synthesize(&request)
-            .map_err(|e| anyhow::anyhow!("{e}"))?
-    } else {
-        let backend = BuiltinAcousticBackend::new();
-        backend
-            .synthesize(&request)
-            .map_err(|e| anyhow::anyhow!("{e}"))?
+    let (buffer, engine) = match profile_id {
+        Some(id) => {
+            let store = ProfileStore::default_store().context("failed to open profile store")?;
+            let profile = store
+                .get_profile(id)
+                .ok_or_else(|| anyhow::anyhow!("voice profile '{id}' not found"))?;
+
+            if client.is_alive() {
+                println!("synthesizing clone via alp-infer worker...");
+                match client.synthesize_with_profile(&profile, &request) {
+                    Ok(buffer) => {
+                        let engine = match client.status().ok().and_then(|s| s.active_model) {
+                            Some(model) => format!("daemon:{model}"),
+                            None => "daemon:acoustic-clone".to_owned(),
+                        };
+                        (buffer, engine)
+                    }
+                    Err(error) => {
+                        eprintln!(
+                            "daemon clone synthesis failed ({error}); using the acoustic clone tier"
+                        );
+                        let buffer = AcousticCloneBackend::new()
+                            .synthesize_with(&profile, &request)
+                            .map_err(|e| anyhow::anyhow!("{e}"))?;
+                        (buffer, "acoustic-clone".to_owned())
+                    }
+                }
+            } else {
+                let buffer = AcousticCloneBackend::new()
+                    .synthesize_with(&profile, &request)
+                    .map_err(|e| anyhow::anyhow!("{e}"))?;
+                (buffer, "acoustic-clone".to_owned())
+            }
+        }
+        None => {
+            // Try communicating with alp-infer over Unix socket first, fall back to in-process acoustic
+            if client.is_alive() {
+                println!("synthesizing via alp-infer worker...");
+                let buffer = client
+                    .synthesize(&request)
+                    .map_err(|e| anyhow::anyhow!("{e}"))?;
+                let engine = match client.status().ok().and_then(|s| s.active_model) {
+                    Some(model) => format!("daemon:{model}"),
+                    None => "daemon:builtin-acoustic".to_owned(),
+                };
+                (buffer, engine)
+            } else {
+                let backend = BuiltinAcousticBackend::new();
+                let buffer = backend
+                    .synthesize(&request)
+                    .map_err(|e| anyhow::anyhow!("{e}"))?;
+                (buffer, "builtin-acoustic".to_owned())
+            }
+        }
     };
 
-    let settings = ExportSettings::wav(WavBitDepth::Int24);
+    let mut settings = ExportSettings::wav(WavBitDepth::Int24);
+    // Every file this command writes is synthesized speech, so it always
+    // carries the synthetic-voice provenance tag.
+    settings.metadata = AudioMetadata::synthetic_speech(&engine);
     let report = export(output, &buffer, &settings)
         .with_context(|| format!("failed to export {}", output.display()))?;
 
@@ -40,6 +98,7 @@ pub fn tts(text: &str, output: &Path, voice: &str, speed: f32) -> Result<()> {
     println!("TTS synthesis:    {}", output.display());
     println!("voice:            {voice}");
     println!("speed:            {speed:.2}x");
+    println!("engine:           {engine}");
     println!(
         "format:           {} Hz · {} ch",
         buffer.sample_rate(),
@@ -257,7 +316,9 @@ pub fn script_render(script_path: &Path, output: &Path, stitch: bool) -> Result<
 
     if stitch {
         let combined = script.stitch(0.3)?;
-        let settings = ExportSettings::wav(WavBitDepth::Int24);
+        let mut settings = ExportSettings::wav(WavBitDepth::Int24);
+        // Script renders are synthesized speech too.
+        settings.metadata = AudioMetadata::synthetic_speech("builtin-acoustic");
         export(output, &combined, &settings)?;
         println!(
             "stitched output:  {} ({:.2}s)",

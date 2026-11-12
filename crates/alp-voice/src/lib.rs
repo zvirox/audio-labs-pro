@@ -1,5 +1,6 @@
 //! `alp-voice` — TTS, STT and cloning traits, model manager, protocol and script mode.
 
+pub mod acoustic;
 pub mod cache;
 pub mod client;
 pub mod compare;
@@ -18,8 +19,10 @@ pub mod stt;
 pub mod text;
 pub mod transcript;
 pub mod vad;
+pub mod voiceprint;
 pub mod zip;
 
+pub use acoustic::AcousticCloneBackend;
 pub use cache::VoiceGenerationCache;
 pub use client::{BuiltinAcousticBackend, InferClient};
 pub use compare::{VoiceComparison, compare_audio};
@@ -42,6 +45,7 @@ pub use stt::{BuiltinSttBackend, DictationEvent, DictationSession};
 pub use text::TextNormalizer;
 pub use transcript::Transcript;
 pub use vad::{VadConfig, VoiceActivityDetector, segment_speech};
+pub use voiceprint::{EMBEDDING_DIM, VoicePrint, analyze_voiceprint};
 
 use alp_media::PcmBuffer;
 use serde::{Deserialize, Serialize};

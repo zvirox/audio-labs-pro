@@ -14,9 +14,9 @@ use alp_media::{
     AudioMetadata, DitherMode, ExportFormat, ExportSettings, PcmBuffer, WavBitDepth, decode, export,
 };
 use alp_voice::{
-    BuiltinAcousticBackend, BuiltinSttBackend, InferClient, ProfileStore, SttBackend, Transcript,
-    TranscriptSegment, TtsBackend, TtsRequest, VoiceDesignRequest, VoiceKind, VoiceProfile,
-    design_voice,
+    AcousticCloneBackend, BuiltinAcousticBackend, BuiltinSttBackend, CloneBackend, InferClient,
+    ProfileStore, SttBackend, Transcript, TranscriptSegment, TtsBackend, TtsRequest,
+    VoiceDesignRequest, VoiceKind, VoiceProfile, design_voice,
 };
 use serde::{Deserialize, Serialize};
 
@@ -210,6 +210,67 @@ fn synthesize_daemon_first(
         .map_err(|e| ApiError::Validation(format!("synthesis failed: {e}")))
 }
 
+/// Synthesize a *cloned* voice: daemon-first, acoustic fallback in-process.
+///
+/// A cloned profile carries speaker conditioning (a measured voiceprint or a
+/// neural speaker embedding), so it cannot be expressed by a plain
+/// [`InferRequest::Synthesize`] request — the profile itself has to reach the
+/// engine. The daemon enforces the human-only consent gate; the in-process
+/// fallback enforces it here so the guarantee does not depend on the daemon
+/// being reachable.
+fn synthesize_clone_daemon_first(
+    profile: &VoiceProfile,
+    request: &TtsRequest,
+    engine_out: &mut String,
+) -> Result<PcmBuffer, ApiError> {
+    if profile.kind == VoiceKind::Cloned && profile.consent.is_none() {
+        return Err(ApiError::Validation(
+            "refusing to render a cloned voice without a human consent record".into(),
+        ));
+    }
+
+    let client = InferClient::new();
+    if client.is_alive() {
+        match client.synthesize_with_profile(profile, request) {
+            Ok(buffer) => {
+                *engine_out = match client.status().ok().and_then(|s| s.active_model) {
+                    Some(model) => format!("daemon:{model}"),
+                    None => "daemon:acoustic-clone".to_owned(),
+                };
+                return Ok(buffer);
+            }
+            Err(error) => {
+                tracing::warn!(
+                    "daemon clone synthesis failed ({error}); falling back to the acoustic clone tier"
+                );
+            }
+        }
+    }
+
+    *engine_out = "acoustic-clone".to_owned();
+    AcousticCloneBackend::new()
+        .synthesize_with(profile, request)
+        .map_err(|e| ApiError::Validation(format!("clone synthesis failed: {e}")))
+}
+
+/// Synthesize speech for a profile, choosing the right engine for its kind.
+///
+/// Built-in and designed voices go through the plain synthesis path; cloned
+/// voices take the profile-conditioned path so their speaker conditioning is
+/// actually applied.
+fn synthesize_profile_daemon_first(
+    profile: &VoiceProfile,
+    request: &TtsRequest,
+    sample_rate: u32,
+    engine_out: &mut String,
+) -> Result<PcmBuffer, ApiError> {
+    if profile.kind == VoiceKind::Cloned {
+        synthesize_clone_daemon_first(profile, request, engine_out)
+    } else {
+        synthesize_daemon_first(request, sample_rate, engine_out)
+    }
+}
+
 /// Transcribe daemon-first; falls back to the in-process segmenter and names
 /// the engine that actually read the audio.
 pub(crate) fn transcribe_daemon_first(
@@ -330,11 +391,11 @@ impl ApiSession {
         }
 
         let store = self.voice_store()?;
-        if store.get_profile(voice_id).is_none() {
-            return Err(ApiError::NotFound(format!(
+        let profile = store.get_profile(voice_id).ok_or_else(|| {
+            ApiError::NotFound(format!(
                 "voice '{voice_id}' not found; call tts_voices for the known ids"
-            )));
-        }
+            ))
+        })?;
 
         let speed = speed.unwrap_or(1.0).clamp(TTS_SPEED_MIN, TTS_SPEED_MAX);
         let request = TtsRequest {
@@ -344,7 +405,12 @@ impl ApiSession {
         };
 
         let mut engine = String::from("builtin-acoustic");
-        let buffer = synthesize_daemon_first(&request, self.project.sample_rate, &mut engine)?;
+        let buffer = synthesize_profile_daemon_first(
+            &profile,
+            &request,
+            self.project.sample_rate,
+            &mut engine,
+        )?;
 
         let target = self
             .sandbox
@@ -488,6 +554,43 @@ mod tests {
         ApiSession::new(project, proj_paths, tier, sandbox, audit, "agent")
             .expect("session")
             .with_voice_store_dir(dir.join("voices"))
+    }
+
+    /// A reference recording with a known fundamental, used to build a clone.
+    fn reference(f0: f32, rate: u32) -> PcmBuffer {
+        let frames = rate as usize;
+        let samples: Vec<f32> = (0..frames)
+            .map(|index| {
+                let t = index as f32 / rate as f32;
+                0.4 * (2.0 * std::f32::consts::PI * f0 * t).sin()
+            })
+            .collect();
+        PcmBuffer::new(rate, 1, samples).expect("pcm")
+    }
+
+    /// Save a cloned profile with a consent record into the session's store.
+    fn save_clone(session: &ApiSession, f0: f32) -> VoiceProfile {
+        let store = ProfileStore::new(
+            session
+                .voice_store_dir
+                .clone()
+                .expect("the test session pins a voice store"),
+        )
+        .expect("store");
+        let mut profile = AcousticCloneBackend::new()
+            .create_profile(&reference(f0, 16_000), None)
+            .expect("create clone");
+        profile.id = format!("clone-test-{f0:.0}");
+        profile.consent = Some(
+            alp_voice::ConsentRecord::new(
+                "Test Speaker",
+                "Test Engineer",
+                "The speaker gave explicit permission to clone this voice.",
+            )
+            .expect("consent"),
+        );
+        store.save_profile(&profile).expect("save");
+        profile
     }
 
     #[test]
@@ -686,5 +789,87 @@ mod tests {
             .voice_design("No Brief", "   ", vec![])
             .expect_err("empty prompt");
         assert!(matches!(empty_prompt, ApiError::Validation(_)));
+    }
+
+    #[test]
+    fn a_cloned_profile_is_rendered_with_the_clone_tier() {
+        let dir = tempdir().expect("tempdir");
+        let mut session = session_in(dir.path(), PermissionTier::Edit);
+        let profile = save_clone(&session, 120.0);
+
+        let report = session
+            .tts_generate("Hello from the cloned voice", &profile.id, None)
+            .expect("generate");
+
+        // The clone tier must be the engine that ran — a plain synthesis
+        // would ignore the profile's conditioning entirely.
+        assert!(
+            report.engine == "acoustic-clone" || report.engine.starts_with("daemon:"),
+            "engine must be named honestly: {}",
+            report.engine
+        );
+        assert!(report.duration_secs > 0.0, "duration reported");
+        assert!(std::path::Path::new(&report.path).is_file(), "file written");
+
+        // The written file is synthesized speech, so it carries the tag.
+        let bytes = std::fs::read(&report.path).expect("read");
+        let content = String::from_utf8_lossy(&bytes);
+        assert!(
+            content.contains("synthetic_voice: true"),
+            "WAV header contains synthetic watermark"
+        );
+    }
+
+    #[test]
+    fn a_clone_without_consent_is_refused() {
+        let dir = tempdir().expect("tempdir");
+        let mut session = session_in(dir.path(), PermissionTier::Edit);
+
+        // Build a cloned profile *without* a consent record and write it
+        // straight into the store, bypassing the save-time gate that the
+        // normal flow applies.
+        let store = ProfileStore::new(dir.path().join("voices")).expect("store");
+        let mut profile = AcousticCloneBackend::new()
+            .create_profile(&reference(120.0, 16_000), None)
+            .expect("create clone");
+        profile.id = "clone-no-consent".into();
+        profile.consent = None;
+        store
+            .save_profile(&profile)
+            .expect_err("the store must refuse a clone without consent");
+
+        // A profile that bypassed the store gate entirely is still refused at
+        // render time.
+        let error = session
+            .tts_generate("This must not render", "clone-no-consent", None)
+            .expect_err("consent gate");
+        assert!(
+            matches!(error, ApiError::NotFound(_) | ApiError::Validation(_)),
+            "unexpected error: {error}"
+        );
+    }
+
+    #[test]
+    fn the_render_path_refuses_a_consentless_clone() {
+        // The gate is enforced by the renderer itself, not only by the
+        // store, so a profile that reached the renderer another way is
+        // still refused.
+        let mut profile = AcousticCloneBackend::new()
+            .create_profile(&reference(120.0, 16_000), None)
+            .expect("create clone");
+        profile.consent = None;
+
+        let request = TtsRequest {
+            text: "This must not render".into(),
+            voice_id: profile.id.clone(),
+            speed: 1.0,
+        };
+        let mut engine = String::new();
+        let error = synthesize_profile_daemon_first(&profile, &request, 48_000, &mut engine)
+            .expect_err("consent gate");
+        assert!(
+            matches!(error, ApiError::Validation(_)),
+            "unexpected error: {error}"
+        );
     }
 }

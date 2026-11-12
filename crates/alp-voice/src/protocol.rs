@@ -24,6 +24,20 @@ pub enum InferRequest {
     LoadModel { model_id: String },
     /// Request speech synthesis for a single utterance.
     Synthesize { id: u64, request: TtsRequest },
+    /// Request speech synthesis using an existing voice profile.
+    ///
+    /// This is the only path that can render a *cloned* voice: the plain
+    /// [`InferRequest::Synthesize`] request carries a voice id but no
+    /// speaker conditioning. The profile travels whole so the daemon can read
+    /// the cached speaker embedding and the profile's generation parameters.
+    ///
+    /// The human-only consent rule is enforced on the daemon side: a profile
+    /// of kind `Cloned` is only rendered when it carries a consent record.
+    SynthesizeWithProfile {
+        id: u64,
+        profile: Box<crate::profile::VoiceProfile>,
+        request: TtsRequest,
+    },
     /// Request speech-to-text transcription for an audio buffer.
     Transcribe {
         id: u64,

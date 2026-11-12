@@ -286,6 +286,14 @@ pub enum Command {
         /// Target voice identifier (defaults to "aura").
         #[arg(long, default_value = "aura")]
         voice: String,
+        /// Voice profile id to render with (e.g. a cloned profile).
+        ///
+        /// The profile is read from the local voice library; a cloned profile
+        /// is rendered with its stored speaker conditioning. Cloned profiles
+        /// can only be *created* in the app, where the human consent
+        /// attestation happens.
+        #[arg(long)]
+        profile: Option<String>,
         /// Speed multiplier (default 1.0).
         #[arg(long, default_value_t = 1.0)]
         speed: f32,

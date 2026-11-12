@@ -147,6 +147,22 @@ impl AudioMetadata {
             && self.watermark.is_none()
     }
 
+    /// Build the metadata that marks a file as synthesized speech.
+    ///
+    /// Every surface that writes generated speech uses this constructor, so
+    /// the synthetic-voice tag cannot be dropped by a path that forgot to set
+    /// it. The `engine` argument names the engine that actually produced the
+    /// audio and is written into both the watermark and the comment.
+    #[must_use]
+    pub fn synthetic_speech(engine: &str) -> Self {
+        Self {
+            comment: Some(format!("synthetic_voice: true; engine: {engine}")),
+            synthetic: true,
+            watermark: Some(format!("Audio Labs Pro ({engine})")),
+            ..Self::default()
+        }
+    }
+
     fn vorbis_comments(&self) -> Vec<String> {
         let mut comments = Vec::new();
         if let Some(value) = &self.title {
@@ -531,5 +547,43 @@ mod tests {
         let flac_str = String::from_utf8_lossy(&flac_bytes);
         assert!(flac_str.contains("SYNTHETIC_VOICE=true"));
         assert!(flac_str.contains("PROVENANCE=Audio Labs Pro (qwen3-tts)"));
+    }
+
+    #[test]
+    fn the_synthetic_speech_helper_names_the_engine() {
+        let metadata = AudioMetadata::synthetic_speech("acoustic-clone");
+        assert!(metadata.synthetic, "the synthetic flag must be set");
+        assert_eq!(
+            metadata.watermark.as_deref(),
+            Some("Audio Labs Pro (acoustic-clone)")
+        );
+        assert_eq!(
+            metadata.comment.as_deref(),
+            Some("synthetic_voice: true; engine: acoustic-clone")
+        );
+        assert!(!metadata.is_empty(), "a tagged file is never empty");
+    }
+
+    #[test]
+    fn every_synthetic_export_carries_the_tag() {
+        // The helper is the single source of the provenance tag, so a file
+        // written through it always carries both the RIFF comment and the
+        // software tag.
+        let dir = tempfile::tempdir().expect("tempdir");
+        let pcm = PcmBuffer::new(48_000, 1, vec![0.0; 4800]).expect("pcm");
+        let path = dir.path().join("tagged.wav");
+        let settings = ExportSettings {
+            format: ExportFormat::Wav,
+            bit_depth: WavBitDepth::Int16,
+            sample_rate: None,
+            dither: DitherMode::None,
+            metadata: AudioMetadata::synthetic_speech("builtin-acoustic"),
+        };
+        export(&path, &pcm, &settings).expect("export");
+        let bytes = std::fs::read(&path).expect("read");
+        let content = String::from_utf8_lossy(&bytes);
+        assert!(content.contains("synthetic_voice: true"));
+        assert!(content.contains("engine: builtin-acoustic"));
+        assert!(content.contains("ISFT"));
     }
 }

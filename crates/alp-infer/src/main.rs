@@ -5,6 +5,7 @@
 //! daemon's lifetime: a loaded neural model is reused across connections, and
 //! the builtin tier serves requests before (and after) any model load.
 
+mod gguf;
 mod kitten;
 mod kokoro;
 mod moonshine;
@@ -24,8 +25,8 @@ use alp_voice::protocol::{
     InferRequest, InferResponse, default_socket_path, read_message, write_message,
 };
 use alp_voice::{
-    BuiltinSttBackend, ModelId, ModelManager, SttBackend, TranscriptSegment, TtsBackend,
-    TtsRequest, VoiceError,
+    AcousticCloneBackend, BuiltinSttBackend, CloneBackend, ModelId, ModelManager, SttBackend,
+    TranscriptSegment, TtsBackend, TtsRequest, VoiceError, VoiceKind, VoiceProfile,
 };
 
 use kitten::KittenEngine;
@@ -138,6 +139,32 @@ enum SttEngine {
     Neural(Box<dyn SttBackend>),
 }
 
+/// The clone tier: backends able to render a *cloned* voice from a profile.
+///
+/// The acoustic tier is always present and needs no model download, so a
+/// cloned profile renders on a machine with nothing installed. A neural clone
+/// backend (Qwen3-TTS) replaces it in the same slot after a successful load.
+enum CloneEngine {
+    /// The dependency-free acoustic tier.
+    Acoustic(AcousticCloneBackend),
+    /// A loaded neural clone backend (Qwen3-TTS).
+    Neural(Box<dyn CloneBackend>),
+}
+
+impl CloneEngine {
+    /// Render a profile with whichever clone backend is active.
+    fn synthesize_with(
+        &self,
+        profile: &VoiceProfile,
+        request: &TtsRequest,
+    ) -> Result<PcmBuffer, VoiceError> {
+        match self {
+            CloneEngine::Acoustic(backend) => backend.synthesize_with(profile, request),
+            CloneEngine::Neural(backend) => backend.synthesize_with(profile, request),
+        }
+    }
+}
+
 /// Per-daemon state shared by all connections. Clients are handled
 /// sequentially on the accept loop, so a loaded model is constructed once
 /// and no locking is needed.
@@ -147,6 +174,7 @@ enum SttEngine {
 struct Worker {
     engine: TtsEngine,
     stt: SttEngine,
+    clone: CloneEngine,
     active_model: Option<String>,
     active_stt: Option<String>,
 }
@@ -156,6 +184,7 @@ impl Worker {
         Self {
             engine: TtsEngine::Builtin(BuiltinAcousticBackend::new()),
             stt: SttEngine::Builtin(BuiltinSttBackend::new()),
+            clone: CloneEngine::Acoustic(AcousticCloneBackend::new()),
             active_model: Some("builtin-acoustic".into()),
             active_stt: None,
         }
@@ -193,10 +222,12 @@ impl Worker {
     /// Load a model from an explicit directory (injected for tests).
     ///
     /// Model ids dispatch by tier: STT models (`moonshine-tiny`) load into
-    /// the transcription slot without touching synthesis; everything else
-    /// loads into the synthesis slot. `builtin-acoustic` resets synthesis
-    /// only — the built-in STT backend never unloads, it is simply
-    /// shadowed while a neural STT model is loaded.
+    /// the transcription slot without touching synthesis; clone models
+    /// (`qwen3-tts`) load into the clone slot without touching synthesis
+    /// either; everything else loads into the synthesis slot.
+    /// `builtin-acoustic` resets synthesis only — the built-in STT backend
+    /// never unloads, it is simply shadowed while a neural STT model is
+    /// loaded, and the clone tier is likewise left alone.
     fn load_model_from(&mut self, model_id: &str, model_dir: &Path) -> InferResponse {
         if model_id == "builtin-acoustic" || model_id.is_empty() {
             self.engine = TtsEngine::Builtin(BuiltinAcousticBackend::new());
@@ -225,6 +256,31 @@ impl Worker {
             };
         }
 
+        // Clone slot: a heavy clone backend replaces the acoustic tier without
+        // disturbing synthesis or transcription.
+        if model_id == qwen3::MODEL_ID {
+            let loaded = Qwen3Engine::load(model_dir);
+            return match loaded {
+                Ok(engine) => {
+                    eprintln!(
+                        "worker: {model_id} loaded from {} (talker {}, decoder {}; {} Hz output); neural cloning active",
+                        engine.model_dir().display(),
+                        engine.talker_path().display(),
+                        engine.decoder_path().display(),
+                        qwen3::SAMPLE_RATE
+                    );
+                    self.clone = CloneEngine::Neural(Box::new(engine));
+                    self.status()
+                }
+                Err(error) => {
+                    eprintln!(
+                        "worker: loading {model_id} failed, keeping the acoustic clone tier: {error}"
+                    );
+                    self.declined()
+                }
+            };
+        }
+
         // Each wired neural model maps to one engine constructor; anything
         // else is declined honestly and the active engine keeps serving.
         let loaded = match model_id {
@@ -233,9 +289,6 @@ impl Worker {
             }
             kitten::MODEL_ID => {
                 KittenEngine::load(model_dir).map(|engine| Box::new(engine) as Box<dyn TtsBackend>)
-            }
-            qwen3::MODEL_ID => {
-                Qwen3Engine::load(model_dir).map(|engine| Box::new(engine) as Box<dyn TtsBackend>)
             }
             _ => {
                 eprintln!("worker: LoadModel {model_id}: no engine is wired for this model yet");
@@ -311,6 +364,55 @@ fn handle_client(mut stream: UnixStream, worker: &mut Worker, running: Arc<Atomi
                 let _ = write_message(&mut stream, &InferResponse::Progress { id, progress: 0.2 });
 
                 match worker.synthesize(&request) {
+                    Ok(pcm) => {
+                        let _ = write_message(
+                            &mut stream,
+                            &InferResponse::Progress { id, progress: 1.0 },
+                        );
+                        let resp = InferResponse::Audio {
+                            id,
+                            sample_rate: pcm.sample_rate(),
+                            channels: pcm.channels(),
+                            samples: pcm.samples().to_vec(),
+                        };
+                        if write_message(&mut stream, &resp).is_err() {
+                            break;
+                        }
+                    }
+                    Err(e) => {
+                        let resp = InferResponse::Error {
+                            id,
+                            message: e.to_string(),
+                        };
+                        if write_message(&mut stream, &resp).is_err() {
+                            break;
+                        }
+                    }
+                }
+            }
+            InferRequest::SynthesizeWithProfile {
+                id,
+                profile,
+                request,
+            } => {
+                let _ = write_message(&mut stream, &InferResponse::Progress { id, progress: 0.2 });
+
+                // The human-only consent rule is enforced here, at the only
+                // place a clone can actually be rendered. A profile of kind
+                // `Cloned` without an attested consent record is refused.
+                let refusal = match profile.kind {
+                    VoiceKind::Cloned if profile.consent.is_none() => {
+                        Some("refusing to render a cloned voice without a human consent record")
+                    }
+                    _ => None,
+                };
+
+                let outcome = match refusal {
+                    Some(message) => Err(VoiceError::Backend(message.to_owned())),
+                    None => worker.clone.synthesize_with(&profile, &request),
+                };
+
+                match outcome {
                     Ok(pcm) => {
                         let _ = write_message(
                             &mut stream,

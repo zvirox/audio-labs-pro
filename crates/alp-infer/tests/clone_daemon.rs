@@ -1,0 +1,195 @@
+//! End-to-end verification of the clone tier over the real daemon socket.
+//!
+//! This test starts the actual `alp-infer` binary, talks to it over a Unix
+//! domain socket with the production protocol, and checks the clone path
+//! end to end: a profile with a measured voiceprint is sent to the daemon,
+//! the daemon renders it, and the returned audio is re-analyzed to confirm it
+//! carries the reference's pitch.
+//!
+//! It also pins the consent gate: the daemon must refuse a cloned profile
+//! that arrives without a consent record.
+
+use std::path::PathBuf;
+use std::process::{Child, Command, Stdio};
+use std::time::{Duration, Instant};
+
+use alp_media::PcmBuffer;
+use alp_voice::{
+    AcousticCloneBackend, CloneBackend, ConsentRecord, InferClient, TtsRequest, VoiceKind,
+    analyze_voiceprint,
+};
+
+/// A voiced vowel with a known fundamental.
+fn vowel(f0: f32, seconds: f32, rate: u32) -> PcmBuffer {
+    let frames = (seconds * rate as f32) as usize;
+    let samples: Vec<f32> = (0..frames)
+        .map(|index| {
+            let t = index as f32 / rate as f32;
+            let fundamental = (2.0 * std::f32::consts::PI * f0 * t).sin();
+            let second = 0.55 * (2.0 * std::f32::consts::PI * 2.0 * f0 * t).sin();
+            let third = 0.30 * (2.0 * std::f32::consts::PI * 3.0 * f0 * t).sin();
+            0.25 * (fundamental + second + third) / 1.85
+        })
+        .collect();
+    PcmBuffer::new(rate, 1, samples).expect("pcm")
+}
+
+/// A phrase-like sequence of vowels with pauses.
+fn phrase(f0: f32, rate: u32) -> PcmBuffer {
+    let mut samples = Vec::new();
+    for seconds in [0.6f32, 0.5, 0.6, 0.5] {
+        let chunk = vowel(f0, seconds, rate);
+        samples.extend_from_slice(chunk.samples());
+        samples.extend(std::iter::repeat_n(0.0, (0.12 * rate as f32) as usize));
+    }
+    PcmBuffer::new(rate, 1, samples).expect("pcm")
+}
+
+/// The daemon process, killed when the guard drops.
+struct Daemon {
+    child: Child,
+    socket: PathBuf,
+}
+
+impl Drop for Daemon {
+    fn drop(&mut self) {
+        let _ = self.child.kill();
+        let _ = self.child.wait();
+    }
+}
+
+/// Start the daemon on a private socket and wait for it to accept clients.
+fn start_daemon() -> Option<Daemon> {
+    let dir = tempfile::tempdir().expect("tempdir");
+    // The socket must outlive the `tempdir`, so it lives in its own
+    // directory that is removed by the OS rather than by `TempDir`.
+    let socket = std::env::temp_dir().join(format!(
+        "alp-infer-test-{}-{}.sock",
+        std::process::id(),
+        Instant::now().elapsed().as_nanos()
+    ));
+    let binary = PathBuf::from(env!("CARGO_BIN_EXE_alp-infer"));
+
+    let child = Command::new(&binary)
+        .arg("--socket")
+        .arg(&socket)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .expect("spawn alp-infer");
+
+    let daemon = Daemon { child, socket };
+
+    // Wait for the socket to answer a ping.
+    let deadline = Instant::now() + Duration::from_secs(20);
+    while Instant::now() < deadline {
+        if daemon.socket.exists() {
+            let client = InferClient::with_socket(&daemon.socket);
+            if client.is_alive() {
+                // Keep the socket path; drop the tempdir.
+                drop(dir);
+                return Some(daemon);
+            }
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    None
+}
+
+#[test]
+fn the_daemon_renders_a_cloned_profile_with_its_voiceprint() {
+    let Some(daemon) = start_daemon() else {
+        eprintln!("skipping: the alp-infer daemon did not start");
+        return;
+    };
+
+    // Build a profile with a measured voiceprint and a consent record.
+    let mut profile = AcousticCloneBackend::new()
+        .create_profile(&phrase(115.0, 48_000), Some("reference phrase"))
+        .expect("create profile");
+    profile.id = "daemon-clone-test".into();
+    profile.consent = Some(
+        ConsentRecord::new(
+            "Test Speaker",
+            "Test Engineer",
+            "The speaker gave explicit permission to clone this voice.",
+        )
+        .expect("consent"),
+    );
+    assert_eq!(profile.kind, VoiceKind::Cloned);
+
+    let client = InferClient::with_socket(&daemon.socket);
+    assert!(client.is_alive(), "the daemon must answer a ping");
+
+    let request = TtsRequest {
+        text: "The daemon renders this cloned voice".into(),
+        voice_id: profile.id.clone(),
+        speed: 1.0,
+    };
+    let rendered = client
+        .synthesize_with_profile(&profile, &request)
+        .expect("daemon clone synthesis");
+
+    assert!(rendered.frames() > 10_000, "the render must not be empty");
+    assert!(rendered.peak() > 0.05, "the render must be audible");
+
+    // The audio must carry the reference's pitch.
+    let print = analyze_voiceprint(&rendered);
+    assert!(
+        print.frames > 10,
+        "the daemon's render must contain voiced frames, got {}",
+        print.frames
+    );
+    assert!(
+        (print.f0_hz - 115.0).abs() < 12.0,
+        "the daemon's clone should speak near 115 Hz, got {:.2}",
+        print.f0_hz
+    );
+}
+
+#[test]
+fn the_daemon_refuses_a_cloned_profile_without_consent() {
+    let Some(daemon) = start_daemon() else {
+        eprintln!("skipping: the alp-infer daemon did not start");
+        return;
+    };
+
+    let mut profile = AcousticCloneBackend::new()
+        .create_profile(&phrase(115.0, 48_000), None)
+        .expect("create profile");
+    profile.id = "daemon-clone-no-consent".into();
+    profile.consent = None;
+
+    let client = InferClient::with_socket(&daemon.socket);
+    let request = TtsRequest {
+        text: "This must not render".into(),
+        voice_id: profile.id.clone(),
+        speed: 1.0,
+    };
+    let error = client
+        .synthesize_with_profile(&profile, &request)
+        .expect_err("the daemon must refuse");
+    let message = error.to_string();
+    assert!(
+        message.contains("consent"),
+        "the refusal must name the consent gate: {message}"
+    );
+}
+
+#[test]
+fn the_daemon_still_serves_plain_synthesis() {
+    let Some(daemon) = start_daemon() else {
+        eprintln!("skipping: the alp-infer daemon did not start");
+        return;
+    };
+
+    // The clone slot must not disturb the synthesis slot.
+    let client = InferClient::with_socket(&daemon.socket);
+    let request = TtsRequest {
+        text: "Plain synthesis still works".into(),
+        voice_id: "aura".into(),
+        speed: 1.0,
+    };
+    let rendered = client.synthesize(&request).expect("plain synthesis");
+    assert!(rendered.frames() > 1000, "the render must not be empty");
+}

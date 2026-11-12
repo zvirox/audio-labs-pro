@@ -372,8 +372,8 @@ pub fn standard_catalogue() -> Vec<ModelManifest> {
             name: "Qwen3-TTS 0.6B (Voice Clone)".into(),
             description: "Heavyweight neural voice cloning model with zero-shot reference conditioning and speaker adaptation.".into(),
             kind: ModelKind::VoiceClone,
-            author: "Qwen / Alibaba Cloud".into(),
-            version: "1.0".into(),
+            author: "Qwen / Alibaba Cloud (GGUF export: Serveurperso)".into(),
+            version: "12Hz-0.6B-Base".into(),
             license: ModelLicense {
                 name: "Apache-2.0".into(),
                 spdx: "Apache-2.0".into(),
@@ -381,29 +381,54 @@ pub fn standard_catalogue() -> Vec<ModelManifest> {
                 accepted: false,
             },
             files: vec![
+                // The talker LLM (Qwen3-TTS custom architecture: spk_enc +
+                // talker + code_pred) and the 12 Hz speech-token decoder.
+                // Both files are the official Apache-2.0 weights converted to
+                // GGUF by the community export; every size and digest below
+                // was read back from the upstream LFS pointers, not guessed.
                 ModelFile {
-                    filename: "gguf/qwen3-tts-0.6b-q4_k_m.gguf".into(),
-                    size_bytes: 435_000_000,
-                    sha256: "9d3e680a6b579fbca820e2e2ec8b671a5c60205ec686a7614e59cf7e97491cf0".into(),
-                    url: "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-Base/resolve/main/qwen3-tts-0.6b-q4_k_m.gguf".into(),
+                    filename: "gguf/qwen-talker-0.6b-base-Q4_K_M.gguf".into(),
+                    size_bytes: 628_905_056,
+                    sha256: "4b468ec7b1f62b90ef4ca316c0aa57deadfd54b2cf9651703ea753cedaf04226".into(),
+                    url: "https://huggingface.co/Serveurperso/Qwen3-TTS-GGUF/resolve/main/qwen-talker-0.6b-base-Q4_K_M.gguf".into(),
                 },
                 ModelFile {
-                    filename: "onnx/speech_decoder.onnx".into(),
-                    size_bytes: 52_400_000,
-                    sha256: "f7b0f77b738c8cbe22b513c19e5d6d37ceb920ad5c3e6aa979bca883ee0657e9".into(),
-                    url: "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-Base/resolve/main/onnx/speech_decoder.onnx".into(),
+                    filename: "gguf/qwen-tokenizer-12hz-Q4_K_M.gguf".into(),
+                    size_bytes: 254_974_752,
+                    sha256: "cf3788b4d50aaa665fb6e57c170396aae03a3555fea52d2b5d0cda902d658039".into(),
+                    url: "https://huggingface.co/Serveurperso/Qwen3-TTS-GGUF/resolve/main/qwen-tokenizer-12hz-Q4_K_M.gguf".into(),
                 },
-                ModelFile {
-                    filename: "tokenizer.json".into(),
-                    size_bytes: 2_780_000,
-                    sha256: "a1b2c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef0".into(),
-                    url: "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-Base/resolve/main/tokenizer.json".into(),
-                },
+                // Text-side tokenizer and configuration, taken from the
+                // upstream Qwen/Qwen3-TTS-12Hz-0.6B-Base repository.
                 ModelFile {
                     filename: "config.json".into(),
-                    size_bytes: 1_240,
-                    sha256: "b2c3d4e5f6a10718293a4b5c6d7e8f90123456789abcdef0123456789abcdef1".into(),
+                    size_bytes: 4_494,
+                    sha256: "2e714c787c8edb98b05432685cddb634add2de4d4e645f653d68251ef72ba011".into(),
                     url: "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-Base/resolve/main/config.json".into(),
+                },
+                ModelFile {
+                    filename: "tokenizer_config.json".into(),
+                    size_bytes: 7_344,
+                    sha256: "dc3c31c3bdaedd5016382bb3cbe07323026775ad51f5a4fb564505992ae4a670".into(),
+                    url: "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-Base/resolve/main/tokenizer_config.json".into(),
+                },
+                ModelFile {
+                    filename: "vocab.json".into(),
+                    size_bytes: 2_776_833,
+                    sha256: "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910".into(),
+                    url: "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-Base/resolve/main/vocab.json".into(),
+                },
+                ModelFile {
+                    filename: "merges.txt".into(),
+                    size_bytes: 1_671_839,
+                    sha256: "599bab54075088774b1733fde865d5bd747cbcc7a547c5bc12610e874e26f5e3".into(),
+                    url: "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-Base/resolve/main/merges.txt".into(),
+                },
+                ModelFile {
+                    filename: "generation_config.json".into(),
+                    size_bytes: 245,
+                    sha256: "f1b90b4513f3b34c62851049e2492d7b4c5940daf1276f89c82b8ef04127f3aa".into(),
+                    url: "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-Base/resolve/main/generation_config.json".into(),
                 },
             ],
             is_builtin: false,

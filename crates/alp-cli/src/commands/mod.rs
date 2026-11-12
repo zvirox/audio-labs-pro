@@ -145,8 +145,9 @@ pub fn dispatch(command: Command) -> Result<()> {
             text,
             output,
             voice,
+            profile,
             speed,
-        } => voice::tts(&text, &output, &voice, speed),
+        } => voice::tts(&text, &output, &voice, profile.as_deref(), speed),
         Command::Model(model_cmd) => match model_cmd {
             ModelCommand::List { json } => voice::model_list(json),
             ModelCommand::Verify { model } => voice::model_verify(&model),

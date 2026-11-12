@@ -11,8 +11,8 @@ use std::sync::Arc;
 use alp_engine::{MixScene, SceneClip, SourceAudio};
 use alp_media::{ExportSettings, PcmBuffer, WavBitDepth, decode, export};
 use alp_voice::{
-    BuiltinSttBackend, ConsentRecord, InferClient, SttBackend, TtsRequest, VoiceDesignRequest,
-    VoiceKind, VoiceProfile, design_voice,
+    AcousticCloneBackend, BuiltinSttBackend, CloneBackend, ConsentRecord, InferClient, SttBackend,
+    TtsRequest, VoiceDesignRequest, VoiceKind, VoiceProfile, design_voice,
 };
 
 use super::{App, CaptureItem, GeneratedTake, GenerationKind, HistoryItem, RenderOutput};
@@ -117,18 +117,28 @@ impl App {
             speed: profile.default_params.speed.max(0.25),
         };
         let voice_name = profile.name.clone();
+        // A cloned profile carries its speaker conditioning, so it takes the
+        // profile-conditioned request instead of the plain one.
+        let cloned = profile.kind == VoiceKind::Cloned;
         self.jobs.spawn("Generate speech", move |reporter| {
-            let buffer =
+            let buffer = if cloned {
+                super::model_actions::synthesize_clone_via_tier(
+                    &profile,
+                    &request,
+                    &mut |line: String| reporter.detail(line),
+                )
+            } else {
                 super::model_actions::synthesize_via_tier(&request, &mut |line: String| {
                     reporter.detail(line)
                 })
-                .map_err(|error| {
-                    let message = error.to_string();
-                    if let Ok(mut guard) = slot.lock() {
-                        *guard = Some(Err(message.clone()));
-                    }
-                    message
-                })?;
+            }
+            .map_err(|error| {
+                let message = error.to_string();
+                if let Ok(mut guard) = slot.lock() {
+                    *guard = Some(Err(message.clone()));
+                }
+                message
+            })?;
             reporter.progress(80.0);
             let settings = ExportSettings::wav(WavBitDepth::Int24);
             if let Err(error) = export(&path, &buffer, &settings) {
@@ -390,20 +400,25 @@ impl App {
             self.show_toast("Consent record is incomplete");
             return;
         };
-        let id = format!("clone-{}", alp_core::now_ms());
-        let mut profile = VoiceProfile::builtin(
-            &id,
-            self.profile_name.trim(),
-            vec!["cloned".into(), "custom".into()],
-        );
-        profile.kind = VoiceKind::Cloned;
-        profile.backend = "builtin-acoustic".into();
-        profile.transcript = Some(self.voice_text.clone());
+
+        // Measure the speaker's voiceprint with the real analysis backend, so
+        // the saved profile carries actual conditioning rather than a label.
+        let Ok(mut profile) =
+            AcousticCloneBackend::new().create_profile(&buffer, Some(self.voice_text.trim()))
+        else {
+            self.show_toast("Could not measure a voiceprint from that sample");
+            return;
+        };
+        profile.id = format!("clone-{}", alp_core::now_ms());
+        profile.name = self.profile_name.trim().to_owned();
+        profile.tags = vec!["cloned".into(), "acoustic".into(), "custom".into()];
         profile.created_at = alp_core::now_ms() / 1_000;
+        // The consent record is attested by the human in this dialog; the
+        // engine itself never fabricates one.
         profile.consent = Some(consent);
 
         if let Some(store) = &self.profile_store {
-            let directory = store.root_dir().join(&id);
+            let directory = store.root_dir().join(&profile.id);
             if let Err(error) = std::fs::create_dir_all(&directory) {
                 self.show_toast(format!("Cannot create profile folder: {error}"));
                 return;
@@ -585,6 +600,16 @@ impl App {
         let title = story.title.clone();
         let total = story.lines.len().max(1);
 
+        // Resolve the cloned profiles the story references before the worker
+        // starts: the worker needs the whole profile to carry the speaker
+        // conditioning, not just its id.
+        let cloned_profiles: Vec<VoiceProfile> = self
+            .profiles
+            .iter()
+            .filter(|profile| profile.kind == VoiceKind::Cloned)
+            .cloned()
+            .collect();
+
         self.jobs.spawn("Render story", move |reporter| {
             let mut rendered = story;
             for (index, line) in rendered.lines.iter_mut().enumerate() {
@@ -601,9 +626,22 @@ impl App {
                     voice_id: line.voice_id.clone(),
                     speed: line.speed.max(0.25),
                 };
-                match super::model_actions::synthesize_via_tier(&request, &mut |line: String| {
-                    reporter.detail(line)
-                }) {
+                let clone = cloned_profiles
+                    .iter()
+                    .find(|profile| profile.id == request.voice_id);
+                let outcome = match clone {
+                    Some(profile) => super::model_actions::synthesize_clone_via_tier(
+                        profile,
+                        &request,
+                        &mut |line: String| reporter.detail(line),
+                    ),
+                    None => {
+                        super::model_actions::synthesize_via_tier(&request, &mut |line: String| {
+                            reporter.detail(line)
+                        })
+                    }
+                };
+                match outcome {
                     Ok(buffer) => line.set_audio(buffer),
                     Err(error) => {
                         let message = error.to_string();
