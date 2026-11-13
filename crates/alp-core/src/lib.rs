@@ -23,6 +23,7 @@
 mod clipboard;
 mod command;
 mod commands;
+mod composite;
 mod config;
 mod edit_commands;
 mod error;
@@ -45,6 +46,7 @@ pub use commands::{
     SetLoopRange, SetTrackArm, SetTrackColor, SetTrackEffects, SetTrackGain, SetTrackMuted,
     SetTrackPan, SetTrackSolo, SplitClip, TrimClip,
 };
+pub use composite::CompositeCommand;
 pub use config::AppDirs;
 pub use edit_commands::{
     CrossfadeClips, DeleteRange, DuplicateClip, NormalizeClip, PasteClips, PunchIn,

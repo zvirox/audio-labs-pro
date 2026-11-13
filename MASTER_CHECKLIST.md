@@ -186,13 +186,17 @@
 
 ## Phase 10 — MCP: AI-Driven Editing, Creation, Export → **Release v1.1 "Agent"**
 
+> Audited 2026-11-12; findings, fixes and remaining limits are recorded in
+> [`docs/mcp/AUDIT.md`](docs/mcp/AUDIT.md). The counts below are measured from
+> `crates/alp-mcp/src/tool_defs.rs` and its dispatcher, not from this document.
+
 ### 10.0 Spike & Decisions (D9–D11)
 
 | # | Task | Status | Evidence |
 |---|------|--------|----------|
 | 10.0.1 | Resolve D9–D11; confirm `rmcp` spec revision (2026-07-28 stateless, Tasks, multi-round-trip) | ✅ | Hand-rolled JSON-RPC (ADR 0020) |
-| 10.0.2 | Prototype 3 tools (`project_info`, `clip_split`, `export_audio`); test with MCP Inspector + 2 clients | ✅ | Done |
-| 10.0.3 | Spike word-level timestamps (Moonshine/Whisper forced-alignment) | ⬜ | **Not done** (gates filler removal) |
+| 10.0.2 | Prototype 3 tools (`project_info`, `clip_split`, `export_audio`); test with MCP Inspector + 2 clients | ✅ | All three shipped and exercised by tests |
+| 10.0.3 | Spike word-level timestamps (Moonshine/Whisper forced-alignment) | ⬜ | **Not done** — `Transcript` carries a `WordTimestamp` type but no STT path fills it, which gates filler removal and transcript cutting |
 
 ### 10.1 `alp-api` (Automation Service Layer)
 
@@ -200,95 +204,102 @@
 |---|------|--------|----------|
 | 10.1.1 | Typed operations over core, media, dsp, voice, engine (offline only) | ✅ | `crates/alp-api` |
 | 10.1.2 | Handles/IDs: `project_id`, `track_id`, `clip_id`, `media_id`, `job_id`, `checkpoint_id` (opaque, short, stable) | ✅ | UUID-based since alpha.2 |
-| 10.1.3 | Revisions & locking: one writer/project; `revision` on reads; `expected_revision` on writes | ✅ | Done |
-| 10.1.4 | Undo grouping: each tool call = one undo group; session-start checkpoint for full rollback | ✅ | Done |
-| 10.1.5 | Atomic batches: `edit_batch` validates N ops → applies all-or-nothing | ✅ | Done |
-| 10.1.6 | Job manager: progress, cancellation, timeouts, result cache (TTS, STT, analysis, export) | ✅ | `alp-api/src/jobs.rs` |
+| 10.1.3 | Revisions & locking: one writer/project; `revision` on reads; `expected_revision` on writes | ⚠️ | Revision is returned on every read and advanced on every write; `verify_revision` exists but **no MCP write path accepts `expected_revision`** |
+| 10.1.4 | Undo grouping: each tool call = one undo group; session-start checkpoint for full rollback | ✅ | `CompositeCommand` + `group_commands_since`; `rollback_session` restores the session-start checkpoint |
+| 10.1.5 | Atomic batches: `edit_batch` validates N ops → applies all-or-nothing | ✅ | 8 operation kinds, rollback on failure, one undo entry (`track_clip_ops.rs` tests) |
+| 10.1.6 | Job manager: progress, cancellation, timeouts, result cache (TTS, STT, analysis, export) | ⚠️ | `JobManager` now has real producers (TTS/STT/script return `job_id`); **no timeouts, no result cache, exports still synchronous** |
 | 10.1.7 | Permission engine (10.6) + audit log (JSONL: time, client, tool, arg hash, result, revision) | ✅ | Real SHA-256 arg digests |
 | 10.1.8 | Workspace sandbox: canonicalized allowlist; `..`/symlink-escape hardened | ✅ | ADR 0026/0027 |
-| 10.1.9 | Units: seconds as numbers; sample-accurate internally; SR/channels always returned | ✅ | Done |
+| 10.1.9 | Units: seconds as numbers; sample-accurate internally; SR/channels always returned | ✅ | Every render/analysis report carries `sample_rate` and `channels` |
 
 ### 10.2 `alp-mcp` (MCP Server)
 
 | # | Task | Status | Evidence |
 |---|------|--------|----------|
-| 10.2.1 | Transports: stdio default; Streamable HTTP opt-in (127.0.0.1, Host/Origin validation, bearer token, no wildcard CORS) | ⚠️ | stdio + Unix socket only; **HTTP not implemented** |
-| 10.2.2 | Capabilities: `tools`, `resources`, `prompts`, `server/discover`; deterministic tool order, `ttlMs`, `cacheScope`, `title` | ✅ | Done |
-| 10.2.3 | Schemas: every tool has `inputSchema`/`outputSchema` (JSON Schema 2020-12), `structuredContent` + text summary, annotations | ✅ | Done |
-| 10.2.4 | Errors: protocol errors only for malformed; fixable errors → `isError: true` + cause + suggested next call | ✅ | Done |
-| 10.2.5 | Long jobs: Tasks extension → task handle; else progress notifications + `job_id` polling; cancellation → `job_cancel` | ⚠️ | Job manager exists; **no job_status/cancel tools** |
-| 10.2.6 | Human confirmation: MCP elicitation where supported; else GUI prompt (attach) or refuse (headless) | ✅ | Done |
-| 10.2.7 | Size/pagination: ~20 KB text cap, `limit`/`cursor` on lists, `detail` arg for summary/full | ⬜ | **Not evidenced** |
-| 10.2.8 | Logging: stderr + audit log (protocol logging deprecated) | ✅ | Done |
+| 10.2.1 | Transports: stdio default; Streamable HTTP opt-in (127.0.0.1, Host/Origin validation, bearer token, no wildcard CORS) | ⚠️ | stdio only; **HTTP transport not implemented** |
+| 10.2.2 | Capabilities: `tools`, `resources`, `prompts`, `server/discover`; deterministic tool order, `ttlMs`, `cacheScope`, `title` | ⚠️ | All four capability surfaces served; tool order is static and deterministic; **no `ttlMs`/`cacheScope`/`title`** |
+| 10.2.3 | Schemas: every tool has `inputSchema`/`outputSchema` (JSON Schema 2020-12), `structuredContent` + text summary, annotations | ⚠️ | All 58 have `inputSchema`, every result carries `structuredContent` plus a text summary; **no `outputSchema`, no `annotations`** |
+| 10.2.4 | Errors: protocol errors only for malformed; fixable errors → `isError: true` + cause + suggested next call | ✅ | Denials and validation errors name the fix (e.g. "call `tts_voices` for the known ids") |
+| 10.2.5 | Long jobs: Tasks extension → task handle; else progress notifications + `job_id` polling; cancellation → `job_cancel` | ⚠️ | `job_status`/`job_cancel` work against real jobs for TTS/STT/script; **no Tasks, no progress notifications** |
+| 10.2.6 | Human confirmation: MCP elicitation where supported; else GUI prompt (attach) or refuse (headless) | ⚠️ | Clone creation is refused outright; there is no elicitation round-trip and no GUI prompt (no control host) |
+| 10.2.7 | Size/pagination: ~20 KB text cap, `limit`/`cursor` on lists, `detail` arg for summary/full | ⬜ | **Not implemented** |
+| 10.2.8 | Logging: stderr + audit log (protocol logging deprecated) | ✅ | `tracing` to stderr + `audit.jsonl` |
 
-### 10.3 Tool Surface (~55 planned / 60 hard cap → **22 shipped**)
+### 10.3 Tool Surface — 58 shipped (60 hard cap)
+
+Every tool below is defined in `tool_defs.rs`, dispatched in `server.rs`, and
+covered by a tier-visibility test. Behaviour notes are in
+[`docs/mcp/TOOLS.md`](docs/mcp/TOOLS.md).
 
 | Group | Tools | Tier | Status |
 |-------|-------|------|--------|
-| Projects & History | `project_list`, `project_info` · `project_create`, `project_open`, `project_save`, `project_close` · `history_list`, `history_undo`, `history_redo` · `checkpoint_create`, `checkpoint_restore` | Observe / Edit | ✅ |
-| Media | `media_list` · `media_import` | Observe · Edit | ✅ |
-| Tracks & Clips | `track_add`, `track_update`, `track_remove`, `clip_add`, `clip_update`, `clip_split`, `clip_remove`, `range_edit`, `marker_add`, `edit_batch` | Edit | ⚠️ **Missing: `clip_update`, `clip_remove`, `marker_add`, `edit_batch`** |
-| Effects | `effect_catalog` · `effect_apply`, `effect_update`, `effect_remove`, `preset_apply` (voice_cleanup, podcast_master) | Observe · Edit | ⚠️ **Only `effect_catalog` resource exists** |
-| Smart Edits | `edit_trim_silence`, `edit_shorten_pauses`, `edit_remove_fillers`, `edit_cut_transcript_ranges`, `edit_match_loudness` | Edit | ⬜ **Requires word-level timestamps** |
-| Voice & TTS | `tts_voices`, `voice_profile_get` · `tts_generate`, `tts_script_generate`, `tts_regenerate`, `voice_design` | Observe · Edit | ⚠️ **Missing: `tts_script_generate`, `tts_regenerate`, `voice_design` (designed-only)** |
-| Transcription | `transcribe`, `transcript_get` (search/paging) | Observe | ⚠️ **Missing: `transcript_get`** |
-| Analysis | `analyze_loudness`, `analyze_silence`, `analyze_quality`, `analyze_spectrum`, `render_waveform`, `render_spectrogram`, `compare_renders` | Observe | ⚠️ **Only `analyze_loudness` shipped** |
-| Export | `export_presets` · `export_audio`, `export_stems`, `export_transcript`, `preview_render` | Observe · Export | ✅ `export_audio` |
-| Jobs | `job_status`, `job_cancel` | Same as job | ⬜ **Not shipped** |
+| Projects & History (12) | `project_list`, `project_info`, `project_create`, `project_open`, `project_save`, `project_close`, `history_list`, `history_undo`, `history_redo`, `checkpoint_create`, `checkpoint_restore`, `rollback_session` | Observe / Edit | ✅ |
+| Media (2) | `media_list`, `media_import` | Observe / Edit | ✅ |
+| Tracks & Clips (11) | `track_list`, `track_add`, `track_update`, `track_remove`, `clip_add`, `clip_update`, `clip_split`, `clip_remove`, `range_delete`, `marker_add`, `edit_batch` | Observe / Edit | ✅ |
+| Effects (5) | `effect_catalog`, `effect_apply`, `effect_update`, `effect_remove`, `preset_apply` | Observe / Edit | ⚠️ Ids and preset names are validated against the catalog, but the offline renderer does not apply track effects yet |
+| Smart Edits (4) | `edit_trim_silence`, `edit_shorten_pauses`, `edit_remove_fillers`, `edit_match_loudness` | Edit | ⚠️ Trim/pause/loudness really edit; filler removal needs word-level timestamps and refuses without them |
+| Voice & TTS (6) | `tts_voices`, `voice_profile_get`, `tts_generate`, `tts_script_generate`, `tts_regenerate`, `voice_design` | Observe / Edit | ✅ Designed-only for `voice_design`; clone creation stays GUI-only |
+| Transcription (1) | `transcribe` | Observe | ⚠️ Real via the daemon model; the in-process fallback emits placeholder words and says so |
+| Analysis (7) | `analyze_loudness`, `analyze_silence`, `analyze_quality`, `analyze_spectrum`, `render_waveform`, `render_spectrogram`, `compare_renders` | Observe | ⚠️ Real measurements, but band energy is Goertzel (not FFT), peak is sample peak, hum detection is `None` |
+| Export (5) | `export_presets`, `export_audio`, `export_stems`, `export_transcript`, `preview_render` | Observe / Export | ✅ Stems are per-track, transcripts real, previews written |
+| Jobs (2) | `job_status`, `job_cancel` | Same as job | ✅ Backed by real jobs from TTS/STT/script |
+| Plugins (3) | `plugin_list`, `plugin_insert`, `plugin_param_set` | Observe / Edit | ✅ Discovery and chain insertion; no plugin audio is rendered offline |
+
+Not shipped: `transcript_get`, `edit_cut_transcript_ranges` (both need §10.0.3).
 
 ### 10.4 Gap-Fill Domain Features (built in domain crates)
 
-| # | Feature | Status |
-|---|---------|--------|
-| 10.4.1 | Auto-ducking (lower music under speech via VAD) | ⬜ |
-| 10.4.2 | Room-tone fill (replace removed pauses with ambience + crossfade) | ⬜ |
-| 10.4.3 | Loudness matching between clips/tracks | ⬜ |
-| 10.4.4 | Transcript-based cutting (remove words → cut audio with micro-crossfades) | ⬜ **Needs word-level timestamps** |
-| 10.4.5 | Filler-word detection (user-editable list, conservative defaults) | ⬜ |
-| 10.4.6 | Batch apply (same chain/preset over many files, per-file report) | ⬜ |
-| 10.4.7 | Deterministic mode (`seed` for TTS where supported) | ⬜ |
+| # | Feature | Status | Evidence |
+|---|---------|--------|----------|
+| 10.4.1 | Auto-ducking (lower music under speech via VAD) | ⬜ | No VAD-driven gain automation |
+| 10.4.2 | Room-tone fill (replace removed pauses with ambience + crossfade) | ⬜ | Ripple cuts close gaps with silence |
+| 10.4.3 | Loudness matching between clips/tracks | ⚠️ | `edit_match_loudness` matches the whole project with a peak ceiling; per-clip matching is not built |
+| 10.4.4 | Transcript-based cutting (remove words → cut audio with micro-crossfades) | ⬜ | Needs word-level timestamps |
+| 10.4.5 | Filler-word detection (user-editable list, conservative defaults) | ⚠️ | Word list and default exist; detection is gated on word timestamps |
+| 10.4.6 | Batch apply (same chain/preset over many files, per-file report) | ⬜ | `edit_batch` batches operations inside one project, not files |
+| 10.4.7 | Deterministic mode (`seed` for TTS where supported) | ⬜ | Not built |
 
 ### 10.5 Live Attach Mode & GUI
 
-| # | Task | Status |
-|---|------|--------|
-| 10.5.1 | Settings → AI control: master switch, tier, folders, approval mode, transport | ✅ |
-| 10.5.2 | Control host in `alp-ui` via `alp-api`: Unix socket `$XDG_RUNTIME_DIR`, 0600, `SO_PEERCRED`, per-session token | ✅ |
-| 10.5.3 | AI activity panel: live tool calls, highlighting, **Stop AI** kill switch, **Undo all AI changes** (session-start checkpoint) | ✅ |
-| 10.5.4 | Approval modes: Auto / Confirm destructive (default) / Review (stretch: staged checkpoint) | ⚠️ **Review mode not built** |
-| 10.5.5 | Concurrency: human + AI share command queue; revision conflicts → actionable errors; UI never blocks | ✅ |
-| 10.5.6 | Change notifications to subscribed clients on human edits | ⬜ |
-| 10.5.7 | Attach latency: AI edit visible ≤ 200 ms | ⬜ **Not measured** |
+| # | Task | Status | Evidence |
+|---|------|--------|----------|
+| 10.5.1 | Settings → AI control: master switch, tier, folders, approval mode, transport | ⚠️ | Master switch and tier exist in the AI card; folders/approval/transport are not exposed there |
+| 10.5.2 | Control host in `alp-ui` via `alp-api`: Unix socket `$XDG_RUNTIME_DIR`, 0600, `SO_PEERCRED`, per-session token | ⬜ | **Does not exist** — no `UnixListener` in `alp-ui`; `alp-mcp` opens the project from disk in its own process. UI copy that claimed a socket was corrected |
+| 10.5.3 | AI activity panel: live tool calls, highlighting, **Stop AI** kill switch, **Undo all AI changes** (session-start checkpoint) | ⚠️ | Local audit trail and attach policy are shown; without 10.5.2 there is no live tool feed, and the panel is now labelled honestly ("Revoke attach", "Undo last edit") |
+| 10.5.4 | Approval modes: Auto / Confirm destructive (default) / Review (stretch: staged checkpoint) | ⚠️ | `ApprovalMode` type exists; no enforcement path and no Review mode |
+| 10.5.5 | Concurrency: human + AI share command queue; revision conflicts → actionable errors; UI never blocks | ⬜ | Only possible once 10.5.2 exists |
+| 10.5.6 | Change notifications to subscribed clients on human edits | ⬜ | Not built |
+| 10.5.7 | Attach latency: AI edit visible ≤ 200 ms | ⬜ | Not measurable without 10.5.2 |
 
 ### 10.6 Safety & Security
 
-| # | Task | Status |
-|---|------|--------|
-| 10.6.1 | Permission tiers: Observe / Edit / Export enforced | ✅ |
-| 10.6.2 | Never via MCP: clone profile creation, model install, settings changes, disable synthetic tag, outside workspace, run commands | ✅ Verified in security tests |
-| 10.6.3 | Human confirmation every time: delete project/media/voice, overwrite file, restore checkpoint discarding human edits | ✅ |
-| 10.6.4 | Prompt-injection hygiene: transcripts/filenames/tags/markers untrusted; no shell/generic file tools; static tool descriptions | ✅ |
-| 10.6.5 | Process confinement: stdio shares client trust; sandbox `alp-mcp` (Landlock/bubblewrap) | ⬜ **Not done** |
-| 10.6.6 | Limits: rate limits, per-call timeouts, max payload, max concurrent jobs | ⬜ **Not evidenced** |
-| 10.6.7 | Audit log: every call, viewable in AI panel; hashes/lengths only | ✅ |
-| 10.6.8 | Visibility: persistent AI-activity indicator when session attached | ✅ |
+| # | Task | Status | Evidence |
+|---|------|--------|----------|
+| 10.6.1 | Permission tiers: Observe / Edit / Export enforced | ✅ | Enforced in `alp-api`, tested at MCP level even when a client forces the call |
+| 10.6.2 | Never via MCP: clone profile creation, model install, settings changes, disable synthetic tag, outside workspace, run commands | ✅ | Verified in security tests |
+| 10.6.3 | Human confirmation every time: delete project/media/voice, overwrite file, restore checkpoint discarding human edits | ⚠️ | No MCP path can delete a project or voice, and imports never overwrite; checkpoint restore has no confirmation round-trip |
+| 10.6.4 | Prompt-injection hygiene: transcripts/filenames/tags/markers untrusted; no shell/generic file tools; static tool descriptions | ✅ | No shell/file-generic tools; descriptions are `&'static` in `tool_defs.rs` |
+| 10.6.5 | Process confinement: stdio shares client trust; sandbox `alp-mcp` (Landlock/bubblewrap) | ⬜ | **Not done** |
+| 10.6.6 | Limits: rate limits, per-call timeouts, max payload, max concurrent jobs | ⬜ | **Not implemented** |
+| 10.6.7 | Audit log: every call, viewable in AI panel; hashes/lengths only | ✅ | JSONL + the AI card's activity list |
+| 10.6.8 | Visibility: persistent AI-activity indicator when session attached | ⚠️ | The AI card shows the recorded attach policy; there is no attached session to indicate |
 
 ### 10.7 Docs & Tooling
 
-| # | Task | Status |
-|---|------|--------|
-| 10.7.1 | Module docs `alp-api.md`, `alp-mcp.md` | ✅ |
-| 10.7.2 | `docs/mcp/TOOLS.md` (generated), `WORKFLOWS.md`, `SECURITY.md`, `CLIENT_SETUP.md`, `AGENT_GUIDE.md` | ✅ |
-| 10.7.3 | Update `check-deps.sh`, `check-docs.sh`, architecture diagram | ✅ |
-| 10.7.4 | `scripts/phase10-demo.sh` | ✅ |
+| # | Task | Status | Evidence |
+|---|------|--------|----------|
+| 10.7.1 | Module docs `alp-api.md`, `alp-mcp.md` | ✅ | `docs/modules/` |
+| 10.7.2 | `docs/mcp/TOOLS.md` (generated), `WORKFLOWS.md`, `SECURITY.md`, `CLIENT_SETUP.md`, `AGENT_GUIDE.md` | ⚠️ | All present and hand-maintained (not generated); `AUDIT.md` added, `AGENT_GUIDE.md` is now served as an MCP resource |
+| 10.7.3 | Update `check-deps.sh`, `check-docs.sh`, architecture diagram | ✅ | Both scripts cover the new crates/modules |
+| 10.7.4 | `scripts/phase10-demo.sh` | ✅ | `scripts/phase10-demo.sh` |
 
 ### 10.8 Evaluation Harness
 
-| # | Task | Status |
-|---|------|--------|
-| 10.8.1 | Scripted-agent replays of every prompt recipe via real MCP client; golden project JSON + render null-tests | ⬜ **Not started** |
-| 10.8.2 | LLM-in-the-loop trials (clean noisy recording, narrate script, remove fillers, master to loudness); record success rate, tool calls, tokens, failure causes in `docs/mcp/EVAL.md` | ⬜ **Not started** |
-| 10.8.3 | Tighten tool descriptions/defaults from findings | ⬜ |
+| # | Task | Status | Evidence |
+|---|------|--------|----------|
+| 10.8.1 | Scripted-agent replays of every prompt recipe via real MCP client; golden project JSON + render null-tests | ⬜ | **Not started** — `scripts/mcp_eval.py` exercises a subset but there are no golden artifacts |
+| 10.8.2 | LLM-in-the-loop trials (clean noisy recording, narrate script, remove fillers, master to loudness); record success rate, tool calls, tokens, failure causes in `docs/mcp/EVAL.md` | ⬜ | `EVAL.md` is a specification, not a results log |
+| 10.8.3 | Tighten tool descriptions/defaults from findings | ⚠️ | This audit tightened ~15 descriptions and 1 schema; no trial data yet to drive the rest |
 
 ---
 
@@ -340,7 +351,7 @@
 |----------|-------|---------|------------|----------|
 | **P0 — Model tier real** | 8 | 6 | 1 | 1 |
 | **Phases 0–9 (Core Product)** | ~85 | ~70 | ~9 | ~7 |
-| **Phase 10 (MCP)** | ~55 | 22 | ~15 | ~18 |
+| **Phase 10 (MCP)** | 60 | 25 | 20 | 15 |
 | **Phase 11 (Plugins)** | 5 | 5 | 0 | 0 |
 | **UI Modernization** | 5 | 0 | 0 | 5 |
 | **Post-1.0 Backlog** | 9 | 0 | 0 | 9 |
@@ -350,7 +361,7 @@
 ## Next Actions (Priority Order)
 
 1. **P0 — Model tier real:** ✅ Done except **P0.4** (the Qwen3-TTS neural runtime): implement the `qwen3-tts` architecture and the 12 Hz codec decoder in Rust, then swap `Qwen3Engine` from "validates and defers" to "executes"
-2. **P1 — MCP breadth:** `job_status`/`job_cancel`, `effect_apply`/`preset_apply`, remaining clip/marker tools, smart edits (needs word-level timestamps), pagination/rate limits, eval harness (`EVAL.md`)
+2. **P1 — MCP depth:** the 58-tool surface is complete and honest about its limits ([`docs/mcp/AUDIT.md`](docs/mcp/AUDIT.md)). Remaining: the `alp-ui` control host (10.5.2) so attached sessions share one project, pagination/cursors, rate limits and timeouts, `notifications` on human edits, the evaluation harness (`EVAL.md`, 10.8), and word-level timestamps (10.0.3) to unblock filler removal and transcript cutting
 3. **P2 — Phase 5 completion:** RNNoise/spectral noise reduction; silence/breath tools in `alp-dsp`
 4. **P3 — Recording/timeline depth:** Multi-input overdub, spectrogram + minimap, monitoring resampler, async import, project picker/save-as
 5. **P4 — Release assurance:** Cross-desktop matrix, clean-machine passes, `phase2-demo.sh`

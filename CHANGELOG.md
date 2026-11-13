@@ -7,6 +7,74 @@ versions follow the release milestones in the build plan.
 
 ### Added
 
+- **`alp-core::CompositeCommand` and stack grouping.** A batch edit is now a
+  single undo entry: `CommandStack::take_last(count)` removes the commands a
+  multi-step operation just applied, and `push_applied` pushes the
+  `CompositeCommand` that wraps them without re-applying them. Reverting the
+  group walks the commands in reverse; a mid-group apply failure reverts what
+  the group already did. `ApiSession::group_commands_since` builds the group
+  from the stack depth recorded before the operation.
+- **`edit_batch` is a real, atomic batch.** It accepts an `operations` array of
+  eight typed operations (`track_update`, `clip_update`, `clip_remove`,
+  `clip_split`, `marker_add`, `range_delete`, `effect_apply`, `effect_remove`),
+  routes each to the real editing operation, and reports the true
+  `operations_applied`. A failing operation rolls the whole batch back and the
+  error states that no changes were applied.
+- **Per-track stem exports.** `export_stems` renders each track in isolation and
+  writes `stem_NN_<track>.wav`; each report carries that stem's own peak, so a
+  quiet track is provably quiet.
+- **Real transcript and preview exports.** `export_transcript` renders the
+  project, transcribes it, and writes actual `text`/`srt`/`vtt` content (the
+  report echoes the text). `preview_render` writes a real WAV slice into
+  `media/` and reports that slice's own peak.
+- **ASCII picture renders.** `render_waveform` and `render_spectrogram` return
+  the art they computed in `ascii` (plus `band_centers_hz` and `range_db`) in
+  place of the old stub `data_uri`.
+- **`tts_script_generate` and `tts_regenerate` produce audio.** A JSON script
+  (object with `segments` or a bare array) becomes clips on a `Script` track in
+  one undo step; regeneration replaces a clip's audio in place at its original
+  start.
+- **Real effect-catalog validation.** `effect_apply` and `preset_apply` reject
+  ids/names the catalog does not offer and list the known ones.
+- **`docs/mcp/AUDIT.md`** records what was fabricated, what was fixed, and what
+  stays honestly partial; `docs/mcp/TOOLS.md` documents all 58 tools.
+
+### Fixed
+
+- **Several MCP tools reported work they never did.** `export_stems` wrote the
+  master mix N times, `export_transcript` wrote a one-line header,
+  `preview_render` produced no file, the picture tools returned a stub,
+  `edit_batch` reported `operations_applied: 1` while applying nothing, and
+  `tts_script_generate` was an `Ok(())` no-op. Each now performs the operation
+  it names, and tests assert the artefact exists.
+- **Smart edits now edit.** `edit_trim_silence` and `edit_shorten_pauses` cut
+  real ripple ranges and report measured before/after lengths;
+  `edit_match_loudness` applies gain in the correct direction (the sign was
+  inverted), re-measures, and respects a −1 dBFS sample-peak ceiling.
+  `edit_remove_fillers` refuses when only placeholder words exist instead of
+  cutting at invented positions.
+- **Analysis stopped overstating its measurements.** The peak is labelled a
+  sample peak (`true_peak_dbfs` → `peak_dbfs`), the noise floor is the
+  10th-percentile 20 ms frame level, and `silence_ratio` became `active_ratio`
+  (the fraction of frames actually above the threshold); `speech_ratio` was
+  removed. `analyze_silence` honours the ≥100 ms minimum run length.
+- **TTS/STT/script are job-backed.** `tts_generate`, `transcribe` and
+  `tts_script_generate` submit and complete real `JobManager` jobs and return a
+  `job_id`, so `job_status`/`job_cancel` operate on real work.
+- **The `alp://effects/catalog` resource serves the live catalog**, and
+  `alp://docs/agent-guide` serves `docs/mcp/AGENT_GUIDE.md` via `include_str!`;
+  the `produce_podcast_episode` prompt is implemented.
+- **The GUI no longer claims a control socket it does not have.** There is no
+  `UnixListener` in `alp-ui`, so the AI card now states that MCP clients start
+  their own `alp-mcp` process, the stop action is "Revoke attach", and "Undo AI
+  changes" became "Undo last edit" (which is what it does).
+
+### Changed
+
+- **`MASTER_CHECKLIST.md` Phase 10 now matches the code.** It records the real
+  58-tool surface, the honest partials, and the absence of a control host,
+  instead of the stale 22-shipped table.
+
 - **A working acoustic clone tier (P0, ADR 0028).** `CloneBackend` now has a
   real implementation. `alp-voice::voiceprint` measures a reference recording
   with actual signal analysis — normalized-autocorrelation pitch tracking

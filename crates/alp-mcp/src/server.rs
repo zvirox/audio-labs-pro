@@ -120,10 +120,10 @@ impl McpServer {
             "analyze_loudness" => match session.analyze_loudness() {
                 Ok(report) => {
                     let summary = format!(
-                        "Loudness: {:.1} LUFS · True Peak: {:.1} dBFS · Silence: {:.1}%",
+                        "Loudness: {:.1} LUFS · Peak: {:.1} dBFS · Active: {:.0}%",
                         report.integrated_lufs,
-                        report.true_peak_dbfs,
-                        report.silence_ratio * 100.0
+                        report.peak_dbfs,
+                        report.active_ratio * 100.0
                     );
                     ToolCallResult::success(summary, serde_json::to_value(report).unwrap())
                 }
@@ -647,15 +647,30 @@ impl McpServer {
                     .get("label")
                     .and_then(Value::as_str)
                     .unwrap_or("Batch");
-                match session.edit_batch(label) {
-                    Ok(report) => ToolCallResult::success(
-                        format!(
-                            "Executed batch '{label}': {} operations",
-                            report.operations_applied
+                let raw_ops = arguments
+                    .get("operations")
+                    .cloned()
+                    .unwrap_or_else(|| Value::Array(Vec::new()));
+                match serde_json::from_value::<Vec<alp_api::BatchOp>>(raw_ops) {
+                    Ok(ops) => match session.edit_batch(label, &ops) {
+                        Ok(report) => ToolCallResult::success(
+                            format!(
+                                "Executed batch '{}': {} operation(s){}",
+                                report.label,
+                                report.operations_applied,
+                                if report.single_undo_step {
+                                    ", one undo step"
+                                } else {
+                                    ""
+                                }
+                            ),
+                            serde_json::to_value(report).unwrap(),
                         ),
-                        serde_json::to_value(report).unwrap(),
-                    ),
-                    Err(e) => ToolCallResult::failure(format!("Batch execution failed: {e}")),
+                        Err(e) => ToolCallResult::failure(format!("Batch execution failed: {e}")),
+                    },
+                    Err(e) => ToolCallResult::failure(format!(
+                        "invalid 'operations' item: {e}; each item needs an \"op\" field (track_update, clip_update, clip_remove, clip_split, marker_add, range_delete, effect_apply, effect_remove)"
+                    )),
                 }
             }
             // --- Effects & Presets ---
@@ -757,8 +772,11 @@ impl McpServer {
                 match session.edit_trim_silence(track_id, threshold_db, min_silence_secs) {
                     Ok(report) => ToolCallResult::success(
                         format!(
-                            "Trimmed {:.2}s of silence from track {track_id}",
-                            report.silence_trimmed_secs
+                            "Trimmed {:.2}s of silence in {} range(s) from track {track_id} ({:.2}s -> {:.2}s)",
+                            report.silence_trimmed_secs,
+                            report.ranges_cut,
+                            report.before_secs,
+                            report.after_secs
                         ),
                         serde_json::to_value(report).unwrap(),
                     ),
@@ -781,8 +799,11 @@ impl McpServer {
                 match session.edit_shorten_pauses(track_id, max_pause_secs, crossfade_ms) {
                     Ok(report) => ToolCallResult::success(
                         format!(
-                            "Shortened {:.2}s of pauses on track {track_id}",
-                            report.seconds_removed
+                            "Shortened {} pause(s) by {:.2}s on track {track_id} ({:.2}s -> {:.2}s)",
+                            report.pauses_processed,
+                            report.seconds_removed,
+                            report.before_secs,
+                            report.after_secs
                         ),
                         serde_json::to_value(report).unwrap(),
                     ),
@@ -806,8 +827,16 @@ impl McpServer {
                 match session.edit_remove_fillers(track_id, filler_words) {
                     Ok(report) => ToolCallResult::success(
                         format!(
-                            "Removed {} filler words from track {track_id}",
-                            report.fillers_removed
+                            "Removed {} filler word(s) from track {track_id} ({:.2}s -> {:.2}s) using {}{}",
+                            report.fillers_removed,
+                            report.before_secs,
+                            report.after_secs,
+                            report.engine,
+                            if report.fillers_found.is_empty() {
+                                String::new()
+                            } else {
+                                format!(": {}", report.fillers_found.join(", "))
+                            }
                         ),
                         serde_json::to_value(report).unwrap(),
                     ),
@@ -822,8 +851,17 @@ impl McpServer {
                 match session.edit_match_loudness(target_lufs) {
                     Ok(report) => ToolCallResult::success(
                         format!(
-                            "Matched loudness to {target_lufs:.1} LUFS (actual {actual:.1} LUFS)",
-                            actual = report.actual_lufs
+                            "Applied {:+.1} dB: {:.1} -> {:.1} LUFS (target {:.1}), peak {:.1} dBFS{}",
+                            report.gain_db,
+                            report.before_lufs,
+                            report.actual_lufs,
+                            report.target_lufs,
+                            report.peak_dbfs,
+                            if report.limited_by_peak {
+                                " — gain reduced to keep the peak under the ceiling"
+                            } else {
+                                ""
+                            }
                         ),
                         serde_json::to_value(report).unwrap(),
                     ),
@@ -834,8 +872,12 @@ impl McpServer {
             "analyze_silence" => match session.analyze_silence() {
                 Ok(report) => ToolCallResult::success(
                     format!(
-                        "Found {} silence intervals ({:.2}s total)",
-                        report.silence_count, report.total_silence_secs
+                        "Found {} silence interval(s) ≥{:.2}s at {:.0} dBFS ({:.2}s total, longest {:.2}s)",
+                        report.silence_count,
+                        report.min_silence_secs,
+                        report.threshold_dbfs,
+                        report.total_silence_secs,
+                        report.max_silence_secs
                     ),
                     serde_json::to_value(report).unwrap(),
                 ),
@@ -844,12 +886,12 @@ impl McpServer {
             "analyze_quality" => match session.analyze_quality() {
                 Ok(report) => ToolCallResult::success(
                     format!(
-                        "Quality: LUFS={:.1}, Peak={:.1}dB, Noise={:.1}dB, Clips={}, Speech={:.0}%",
+                        "Quality: LUFS={:.1}, Peak={:.1}dB, Noise floor={:.1}dB, Clips={}, Active={:.0}%",
                         report.integrated_lufs,
-                        report.true_peak_dbfs,
+                        report.peak_dbfs,
                         report.noise_floor_dbfs,
                         report.clipping_spikes,
-                        report.speech_ratio * 100.0
+                        report.active_ratio * 100.0
                     ),
                     serde_json::to_value(report).unwrap(),
                 ),
@@ -857,7 +899,12 @@ impl McpServer {
             },
             "analyze_spectrum" => match session.analyze_spectrum() {
                 Ok(report) => ToolCallResult::success(
-                    format!("Spectrum: {} frequency bins", report.bins.len()),
+                    format!(
+                        "Spectrum: {} log-spaced bands averaged over {} block(s) at {} Hz",
+                        report.bins.len(),
+                        report.blocks,
+                        report.sample_rate
+                    ),
                     serde_json::to_value(report).unwrap(),
                 ),
                 Err(e) => ToolCallResult::failure(format!("Spectrum analysis failed: {e}")),
@@ -870,7 +917,14 @@ impl McpServer {
                     .unwrap_or(20) as usize;
                 match session.render_waveform(width, height) {
                     Ok(report) => ToolCallResult::success(
-                        format!("Rendered waveform ({}x{})", width, height),
+                        format!(
+                            "Waveform {}x{} of {:.2}s (peak {:.1} dBFS)\n{}",
+                            report.width,
+                            report.height,
+                            report.duration_secs,
+                            20.0 * report.peak.max(1e-6).log10(),
+                            report.ascii
+                        ),
                         serde_json::to_value(report).unwrap(),
                     ),
                     Err(e) => ToolCallResult::failure(format!("Waveform render failed: {e}")),
@@ -884,7 +938,18 @@ impl McpServer {
                     .unwrap_or(40) as usize;
                 match session.render_spectrogram(width, height) {
                     Ok(report) => ToolCallResult::success(
-                        format!("Rendered spectrogram ({}x{})", width, height),
+                        format!(
+                            "Spectrogram {}x{} at {} Hz, {:.0} dB range (low frequencies at the bottom)\n{}",
+                            report.width,
+                            report.height,
+                            report
+                                .band_centers_hz
+                                .last()
+                                .map(|top| format!("{top:.0}"))
+                                .unwrap_or_else(|| "?".into()),
+                            report.range_db,
+                            report.ascii
+                        ),
                         serde_json::to_value(report).unwrap(),
                     ),
                     Err(e) => ToolCallResult::failure(format!("Spectrogram render failed: {e}")),
@@ -930,7 +995,10 @@ impl McpServer {
                     .unwrap_or("voice_over");
                 match session.export_stems(output_dir, preset_id) {
                     Ok(reports) => ToolCallResult::success(
-                        format!("Exported {} stems to {output_dir}", reports.len()),
+                        format!(
+                            "Exported {} per-track stem(s) to {output_dir}",
+                            reports.len()
+                        ),
                         serde_json::to_value(reports).unwrap(),
                     ),
                     Err(e) => ToolCallResult::failure(format!("Stem export failed: {e}")),
@@ -945,8 +1013,8 @@ impl McpServer {
                 match session.export_transcript(format, path) {
                     Ok(report) => ToolCallResult::success(
                         format!(
-                            "Exported transcript in {} format to {}",
-                            report.format, report.path
+                            "Exported a {} transcript ({} segment(s) from {}) to {}",
+                            report.format, report.segments, report.engine, report.path
                         ),
                         serde_json::to_value(report).unwrap(),
                     ),
@@ -965,8 +1033,11 @@ impl McpServer {
                 match session.preview_render(start_secs, duration_secs) {
                     Ok(report) => ToolCallResult::success(
                         format!(
-                            "Preview render: {:.2}s from {:.2}s",
-                            report.duration_secs, report.start_secs
+                            "Preview written to {} ({:.2}s from {:.2}s, peak {:.1} dBFS)",
+                            report.preview_path,
+                            report.duration_secs,
+                            report.start_secs,
+                            20.0 * report.peak.max(1e-6).log10()
                         ),
                         serde_json::to_value(report).unwrap(),
                     ),
@@ -1011,9 +1082,20 @@ impl McpServer {
                     .and_then(Value::as_str)
                     .unwrap_or("");
                 match session.tts_script_generate(script_json) {
-                    Ok(()) => ToolCallResult::success(
-                        "Script generated and placed on timeline",
-                        json!({ "generated": true }),
+                    Ok(report) => ToolCallResult::success(
+                        format!(
+                            "Generated {} clip(s) on track {} ({:.2}s of audio, ends at {:.2}s){}",
+                            report.clip_ids.len(),
+                            report.track_id,
+                            report.total_duration_secs,
+                            report.end_secs,
+                            if report.single_undo_step {
+                                ", one undo step"
+                            } else {
+                                ""
+                            }
+                        ),
+                        serde_json::to_value(report).unwrap(),
                     ),
                     Err(e) => ToolCallResult::failure(format!("Script generation failed: {e}")),
                 }
@@ -1038,8 +1120,11 @@ impl McpServer {
                 match session.tts_regenerate(clip_id, new_text, voice_id, speed) {
                     Ok(report) => ToolCallResult::success(
                         format!(
-                            "Regenerated clip {clip_id} with new text ({:.2}s)",
-                            report.duration_secs
+                            "Replaced clip {clip_id} with {} at {:.2}s ({:.2}s of new audio from {})",
+                            report.new_clip_id,
+                            report.start_secs,
+                            report.duration_secs,
+                            report.engine
                         ),
                         serde_json::to_value(report).unwrap(),
                     ),
@@ -1149,20 +1234,39 @@ impl McpServer {
                     "contents": [{
                         "uri": uri,
                         "mimeType": "text/markdown",
-                        "text": "# Audio Labs Pro AI Agent Guide\nAlways analyze loudness and silence before and after editing.\nUse checkpoints before applying complex multi-step operations."
+                        "text": include_str!("../../../docs/mcp/AGENT_GUIDE.md")
                     }]
                 }),
             ),
-            "alp://effects/catalog" => JsonRpcResponse::success(
-                id,
-                json!({
-                    "contents": [{
-                        "uri": uri,
-                        "mimeType": "application/json",
-                        "text": "[\"voice_cleanup\", \"podcast_master\", \"parametric_eq\", \"compressor\", \"peak_limiter\", \"de_hum\", \"de_click\"]"
-                    }]
-                }),
-            ),
+            "alp://effects/catalog" => {
+                let catalog = self
+                    .session
+                    .lock()
+                    .map(|session| session.effect_catalog())
+                    .unwrap_or_else(|_| {
+                        Err(alp_api::ApiError::Validation(
+                            "failed to acquire session lock".into(),
+                        ))
+                    });
+                match catalog {
+                    Ok(report) => JsonRpcResponse::success(
+                        id,
+                        json!({
+                            "contents": [{
+                                "uri": uri,
+                                "mimeType": "application/json",
+                                "text": serde_json::to_string(&report).unwrap_or_default()
+                            }]
+                        }),
+                    ),
+                    Err(e) => JsonRpcResponse::error(
+                        id,
+                        -32602,
+                        format!("failed to read the effect catalog: {e}"),
+                        None,
+                    ),
+                }
+            }
             _ => JsonRpcResponse::error(id, -32602, format!("resource '{uri}' not found"), None),
         }
     }
@@ -1191,13 +1295,28 @@ impl McpServer {
             "clean_up_voice_recording" => JsonRpcResponse::success(
                 id,
                 json!({
-                    "description": "Clean up voice recording workflow",
+                    "description": "Clean up a voice recording: measure, clean, trim, master and export",
                     "messages": [
                         {
                             "role": "user",
                             "content": {
                                 "type": "text",
-                                "text": "Execute voice cleanup recipe:\n1. Call 'analyze_loudness'\n2. Apply voice cleanup preset to vocal tracks\n3. Call 'range_delete' to remove unwanted silence\n4. Re-analyze loudness and export master audio."
+                                "text": "Execute the voice-cleanup recipe:\n1. Call 'project_info' and 'media_list' to understand the session.\n2. Call 'analyze_loudness', 'analyze_silence' and 'analyze_quality' and report what you measured.\n3. Call 'checkpoint_create' with label 'before-cleanup'.\n4. Call 'preset_apply' with 'voice_cleanup' on the vocal track.\n5. Call 'edit_trim_silence' (threshold_db -45, min_silence_secs 0.25) and then 'edit_shorten_pauses' if pauses remain long.\n6. Call 'edit_match_loudness' with -16 LUFS.\n7. Re-run the analysis tools and compare; if the result regressed, call 'checkpoint_restore'.\n8. Call 'export_audio' with the 'podcast' preset."
+                            }
+                        }
+                    ]
+                }),
+            ),
+            "produce_podcast_episode" => JsonRpcResponse::success(
+                id,
+                json!({
+                    "description": "Assemble a podcast episode from a script or recording and master it",
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": {
+                                "type": "text",
+                                "text": "Execute the podcast-episode recipe:\n1. Call 'project_create' (or 'project_open' for an existing session) and 'checkpoint_create'.\n2. Import speech with 'media_import', then place it with 'clip_add' on a 'Voice' track ('track_add' first if needed).\n3. Add beds with 'media_import' + 'clip_add' on a second track, then lower them under speech with 'track_update' gain or 'edit_batch'.\n4. Call 'analyze_loudness' and 'edit_match_loudness' targeting -16 LUFS for stereo.\n5. Call 'analyze_quality' and fix clipping with 'clip_update' gain changes.\n6. Call 'export_stems' for the archival mix and 'export_audio' with the 'podcast' preset for delivery.\n7. Report the measured loudness, duration and output paths."
                             }
                         }
                     ]

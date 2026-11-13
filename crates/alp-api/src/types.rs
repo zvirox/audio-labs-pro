@@ -110,12 +110,12 @@ pub struct AnalysisReport {
     pub duration_secs: f64,
     /// Measured integrated loudness in LUFS (ITU-R BS.1770).
     pub integrated_lufs: f32,
-    /// Maximum true peak level in dBFS.
-    pub true_peak_dbfs: f32,
-    /// Estimated noise floor level in dBFS.
+    /// Sample peak level in dBFS. Inter-sample (true) peak is not measured yet.
+    pub peak_dbfs: f32,
+    /// 10th-percentile 20 ms frame level in dBFS: the noise floor estimate.
     pub noise_floor_dbfs: f32,
-    /// Percentage of audio classified as silence.
-    pub silence_ratio: f32,
+    /// Fraction of 20 ms frames above the -45 dBFS activity threshold.
+    pub active_ratio: f32,
     /// Detected digital clipping spikes count.
     pub clipping_spikes: usize,
     /// Detected electrical mains hum frequency (e.g., 50.0 or 60.0 Hz), if any.

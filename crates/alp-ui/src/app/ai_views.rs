@@ -73,9 +73,9 @@ impl App {
         };
 
         let safety_actions = row![
-            components::button("Stop AI", ButtonKind::Danger, Some(Message::StopAi)),
+            components::button("Revoke attach", ButtonKind::Danger, Some(Message::StopAi)),
             components::button(
-                "Undo AI changes",
+                "Undo last edit",
                 ButtonKind::Secondary,
                 Some(Message::UndoAiChanges)
             ),

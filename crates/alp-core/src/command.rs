@@ -162,12 +162,33 @@ impl CommandStack {
         self.redo.len()
     }
 
+    /// Remove and return the most recent `count` undo entries.
+    ///
+    /// Used to coalesce several commands that were executed in sequence into a
+    /// single grouped edit.
+    pub fn take_last(&mut self, count: usize) -> Vec<Box<dyn Command>> {
+        let keep = self.undo.len().saturating_sub(count);
+        self.undo.split_off(keep)
+    }
+
+    /// Push a command that has already been applied, without applying it again.
+    ///
+    /// This records the grouped edit as one undo step and clears the redo
+    /// stack, exactly like [`CommandStack::execute`].
+    pub fn push_applied(&mut self, command: Box<dyn Command>) {
+        self.redo.clear();
+        self.undo.push(command);
+        let excess = self.undo.len().saturating_sub(self.limit);
+        if excess > 0 {
+            self.undo.drain(0..excess);
+        }
+    }
+
     /// Label of the next undo step.
     #[must_use]
     pub fn undo_label(&self) -> Option<&'static str> {
         self.undo.last().map(|command| command.label())
     }
-
     /// Label of the next redo step.
     #[must_use]
     pub fn redo_label(&self) -> Option<&'static str> {

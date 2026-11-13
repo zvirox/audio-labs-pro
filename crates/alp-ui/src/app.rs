@@ -827,10 +827,10 @@ impl App {
             workflow_tab: start_tab,
             ai_enabled: false,
             ai_tier: alp_api::PermissionTier::Edit,
-            ai_status: "AI Control Standby ($XDG_RUNTIME_DIR/alp/control.sock)".into(),
+            ai_status: "AI attach standby (MCP server is a separate process)".into(),
             ai_activity_log: vec![
-                "Session checkpoint created: Session Start".into(),
-                "Listening for MCP clients on stdio & control.sock".into(),
+                "Project opened; edits from this window are undoable".into(),
+                "MCP attach is off: clients start their own alp-mcp process".into(),
             ],
             jobs: JobQueue::new(),
             layout_restored,

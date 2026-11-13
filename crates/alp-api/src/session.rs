@@ -20,13 +20,13 @@ use crate::types::{AnalysisReport, PermissionTier, ProjectSummary, TrackSummary}
 pub struct ApiSession {
     pub(crate) project: Project,
     pub(crate) paths: ProjectPaths,
-    stack: CommandStack,
-    revision: u64,
+    pub(crate) stack: CommandStack,
+    pub(crate) revision: u64,
     tier: PermissionTier,
     pub(crate) sandbox: WorkspaceSandbox,
     audit: AuditLogger,
     checkpoints: CheckpointManager,
-    jobs: JobManager,
+    pub(crate) jobs: JobManager,
     client_id: String,
     dirty: bool,
     /// Voice profile store override directory; `None` keeps the default XDG
@@ -127,6 +127,22 @@ impl ApiSession {
             revision_after: self.revision,
         };
         let _ = self.audit.record(&entry);
+    }
+
+    /// Collapse every command applied since `undo_before` into one undo entry.
+    ///
+    /// Returns `false` when nothing was applied, so callers can report the
+    /// grouping truthfully instead of claiming a single step that does not
+    /// exist.
+    pub(crate) fn group_commands_since(&mut self, label: &'static str, undo_before: usize) -> bool {
+        let count = self.stack.undo_len().saturating_sub(undo_before);
+        if count == 0 {
+            return false;
+        }
+        let commands = self.stack.take_last(count);
+        self.stack
+            .push_applied(Box::new(alp_core::CompositeCommand::new(label, commands)));
+        true
     }
 
     /// Apply an undoable core command and advance the revision.
@@ -479,39 +495,15 @@ impl ApiSession {
         let samples = buffer.samples();
 
         let integrated_lufs = alp_dsp::measure_lufs(samples, rate, channels);
-
-        // Linear peak → dBFS true-peak approximation (sample peak).
-        let linear_peak = samples.iter().fold(0.0f32, |m, s| m.max(s.abs()));
-        let true_peak_dbfs = if linear_peak > 0.0 {
-            20.0 * linear_peak.log10()
-        } else {
-            -70.0
-        };
-
-        let total = samples.len().max(1);
-        let silent = samples.iter().filter(|s| s.abs() < 1e-4).count();
-        let silence_ratio = silent as f32 / total as f32;
-
-        let non_zero_min = samples
-            .iter()
-            .map(|s| s.abs())
-            .filter(|a| *a > 0.0)
-            .fold(f32::INFINITY, f32::min);
-        let noise_floor_dbfs = if non_zero_min.is_finite() && non_zero_min > 0.0 {
-            20.0 * non_zero_min.log10()
-        } else {
-            -70.0
-        };
-
-        let clipping_spikes = samples.iter().filter(|s| s.abs() >= 1.0).count();
+        let stats = crate::analysis_ops::level_stats(samples, rate, channels);
 
         Ok(AnalysisReport {
             duration_secs: buffer.duration_secs(),
             integrated_lufs,
-            true_peak_dbfs,
-            noise_floor_dbfs,
-            silence_ratio,
-            clipping_spikes,
+            peak_dbfs: stats.peak_dbfs,
+            noise_floor_dbfs: stats.noise_floor_dbfs,
+            active_ratio: stats.active_ratio,
+            clipping_spikes: stats.clipping_spikes,
             detected_hum_hz: None,
         })
     }
@@ -520,8 +512,35 @@ impl ApiSession {
     /// real engine scene pipeline (decode sources, build scene, offline
     /// render). This is the single path shared by export and analysis.
     pub(crate) fn render_project_mixdown(&self) -> Result<alp_media::PcmBuffer, ApiError> {
+        self.render_mixdown_of(&self.project)
+    }
+
+    /// Render one track in isolation, so per-track analysis and stem export
+    /// measure that track rather than the whole mix. The track is found by its
+    /// handle so callers can pass agent-supplied ids directly.
+    pub(crate) fn render_track_mixdown(
+        &self,
+        track_id: &str,
+    ) -> Result<(alp_core::TrackId, alp_media::PcmBuffer), ApiError> {
+        let track = self
+            .project
+            .tracks
+            .iter()
+            .find(|trk| trk.id.to_string() == track_id)
+            .ok_or_else(|| ApiError::NotFound(format!("track '{track_id}' not found")))?;
+        let mut soloed = self.project.clone();
+        soloed.tracks = vec![track.clone()];
+        let buffer = self.render_mixdown_of(&soloed)?;
+        Ok((track.id, buffer))
+    }
+
+    /// Render an arbitrary project through the engine pipeline.
+    fn render_mixdown_of(
+        &self,
+        project: &alp_core::Project,
+    ) -> Result<alp_media::PcmBuffer, ApiError> {
         let mut sources = std::collections::HashMap::new();
-        for source in &self.project.sources {
+        for source in &project.sources {
             let path = self.paths.resolve_relative(&source.relative_path)?;
             let buffer = alp_media::decode(&path)?;
             sources.insert(
@@ -529,7 +548,7 @@ impl ApiSession {
                 std::sync::Arc::new(alp_engine::SourceAudio::from_pcm(&buffer)),
             );
         }
-        let scene = alp_engine::MixScene::from_project(&self.project, &sources)
+        let scene = alp_engine::MixScene::from_project(project, &sources)
             .map_err(|e| ApiError::Validation(format!("failed to build mix scene: {e}")))?;
         let buffer = alp_engine::render_scene(&scene, alp_engine::DEFAULT_BLOCK_FRAMES)
             .map_err(|e| ApiError::Validation(format!("failed to render project: {e}")))?;
@@ -807,9 +826,9 @@ mod tests {
             report.duration_secs
         );
         assert!(
-            report.silence_ratio < 0.5,
-            "a sine project is not 90% silent, got {}",
-            report.silence_ratio
+            report.active_ratio > 0.9,
+            "a continuous sine project is active throughout, got {}",
+            report.active_ratio
         );
         assert!(
             report.integrated_lufs > -20.0 && report.integrated_lufs < -5.0,
@@ -817,9 +836,9 @@ mod tests {
             report.integrated_lufs
         );
         assert!(
-            report.true_peak_dbfs > -20.0 && report.true_peak_dbfs <= 0.0,
-            "true peak must be a measured dBFS value near -6, got {}",
-            report.true_peak_dbfs
+            report.peak_dbfs > -20.0 && report.peak_dbfs <= 0.0,
+            "peak must be a measured dBFS value near -6, got {}",
+            report.peak_dbfs
         );
     }
 

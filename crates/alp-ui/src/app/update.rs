@@ -801,15 +801,18 @@ impl App {
             }
             Message::ToggleAiControl => {
                 self.ai_enabled = !self.ai_enabled;
+                // There is no in-process control host yet: the MCP server is a
+                // separate process that each client starts. Report the policy
+                // this window records instead of implying a live socket.
                 self.ai_status = if self.ai_enabled {
-                    "AI Control Active (Listening on control.sock)".into()
+                    "AI attach allowed (MCP server runs as its own process)".into()
                 } else {
-                    "AI Control Standby".into()
+                    "AI attach standby".into()
                 };
                 self.show_toast(if self.ai_enabled {
-                    "AI Control enabled (Tier: Edit)"
+                    "AI attach allowed (Tier: Edit)"
                 } else {
-                    "AI Control disabled"
+                    "AI attach disallowed"
                 });
                 Task::none()
             }
@@ -820,18 +823,21 @@ impl App {
             }
             Message::StopAi => {
                 self.ai_enabled = false;
-                self.ai_status = "AI Session Stopped / Revoked".into();
-                self.ai_activity_log
-                    .push("EMERGENCY STOP: AI session revoked and active tasks cancelled".into());
-                self.show_toast("AI activity stopped and jobs cancelled");
+                self.ai_status = "AI attach revoked".into();
+                // Connected clients own their own MCP process, so this window
+                // can only remember the decision; it cannot terminate them.
+                self.ai_activity_log.push(
+                    "AI attach revoked: stop any connected MCP client to end its session".into(),
+                );
+                self.show_toast("AI attach revoked (stop connected MCP clients separately)");
                 Task::none()
             }
             Message::UndoAiChanges => {
                 self.session.undo();
                 self.ai_activity_log
-                    .push("Rollback executed: Restored session checkpoint".into());
+                    .push("Undid the most recent edit in this window".into());
                 self.sync_edit_fields();
-                self.show_toast("Rolled back all AI changes to session start");
+                self.show_toast("Undid the most recent edit");
                 Task::none()
             }
             Message::SelectWorkflowTab(tab) => {

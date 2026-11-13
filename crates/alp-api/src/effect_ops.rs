@@ -177,6 +177,7 @@ impl ApiSession {
         params: serde_json::Value,
     ) -> Result<String, ApiError> {
         self.check_permission(PermissionTier::Edit)?;
+        self.validate_effect_id(effect_id)?;
         let track = self
             .project
             .tracks
@@ -267,9 +268,45 @@ impl ApiSession {
         )
     }
 
+    /// Reject an effect id the catalog does not offer, so a typo fails loudly
+    /// instead of inserting an inert chain entry that never does anything.
+    fn validate_effect_id(&self, effect_id: &str) -> Result<(), ApiError> {
+        let catalog = self.effect_catalog()?;
+        if catalog.effects.iter().any(|effect| effect.id == effect_id) {
+            return Ok(());
+        }
+        let known: Vec<&str> = catalog
+            .effects
+            .iter()
+            .map(|effect| effect.id.as_str())
+            .collect();
+        Err(ApiError::Validation(format!(
+            "unknown effect '{effect_id}'; call effect_catalog for the list ({})",
+            known.join(", ")
+        )))
+    }
+
+    /// Reject a preset the catalog does not offer.
+    fn validate_preset(&self, preset: &str) -> Result<(), ApiError> {
+        let catalog = self.effect_catalog()?;
+        if catalog.presets.iter().any(|entry| entry.id == preset) {
+            return Ok(());
+        }
+        let known: Vec<&str> = catalog
+            .presets
+            .iter()
+            .map(|entry| entry.id.as_str())
+            .collect();
+        Err(ApiError::Validation(format!(
+            "unknown preset '{preset}'; call effect_catalog for the list ({})",
+            known.join(", ")
+        )))
+    }
+
     /// Apply a named preset chain to a track (e.g., "voice_cleanup").
     pub fn preset_apply(&mut self, track_id: &str, preset: &str) -> Result<(), ApiError> {
         self.check_permission(PermissionTier::Edit)?;
+        self.validate_preset(preset)?;
         let track = self
             .project
             .tracks
@@ -286,5 +323,79 @@ impl ApiSession {
             "preset_apply",
             Box::new(SetTrackEffects::new(track_actual_id, effects)),
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::audit::AuditLogger;
+    use crate::sandbox::WorkspaceSandbox;
+    use alp_core::{Project, ProjectPaths, Track, TrackId};
+    use tempfile::tempdir;
+
+    fn session() -> (ApiSession, String) {
+        let dir = tempdir().expect("tempdir");
+        let path = dir.path().to_path_buf();
+        std::mem::forget(dir);
+        let paths = ProjectPaths::new(&path);
+        paths.ensure_layout().expect("layout");
+        let mut project = Project::new("Effects").expect("project");
+        let track = Track::new(TrackId::new(), "Voice");
+        let track_id = track.id.to_string();
+        project.tracks.push(track);
+        let sandbox = WorkspaceSandbox::new([&path]).expect("sandbox");
+        let audit = AuditLogger::new(path.join("audit.jsonl")).expect("audit");
+        let session = ApiSession::new(
+            project,
+            paths,
+            PermissionTier::Edit,
+            sandbox,
+            audit,
+            "agent",
+        )
+        .expect("session");
+        (session, track_id)
+    }
+
+    #[test]
+    fn a_known_effect_lands_in_the_chain() {
+        let (mut session, track_id) = session();
+        let handle = session
+            .effect_apply(
+                &track_id,
+                "compressor",
+                serde_json::json!({ "threshold_db": -18.0 }),
+            )
+            .expect("apply compressor");
+        let track = &session.project.tracks[0];
+        assert_eq!(track.effects.len(), 1);
+        assert_eq!(track.effects[0].id, handle);
+        assert_eq!(track.effects[0].kind, "compressor");
+        assert_eq!(track.effects[0].params.get("threshold_db"), Some(&-18.0));
+    }
+
+    #[test]
+    fn an_unknown_effect_id_is_rejected_with_the_catalog() {
+        let (mut session, track_id) = session();
+        let error = session
+            .effect_apply(&track_id, "not_an_effect", serde_json::json!({}))
+            .expect_err("unknown effect must fail");
+        assert!(error.to_string().contains("effect_catalog"), "{error}");
+        assert!(session.project.tracks[0].effects.is_empty());
+    }
+
+    #[test]
+    fn an_unknown_preset_is_rejected_and_a_known_one_applies() {
+        let (mut session, track_id) = session();
+        let error = session
+            .preset_apply(&track_id, "nope")
+            .expect_err("unknown preset must fail");
+        assert!(error.to_string().contains("voice_cleanup"), "{error}");
+
+        session
+            .preset_apply(&track_id, "voice_cleanup")
+            .expect("known preset applies");
+        assert_eq!(session.project.tracks[0].effects.len(), 1);
     }
 }

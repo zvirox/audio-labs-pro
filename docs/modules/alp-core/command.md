@@ -13,6 +13,10 @@ the project itself.
   duplicates, invalid state and wrapped `CoreError`
 - `CommandStack::new`, `with_limit`, `execute`, `undo`, `redo`, `can_undo`,
   `can_redo`, `undo_len`, `redo_len`, `undo_label`, `redo_label`, `clear`
+- `CommandStack::take_last(count) -> Vec<Box<dyn Command>>` — removes and returns
+  the newest `count` applied commands, used to build a `CompositeCommand`
+- `CommandStack::push_applied(cmd: Box<dyn Command>)` — pushes a command that is
+  already reflected in the project, without applying it again
 - `CommandStack::DEFAULT_LIMIT` (512)
 
 ## Data flow
@@ -21,6 +25,10 @@ the project itself.
 oldest entries past the limit. `undo` reverts the newest command and moves it to
 the redo stack. `redo` re-applies it and trims the undo stack. A failed command
 is not pushed.
+
+`take_last` and `push_applied` are the grouping pair: the session applies a
+batch normally, takes those entries off the stack, wraps them in a
+[`CompositeCommand`](composite.md), and pushes the composite as one entry.
 
 ## Allowed dependencies
 
@@ -47,4 +55,7 @@ completely and redoes it, comparing serialised projects.
 ## Known limits
 
 - History is in-memory only; it is not saved with the project.
-- There is no grouping/transaction command for multi-clip edits yet.
+- `take_last`/`push_applied` do not verify that the taken commands were really
+  applied; the caller owns that invariant.
+- Undo depth is bounded by `DEFAULT_LIMIT` (512) entries; a grouped batch counts
+  as one entry.

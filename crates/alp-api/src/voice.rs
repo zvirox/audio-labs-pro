@@ -105,6 +105,8 @@ pub struct TtsGenerationReport {
     pub engine: String,
     /// Sample rate of the written file in Hz.
     pub sample_rate: u32,
+    /// Background job that produced this result (query it with `job_status`).
+    pub job_id: String,
 }
 
 /// One transcribed region with positions in seconds.
@@ -133,6 +135,8 @@ pub struct TranscriptionReport {
     pub segments: Vec<TranscriptionSegmentReport>,
     /// Absolute path of the written transcript file when `out` was requested.
     pub transcript_path: Option<String>,
+    /// Background job that produced this result (query it with `job_status`).
+    pub job_id: String,
 }
 
 fn kind_label(kind: VoiceKind) -> &'static str {
@@ -383,6 +387,25 @@ impl ApiSession {
         speed: Option<f32>,
     ) -> Result<TtsGenerationReport, ApiError> {
         self.check_permission(PermissionTier::Edit)?;
+        let job_id = self.jobs.submit(format!("tts {voice_id}"));
+        let result = self.tts_generate_inner(text, voice_id, speed);
+        match &result {
+            Ok(report) => self.jobs.complete(&job_id, report.path.clone()),
+            Err(error) => self.jobs.fail(&job_id, error.to_string()),
+        }
+        result.map(|mut report| {
+            report.job_id = job_id;
+            report
+        })
+    }
+
+    /// Synthesis body; `tts_generate` wraps it in a background job record.
+    fn tts_generate_inner(
+        &mut self,
+        text: &str,
+        voice_id: &str,
+        speed: Option<f32>,
+    ) -> Result<TtsGenerationReport, ApiError> {
         let text = text.trim();
         if text.is_empty() {
             return Err(ApiError::Validation(
@@ -434,6 +457,7 @@ impl ApiSession {
             duration_secs: buffer.duration_secs(),
             engine,
             sample_rate: buffer.sample_rate(),
+            job_id: String::new(),
         };
         self.record_audit("tts_generate", "ok", self.revision());
         Ok(report)
@@ -486,7 +510,27 @@ impl ApiSession {
         out: Option<&str>,
     ) -> Result<TranscriptionReport, ApiError> {
         self.check_permission(PermissionTier::Observe)?;
+        let job_id = self.jobs.submit(format!("transcribe {path}"));
+        let result = self.transcribe_inner(path, format, out);
+        match &result {
+            Ok(report) => self
+                .jobs
+                .complete(&job_id, format!("{} segment(s)", report.segments.len())),
+            Err(error) => self.jobs.fail(&job_id, error.to_string()),
+        }
+        result.map(|mut report| {
+            report.job_id = job_id;
+            report
+        })
+    }
 
+    /// Transcription body; `transcribe` wraps it in a background job record.
+    fn transcribe_inner(
+        &mut self,
+        path: &str,
+        format: Option<&str>,
+        out: Option<&str>,
+    ) -> Result<TranscriptionReport, ApiError> {
         let written_format = format
             .map(|f| f.to_ascii_lowercase())
             .unwrap_or_else(|| "text".to_owned());
@@ -531,6 +575,7 @@ impl ApiSession {
                 .collect(),
             text,
             transcript_path,
+            job_id: String::new(),
         };
         self.record_audit("transcribe", "ok", self.revision());
         Ok(report)

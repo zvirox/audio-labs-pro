@@ -30,7 +30,9 @@ pub use jobs::{JobInfo, JobManager, JobState};
 pub use media::{ClipPlacementReport, MediaImportReport, MediaListReport, MediaSummary};
 pub use project_ops::{HistoryEntry, ProjectListItem};
 pub use sandbox::WorkspaceSandbox;
+pub use script_voice_ops::{ScriptGenerateReport, ScriptLine, ScriptRegenerateReport};
 pub use session::ApiSession;
+pub use track_clip_ops::{BatchOp, EditBatchReport};
 pub use types::{
     AnalysisReport, ApprovalMode, ClipSummary, PermissionTier, ProjectSummary, TrackSummary,
     format_timestamp,

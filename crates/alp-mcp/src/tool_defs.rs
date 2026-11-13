@@ -26,7 +26,7 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
             },
             McpTool {
                 name: "analyze_loudness".into(),
-                description: "Analyze integrated loudness (LUFS) and true peak level according to ITU-R BS.1770".into(),
+                description: "Measure integrated loudness (LUFS, ITU-R BS.1770), sample peak, noise floor, active-frame ratio and clipping on the project mix".into(),
                 input_schema: json!({
                     "type": "object",
                     "properties": {}
@@ -184,13 +184,44 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
             },
             McpTool {
                 name: "edit_batch".into(),
-                description: "Execute a batch of operations transactionally (all or nothing with checkpoints)".into(),
+                description: "Execute several edits atomically: either every operation applies or the project is left untouched, and the whole batch becomes a single undo step. Operations run in array order.".into(),
                 input_schema: json!({
                     "type": "object",
                     "properties": {
-                        "label": { "type": "string", "description": "Batch label" }
+                        "label": { "type": "string", "description": "Batch label for the audit log" },
+                        "operations": {
+                            "type": "array",
+                            "minItems": 1,
+                            "description": "Operations to apply in order",
+                            "items": {
+                                "type": "object",
+                                "required": ["op"],
+                                "properties": {
+                                    "op": {
+                                        "type": "string",
+                                        "enum": ["track_update", "clip_update", "clip_remove", "clip_split", "marker_add", "range_delete", "effect_apply", "effect_remove"]
+                                    },
+                                    "track_id": { "type": "string" },
+                                    "clip_id": { "type": "string" },
+                                    "effect_id": { "type": "string" },
+                                    "name": { "type": "string" },
+                                    "gain": { "type": "number" },
+                                    "pan": { "type": "number" },
+                                    "muted": { "type": "boolean" },
+                                    "solo": { "type": "boolean" },
+                                    "armed": { "type": "boolean" },
+                                    "start_secs": { "type": "number" },
+                                    "end_secs": { "type": "number" },
+                                    "split_secs": { "type": "number" },
+                                    "position_secs": { "type": "number" },
+                                    "fade_in_secs": { "type": "number" },
+                                    "fade_out_secs": { "type": "number" },
+                                    "params": { "type": "object" }
+                                }
+                            }
+                        }
                     },
-                    "required": ["label"]
+                    "required": ["label", "operations"]
                 }),
             },
             McpTool {
@@ -203,7 +234,7 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
             },
             McpTool {
                 name: "effect_apply".into(),
-                description: "Apply an effect to a track's effect chain".into(),
+                description: "Insert an effect from the catalog into a track's chain. Unknown effect ids are rejected with the list".into(),
                 input_schema: json!({
                     "type": "object",
                     "properties": {
@@ -241,7 +272,7 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
             },
             McpTool {
                 name: "preset_apply".into(),
-                description: "Apply a named preset chain to a track (e.g., 'voice_cleanup')".into(),
+                description: "Replace a track's chain with a catalog preset (voice_cleanup, podcast_master). Unknown names are rejected with the list".into(),
                 input_schema: json!({
                     "type": "object",
                     "properties": {
@@ -253,7 +284,7 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
             },
             McpTool {
                 name: "edit_trim_silence".into(),
-                description: "Trim silence from a track below a dBFS threshold".into(),
+                description: "Cut silence from a track below a dBFS threshold and ripple the track closed. Reports the measured length before/after.".into(),
                 input_schema: json!({
                     "type": "object",
                     "properties": {
@@ -266,7 +297,7 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
             },
             McpTool {
                 name: "edit_shorten_pauses".into(),
-                description: "Shorten pauses in a track (compress or remove pauses below threshold)".into(),
+                description: "Shorten pauses longer than max_pause_secs, keeping that much pause and cutting the excess. Ripples the track.".into(),
                 input_schema: json!({
                     "type": "object",
                     "properties": {
@@ -279,7 +310,7 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
             },
             McpTool {
                 name: "edit_remove_fillers".into(),
-                description: "Remove filler words from a track based on transcript segments".into(),
+                description: "Cut filler words using transcript word timestamps. Requires a speech model with word-level alignment: the call fails rather than guessing when only placeholder words exist.".into(),
                 input_schema: json!({
                     "type": "object",
                     "properties": {
@@ -291,7 +322,7 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
             },
             McpTool {
                 name: "edit_match_loudness".into(),
-                description: "Match project loudness to a target LUFS value, applying normalization and true peak limiting".into(),
+                description: "Scale every track's gain to reach the target LUFS, then re-measure. The gain is reduced if the sample peak would exceed -1 dBFS.".into(),
                 input_schema: json!({
                     "type": "object",
                     "properties": {
@@ -302,7 +333,7 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
             },
             McpTool {
                 name: "analyze_silence".into(),
-                description: "Analyze silence intervals in the project".into(),
+                description: "Find silence intervals of at least 100 ms below -30 dBFS in the project mix".into(),
                 input_schema: json!({
                     "type": "object",
                     "properties": {}
@@ -310,7 +341,7 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
             },
             McpTool {
                 name: "analyze_quality".into(),
-                description: "Analyze overall audio quality of the project".into(),
+                description: "Measure integrated LUFS, sample peak, 10th-percentile noise floor, clipping spikes and the fraction of active 20 ms frames on the project mix".into(),
                 input_schema: json!({
                     "type": "object",
                     "properties": {}
@@ -318,7 +349,7 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
             },
             McpTool {
                 name: "analyze_spectrum".into(),
-                description: "Analyze frequency spectrum of the project mix".into(),
+                description: "Measure 16 log-spaced band levels averaged over blocks spread across the whole project mix".into(),
                 input_schema: json!({
                     "type": "object",
                     "properties": {}
@@ -326,7 +357,7 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
             },
             McpTool {
                 name: "render_waveform".into(),
-                description: "Render a waveform summary (ASCII art) of the project mix".into(),
+                description: "Return an ASCII waveform envelope of the project mix (one cell per column, real per-column peaks)".into(),
                 input_schema: json!({
                     "type": "object",
                     "properties": {
@@ -338,7 +369,7 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
             },
             McpTool {
                 name: "render_spectrogram".into(),
-                description: "Render a spectrogram summary of the project mix".into(),
+                description: "Return an ASCII spectrogram of the project mix: Goertzel band energy per time column, low frequencies at the bottom".into(),
                 input_schema: json!({
                     "type": "object",
                     "properties": {
@@ -370,7 +401,7 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
             },
             McpTool {
                 name: "export_stems".into(),
-                description: "Export project stems (one audio file per track)".into(),
+                description: "Export one audio file per track, each rendered from that track alone (not the master copied per track)".into(),
                 input_schema: json!({
                     "type": "object",
                     "properties": {
@@ -382,7 +413,7 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
             },
             McpTool {
                 name: "export_transcript".into(),
-                description: "Export a transcript of all analysis results across the project".into(),
+                description: "Transcribe the project audio and write it as text, SRT or VTT. The report names the engine that produced the words".into(),
                 input_schema: json!({
                     "type": "object",
                     "properties": {
@@ -394,7 +425,7 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
             },
             McpTool {
                 name: "preview_render".into(),
-                description: "Quick preview render of a project segment for AI client preview".into(),
+                description: "Render a project segment to a WAV in the media directory and report that slice's own peak".into(),
                 input_schema: json!({
                     "type": "object",
                     "properties": {
@@ -406,7 +437,7 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
             },
             McpTool {
                 name: "job_status".into(),
-                description: "Get current status of a background job".into(),
+                description: "Get the state and progress of a job created by tts_generate, tts_script_generate, transcribe or an export".into(),
                 input_schema: json!({
                     "type": "object",
                     "properties": {
@@ -417,7 +448,7 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
             },
             McpTool {
                 name: "job_cancel".into(),
-                description: "Cancel a running background job".into(),
+                description: "Request cancellation of a running job; completed or unknown jobs report an error".into(),
                 input_schema: json!({
                     "type": "object",
                     "properties": {
@@ -428,7 +459,7 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
             },
             McpTool {
                 name: "tts_script_generate".into(),
-                description: "Generate audio from a script file (one clip per line or paragraph)".into(),
+                description: "Synthesize a JSON script and lay the clips out on the \"Script\" track: {\"segments\":[{\"text\":...,\"voice_id\":...,\"speed\"?:1.0,\"gap_secs\"?:0.35}]}. One undo step.".into(),
                 input_schema: json!({
                     "type": "object",
                     "properties": {
@@ -439,7 +470,7 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
             },
             McpTool {
                 name: "tts_regenerate".into(),
-                description: "Regenerate audio for a specific clip using new text and voice parameters".into(),
+                description: "Replace a clip's audio with a fresh synthesis of new text, keeping its timeline position.".into(),
                 input_schema: json!({
                     "type": "object",
                     "properties": {
