@@ -22,6 +22,14 @@ fn main() -> iced::Result {
         .window(window::Settings {
             size: Size::new(1440.0, 900.0),
             min_size: Some(Size::new(960.0, 640.0)),
+            icon: Some(
+                window::icon::from_rgba(
+                    include_bytes!("../assets/app-icon.rgba").to_vec(),
+                    256,
+                    256,
+                )
+                .expect("embedded app icon has valid RGBA dimensions"),
+            ),
             transparent: true,
             decorations: false,
             resizable: true,

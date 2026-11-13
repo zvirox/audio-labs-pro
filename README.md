@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="packaging/branding/audio-labs-pro-logo.png" alt="Audio Labs Pro cassette logo" width="680">
+</p>
+
 # Audio Labs Pro: Local Voice Studio & Multitrack Editor
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
