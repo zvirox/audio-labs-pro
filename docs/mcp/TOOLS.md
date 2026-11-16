@@ -14,6 +14,26 @@ Conventions used below:
 - **Everything is undoable.** One tool call is one undo group, except
   `edit_batch`, `tts_script_generate` and `tts_regenerate`, which group their
   whole effect into a single step.
+- **Every tool has a `title` and `annotations`** (`readOnlyHint`,
+  `destructiveHint`, `idempotentHint`, `openWorldHint`) so clients can gate
+  approval prompts; the hints are declared in one table in `tool_defs.rs`.
+- **Concurrency:** any write tool accepts `expected_revision` (the `revision`
+  from `project_info`). If the project has moved on, the call fails *before*
+  changing anything with a concurrency conflict telling you to re-read; reads
+  ignore the argument.
+- **Pagination:** the five list tools (`project_list`, `track_list`,
+  `media_list`, `history_list`, `plugin_list`) accept `limit` (default 50, max
+  200) and `cursor`, and return `{ items, total, offset, next_cursor? }`
+  instead of a bare array. `next_cursor` is opaque — pass it back verbatim;
+  a malformed cursor is an error, not a silent restart. An offset past the end
+  is an empty page with the real `total`.
+- **Limits:** requests are rate-limited (default 600 per 60 s sliding window),
+  request lines are capped (default 1 MiB), and each call has an advisory time
+  budget (default 120 s). A call that overruns the budget still returns its
+  real result with a note saying how long it took. Current headroom is
+  published in `server/discover` (`limits.remainingInWindow`). All three are
+  CLI-tunable (`--requests-per-window`, `--max-payload-bytes`,
+  `--call-timeout-ms`).
 - Behaviour limits are collected in [`AUDIT.md`](AUDIT.md).
 
 ---
@@ -22,27 +42,30 @@ Conventions used below:
 
 | Tool | Tier | Inputs | Result |
 |------|------|--------|--------|
-| `project_list` | Observe | — | `[ProjectListItem]` — projects found in the workspace |
+| `project_list` | Observe | `limit?`, `cursor?` | `{ items: [ProjectListItem], total, offset, next_cursor? }` — projects found in the workspace |
 | `project_info` | Observe | — | `{ id, name, revision, sample_rate, duration_secs, track_count, clip_count, undo_steps, redo_steps, is_dirty }` |
 | `project_create` | Edit | `name` | `{ project_id, path }` |
 | `project_open` | Edit | `path` | the opened project's summary |
 | `project_save` | Edit | — | `{ saved: true }` |
 | `project_close` | Edit | — | `{ closed: true }` — reverts to an empty draft |
-| `history_list` | Observe | — | `[HistoryEntry]` |
+| `history_list` | Observe | `limit?`, `cursor?` | `{ items: [HistoryEntry], total, offset, next_cursor? }` |
 | `history_undo` | Edit | — | `{ undone: bool }` |
 | `history_redo` | Edit | — | `{ redone: bool }` |
 | `checkpoint_create` | Edit | `label` | `{ checkpoint_id }` |
 | `checkpoint_restore` | Edit | `checkpoint_id` | `{ restored: true }` |
 | `rollback_session` | Edit | — | `{ rolled_back: bool }` — restores the session-start checkpoint |
 
-`undo_steps`/`redo_steps` in `project_info` are availability flags (0/1), not
-counts.
+`undo_steps`/`redo_steps` in `project_info` are real counts and agree with
+`history_list`'s `total`. Each `HistoryEntry` is
+`{ index, description, is_undo }`, where `description` is the core command's
+label (e.g. `"Rename track"`) — most recently applied first, then the redo
+stack in re-application order.
 
 ## 2. Media
 
 | Tool | Tier | Inputs | Result |
 |------|------|--------|--------|
-| `media_list` | Observe | — | `{ media: [{ id, name, relative_path, sample_rate, channels, frames, duration_secs, peak, file_exists }] }` |
+| `media_list` | Observe | `limit?`, `cursor?` | `{ items: [{ id, name, relative_path, sample_rate, channels, frames, duration_secs, peak, file_exists }], total, offset, next_cursor? }` |
 | `media_import` | Edit | `path`, `name?` | `{ source_id, name, relative_path, path, duration_secs, sample_rate, channels, peak }` |
 
 `media_import` decodes the file (proving it is audio), re-encodes it as Float32
@@ -53,7 +76,7 @@ undoable source add. An import can never overwrite existing media.
 
 | Tool | Tier | Inputs | Result |
 |------|------|--------|--------|
-| `track_list` | Observe | — | `[TrackSummary]` (`id`, `name`, `index`, `gain`, `pan`, `muted`, `solo`, `clip_count`, …) |
+| `track_list` | Observe | `limit?`, `cursor?` | `{ items: [TrackSummary], total, offset, next_cursor? }` — each `TrackSummary` is `id`, `name`, `index`, `gain`, `pan`, `muted`, `solo`, `clip_count`, … |
 | `track_add` | Edit | `name` | `{ track_id }` |
 | `track_update` | Edit | `track_id`, plus any of `name`, `gain`, `pan`, `muted`, `solo`, `armed` | `{ updated: true }` |
 | `track_remove` | Edit | `track_id` | `{ removed: true }` |
@@ -227,7 +250,7 @@ call returns, so polling shows `completed` with the produced artefact in
 
 | Tool | Tier | Inputs | Result |
 |------|------|--------|--------|
-| `plugin_list` | Observe | — | discovered CLAP/LV2 plugins with parameters |
+| `plugin_list` | Observe | `limit?`, `cursor?` | `{ items: [discovered CLAP/LV2 plugins with parameters], total, offset, next_cursor? }` |
 | `plugin_insert` | Edit | `track_id`, `plugin_id` | `{ effect_id }` |
 | `plugin_param_set` | Edit | `track_id`, `effect_id`, `param_name`, `value` | `{ updated: true }` |
 

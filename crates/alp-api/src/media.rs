@@ -143,6 +143,14 @@ impl ApiSession {
         Ok(MediaListReport { media })
     }
 
+    /// One page of the media list.
+    pub fn media_list_page(
+        &self,
+        request: crate::paging::PageRequest,
+    ) -> Result<crate::paging::Page<MediaSummary>, ApiError> {
+        Ok(crate::paging::paginate(self.media_list()?.media, request))
+    }
+
     /// Import a sandboxed audio file into the project media directory and
     /// register it as a source (Phase 10 `media_import`). The file is decoded
     /// (proving it is audio), re-encoded as Float32 WAV under a fresh source

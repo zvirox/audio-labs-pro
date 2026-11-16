@@ -14,7 +14,7 @@ plan), [`SECURITY.md`](SECURITY.md), [`WORKFLOWS.md`](WORKFLOWS.md).
 ## 1. Inventory
 
 `crates/alp-mcp/src/tool_defs.rs` defines **58 tools**; the dispatcher in
-`server.rs` matches all 58, and `every_advertised_tool_is_dispatched` in
+`dispatch.rs` matches all 58, and `every_advertised_tool_is_dispatched` in
 `main.rs` fails if that ever stops being true. Before the audit
 `MASTER_CHECKLIST.md` claimed 22 shipped and listed most of them as missing —
 the checklist, not the server, was stale.
@@ -63,6 +63,7 @@ fails against the old behaviour.
 | `effect_apply` / `preset_apply` | Accepted any effect or preset string and inserted an inert chain entry | Validate against `effect_catalog` and fail with the known ids. Tests: `an_unknown_effect_id_is_rejected_with_the_catalog`, `an_unknown_preset_is_rejected_and_a_known_one_applies` |
 | `job_status` / `job_cancel` | Job manager existed but nothing ever created a job | `tts_generate`, `transcribe` and `tts_script_generate` submit a real job, complete or fail it, and return `job_id` in their report |
 | `alp://docs/agent-guide` resource | Inline two-sentence stub | Serves `docs/mcp/AGENT_GUIDE.md` with `include_str!`, so the resource cannot drift from the file |
+| `history_list` | Fabricated labels: "Undoable edit step #1" derived from an availability flag | Reports the real command labels from the undo/redo stacks (`Rename track`, `Add clip`, …) with `index` and `is_undo`; `project_info.undo_steps`/`redo_steps` are real counts that agree with the list. Test: `history_list_reports_the_real_command_labels` |
 | `alp://effects/catalog` resource | Hard-coded list of seven effect names | Serialises the live `session.effect_catalog()` |
 | Prompts | `clean_up_voice_recording` existed; `produce_podcast_episode` was advertised but unimplemented | Both return real recipes that name tools that exist |
 
@@ -104,6 +105,14 @@ became "Undo last edit" because that is what it does. See §5.
 | `trim_silence_through_mcp_actually_shortens_the_timeline` | same | End-to-end duration change |
 | analysis unit tests | `alp-api/src/analysis_ops.rs` | Percentile, level stats, Goertzel |
 | composite unit tests | `alp-core/src/composite.rs` | Grouped apply/revert and mid-group failure |
+| paging unit tests | `alp-api/src/paging.rs` | Cursor round-trip, single-pass walk, clamped limits, empty last page |
+| limits unit tests | `alp-mcp/src/limits.rs` | Payload cap, sliding window refill, honest timeout reporting |
+| `every_advertised_tool_declares_a_title_and_annotations` | `alp-mcp/src/main.rs` | Metadata table covers all 58; hints match reality |
+| `list_tools_paginate_and_report_total` | `alp-mcp/src/main.rs` | Page envelope, zero-limit and junk-cursor rejections, past-end page |
+| `history_list_reports_the_real_command_labels` | `alp-mcp/src/main.rs` | Real labels; `undo_steps` agrees with the list |
+| `expected_revision_guards_writes_without_touching_state` | `alp-mcp/src/main.rs` | Stale guard refuses with no state change; current guard accepted |
+| `reads_ignore_expected_revision_and_write_tools_advertise_it` | `alp-mcp/src/main.rs` | Guard is write-only in both behaviour and schema |
+| `the_rate_limit_refuses_the_call_it_cannot_serve` | `alp-mcp/src/main.rs` | Refusal names the limit and the recovery |
 
 ---
 
@@ -120,11 +129,11 @@ became "Undo last edit" because that is what it does. See §5.
 | Derived DSP during render | Effects attached to a track are recorded in the project but the offline renderer does not yet apply them; `effect_apply` and `preset_apply` therefore change the project, not the audio |
 | Export paths | `export_audio`, `export_stems`, `export_transcript` and `preview_render` are synchronous; only TTS/STT/script report jobs |
 | `transcribe` with `engine: "builtin"` | Emits placeholder words ("Speech segment N") because no model is loaded. The field admits this; the text is not real speech recognition |
-| Tool schema metadata | `McpTool` carries `name`, `description`, `inputSchema` only — no `title`, `outputSchema`, `annotations`, or `ttlMs` |
-| Pagination | No `limit`/`cursor` on list tools; no 20 KB text cap |
+| Tool schema metadata | ~~`McpTool` carries `name`, `description`, `inputSchema` only~~ Fixed: every tool now carries `title` plus `annotations` (`readOnlyHint`/`destructiveHint`/`idempotentHint`/`openWorldHint`) derived from one table, and `tools/list` returns `ttlMs`/`cacheScope`. `outputSchema` is still missing |
+| Pagination | ~~No `limit`/`cursor` on list tools~~ Fixed: all five list tools page (`alp-api/src/paging.rs`, default 50 / max 200, opaque cursors, `total` + `next_cursor`, malformed cursor = validation error). No ~20 KB text cap yet |
 | Transports | stdio only. The Streamable HTTP transport (127.0.0.1, Host/Origin checks, bearer token) is not implemented |
-| Rate limits / timeouts / payload caps | Not implemented |
-| `expected_revision` | `ApiSession::verify_revision` exists but no MCP write path accepts the argument, so writes do not detect concurrent revision drift |
+| Rate limits / timeouts / payload caps | ~~Not implemented~~ Fixed: sliding-window rate limit (600/60 s), 1 MiB payload cap, advisory 120 s call budget — CLI-tunable, published in `server/discover`, and an over-budget call returns its real result with a note. No max-concurrent-jobs cap (jobs are synchronous) |
+| `expected_revision` | ~~`verify_revision` existed but no write path accepted it~~ Fixed: every write tool accepts `expected_revision`; a stale guard fails before changing anything, reads ignore the argument. No cross-process file locking, so one-writer-per-project remains a convention |
 
 ---
 

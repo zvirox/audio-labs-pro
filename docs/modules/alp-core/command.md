@@ -13,6 +13,9 @@ the project itself.
   duplicates, invalid state and wrapped `CoreError`
 - `CommandStack::new`, `with_limit`, `execute`, `undo`, `redo`, `can_undo`,
   `can_redo`, `undo_len`, `redo_len`, `undo_label`, `redo_label`, `clear`
+- `CommandStack::undo_labels() -> Vec<&'static str>` — labels of every undoable
+  step, most recently applied first; `redo_labels()` — the redo stack in
+  re-application order. These are what `history_list` reports.
 - `CommandStack::take_last(count) -> Vec<Box<dyn Command>>` — removes and returns
   the newest `count` applied commands, used to build a `CompositeCommand`
 - `CommandStack::push_applied(cmd: Box<dyn Command>)` — pushes a command that is

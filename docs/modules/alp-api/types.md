@@ -54,5 +54,6 @@ and clamping.
 
 - `AnalysisReport.detected_hum_hz` is always `None` — no mains-hum detector.
 - `peak_dbfs` is a sample peak; true peak is not measured.
-- `undo_steps`/`redo_steps` are availability flags (0/1), not counts.
+- `undo_steps`/`redo_steps` are real undo/redo step counts and agree with
+  `history_list`'s `total`.
 - `ApprovalMode` is defined but no code path enforces it.

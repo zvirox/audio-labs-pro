@@ -23,11 +23,11 @@ pub struct ProjectListItem {
 /// Description of an undo/redo stack entry.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HistoryEntry {
-    /// Index in stack.
+    /// Position in the stack: 0 is the step the next undo would revert.
     pub index: usize,
-    /// Name or description of command.
+    /// Label of the command, as recorded by the core command.
     pub description: String,
-    /// Whether this entry can be undone.
+    /// Whether this entry can be undone (otherwise it can be redone).
     pub is_undo: bool,
 }
 
@@ -43,6 +43,14 @@ impl ApiSession {
         }];
 
         Ok(list)
+    }
+
+    /// One page of the workspace project list.
+    pub fn project_list_page(
+        &self,
+        request: crate::paging::PageRequest,
+    ) -> Result<crate::paging::Page<ProjectListItem>, ApiError> {
+        Ok(crate::paging::paginate(self.project_list()?, request))
     }
 
     /// Create and switch to a new project in the workspace.
@@ -91,22 +99,28 @@ impl ApiSession {
     pub fn history_list(&self) -> Result<Vec<HistoryEntry>, ApiError> {
         self.check_permission(PermissionTier::Observe)?;
         let mut entries = Vec::new();
-        // Since CommandStack doesn't expose internal strings, list available actions
-        let info = self.project_info()?;
-        for i in 0..info.undo_steps {
+        for (index, label) in self.stack.undo_labels().iter().enumerate() {
             entries.push(HistoryEntry {
-                index: i,
-                description: format!("Undoable edit step #{}", i + 1),
+                index,
+                description: (*label).to_owned(),
                 is_undo: true,
             });
         }
-        for i in 0..info.redo_steps {
+        for (index, label) in self.stack.redo_labels().iter().enumerate() {
             entries.push(HistoryEntry {
-                index: i,
-                description: format!("Redoable edit step #{}", i + 1),
+                index,
+                description: (*label).to_owned(),
                 is_undo: false,
             });
         }
         Ok(entries)
+    }
+
+    /// One page of the undo/redo history.
+    pub fn history_list_page(
+        &self,
+        request: crate::paging::PageRequest,
+    ) -> Result<crate::paging::Page<HistoryEntry>, ApiError> {
+        Ok(crate::paging::paginate(self.history_list()?, request))
     }
 }

@@ -1,9 +1,9 @@
 //! Tool definitions and JSON schemas for Audio Labs Pro MCP server.
 
 use alp_api::PermissionTier;
-use serde_json::json;
+use serde_json::{Value, json};
 
-use crate::protocol::McpTool;
+use crate::protocol::{McpTool, ToolAnnotations, ToolMetadata};
 
 /// Return all MCP tools available for the given permission tier.
 pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
@@ -686,5 +686,252 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
         });
     }
 
+    for tool in &mut tools {
+        decorate_schema(&tool.name, &mut tool.input_schema);
+    }
+
     tools
+}
+
+/// Tools whose result is a list and therefore accepts `limit`/`cursor`.
+pub const PAGED_TOOLS: [&str; 5] = [
+    "project_list",
+    "track_list",
+    "media_list",
+    "history_list",
+    "plugin_list",
+];
+
+/// Tools that mutate project state, and therefore accept `expected_revision`.
+///
+/// This is derived from the annotation table at runtime rather than hand-listed:
+/// anything that is not read-only may be called optimistically. File-writing
+/// export tools are included, since they also read the current mix.
+fn accepts_expected_revision(name: &str) -> bool {
+    !metadata_for(name).annotations.read_only
+}
+
+/// Add the cross-cutting arguments to a tool's input schema.
+///
+/// Every list tool gets `limit`/`cursor`, every write tool gets
+/// `expected_revision`. Doing it here keeps 58 hand-written schemas from having
+/// to restate the same three properties, and makes the contract impossible to
+/// forget on a new tool.
+fn decorate_schema(name: &str, schema: &mut Value) {
+    let Some(properties) = schema.get_mut("properties").and_then(Value::as_object_mut) else {
+        return;
+    };
+
+    if PAGED_TOOLS.contains(&name) {
+        properties.insert(
+            "limit".into(),
+            json!({
+                "type": "integer",
+                "minimum": 1,
+                "maximum": alp_api::MAX_PAGE_SIZE,
+                "description": format!(
+                    "Maximum items to return (default {}, max {}). The result reports `total` and, when more remain, `next_cursor`.",
+                    alp_api::DEFAULT_PAGE_SIZE,
+                    alp_api::MAX_PAGE_SIZE
+                )
+            }),
+        );
+        properties.insert(
+            "cursor".into(),
+            json!({
+                "type": "string",
+                "description": "Opaque `next_cursor` from the previous page. Omit to start at the first item."
+            }),
+        );
+    }
+
+    if accepts_expected_revision(name) {
+        properties.insert(
+            "expected_revision".into(),
+            json!({
+                "type": "integer",
+                "minimum": 1,
+                "description": "Optimistic concurrency guard: fail without changing anything unless the project is still at this revision (see project_info)."
+            }),
+        );
+    }
+}
+
+/// Behavioural metadata for one tool: a short title plus MCP annotations.
+///
+/// The table is the single place that states how a tool behaves. A test asserts
+/// every advertised tool appears here, so a new tool cannot ship without
+/// declaring whether it reads, adds, or destroys.
+pub fn metadata_for(name: &str) -> ToolMetadata {
+    let read = ToolAnnotations::read_only();
+    let add = ToolAnnotations::additive();
+    let destroy = ToolAnnotations::destructive();
+
+    let (title, annotations) = match name {
+        // --- Projects & history ---
+        "project_list" => ("List Projects", read),
+        "project_info" => ("Project Summary", read),
+        "project_create" => ("Create Project", add),
+        "project_open" => (
+            "Open Project",
+            ToolAnnotations {
+                read_only: false,
+                destructive: false,
+                idempotent: true,
+                open_world: false,
+            },
+        ),
+        "project_save" => (
+            "Save Project",
+            ToolAnnotations {
+                read_only: false,
+                destructive: false,
+                idempotent: true,
+                open_world: false,
+            },
+        ),
+        "project_close" => ("Close Project", destroy),
+        "history_list" => ("List History", read),
+        "history_undo" => ("Undo Last Edit", destroy),
+        "history_redo" => ("Redo Edit", add),
+        "checkpoint_create" => ("Create Checkpoint", add),
+        "checkpoint_restore" => ("Restore Checkpoint", destroy),
+        "rollback_session" => ("Roll Back Session", destroy),
+        // --- Media ---
+        "media_list" => ("List Media", read),
+        "media_import" => ("Import Media", add),
+        // --- Tracks & clips ---
+        "track_list" => ("List Tracks", read),
+        "track_add" => ("Add Track", add),
+        "track_update" => (
+            "Update Track",
+            ToolAnnotations {
+                read_only: false,
+                destructive: false,
+                idempotent: true,
+                open_world: false,
+            },
+        ),
+        "track_remove" => ("Remove Track", destroy),
+        "clip_add" => ("Add Clip", add),
+        "clip_update" => (
+            "Update Clip",
+            ToolAnnotations {
+                read_only: false,
+                destructive: false,
+                idempotent: true,
+                open_world: false,
+            },
+        ),
+        "clip_split" => ("Split Clip", add),
+        "clip_remove" => ("Remove Clip", destroy),
+        "range_delete" => ("Delete Range", destroy),
+        "marker_add" => ("Add Marker", add),
+        "edit_batch" => ("Apply Edit Batch", destroy),
+        // --- Effects ---
+        "effect_catalog" => ("List Effects", read),
+        "effect_apply" => ("Apply Effect", add),
+        "effect_update" => (
+            "Update Effect",
+            ToolAnnotations {
+                read_only: false,
+                destructive: false,
+                idempotent: true,
+                open_world: false,
+            },
+        ),
+        "effect_remove" => ("Remove Effect", destroy),
+        "preset_apply" => ("Apply Preset", add),
+        // --- Smart edits ---
+        "edit_trim_silence" => ("Trim Silence", destroy),
+        "edit_shorten_pauses" => ("Shorten Pauses", destroy),
+        "edit_remove_fillers" => ("Remove Filler Words", destroy),
+        "edit_match_loudness" => (
+            "Match Loudness",
+            ToolAnnotations {
+                read_only: false,
+                destructive: false,
+                idempotent: true,
+                open_world: false,
+            },
+        ),
+        // --- Analysis ---
+        "analyze_loudness" | "analyze_silence" | "analyze_quality" | "analyze_spectrum" => {
+            ("Analyze Mix", read)
+        }
+        "render_waveform" => ("Render Waveform", read),
+        "render_spectrogram" => ("Render Spectrogram", read),
+        "compare_renders" => ("Compare Renders", read),
+        // --- Export ---
+        "export_presets" => ("List Export Presets", read),
+        "export_audio" | "export_stems" | "export_transcript" | "preview_render" => (
+            "Write Audio File",
+            ToolAnnotations {
+                read_only: false,
+                destructive: true,
+                idempotent: false,
+                open_world: false,
+            },
+        ),
+        // --- Jobs ---
+        "job_status" => ("Job Status", read),
+        "job_cancel" => ("Cancel Job", destroy),
+        // --- Voice & script ---
+        "tts_voices" => ("List Voices", read),
+        "voice_profile_get" => ("Inspect Voice", read),
+        "tts_generate" => ("Synthesize Speech", add),
+        "tts_script_generate" => ("Synthesize Script", add),
+        "tts_regenerate" => ("Regenerate Clip", destroy),
+        "voice_design" => ("Design Voice", add),
+        "transcribe" => (
+            "Transcribe Audio",
+            ToolAnnotations {
+                read_only: false,
+                destructive: false,
+                idempotent: true,
+                open_world: false,
+            },
+        ),
+        // --- Plugins ---
+        "plugin_list" => (
+            "List Plugins",
+            ToolAnnotations {
+                read_only: true,
+                destructive: false,
+                idempotent: true,
+                // Host-wide scan of installed CLAP/LV2 bundles.
+                open_world: true,
+            },
+        ),
+        "plugin_insert" => ("Insert Plugin", add),
+        "plugin_param_set" => (
+            "Set Plugin Parameter",
+            ToolAnnotations {
+                read_only: false,
+                destructive: false,
+                idempotent: true,
+                open_world: false,
+            },
+        ),
+        other => {
+            // Unknown ids keep the conservative answer: a client that sees this
+            // should not assume the call is safe to retry. The name is still
+            // reported in the tool entry itself, so no information is lost.
+            let _ = other;
+            (
+                "Unknown Tool",
+                ToolAnnotations {
+                    read_only: false,
+                    destructive: true,
+                    idempotent: false,
+                    open_world: true,
+                },
+            )
+        }
+    };
+
+    ToolMetadata {
+        title: title.into(),
+        annotations,
+    }
 }

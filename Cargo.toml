@@ -18,7 +18,6 @@ alp-media = { path = "crates/alp-media" }
 alp-voice = { path = "crates/alp-voice" }
 alp-ui-kit = { path = "crates/alp-ui-kit" }
 alp-api = { path = "crates/alp-api" }
-alp-mcp = { path = "crates/alp-mcp" }
 alp-plugin = { path = "crates/alp-plugin" }
 
 anyhow = "1.0"

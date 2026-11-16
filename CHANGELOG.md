@@ -38,8 +38,37 @@ versions follow the release milestones in the build plan.
   ids/names the catalog does not offer and list the known ones.
 - **`docs/mcp/AUDIT.md`** records what was fabricated, what was fixed, and what
   stays honestly partial; `docs/mcp/TOOLS.md` documents all 58 tools.
+- **Optimistic concurrency on every write.** All 58 tool schemas gain an
+  `expected_revision` argument on mutating tools: a write that names a stale
+  revision fails with a concurrency conflict naming `project_info` as the
+  recovery, before anything changes. Reads ignore the argument — the read is
+  what an agent needs to recover, so failing it would be self-defeating.
+- **Cursor pagination on the five list tools.** `project_list`, `track_list`,
+  `media_list`, `history_list` and `plugin_list` accept `limit` (default 50,
+  max 200) and `cursor`, and return `{ items, total, offset, next_cursor? }`.
+  Cursors are opaque `v1<hex>` tokens; a malformed cursor is a validation error
+  rather than a silent restart, and an offset past the end is an empty page
+  with the real total (`alp-api/src/paging.rs`, five unit tests).
+- **Tool titles, annotations and cache hints.** Every tool carries a `title`
+  plus `annotations` (`readOnlyHint`, `destructiveHint`, `idempotentHint`,
+  `openWorldHint`) from one metadata table in `tool_defs.rs`, parity-tested
+  against the advertised surface; `tools/list` returns `ttlMs`/`cacheScope`.
+- **Boundary limits at the MCP transport.** A sliding-window rate limit
+  (default 600 requests / 60 s), a 1 MiB payload cap and an advisory 120 s
+  call budget, all CLI-tunable (`--requests-per-window`,
+  `--max-payload-bytes`, `--call-timeout-ms`) and published in
+  `server/discover` with the caller's remaining budget. An over-budget call
+  still returns its real result, with a note reporting the measured overrun
+  (`alp-mcp/src/limits.rs`, five unit tests).
 
 ### Fixed
+
+- **`history_list` no longer invents history.** It reported "Undoable edit
+  step #1"-style placeholders derived from an availability flag. It now walks
+  the real undo/redo stacks via `CommandStack::undo_labels`/`redo_labels` and
+  reports each command's actual label (`Rename track`, `Add clip`, …);
+  `project_info.undo_steps`/`redo_steps` are real counts that agree with the
+  list (MCP test `history_list_reports_the_real_command_labels`).
 
 - **Several MCP tools reported work they never did.** `export_stems` wrote the
   master mix N times, `export_transcript` wrote a one-line header,
@@ -71,9 +100,17 @@ versions follow the release milestones in the build plan.
 
 ### Changed
 
+- **Branding & Visual Identity:** Replaced legacy cassette logo with the new
+  official Audio Labs Pro microphone & waveform identity across the desktop
+  application shell, window icon, desktop integration assets, hicolor icon theme
+  (scalable SVG and 48px to 256px HiDPI PNGs), packaging metadata, and documentation.
 - **`MASTER_CHECKLIST.md` Phase 10 now matches the code.** It records the real
   58-tool surface, the honest partials, and the absence of a control host,
   instead of the stale 22-shipped table.
+- **The tool dispatch moved out of `server.rs` into `dispatch.rs`.** The server
+  keeps transport, limits, the project lock and the concurrency guard; the
+  module that maps a tool name to an operation is solely about that mapping.
+  `server.rs` drops from ~1550 lines (over the 1500 gate) to ~400.
 
 - **A working acoustic clone tier (P0, ADR 0028).** `CloneBackend` now has a
   real implementation. `alp-voice::voiceprint` measures a reference recording

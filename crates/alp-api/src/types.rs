@@ -51,9 +51,9 @@ pub struct ProjectSummary {
     pub track_count: usize,
     /// Number of audio clips.
     pub clip_count: usize,
-    /// Number of undo steps available.
+    /// Number of undo steps.
     pub undo_steps: usize,
-    /// Number of redo steps available.
+    /// Number of redo steps.
     pub redo_steps: usize,
     /// Whether project has unsaved modifications.
     pub is_dirty: bool,

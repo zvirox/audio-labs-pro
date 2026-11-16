@@ -189,8 +189,8 @@ impl ApiSession {
             duration_secs: frames_to_secs(total_frames, rate),
             track_count: self.project.tracks.len(),
             clip_count: total_clips,
-            undo_steps: self.stack.can_undo() as usize,
-            redo_steps: self.stack.can_redo() as usize,
+            undo_steps: self.stack.undo_len(),
+            redo_steps: self.stack.redo_len(),
             is_dirty: self.dirty,
         })
     }
@@ -291,6 +291,14 @@ impl ApiSession {
                 clip_count: trk.clips.len(),
             })
             .collect())
+    }
+
+    /// One page of the track list.
+    pub fn list_tracks_page(
+        &self,
+        request: crate::paging::PageRequest,
+    ) -> Result<crate::paging::Page<TrackSummary>, ApiError> {
+        Ok(crate::paging::paginate(self.list_tracks()?, request))
     }
 
     /// Add a new track to the timeline.
@@ -599,6 +607,14 @@ impl ApiSession {
         self.check_permission(PermissionTier::Observe)?;
         let host = alp_plugin::PluginHost::new();
         Ok(host.list_plugins())
+    }
+
+    /// One page of the discovered plugin list.
+    pub fn plugin_list_page(
+        &self,
+        request: crate::paging::PageRequest,
+    ) -> Result<crate::paging::Page<alp_plugin::PluginDescriptor>, ApiError> {
+        Ok(crate::paging::paginate(self.plugin_list()?, request))
     }
 
     /// Insert a plugin onto a track's effect chain.

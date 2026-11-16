@@ -449,8 +449,8 @@ class EvaluationSuite:
             loud_data = loud_res.get("structuredContent") or {}
             self.record(
                 "Suite 8",
-                "analyze_loudness calculates BS.1770 LUFS and true peak",
-                "integrated_lufs" in loud_data and "true_peak_dbfs" in loud_data,
+                "analyze_loudness calculates BS.1770 LUFS and sample peak",
+                "integrated_lufs" in loud_data and "peak_dbfs" in loud_data,
             )
 
             # 8. Create checkpoint

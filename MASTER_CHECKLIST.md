@@ -204,7 +204,7 @@
 |---|------|--------|----------|
 | 10.1.1 | Typed operations over core, media, dsp, voice, engine (offline only) | ✅ | `crates/alp-api` |
 | 10.1.2 | Handles/IDs: `project_id`, `track_id`, `clip_id`, `media_id`, `job_id`, `checkpoint_id` (opaque, short, stable) | ✅ | UUID-based since alpha.2 |
-| 10.1.3 | Revisions & locking: one writer/project; `revision` on reads; `expected_revision` on writes | ⚠️ | Revision is returned on every read and advanced on every write; `verify_revision` exists but **no MCP write path accepts `expected_revision`** |
+| 10.1.3 | Revisions & locking: one writer/project; `revision` on reads; `expected_revision` on writes | ✅ | Every write tool accepts `expected_revision`; a stale guard fails with the conflict and a recovery hint before anything changes (MCP test `expected_revision_guards_writes_without_touching_state`). Still one writer per process — no cross-process file locking |
 | 10.1.4 | Undo grouping: each tool call = one undo group; session-start checkpoint for full rollback | ✅ | `CompositeCommand` + `group_commands_since`; `rollback_session` restores the session-start checkpoint |
 | 10.1.5 | Atomic batches: `edit_batch` validates N ops → applies all-or-nothing | ✅ | 8 operation kinds, rollback on failure, one undo entry (`track_clip_ops.rs` tests) |
 | 10.1.6 | Job manager: progress, cancellation, timeouts, result cache (TTS, STT, analysis, export) | ⚠️ | `JobManager` now has real producers (TTS/STT/script return `job_id`); **no timeouts, no result cache, exports still synchronous** |
@@ -217,17 +217,17 @@
 | # | Task | Status | Evidence |
 |---|------|--------|----------|
 | 10.2.1 | Transports: stdio default; Streamable HTTP opt-in (127.0.0.1, Host/Origin validation, bearer token, no wildcard CORS) | ⚠️ | stdio only; **HTTP transport not implemented** |
-| 10.2.2 | Capabilities: `tools`, `resources`, `prompts`, `server/discover`; deterministic tool order, `ttlMs`, `cacheScope`, `title` | ⚠️ | All four capability surfaces served; tool order is static and deterministic; **no `ttlMs`/`cacheScope`/`title`** |
-| 10.2.3 | Schemas: every tool has `inputSchema`/`outputSchema` (JSON Schema 2020-12), `structuredContent` + text summary, annotations | ⚠️ | All 58 have `inputSchema`, every result carries `structuredContent` plus a text summary; **no `outputSchema`, no `annotations`** |
+| 10.2.2 | Capabilities: `tools`, `resources`, `prompts`, `server/discover`; deterministic tool order, `ttlMs`, `cacheScope`, `title` | ✅ | Every tool carries `title` + `annotations` (parity-tested); `tools/list` returns `ttlMs`/`cacheScope`; `server/discover` documents the limits and pagination contract |
+| 10.2.3 | Schemas: every tool has `inputSchema`/`outputSchema` (JSON Schema 2020-12), `structuredContent` + text summary, annotations | ⚠️ | All 58 have `inputSchema` (write tools advertise `expected_revision`, list tools `limit`/`cursor`), every result carries `structuredContent` plus a text summary, annotations on every tool; **`outputSchema` still missing** |
 | 10.2.4 | Errors: protocol errors only for malformed; fixable errors → `isError: true` + cause + suggested next call | ✅ | Denials and validation errors name the fix (e.g. "call `tts_voices` for the known ids") |
 | 10.2.5 | Long jobs: Tasks extension → task handle; else progress notifications + `job_id` polling; cancellation → `job_cancel` | ⚠️ | `job_status`/`job_cancel` work against real jobs for TTS/STT/script; **no Tasks, no progress notifications** |
 | 10.2.6 | Human confirmation: MCP elicitation where supported; else GUI prompt (attach) or refuse (headless) | ⚠️ | Clone creation is refused outright; there is no elicitation round-trip and no GUI prompt (no control host) |
-| 10.2.7 | Size/pagination: ~20 KB text cap, `limit`/`cursor` on lists, `detail` arg for summary/full | ⬜ | **Not implemented** |
+| 10.2.7 | Size/pagination: ~20 KB text cap, `limit`/`cursor` on lists, `detail` arg for summary/full | ⚠️ | `limit`/`cursor` on all five list tools (`alp-api/src/paging.rs`, default 50, max 200, opaque cursors, `total` + `next_cursor`); **no ~20 KB text cap and no `detail` arg yet** |
 | 10.2.8 | Logging: stderr + audit log (protocol logging deprecated) | ✅ | `tracing` to stderr + `audit.jsonl` |
 
 ### 10.3 Tool Surface — 58 shipped (60 hard cap)
 
-Every tool below is defined in `tool_defs.rs`, dispatched in `server.rs`, and
+Every tool below is defined in `tool_defs.rs`, dispatched in `dispatch.rs`, and
 covered by a tier-visibility test. Behaviour notes are in
 [`docs/mcp/TOOLS.md`](docs/mcp/TOOLS.md).
 
@@ -280,7 +280,7 @@ Not shipped: `transcript_get`, `edit_cut_transcript_ranges` (both need §10.0.3)
 | 10.6.3 | Human confirmation every time: delete project/media/voice, overwrite file, restore checkpoint discarding human edits | ⚠️ | No MCP path can delete a project or voice, and imports never overwrite; checkpoint restore has no confirmation round-trip |
 | 10.6.4 | Prompt-injection hygiene: transcripts/filenames/tags/markers untrusted; no shell/generic file tools; static tool descriptions | ✅ | No shell/file-generic tools; descriptions are `&'static` in `tool_defs.rs` |
 | 10.6.5 | Process confinement: stdio shares client trust; sandbox `alp-mcp` (Landlock/bubblewrap) | ⬜ | **Not done** |
-| 10.6.6 | Limits: rate limits, per-call timeouts, max payload, max concurrent jobs | ⬜ | **Not implemented** |
+| 10.6.6 | Limits: rate limits, per-call timeouts, max payload, max concurrent jobs | ⚠️ | Sliding-window rate limit (600 req/60 s), 1 MiB payload cap, advisory 120 s call budget — all CLI-tunable and published in `server/discover` (`alp-mcp/src/limits.rs`); **no max-concurrent-jobs cap (jobs are synchronous)** |
 | 10.6.7 | Audit log: every call, viewable in AI panel; hashes/lengths only | ✅ | JSONL + the AI card's activity list |
 | 10.6.8 | Visibility: persistent AI-activity indicator when session attached | ⚠️ | The AI card shows the recorded attach policy; there is no attached session to indicate |
 
@@ -361,7 +361,7 @@ Not shipped: `transcript_get`, `edit_cut_transcript_ranges` (both need §10.0.3)
 ## Next Actions (Priority Order)
 
 1. **P0 — Model tier real:** ✅ Done except **P0.4** (the Qwen3-TTS neural runtime): implement the `qwen3-tts` architecture and the 12 Hz codec decoder in Rust, then swap `Qwen3Engine` from "validates and defers" to "executes"
-2. **P1 — MCP depth:** the 58-tool surface is complete and honest about its limits ([`docs/mcp/AUDIT.md`](docs/mcp/AUDIT.md)). Remaining: the `alp-ui` control host (10.5.2) so attached sessions share one project, pagination/cursors, rate limits and timeouts, `notifications` on human edits, the evaluation harness (`EVAL.md`, 10.8), and word-level timestamps (10.0.3) to unblock filler removal and transcript cutting
+2. **P1 — MCP depth:** the 58-tool surface is complete and honest about its limits ([`docs/mcp/AUDIT.md`](docs/mcp/AUDIT.md)). Done this round: `expected_revision` on writes (10.1.3), `title`/`annotations` + `ttlMs`/`cacheScope` (10.2.2), `limit`/`cursor` pagination on the five list tools (10.2.7), and rate limit / payload cap / advisory call budget (10.6.6). Remaining: the `alp-ui` control host (10.5.2) so attached sessions share one project, `outputSchema` (10.2.3), `notifications` on human edits, word-level timestamps (10.0.3) to unblock filler removal and transcript cutting, the ~20 KB text cap, and the evaluation harness golden artifacts / LLM trials (10.8)
 3. **P2 — Phase 5 completion:** RNNoise/spectral noise reduction; silence/breath tools in `alp-dsp`
 4. **P3 — Recording/timeline depth:** Multi-input overdub, spectrogram + minimap, monitoring resampler, async import, project picker/save-as
 5. **P4 — Release assurance:** Cross-desktop matrix, clean-machine passes, `phase2-demo.sh`

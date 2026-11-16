@@ -195,6 +195,26 @@ impl CommandStack {
         self.redo.last().map(|command| command.label())
     }
 
+    /// Labels of every undoable step, most recently applied first.
+    #[must_use]
+    pub fn undo_labels(&self) -> Vec<&'static str> {
+        self.undo
+            .iter()
+            .rev()
+            .map(|command| command.label())
+            .collect()
+    }
+
+    /// Labels of every redoable step, in the order they would be re-applied.
+    #[must_use]
+    pub fn redo_labels(&self) -> Vec<&'static str> {
+        self.redo
+            .iter()
+            .rev()
+            .map(|command| command.label())
+            .collect()
+    }
+
     /// Drop all history.
     pub fn clear(&mut self) {
         self.undo.clear();

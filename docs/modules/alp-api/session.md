@@ -14,6 +14,7 @@ Construction and state:
 - `ApiSession::new(project, paths, tier, sandbox, audit, client_id) -> Result<Self, ApiError>` — creates the session-start checkpoint.
 - `check_permission(&self, required: PermissionTier) -> Result<(), ApiError>`
 - `project_info(&self) -> Result<ProjectSummary, ApiError>`
+- `list_tracks_page(&self, request: PageRequest) -> Result<Page<TrackSummary>, ApiError>` and the sibling `*_page` helpers on `project_list`, `history_list`, `media_list` and `plugin_list` — one page of the corresponding list, via [`paging`](paging.md).
 - `save_project(&mut self) -> Result<(), ApiError>`
 - `undo(&mut self) -> Result<bool, ApiError>` / `redo(&mut self) -> Result<bool, ApiError>`
 - `create_checkpoint(&mut self, label) -> Result<String, ApiError>`
@@ -86,9 +87,9 @@ exercised by the batch and script tests in `track_clip_ops.rs`,
 ## Known limits
 
 - One writer per project. There is no concurrent session coordination or file
-  locking between processes.
-- `project_info.undo_steps`/`redo_steps` report availability (0/1), not counts.
-- `verify_revision` exists but no MCP write path accepts `expected_revision`
-  yet, so concurrent drift is not detected at the protocol boundary.
+  locking between processes; the MCP `expected_revision` guard detects drift
+  between a client's view and this session, not between two processes.
+- `project_info.undo_steps`/`redo_steps` are real counts and agree with
+  `history_list`'s total.
 - Rendering re-decodes every source on every call; there is no decoded-audio
   cache.
