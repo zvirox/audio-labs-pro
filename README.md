@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="packaging/branding/audio-labs-pro-logo.png" alt="Audio Labs Pro cassette logo" width="680">
+  <img src="packaging/branding/audio-labs-pro-logo.png" alt="Audio Labs Pro logo" width="300">
 </p>
 
 # Audio Labs Pro: Local Voice Studio & Multitrack Editor
@@ -7,7 +7,7 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/Version-v0.0.1--alpha.3-success.svg)](https://github.com/zvirox/audio-labs-pro/releases)
 [![Platform](https://img.shields.io/badge/Platform-Linux_(Wayland_&_X11)-orange.svg)](#3-minimum-requirements)
-[![Rust](https://img.shields.io/badge/Rust-1.89+-informational.svg)](https://www.rust-lang.org)
+[![Rust](https://img.shields.io/badge/Rust-1.92+-informational.svg)](https://www.rust-lang.org)
 [![UI](https://img.shields.io/badge/UI-iced_0.14_·_frosted_glass-indigo.svg)](docs/adr/0012-phase2-shell-and-glass.md)
 [![Workspaces](https://img.shields.io/badge/Workspaces-7_selectable_rooms-brightgreen.svg)](#the-seven-workspaces)
 
