@@ -21,6 +21,8 @@ Effects, Models and Settings — each carried by its own cyberpunk neon hue and
 switched live from the icon rail. Every one of them is the same studio: same
 motion, same geometry, same icons, same navigation, one docked player.
 
+Audio Labs Pro is integrated into the **[Starship Control](https://github.com/zvirox/starship-control)** ecosystem (`Mother Ship / Starship Control`), enabling autonomous agent orchestration via the `starship-plugin` bridge over Unix domain sockets and stdio MCP.
+
 ---
 
 ## 1. System Topology
