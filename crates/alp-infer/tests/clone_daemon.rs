@@ -9,14 +9,14 @@
 //! It also pins the consent gate: the daemon must refuse a cloned profile
 //! that arrives without a consent record.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
 use alp_media::PcmBuffer;
 use alp_voice::{
     AcousticCloneBackend, CloneBackend, ConsentRecord, InferClient, TtsRequest, VoiceKind,
-    analyze_voiceprint,
+    VoiceProfile, analyze_voiceprint,
 };
 
 /// A voiced vowel with a known fundamental.
@@ -60,6 +60,12 @@ impl Drop for Daemon {
 
 /// Start the daemon on a private socket and wait for it to accept clients.
 fn start_daemon() -> Option<Daemon> {
+    start_daemon_with_qwen(None)
+}
+
+/// Start the real worker, optionally overriding its Qwen model directory for
+/// an explicit model-gated integration run.
+fn start_daemon_with_qwen(qwen_dir: Option<&Path>) -> Option<Daemon> {
     let dir = tempfile::tempdir().expect("tempdir");
     // The socket must outlive the `tempdir`, so it lives in its own
     // directory that is removed by the OS rather than by `TempDir`.
@@ -70,13 +76,16 @@ fn start_daemon() -> Option<Daemon> {
     ));
     let binary = PathBuf::from(env!("CARGO_BIN_EXE_alp-infer"));
 
-    let child = Command::new(&binary)
+    let mut command = Command::new(&binary);
+    command
         .arg("--socket")
         .arg(&socket)
         .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-        .expect("spawn alp-infer");
+        .stderr(Stdio::null());
+    if let Some(model_dir) = qwen_dir {
+        command.env("ALP_QWEN3_DIR", model_dir);
+    }
+    let child = command.spawn().expect("spawn alp-infer");
 
     let daemon = Daemon { child, socket };
 
@@ -174,6 +183,78 @@ fn the_daemon_refuses_a_cloned_profile_without_consent() {
         message.contains("consent"),
         "the refusal must name the consent gate: {message}"
     );
+}
+
+#[test]
+fn the_daemon_executes_real_qwen_cloning_and_preserves_consent_when_installed() {
+    let (Ok(model_dir), Ok(reference_path)) = (
+        std::env::var("ALP_QWEN3_DIR"),
+        std::env::var("ALP_QWEN3_REFERENCE"),
+    ) else {
+        eprintln!(
+            "skip: set ALP_QWEN3_DIR and ALP_QWEN3_REFERENCE for real neural socket inference"
+        );
+        return;
+    };
+    let Some(daemon) = start_daemon_with_qwen(Some(Path::new(&model_dir))) else {
+        panic!("the model-gated alp-infer daemon did not start");
+    };
+    let client = InferClient::with_socket(&daemon.socket);
+    let loaded = client.load_model("qwen3-tts").expect("load real Qwen");
+    assert!(loaded.ready, "the verified official model must load");
+    assert_eq!(loaded.active_clone_model.as_deref(), Some("qwen3-tts"));
+    assert_eq!(
+        loaded.active_model.as_deref(),
+        Some("builtin-acoustic"),
+        "the clone slot must not rewrite plain-TTS provenance"
+    );
+
+    let mut profile = VoiceProfile::builtin("qwen-socket-test", "Qwen Socket Test", vec![]);
+    profile.kind = VoiceKind::Cloned;
+    profile.backend = "qwen3-tts".into();
+    profile.reference_audio = Some(PathBuf::from(reference_path));
+    profile.transcript = Some(
+        "Okay. Yeah. I resent you. I love you. I respect you. But you know what? You blew it! And thanks to you."
+            .into(),
+    );
+    let request = TtsRequest {
+        text: "Hello world. This is a neural voice cloning test.".into(),
+        voice_id: profile.id.clone(),
+        speed: 1.0,
+    };
+
+    // Exercise the gate before consent is attached, while the neural model is
+    // loaded. Consent must be refused by the daemon, not only by front ends.
+    let refusal = client
+        .synthesize_with_profile(&profile, &request)
+        .expect_err("neural cloning without consent must be refused");
+    assert!(refusal.to_string().contains("consent"), "{refusal}");
+
+    profile.consent = Some(
+        ConsentRecord::new(
+            "Official Reference Speaker",
+            "Test Engineer",
+            "The speaker gave explicit permission to clone this voice.",
+        )
+        .expect("consent"),
+    );
+    let rendered = client
+        .synthesize_with_profile(&profile, &request)
+        .expect("real neural synthesis through the daemon");
+    assert_eq!(rendered.sample_rate(), 24_000);
+    assert_eq!(rendered.channels(), 1);
+    assert!(rendered.frames() > 24_000, "expected more than one second");
+    assert!(rendered.rms() > 1.0e-5, "output must not be silent");
+    assert!(rendered.samples().iter().all(|sample| sample.is_finite()));
+
+    let status = client.status().expect("status after neural synthesis");
+    assert_eq!(status.active_clone_model.as_deref(), Some("qwen3-tts"));
+    assert_eq!(status.active_model.as_deref(), Some("builtin-acoustic"));
+
+    if let Ok(output) = std::env::var("ALP_QWEN3_OUTPUT") {
+        alp_media::write_wav(output, &rendered, alp_media::WavBitDepth::Float32)
+            .expect("write integration evidence WAV");
+    }
 }
 
 #[test]

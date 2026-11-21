@@ -5,6 +5,7 @@
 //! daemon's lifetime: a loaded neural model is reused across connections, and
 //! the builtin tier serves requests before (and after) any model load.
 
+#[cfg(test)]
 mod gguf;
 mod kitten;
 mod kokoro;
@@ -159,6 +160,12 @@ impl CloneEngine {
         request: &TtsRequest,
     ) -> Result<PcmBuffer, VoiceError> {
         match self {
+            CloneEngine::Acoustic(_) if profile.backend == qwen3::MODEL_ID => {
+                Err(VoiceError::Unavailable(
+                    "Qwen3-TTS is not loaded; refusing to substitute the acoustic clone tier"
+                        .into(),
+                ))
+            }
             CloneEngine::Acoustic(backend) => backend.synthesize_with(profile, request),
             CloneEngine::Neural(backend) => backend.synthesize_with(profile, request),
         }
@@ -177,6 +184,7 @@ struct Worker {
     clone: CloneEngine,
     active_model: Option<String>,
     active_stt: Option<String>,
+    active_clone: Option<String>,
 }
 
 impl Worker {
@@ -187,6 +195,7 @@ impl Worker {
             clone: CloneEngine::Acoustic(AcousticCloneBackend::new()),
             active_model: Some("builtin-acoustic".into()),
             active_stt: None,
+            active_clone: None,
         }
     }
 
@@ -196,6 +205,7 @@ impl Worker {
             active_model: self.active_model.clone(),
             ready: true,
             active_stt_model: self.active_stt.clone(),
+            active_clone_model: self.active_clone.clone(),
         }
     }
 
@@ -206,6 +216,7 @@ impl Worker {
             active_model: self.active_model.clone(),
             ready: false,
             active_stt_model: self.active_stt.clone(),
+            active_clone_model: self.active_clone.clone(),
         }
     }
 
@@ -215,7 +226,14 @@ impl Worker {
     /// when it is now the active engine. On failure the previous engine
     /// keeps serving and `ready` is `false`.
     fn load_model(&mut self, model_id: &str) -> InferResponse {
-        let dir = ModelManager::new().model_dir(&ModelId::new(model_id));
+        let dir = if model_id == qwen3::MODEL_ID {
+            std::env::var_os("ALP_QWEN3_DIR").map_or_else(
+                || ModelManager::new().model_dir(&ModelId::new(model_id)),
+                PathBuf::from,
+            )
+        } else {
+            ModelManager::new().model_dir(&ModelId::new(model_id))
+        };
         self.load_model_from(model_id, &dir)
     }
 
@@ -270,11 +288,15 @@ impl Worker {
                         qwen3::SAMPLE_RATE
                     );
                     self.clone = CloneEngine::Neural(Box::new(engine));
+                    self.active_clone = Some(model_id.to_owned());
                     self.status()
                 }
                 Err(error) => {
                     eprintln!(
-                        "worker: loading {model_id} failed, keeping the acoustic clone tier: {error}"
+                        "worker: loading {model_id} failed, keeping {}: {error}",
+                        self.active_clone
+                            .as_deref()
+                            .unwrap_or("the acoustic clone tier")
                     );
                     self.declined()
                 }
@@ -659,6 +681,7 @@ mod tests {
                 active_model: Some("builtin-acoustic".into()),
                 ready: true,
                 active_stt_model: None,
+                active_clone_model: None,
             }
         );
     }
@@ -674,6 +697,7 @@ mod tests {
                 active_model: Some("builtin-acoustic".into()),
                 ready: false,
                 active_stt_model: None,
+                active_clone_model: None,
             }
         );
 
@@ -692,6 +716,7 @@ mod tests {
                 active_model: Some("builtin-acoustic".into()),
                 ready: false,
                 active_stt_model: None,
+                active_clone_model: None,
             }
         );
 
@@ -702,6 +727,7 @@ mod tests {
                 active_model: Some("builtin-acoustic".into()),
                 ready: true,
                 active_stt_model: None,
+                active_clone_model: None,
             }
         );
     }
@@ -718,6 +744,7 @@ mod tests {
                 active_model: Some("builtin-acoustic".into()),
                 ready: false,
                 active_stt_model: None,
+                active_clone_model: None,
             }
         );
         let request = TtsRequest {
@@ -741,6 +768,7 @@ mod tests {
                 active_model: Some("builtin-acoustic".into()),
                 ready: false,
                 active_stt_model: None,
+                active_clone_model: None,
             }
         );
 
@@ -755,6 +783,7 @@ mod tests {
                 active_model: Some("builtin-acoustic".into()),
                 ready: false,
                 active_stt_model: None,
+                active_clone_model: None,
             }
         );
     }
@@ -785,6 +814,7 @@ mod tests {
                 active_model: Some("builtin-acoustic".into()),
                 ready: false,
                 active_stt_model: None,
+                active_clone_model: None,
             }
         );
     }
@@ -819,6 +849,7 @@ mod tests {
                 active_model: Some("kitten-nano".into()),
                 ready: true,
                 active_stt_model: None,
+                active_clone_model: None,
             }
         );
 
@@ -829,6 +860,7 @@ mod tests {
                 active_model: Some("kitten-nano".into()),
                 ready: true,
                 active_stt_model: Some("moonshine-tiny".into()),
+                active_clone_model: None,
             }
         );
 
@@ -854,6 +886,7 @@ mod tests {
                 active_model: Some("builtin-acoustic".into()),
                 ready: true,
                 active_stt_model: Some("moonshine-tiny".into()),
+                active_clone_model: None,
             }
         );
     }
@@ -868,8 +901,29 @@ mod tests {
                 active_model: Some("builtin-acoustic".into()),
                 ready: false,
                 active_stt_model: None,
+                active_clone_model: None,
             }
         );
+
+        let mut neural_profile = VoiceProfile::builtin("unloaded-qwen", "Unloaded Qwen", vec![]);
+        neural_profile.kind = VoiceKind::Cloned;
+        neural_profile.backend = qwen3::MODEL_ID.into();
+        let error = worker
+            .clone
+            .synthesize_with(
+                &neural_profile,
+                &TtsRequest {
+                    text: "Must not silently become acoustic".into(),
+                    voice_id: neural_profile.id.clone(),
+                    speed: 1.0,
+                },
+            )
+            .expect_err("a Qwen profile cannot use the acoustic slot");
+        assert!(
+            error.to_string().contains("refusing to substitute"),
+            "{error}"
+        );
+
         let pcm = worker
             .synthesize(&TtsRequest {
                 text: "Still serving via builtin".into(),

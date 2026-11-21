@@ -17,12 +17,14 @@ editing, **P4-P8** used by multitrack, DSP, TTS, dictation, and voice profiles,
 | iced-cube | 0.0.6 | MIT OR Apache-2.0 | P2 | themed buttons/switches/checkboxes + Lucide icon embedding |
 | lucide-static-svg | 1.62.0 | ISC | P2 | Lucide icon SVGs embedded at compile time by iced-cube |
 | lilt | 0.8.2 | MIT | P2 | time-based panel transitions |
+| nix | 0.30.1 | MIT | P1 | safe Linux peer credentials and effective-UID checks for the UI control socket |
 | x11rb | 0.13.2 | MIT OR Apache-2.0 | P2 | KWin X11 blur property; safe Rust |
 | cpal | 0.18.2 | Apache-2.0 | P1 | audio I/O |
 | rtrb | 0.4.0 | MIT OR Apache-2.0 | P1 | lock-free SPSC ring buffer |
 | symphonia | 0.6.1 | MPL-2.0 | P1 | decoding (unmodified; file-level copyleft only) |
 | hound | 3.5.1 | Apache-2.0 | P1 | WAV read/write |
 | rubato | 5.0.1 | MIT OR Apache-2.0 | P1 | offline FFT resampling |
+| crane-core | 26.9.0 | MIT | P0 | validated Candle Qwen3-TTS neural cloning runtime, pinned exactly |
 | ort | 2.0.0-rc.15 | MIT OR Apache-2.0 | P0 | ONNX Runtime bindings; Phase 6 |
 | ONNX Runtime (binary) | 1.31 | MIT | P0 | downloaded by `ort` |
 | piper-plus-g2p | 0.5.2 | MIT | P0 | English G2P (eSpeak-free) |
@@ -59,7 +61,7 @@ F5-TTS weights (CC-BY-NC), XTTS-v2 (CPML), KittenTTS 2 (custom license + AUP).
 | KittenML/kitten-tts-nano-0.8-fp32 | instant TTS | Apache-2.0 (model card front matter) | approved, not run |
 | onnx-community/kitten-tts-nano-0.1-ONNX | instant TTS (downloadable via `kitten-nano` manifest) | Apache-2.0 (HF cardData) | P6, files hash-verified, engine not wired |
 | onnx-community/moonshine-tiny-ONNX | dictation | MIT (HF cardData) | approved, not run |
-| Qwen/Qwen3-TTS-12Hz-0.6B-Base | clone "Fast" | Apache-2.0 (HF cardData) | P8, packaged and integrated |
+| Qwen/Qwen3-TTS-12Hz-0.6B-Base | clone "Fast" | Apache-2.0 (HF cardData) | P0, real CPU neural inference through daemon |
 | Qwen/Qwen3-TTS-12Hz-1.7B-Base | clone "Best" | Apache-2.0 (HF cardData) | Phase 8, not run |
 | openbmb/VoxCPM2 | voice design | Apache-2.0 (HF cardData) | Phase 8, verify weights on model card |
 | OmniVoice | clone | **unverified** | blocked until license verified |

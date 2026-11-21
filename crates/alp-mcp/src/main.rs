@@ -11,14 +11,9 @@ use alp_api::{ApiSession, AuditLogger, PermissionTier, WorkspaceSandbox};
 use alp_core::{Project, ProjectPaths};
 use clap::Parser;
 
-mod dispatch;
-mod limits;
-mod protocol;
-mod server;
-mod tool_defs;
+mod attach;
 
-use protocol::{JsonRpcRequest, JsonRpcResponse};
-use server::McpServer;
+use alp_mcp::{JsonRpcRequest, JsonRpcResponse, McpServer, limits, protocol};
 
 #[derive(Parser, Debug)]
 #[command(
@@ -38,6 +33,14 @@ struct Args {
     /// Unique client or agent session identifier.
     #[arg(short, long, default_value = "mcp-agent")]
     client_id: String,
+
+    /// Attach to the running desktop instead of opening a project from disk.
+    #[arg(long)]
+    attach: bool,
+
+    /// Desktop control socket. Defaults to `$XDG_RUNTIME_DIR/alp/control.sock`.
+    #[arg(long, requires = "attach")]
+    control_socket: Option<PathBuf>,
 
     /// Maximum size of one JSON-RPC request line, in bytes.
     #[arg(long, default_value = "1048576")]
@@ -73,8 +76,14 @@ fn parse_tier(value: &str) -> anyhow::Result<PermissionTier> {
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     let tier = parse_tier(&args.tier)?;
+    if args.attach {
+        return attach::run(&args);
+    }
 
-    let workspace_path = args.workspace.canonicalize().unwrap_or(args.workspace);
+    let workspace_path = args
+        .workspace
+        .canonicalize()
+        .unwrap_or_else(|_| args.workspace.clone());
     std::fs::create_dir_all(&workspace_path)?;
 
     let proj_paths = ProjectPaths::new(&workspace_path);

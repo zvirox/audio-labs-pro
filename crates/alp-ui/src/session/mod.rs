@@ -8,8 +8,8 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use std::sync::mpsc::Receiver;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use alp_core::{
@@ -46,7 +46,9 @@ pub struct EditSession {
     last_export: Option<String>,
     import_rx: Option<Receiver<Result<ImportedAudio, String>>>,
     paths: Option<ProjectPaths>,
+    attached_context: Arc<Mutex<Option<AttachedContext>>>,
     dirty: bool,
+    revision: u64,
     last_autosave: Instant,
 }
 
@@ -141,6 +143,7 @@ impl EditSession {
         let mut audio = HashMap::new();
         audio.insert(source_id, Arc::new(SourceAudio::from_pcm(&buffer)));
         let rate = project.sample_rate;
+        let attached_context = Arc::new(Mutex::new(None));
         Self {
             project,
             stack: CommandStack::new(),
@@ -158,7 +161,9 @@ impl EditSession {
             last_export: None,
             import_rx: None,
             paths,
+            attached_context,
             dirty: false,
+            revision: 1,
             last_autosave: Instant::now(),
         }
     }
@@ -211,7 +216,9 @@ impl EditSession {
             last_export: None,
             import_rx: None,
             paths: Some(paths),
+            attached_context: Arc::new(Mutex::new(None)),
             dirty: false,
+            revision: 1,
             last_autosave: Instant::now(),
         })
     }
@@ -301,6 +308,158 @@ impl EditSession {
     #[must_use]
     pub fn project(&self) -> &Project {
         &self.project
+    }
+
+    /// Monotonic revision shared with attached automation clients.
+    #[must_use]
+    pub fn revision(&self) -> u64 {
+        self.revision
+    }
+
+    /// Summary of the authoritative live state for native and MCP clients.
+    #[must_use]
+    pub fn project_summary(&self) -> alp_api::ProjectSummary {
+        alp_api::ProjectSummary {
+            id: self.project.id.to_string(),
+            name: self.project.name.clone(),
+            revision: self.revision,
+            sample_rate: self.project.sample_rate,
+            duration_secs: self.duration_secs(),
+            track_count: self.project.tracks.len(),
+            clip_count: self
+                .project
+                .tracks
+                .iter()
+                .map(|track| track.clips.len())
+                .sum(),
+            undo_steps: self.stack.undo_len(),
+            redo_steps: self.stack.redo_len(),
+            is_dirty: self.dirty,
+        }
+    }
+
+    /// Clone a saved live project for off-thread MCP preparation.
+    #[must_use]
+    pub fn attached_project_state(&self) -> Option<alp_api::AttachedProjectState> {
+        self.paths
+            .clone()
+            .map(|paths| alp_api::AttachedProjectState {
+                project: self.project.clone(),
+                paths,
+                revision: self.revision,
+                dirty: self.dirty,
+            })
+    }
+
+    /// Commit one prepared MCP call into the only live project and undo stack.
+    /// The worker has already decoded every source required by the new state.
+    pub fn commit_attached_project(
+        &mut self,
+        base_revision: u64,
+        state: alp_api::AttachedProjectState,
+        audio: HashMap<SourceId, Arc<SourceAudio>>,
+        operation: &str,
+    ) -> Result<(), String> {
+        if base_revision != self.revision {
+            return Err(format!(
+                "expected revision {base_revision}, but the live project is {}",
+                self.revision
+            ));
+        }
+        state
+            .project
+            .validate()
+            .map_err(|error| error.to_string())?;
+        let before_context = AttachedContext {
+            paths: self.paths.clone(),
+            audio: self.audio.clone(),
+        };
+        let mut after_audio = self.audio.clone();
+        after_audio.extend(audio);
+        let after_context = AttachedContext {
+            paths: Some(state.paths.clone()),
+            audio: after_audio,
+        };
+        let command = AttachedProjectCommand {
+            before: self.project.clone(),
+            after: state.project.clone(),
+            before_context,
+            after_context,
+            context: Arc::clone(&self.attached_context),
+        };
+        if !self.run(Box::new(command), "AI edit") {
+            return Err(self.status.clone());
+        }
+        if let Some(id) = self.selected_clip
+            && let Some((track, clip)) = self.project.clip(id)
+        {
+            self.track_id = track.id;
+            self.selection = Selection::between(
+                track.id,
+                clip.timeline_start,
+                self.project.clip_timeline_end(clip),
+                1,
+            );
+        }
+        if self.project.track(self.track_id).is_none()
+            && let Some(track) = self.project.tracks.first()
+        {
+            self.track_id = track.id;
+            self.selection = Selection::at(track.id, 0);
+        }
+        self.dirty = state.dirty;
+        self.status = format!("{operation} · revision {}", self.revision);
+        Ok(())
+    }
+
+    /// Shared undo/redo history for the attached MCP history tools.
+    #[must_use]
+    pub fn history_entries(&self) -> Vec<alp_api::HistoryEntry> {
+        self.stack
+            .undo_labels()
+            .into_iter()
+            .enumerate()
+            .map(|(index, label)| alp_api::HistoryEntry {
+                index,
+                description: label.to_owned(),
+                is_undo: true,
+            })
+            .chain(
+                self.stack
+                    .redo_labels()
+                    .into_iter()
+                    .enumerate()
+                    .map(|(index, label)| alp_api::HistoryEntry {
+                        index,
+                        description: label.to_owned(),
+                        is_undo: false,
+                    }),
+            )
+            .collect()
+    }
+
+    /// Mark a worker-completed save without touching project contents.
+    pub fn mark_attached_saved(&mut self) {
+        self.dirty = false;
+        self.last_autosave = Instant::now();
+    }
+
+    /// Number of undoable commands in this session.
+    #[must_use]
+    pub fn undo_steps(&self) -> usize {
+        self.stack.undo_len()
+    }
+
+    /// Number of redoable commands in this session.
+    #[must_use]
+    pub fn redo_steps(&self) -> usize {
+        self.stack.redo_len()
+    }
+
+    /// Whether the live project differs from its last save.
+    #[must_use]
+    pub fn is_dirty(&self) -> bool {
+        self.dirty
     }
 
     /// Timeline selection.
@@ -600,9 +759,11 @@ impl EditSession {
             }
         );
         self.dirty = true;
+        self.revision = self.revision.saturating_add(1);
     }
 
     fn run(&mut self, command: Box<dyn Command>, label: &str) -> bool {
+        clear_attached_context(&self.attached_context);
         match self.stack.execute(&mut self.project, command) {
             Ok(()) => {
                 self.after_change(label);
@@ -621,6 +782,10 @@ impl EditSession {
             self.status = format!("{label} rejected: {error}");
             return;
         }
+        if let Some(context) = lock_recover(&self.attached_context).take() {
+            self.paths = context.paths;
+            self.audio = context.audio;
+        }
         if let Some(id) = self.selected_clip
             && self.project.clip(id).is_none()
         {
@@ -628,6 +793,50 @@ impl EditSession {
         }
         self.status = format!("{label} · {} clip(s)", self.clip_count());
         self.dirty = true;
+        self.revision = self.revision.saturating_add(1);
+    }
+}
+
+#[derive(Debug, Clone)]
+struct AttachedContext {
+    paths: Option<ProjectPaths>,
+    audio: HashMap<SourceId, Arc<SourceAudio>>,
+}
+
+fn lock_recover<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+    mutex
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
+fn clear_attached_context(slot: &Arc<Mutex<Option<AttachedContext>>>) {
+    *lock_recover(slot) = None;
+}
+
+#[derive(Debug)]
+struct AttachedProjectCommand {
+    before: Project,
+    after: Project,
+    before_context: AttachedContext,
+    after_context: AttachedContext,
+    context: Arc<Mutex<Option<AttachedContext>>>,
+}
+
+impl Command for AttachedProjectCommand {
+    fn label(&self) -> &'static str {
+        "AI edit"
+    }
+
+    fn apply(&mut self, project: &mut Project) -> Result<(), alp_core::CommandError> {
+        *project = self.after.clone();
+        *lock_recover(&self.context) = Some(self.after_context.clone());
+        Ok(())
+    }
+
+    fn revert(&mut self, project: &mut Project) -> Result<(), alp_core::CommandError> {
+        *project = self.before.clone();
+        *lock_recover(&self.context) = Some(self.before_context.clone());
+        Ok(())
     }
 }
 

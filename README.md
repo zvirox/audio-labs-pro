@@ -5,9 +5,9 @@
 # Audio Labs Pro: Local Voice Studio & Multitrack Editor
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-v0.0.1--alpha.3-success.svg)](https://github.com/zvirox/audio-labs-pro/releases)
+[![Version](https://img.shields.io/badge/Version-v0.0.1--alpha.4-success.svg)](https://github.com/zvirox/audio-labs-pro/releases)
 [![Platform](https://img.shields.io/badge/Platform-Linux_(Wayland_&_X11)-orange.svg)](#3-minimum-requirements)
-[![Rust](https://img.shields.io/badge/Rust-1.92+-informational.svg)](https://www.rust-lang.org)
+[![Rust](https://img.shields.io/badge/Rust-1.95+-informational.svg)](https://www.rust-lang.org)
 [![UI](https://img.shields.io/badge/UI-iced_0.14_·_frosted_glass-indigo.svg)](docs/adr/0012-phase2-shell-and-glass.md)
 [![Workspaces](https://img.shields.io/badge/Workspaces-7_selectable_rooms-brightgreen.svg)](#the-seven-workspaces)
 
@@ -55,7 +55,7 @@ Audio Labs Pro is integrated into the **[Starship Control](https://github.com/zv
                            ▼
 ┌──────────────────────────────────────────────────────┐
 │          ALP-INFER (separate process)                │
-│  TTS · STT · clone models over ONNX Runtime & GGUF   │
+│  TTS · STT · clone models over ONNX Runtime & Candle │
 │  Crash-isolated: an OOM or GPU fault never kills     │
 │  the editor.                                         │
 └──────────────────────────────────────────────────────┘
@@ -172,7 +172,7 @@ Desktop, Cursor and VS Code live in
 | **RAM** | 2 GB (shell idle ≈ 86 MB RSS) | 8 GB for neural TTS/STT models |
 | **Storage** | ~30 MB installed (release binary + assets) | + model directory (per-model, see Models workspace) |
 | **Audio** | ALSA device (48 kHz verified) | PipeWire / JACK-capable interface |
-| **Build** | Rust 1.89+, `pkg-config`, ALSA headers, winit/iced graphics libs | `sccache`, cached `~/.cargo` |
+| **Build** | Rust 1.95+, `pkg-config`, ALSA headers, winit/iced graphics libs | `sccache`, cached `~/.cargo` |
 
 The shell starts with a synthetic waveform, so it runs with no audio device and
 no models — every dialog explains what it needs before touching hardware.
@@ -184,7 +184,7 @@ no models — every dialog explains what it needs before touching hardware.
 ### Method 1: Packages from the release
 
 The
-[v0.0.1-alpha.3 release](https://github.com/zvirox/audio-labs-pro/releases)
+[v0.0.1-alpha.4 release](https://github.com/zvirox/audio-labs-pro/releases)
 ships `.deb`, `.rpm`, `.flatpak` and a `sha256sums.txt`.
 
 ```bash
@@ -192,13 +192,13 @@ ships `.deb`, `.rpm`, `.flatpak` and a `sha256sums.txt`.
 sha256sum -c sha256sums.txt   # (asset names may differ slightly from the manifest)
 
 # Debian / Ubuntu
-sudo apt install ./audio-labs-pro_0.0.1-alpha.3_amd64.deb
+sudo apt install ./audio-labs-pro_0.0.1-alpha.4_amd64.deb
 
-# Fedora / openSUSE (the RPM orders as a pre-release: 0.0.1~alpha.3)
-sudo dnf install ./audio-labs-pro-0.0.1~alpha.3-1.x86_64.rpm
+# Fedora / openSUSE (the RPM orders as a pre-release: 0.0.1~alpha.4)
+sudo dnf install ./audio-labs-pro-0.0.1~alpha.4-1.x86_64.rpm
 
 # Flatpak, any distribution (Freedesktop 25.08 runtime)
-flatpak install --user ./Audio-Labs-Pro-0.0.1-alpha.3-x86_64.flatpak
+flatpak install --user ./Audio-Labs-Pro-0.0.1-alpha.4-x86_64.flatpak
 ```
 
 The packages install `audio-labs-pro` (workstation), `alp-cli` and `alp-infer`,

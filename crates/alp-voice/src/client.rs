@@ -1,9 +1,9 @@
 //! Client connection to `alp-infer` and in-process acoustic synthesizer fallback.
 
-use alp_core::CoreError;
+use alp_core::{AppDirs, CoreError};
 use alp_media::PcmBuffer;
 use std::os::unix::net::UnixStream;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
@@ -24,6 +24,21 @@ fn request_id(request: &InferRequest) -> u64 {
         | InferRequest::DesignVoice { id, .. }
         | InferRequest::Cancel { id } => *id,
         _ => 0,
+    }
+}
+
+/// Resolve the relative bundle path persisted by `ProfileStore` without
+/// changing the profile on disk. The worker has no profile-store context, so
+/// the client sends the absolute read-only reference path for neural ICL.
+fn resolve_reference_path(profile: &mut crate::profile::VoiceProfile, voices_dir: &Path) {
+    if profile.backend != "qwen3-tts" {
+        return;
+    }
+    let Some(reference) = profile.reference_audio.as_ref() else {
+        return;
+    };
+    if reference.is_relative() {
+        profile.reference_audio = Some(voices_dir.join(&profile.id).join(reference));
     }
 }
 
@@ -82,10 +97,12 @@ impl InferClient {
                 active_model,
                 ready,
                 active_stt_model,
+                active_clone_model,
             } => Ok(InferStatus {
                 active_model,
                 ready,
                 active_stt_model,
+                active_clone_model,
             }),
             other => Err(CoreError::validation(format!(
                 "unexpected response: {other:?}"
@@ -95,6 +112,8 @@ impl InferClient {
 
     /// Ask the daemon to load a model into its active engine.
     ///
+    /// Loading includes reading neural weights and has a ten-minute read
+    /// timeout; status checks retain their short liveness timeout.
     /// The returned `ready` refers to the *requested* model: `false` means the
     /// daemon declined (unknown model, load failure) and kept its previous
     /// engine. The status describes the engine tiers after the attempt, so an
@@ -102,7 +121,7 @@ impl InferClient {
     /// `active_stt_model` instead.
     pub fn load_model(&self, model_id: &str) -> Result<InferStatus, CoreError> {
         let mut stream = UnixStream::connect(&self.socket_path)?;
-        stream.set_read_timeout(Some(Duration::from_millis(500)))?;
+        stream.set_read_timeout(Some(Duration::from_secs(600)))?;
 
         write_message(
             &mut stream,
@@ -116,10 +135,12 @@ impl InferClient {
                 active_model,
                 ready,
                 active_stt_model,
+                active_clone_model,
             } => Ok(InferStatus {
                 active_model,
                 ready,
                 active_stt_model,
+                active_clone_model,
             }),
             other => Err(CoreError::validation(format!(
                 "unexpected response: {other:?}"
@@ -135,19 +156,27 @@ impl InferClient {
         })
     }
 
-    /// Send a profile-conditioned synthesis request to the daemon.
-    ///
-    /// Cloned voices carry speaker conditioning (a measured voiceprint or a
-    /// neural speaker embedding) inside the profile, so they need their own
-    /// request variant; [`InferClient::synthesize`] cannot express them.
+    /// Cloned voices carry their profile, including either acoustic
+    /// conditioning or the reference recording used by Qwen's neural ICL.
+    /// Relative bundle paths are resolved here while the original stored
+    /// profile remains portable.
     pub fn synthesize_with_profile(
         &self,
         profile: &crate::profile::VoiceProfile,
         request: &TtsRequest,
     ) -> Result<PcmBuffer, VoiceError> {
+        let mut resolved = profile.clone();
+        if resolved.backend == "qwen3-tts" {
+            let voices_dir = AppDirs::discover()
+                .map_err(|error| {
+                    VoiceError::Backend(format!("could not resolve voice profile store: {error}"))
+                })?
+                .voices_dir();
+            resolve_reference_path(&mut resolved, &voices_dir);
+        }
         self.synthesize_with(InferRequest::SynthesizeWithProfile {
             id: self.next_id.fetch_add(1, Ordering::SeqCst),
-            profile: Box::new(profile.clone()),
+            profile: Box::new(resolved),
             request: request.clone(),
         })
     }
@@ -476,12 +505,38 @@ mod tests {
     }
 
     #[test]
+    fn qwen_bundle_reference_is_resolved_without_touching_other_profiles() {
+        let mut neural =
+            crate::profile::VoiceProfile::builtin("speaker-one", "Speaker One", vec![]);
+        neural.kind = crate::VoiceKind::Cloned;
+        neural.backend = "qwen3-tts".into();
+        neural.reference_audio = Some(PathBuf::from("reference.wav"));
+        resolve_reference_path(&mut neural, Path::new("/data/voices"));
+        assert_eq!(
+            neural.reference_audio.as_deref(),
+            Some(Path::new("/data/voices/speaker-one/reference.wav"))
+        );
+
+        let mut acoustic =
+            crate::profile::VoiceProfile::builtin("speaker-two", "Speaker Two", vec![]);
+        acoustic.kind = crate::VoiceKind::Cloned;
+        acoustic.backend = "acoustic-clone".into();
+        acoustic.reference_audio = Some(PathBuf::from("reference.wav"));
+        resolve_reference_path(&mut acoustic, Path::new("/data/voices"));
+        assert_eq!(
+            acoustic.reference_audio,
+            Some(PathBuf::from("reference.wav"))
+        );
+    }
+
+    #[test]
     fn status_and_load_model_round_trip_through_socket() {
         let (socket, handle) = fake_daemon(
             InferResponse::Status {
                 active_model: Some("kokoro-82m".into()),
                 ready: true,
                 active_stt_model: Some("moonshine-tiny".into()),
+                active_clone_model: Some("qwen3-tts".into()),
             },
             2,
         );
@@ -490,6 +545,7 @@ mod tests {
         let status = client.status().expect("status");
         assert_eq!(status.active_model.as_deref(), Some("kokoro-82m"));
         assert_eq!(status.active_stt_model.as_deref(), Some("moonshine-tiny"));
+        assert_eq!(status.active_clone_model.as_deref(), Some("qwen3-tts"));
         assert!(status.ready);
 
         let loaded = client.load_model("kokoro-82m").expect("load");
@@ -505,6 +561,7 @@ mod tests {
                 active_model: None,
                 ready: false,
                 active_stt_model: None,
+                active_clone_model: None,
             },
             2,
         );

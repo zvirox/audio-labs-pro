@@ -5,7 +5,7 @@ members = ["crates/*"]
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.92"
+rust-version = "1.95"
 license = "Apache-2.0"
 repository = "https://github.com/zvirox/audio-labs-pro"
 publish = false
@@ -18,17 +18,20 @@ alp-media = { path = "crates/alp-media" }
 alp-voice = { path = "crates/alp-voice" }
 alp-ui-kit = { path = "crates/alp-ui-kit" }
 alp-api = { path = "crates/alp-api" }
+alp-mcp = { path = "crates/alp-mcp" }
 alp-plugin = { path = "crates/alp-plugin" }
 
 anyhow = "1.0"
 clap = { version = "4.5", features = ["derive"] }
 cpal = "0.18.2"
+crane-core = "=26.9.0"
 dirs = "7.0.0"
 flacenc = { version = "0.5.1", default-features = false }
 iced = { version = "=0.14.0", features = ["canvas", "svg", "advanced"] }
 iced-cube = { version = "0.0.6", default-features = false, features = ["full"] }
 libloading = "0.8.9"
 lilt = "=0.8.2"
+nix = { version = "0.30.1", default-features = false, features = ["socket", "user"] }
 hound = "3.5.1"
 nnnoiseless = "0.5.2"
 ort = "=2.0.0-rc.15"

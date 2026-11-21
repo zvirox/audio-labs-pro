@@ -13,6 +13,7 @@ alp-api.workspace = true
 alp-core.workspace = true
 alp-engine.workspace = true
 alp-media.workspace = true
+alp-mcp.workspace = true
 alp-plugin.workspace = true
 alp-ui-kit.workspace = true
 alp-voice.workspace = true

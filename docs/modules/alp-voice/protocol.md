@@ -9,7 +9,7 @@ Defines the IPC message framing and request/response schema used between the app
 - `default_socket_path() -> PathBuf`
 - `InferRequest`: `Ping`, `GetStatus`, `LoadModel`, `Synthesize`, `Transcribe`, `DesignVoice`, `Cancel`, `Shutdown`
 - `InferResponse`: `Pong`, `Status`, `Progress`, `Audio`, `Transcript`, `VoiceDesigned`, `Error`
-- `InferStatus`: the `Status` payload as a struct - `active_model` (synthesis tier), `ready` (last load attempt), `active_stt_model` (transcription tier; `None` while the built-in acoustic backend serves). The two engine slots are independent (ADR 0025)
+- `InferStatus`: the `Status` payload as a struct - `active_model` (synthesis tier), `ready` (last load attempt), `active_stt_model` (transcription tier), and `active_clone_model` (clone tier; `None` while acoustic cloning serves). The three engine slots are independent (ADRs 0025/0029); legacy status messages without clone identity default it to `None`
 - `write_message<W: Write, T: Serialize>(writer: &mut W, msg: &T) -> Result<(), CoreError>`
 - `read_message<R: Read, T: Deserialize>(reader: &mut R) -> Result<T, CoreError>`
 

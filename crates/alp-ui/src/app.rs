@@ -36,6 +36,8 @@ use crate::panels::{DockSide, PanelKind, PanelManager};
 use crate::session::EditSession;
 use crate::workspace::PersistedWorkspace;
 
+mod ai_control;
+mod ai_mcp;
 mod ai_views;
 mod capture_views;
 mod create_voice_views;
@@ -274,6 +276,12 @@ pub enum Message {
     CloseShortcutsHelp,
     /// Toggle AI automation master switch.
     ToggleAiControl,
+    /// A control-host event waiting for the shared UI command path.
+    AiControl(alp_api::control::ControlEvent),
+    /// Decide whether a newly attached client is trusted.
+    ResolveAiApproval(alp_api::control::ApprovalDecision),
+    /// Copy the enabled host's one-session authentication token.
+    CopyAiToken,
     /// Set the permission tier for AI clients.
     SetAiPermissionTier(alp_api::PermissionTier),
     /// Immediately stop all AI automation and cancel running jobs.
@@ -535,6 +543,7 @@ pub struct App {
     ai_enabled: bool,
     ai_tier: alp_api::PermissionTier,
     ai_status: String,
+    ai_control: ai_control::AiControlState,
     ai_activity_log: Vec<String>,
 
     jobs: JobQueue,
@@ -827,10 +836,16 @@ impl App {
             workflow_tab: start_tab,
             ai_enabled: false,
             ai_tier: alp_api::PermissionTier::Edit,
-            ai_status: "AI attach standby (MCP server is a separate process)".into(),
+            ai_status: "AI attach off: enable to create an owner-only control socket".into(),
+            ai_control: Self::ai_control_state(
+                restored
+                    .as_ref()
+                    .map(|layout| layout.approved_ai_clients.clone())
+                    .unwrap_or_default(),
+            ),
             ai_activity_log: vec![
                 "Project opened; edits from this window are undoable".into(),
-                "MCP attach is off: clients start their own alp-mcp process".into(),
+                "Headless MCP opens projects separately; live attach is off".into(),
             ],
             jobs: JobQueue::new(),
             layout_restored,
@@ -876,6 +891,7 @@ impl App {
             || self.autoclose.is_some()
             || self.recording.is_some()
             || self.generating
+            || self.ai_enabled
             || self.session.is_importing()
             || self.session.needs_autosave()
         {

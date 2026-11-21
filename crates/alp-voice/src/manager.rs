@@ -224,6 +224,12 @@ impl ModelManager {
         let target = dir.join(filename);
         let part_target = dir.join(format!("{filename}.part"));
 
+        // Manifest entries may contain subdirectories (for example
+        // `speech_tokenizer/model.safetensors`).
+        if let Some(parent) = target.parent() {
+            fs::create_dir_all(parent)?;
+        }
+
         // Resumable write pattern: write to .part then rename atomically
         fs::write(&part_target, data)?;
         fs::rename(&part_target, &target)?;
@@ -289,6 +295,35 @@ mod tests {
                 .expect("manifest")
                 .license
                 .accepted
+        );
+    }
+
+    #[test]
+    fn file_installation_creates_nested_manifest_directories() {
+        let temp = tempdir().expect("tempdir");
+        let mgr = ModelManager::with_config(ModelManagerConfig {
+            storage_dir: temp.path().to_path_buf(),
+            offline_mode: false,
+        });
+        let target = mgr
+            .install_file(
+                &ModelId::new("qwen3-tts"),
+                "speech_tokenizer/model.safetensors",
+                b"weights",
+            )
+            .expect("install nested file");
+
+        assert_eq!(
+            target,
+            temp.path()
+                .join("qwen3-tts/speech_tokenizer/model.safetensors")
+        );
+        assert_eq!(fs::read(target).expect("read installed file"), b"weights");
+        assert!(
+            !temp
+                .path()
+                .join("qwen3-tts/speech_tokenizer/model.safetensors.part")
+                .exists()
         );
     }
 

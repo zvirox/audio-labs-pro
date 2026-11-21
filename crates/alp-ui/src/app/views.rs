@@ -114,6 +114,10 @@ impl App {
             layers.push(self.consent_modal_view(colors));
         }
 
+        if self.ai_control.pending_client().is_some() {
+            layers.push(self.ai_approval_modal_view(colors));
+        }
+
         if self.first_run_open {
             layers.push(self.first_run_wizard_view(colors));
         }

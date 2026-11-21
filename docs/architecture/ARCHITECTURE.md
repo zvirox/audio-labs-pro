@@ -13,9 +13,9 @@ devices remain untested. Phase 1 and Phase 2 remain the base.
 
 | Process | Responsibility |
 |---|---|
-| `alp-ui` | One transparent OS window, floating panels, input, rendering. Never touches cpal or ONNX. |
+| `alp-ui` | One transparent OS window, floating panels, input, rendering and the live project owner. Hosts the owner-only native AI control socket through `alp-api::control`; attached edits use the same `EditSession` as human edits. Never touches cpal or ONNX. |
 | `alp-engine` (in-process audio thread) | cpal callbacks, mixer, transport, recorder. Real-time safe: no allocation, no locks, no logging. |
-| `alp-infer` (separate process) | TTS/STT/clone models over ONNX Runtime and GGUF. Isolated so an OOM or GPU crash never kills the editor. Talks over a versioned Unix-socket protocol owned by `alp-voice`. |
+| `alp-infer` (separate process) | TTS/STT/clone models over ONNX Runtime and Candle/Safetensors. Isolated so an OOM or model crash never kills the editor. Talks over a versioned Unix-socket protocol owned by `alp-voice`. |
 | Worker threads | Decode, peak building, effect rendering, export. Cancellable jobs with progress channels; the shell uses this for real background mix export. |
 
 ## Crate graph
@@ -37,7 +37,7 @@ flowchart TD
     MEDIA["alp-media<br/>decode, encode, peaks"]
     CORE["alp-core<br/>project model, commands, types"]
   end
-  INFER["alp-infer (separate process)<br/>ONNX / GGUF backends"]
+  INFER["alp-infer (separate process)<br/>ONNX / Candle backends"]
 
   UI --> KIT
   UI --> ENG
@@ -72,7 +72,7 @@ Enforced by `scripts/check-deps.sh`.
 - `alp-ui-kit` has **no ALP dependencies**. It uses `iced` and `lilt` plus the
   Rust standard library only.
 - `alp-ui` depends on ui-kit, core, engine, media and voice. It never touches
-  cpal, ONNX or GGUF directly.
+  cpal, ONNX or model-runtime implementation details directly.
 - `alp-cli` depends on core, engine, media, dsp and voice. Never on ui.
 
 ### Phase 3 additions
@@ -87,7 +87,10 @@ Enforced by `scripts/check-deps.sh`.
   metadata, and the null-test comparison helper.
 - `alp-ui` keeps a live `EditSession` with a real project and command stack;
   views send messages and never mutate project state. Mix export runs on the
-  worker queue from a cloned `MixScene`.
+  worker queue from a cloned `MixScene`. `alp-mcp --attach` proxies into the
+  desktop's shared `McpServer`; workers execute against revision-tagged scratch
+  snapshots and only unchanged revisions can commit one live undo entry.
+  Operator and attached commits feed authenticated resource subscriptions.
 - `ProjectPaths` writes an atomic autosave recovery copy and restores it only
   after schema validation. The desktop session opens a fixed `ui-demo` project
   and debounces autosaves after edits.
@@ -119,10 +122,11 @@ Enforced by `scripts/check-deps.sh`.
 | Worker threads | Decode, peaks, offline render, export, import conversion | Touch the audio callback directly |
 | `alp-infer` | Model load/inference, its own memory | Depend on UI state; hold the audio device |
 
-The UI subscribes to `window::frames()` only while a panel animates, a recording
-runs, the demo transport plays, a job runs, or a diagnostic env var is set. When nothing moves
-there is no redraw subscription, which is why idle CPU is zero. Worker progress
-arrives over `std::sync::mpsc` and is drained with `try_recv()` from a frame.
+The UI subscribes to `window::frames()` while a panel animates, a recording
+runs, the demo transport plays, a job runs, live AI attach is enabled, or a
+diagnostic env var is set. When nothing moves and attach is disabled there is
+no redraw subscription, which is why idle CPU is zero. Worker progress arrives
+over `std::sync::mpsc` and is drained with `try_recv()` from a frame.
 
 Phase 1 measurements (release build, this machine):
 

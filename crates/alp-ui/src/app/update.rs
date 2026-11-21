@@ -20,7 +20,7 @@ impl App {
         task
     }
 
-    fn handle_message(&mut self, message: Message) -> Task<Message> {
+    pub(super) fn handle_message(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::WindowOpened(id) => {
                 self.window = Some(id);
@@ -55,6 +55,7 @@ impl App {
                 self.poll_model_jobs();
                 self.drain_engine_probe();
                 self.poll_generation();
+                self.poll_ai_control();
                 self.session.poll_autosave();
                 if self.session.poll_import() {
                     self.sync_edit_fields();
@@ -800,36 +801,35 @@ impl App {
                 Task::none()
             }
             Message::ToggleAiControl => {
-                self.ai_enabled = !self.ai_enabled;
-                // There is no in-process control host yet: the MCP server is a
-                // separate process that each client starts. Report the policy
-                // this window records instead of implying a live socket.
-                self.ai_status = if self.ai_enabled {
-                    "AI attach allowed (MCP server runs as its own process)".into()
-                } else {
-                    "AI attach standby".into()
-                };
-                self.show_toast(if self.ai_enabled {
-                    "AI attach allowed (Tier: Edit)"
-                } else {
-                    "AI attach disallowed"
-                });
+                self.toggle_ai_control();
                 Task::none()
             }
+            Message::AiControl(event) => {
+                self.handle_ai_control_event(event);
+                Task::none()
+            }
+            Message::ResolveAiApproval(decision) => {
+                self.resolve_ai_approval(decision);
+                Task::none()
+            }
+            Message::CopyAiToken => self
+                .ai_control
+                .token
+                .clone()
+                .map_or_else(Task::none, iced::clipboard::write::<Message>),
             Message::SetAiPermissionTier(tier) => {
+                if self.ai_tier != tier {
+                    self.ai_control.mcp.clear_clients();
+                }
                 self.ai_tier = tier;
                 self.show_toast(format!("AI Permission Tier updated to {tier:?}"));
                 Task::none()
             }
             Message::StopAi => {
-                self.ai_enabled = false;
-                self.ai_status = "AI attach revoked".into();
-                // Connected clients own their own MCP process, so this window
-                // can only remember the decision; it cannot terminate them.
-                self.ai_activity_log.push(
-                    "AI attach revoked: stop any connected MCP client to end its session".into(),
-                );
-                self.show_toast("AI attach revoked (stop connected MCP clients separately)");
+                self.stop_ai_control("AI attach revoked; connected clients were stopped");
+                self.ai_activity_log
+                    .push("AI control stopped: token rotated and client sessions revoked".into());
+                self.show_toast("AI attach and connected clients revoked");
                 Task::none()
             }
             Message::UndoAiChanges => {
@@ -1104,7 +1104,7 @@ impl App {
         self.save_workspace();
     }
 
-    fn save_workspace(&mut self) {
+    pub(super) fn save_workspace(&mut self) {
         let Some(path) = &self.save_path else {
             return;
         };
@@ -1114,7 +1114,8 @@ impl App {
             self.glass.mode.as_str(),
             self.panels.snapshots(),
         )
-        .with_first_run_completed(!self.first_run_open);
+        .with_first_run_completed(!self.first_run_open)
+        .with_approved_ai_clients(self.trusted_ai_clients());
         if let Err(error) = layout.save(path) {
             self.last_save_error = Some(error.to_string());
         } else {

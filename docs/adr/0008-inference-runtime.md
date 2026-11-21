@@ -1,6 +1,6 @@
 # 0008 — Inference process and heavy-model runtime (D3)
 
-- Status: accepted for the process boundary; heavy runtime explicitly deferred
+- Status: accepted for the process boundary; Qwen3-TTS runtime selection updated by ADR 0029
 - Date: 2026-10-22
 - Spike: `spikes/model-spike`
 
@@ -33,6 +33,11 @@ down the editor.
   supported GPU and a measured spike. Default plan: llama.cpp GGUF for the LLM
   and `ort` for the audio decoder, both inside `alp-infer`.
 - No Python sidecar: it breaks the "fully Rust" rule and packaging simplicity.
+
+> **Runtime update (2026-11-17):** Qwen3-TTS 0.6B now uses official
+> Safetensors through pinned Crane/Candle inside the same worker; see ADR 0029.
+> The retrospective GGUF/llama.cpp option above was not adopted. Other heavy
+> backends remain subject to their own decisions.
 
 ## Consequences
 

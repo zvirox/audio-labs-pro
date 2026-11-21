@@ -280,10 +280,20 @@ pub(crate) fn synthesize_clone_via_tier(
         detail("Synthesizing the clone via the alp-infer engine".to_owned());
         match client.synthesize_with_profile(profile, request) {
             Ok(buffer) => return Ok(buffer),
+            Err(error) if profile.backend == "qwen3-tts" => {
+                return Err(VoiceError::Backend(format!(
+                    "Qwen3-TTS synthesis failed; the acoustic tier was not substituted: {error}"
+                )));
+            }
             Err(error) => detail(format!(
                 "daemon clone synthesis failed ({error}); using the acoustic clone tier"
             )),
         }
+    }
+    if profile.backend == "qwen3-tts" {
+        return Err(VoiceError::Backend(
+            "Qwen3-TTS requires the alp-infer worker; the acoustic tier was not substituted".into(),
+        ));
     }
     detail("Synthesizing the clone with the acoustic clone tier".to_owned());
     AcousticCloneBackend::new().synthesize_with(profile, request)

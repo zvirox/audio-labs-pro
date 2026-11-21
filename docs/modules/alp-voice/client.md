@@ -6,15 +6,16 @@ Provides `InferClient` for communicating with the out-of-process `alp-infer` dae
 
 ## Public API
 
-- `InferClient`: `new`, `with_socket`, `is_alive`, `ping`, `status` -> `InferStatus`, `load_model` -> `InferStatus`, `synthesize`, `transcribe`, `design_voice`
+- `InferClient`: `new`, `with_socket`, `is_alive`, `ping`, `status` -> `InferStatus`, `load_model` -> `InferStatus`, `synthesize`, `synthesize_with_profile`, `transcribe`, `design_voice`
 - `BuiltinAcousticBackend`: `new`, `with_sample_rate`, implements `TtsBackend`
 
 ## Data flow
 
 1. `InferClient::synthesize` connects to Unix socket, sends `InferRequest::Synthesize`, and reads `InferResponse::Audio`.
-2. `InferClient::status` / `load_model` exchange `InferRequest::GetStatus` / `LoadModel` for `InferResponse::Status` mapped into `InferStatus` (`active_model`, `ready`, `active_stt_model`); a `ready: false` load means the daemon declined and kept its previous engine. The synthesis and transcription slots are independent: loading an STT model leaves `active_model` untouched and fills `active_stt_model` (ADR 0025).
-3. `InferClient::transcribe` sends `InferRequest::Transcribe`, reads `Progress` updates, and returns `InferResponse::Transcript` segments.
-4. `BuiltinAcousticBackend` normalizes input text with `TextNormalizer`, resolves vowel formants and consonant noise profiles, and synthesizes 48 kHz PCM audio with natural amplitude envelopes and word pauses.
+2. `InferClient::status` / `load_model` exchange `InferRequest::GetStatus` / `LoadModel` for `InferResponse::Status` mapped into `InferStatus` (`active_model`, `ready`, `active_stt_model`, `active_clone_model`); a `ready: false` load means the daemon declined and kept its previous engine. Neural model loading uses a ten-minute read timeout. The synthesis, transcription, and clone slots are independent (ADRs 0025/0029).
+3. `InferClient::synthesize_with_profile` sends the full profile. For Qwen profiles it resolves a relative reference against `<voices_dir>/<profile-id>/` on the outbound clone only, leaving the stored portable profile unchanged.
+4. `InferClient::transcribe` sends `InferRequest::Transcribe`, reads `Progress` updates, and returns `InferResponse::Transcript` segments.
+5. `BuiltinAcousticBackend` normalizes input text with `TextNormalizer`, resolves vowel formants and consonant noise profiles, and synthesizes 48 kHz PCM audio with natural amplitude envelopes and word pauses.
 
 ## Allowed dependencies
 
@@ -32,7 +33,8 @@ Returns `VoiceError::Unavailable` if socket connection fails, or `VoiceError::Ba
 
 ## Testing
 
-Unit tests in `client.rs` verify that `BuiltinAcousticBackend` synthesizes non-silent audio with valid sample rates and frame counts.
+Unit tests in `client.rs` cover built-in synthesis, socket status/load behavior,
+clone-specific provenance, and portable Qwen bundle-reference resolution.
 
 ## Known limits
 

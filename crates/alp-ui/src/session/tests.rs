@@ -31,6 +31,67 @@ fn range_edits_are_undoable() {
 }
 
 #[test]
+fn attached_undo_restores_the_path_and_audio_context_of_the_original_project() {
+    let first_root = tempfile::tempdir().expect("first project");
+    let second_root = tempfile::tempdir().expect("second project");
+    let mut session = EditSession::open_or_demo(first_root.path().to_path_buf());
+    let first_path = session.paths.clone().expect("saved project");
+    let source_id = session.project.sources.first().expect("demo source").id;
+    let first_samples = session
+        .audio
+        .get(&source_id)
+        .expect("first source audio")
+        .samples()
+        .to_vec();
+
+    // A copied project can reuse the same project and source UUIDs while its
+    // media root and decoded samples differ.
+    let mut state = session.attached_project_state().expect("attached state");
+    let base_revision = state.revision;
+    state.paths = ProjectPaths::new(second_root.path().to_path_buf());
+    let second_samples = vec![0.25_f32, -0.25, 0.25, -0.25];
+    let second_audio = HashMap::from([(
+        source_id,
+        Arc::new(
+            alp_engine::SourceAudio::from_samples(48_000, 1, second_samples.clone())
+                .expect("second source audio"),
+        ),
+    )]);
+
+    session
+        .commit_attached_project(base_revision, state, second_audio, "project_open")
+        .expect("attached project switch");
+    assert_eq!(
+        session.paths.as_ref().map(|paths| paths.root()),
+        Some(second_root.path())
+    );
+    assert_eq!(
+        session.audio[&source_id].samples(),
+        second_samples.as_slice()
+    );
+
+    session.undo();
+    assert_eq!(
+        session.paths.as_ref().map(|paths| paths.root()),
+        Some(first_path.root())
+    );
+    assert_eq!(
+        session.audio[&source_id].samples(),
+        first_samples.as_slice()
+    );
+
+    session.redo();
+    assert_eq!(
+        session.paths.as_ref().map(|paths| paths.root()),
+        Some(second_root.path())
+    );
+    assert_eq!(
+        session.audio[&source_id].samples(),
+        second_samples.as_slice()
+    );
+}
+
+#[test]
 fn copy_and_paste_preserve_selection_length() {
     let mut session = EditSession::demo();
     session.set_selection(1.0, 2.0);

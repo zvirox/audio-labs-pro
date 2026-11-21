@@ -2,13 +2,9 @@
 
 ## Purpose
 
-A small, dependency-free GGUF header reader used to validate heavy-model
-installations before their runtime is loaded.
-
-The heavy clone tier ships as GGUF files. Before the runtime is loaded, the
-engine checks that the file really is a GGUF container and that it carries the
-architecture the engine expects — a wrong or truncated file is then reported
-as such instead of surfacing later as a confusing tensor error.
+A small, dependency-free GGUF header reader retained as a test-only parsing
+utility. Production Qwen3-TTS loading now uses official Safetensors through
+Crane/Candle (ADR 0029), so this module is not linked into normal worker builds.
 
 Only the header is parsed: the magic, the version, the tensor and metadata
 counts, and the metadata key/value pairs. Tensor payloads are never read, so
@@ -21,7 +17,6 @@ validation costs a few kilobytes of I/O regardless of model size.
 - `GgufHeader`: `version`, `tensor_count`, `metadata_count`, `metadata`.
   - `get(key) -> Option<&MetadataValue>`: look up a metadata entry.
   - `architecture() -> Option<&str>`: the `general.architecture` value.
-  - `u64(key) -> Option<u64>`: a metadata value as an unsigned integer.
 - `MetadataValue`: `U64`, `I64`, `F32`, `Bool`, `String`, `Array(usize)`.
   Large arrays are summarized by their length rather than materialized — a
   vocabulary can hold 150 000 entries.

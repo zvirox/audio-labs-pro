@@ -16,6 +16,20 @@ use crate::jobs::JobManager;
 use crate::sandbox::WorkspaceSandbox;
 use crate::types::{AnalysisReport, PermissionTier, ProjectSummary, TrackSummary};
 
+/// Immutable snapshot used to prepare one attached MCP call off the UI thread.
+/// It is worker-local scratch state, never a second live project authority.
+#[derive(Debug, Clone)]
+pub struct AttachedProjectState {
+    /// Project contents at `revision`.
+    pub project: Project,
+    /// Current project storage and media location.
+    pub paths: ProjectPaths,
+    /// Optimistic-concurrency token for commit.
+    pub revision: u64,
+    /// Whether this snapshot has unsaved live edits.
+    pub dirty: bool,
+}
+
 /// Primary automation session managing project state, operations, and safety.
 pub struct ApiSession {
     pub(crate) project: Project,
@@ -66,6 +80,33 @@ impl ApiSession {
             voice_store_dir: None,
             pending_arg_digest: None,
         })
+    }
+
+    /// Rebase worker-local attached execution onto the latest UI snapshot.
+    /// Jobs and named checkpoints survive; scratch command history does not.
+    pub fn rebase_attached(&mut self, state: AttachedProjectState) -> Result<(), ApiError> {
+        let sandbox = WorkspaceSandbox::new([state.paths.root()])?;
+        let audit = AuditLogger::new(state.paths.root().join("audit.jsonl"))?;
+        self.project = state.project;
+        self.paths = state.paths;
+        self.revision = state.revision;
+        self.dirty = state.dirty;
+        self.sandbox = sandbox;
+        self.audit = audit;
+        self.stack.clear();
+        self.pending_arg_digest = None;
+        Ok(())
+    }
+
+    /// Export the worker result for one atomic UI commit decision.
+    #[must_use]
+    pub fn attached_state(&self) -> AttachedProjectState {
+        AttachedProjectState {
+            project: self.project.clone(),
+            paths: self.paths.clone(),
+            revision: self.revision,
+            dirty: self.dirty,
+        }
     }
 
     /// Check whether the current session's tier permits an action.

@@ -33,6 +33,11 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.0.1-alpha.4" date="2026-11-21">
+      <description>
+        <p>Full MCP catalog in owner-only live attach mode with one shared GUI undo history, change subscriptions, stale-read and conflict protection, and measured commit latency; real Qwen3-TTS neural cloning with verified assets and provenance; acoustic and neural clone routing, Flatpak/Rust toolchain updates, and attach path/audio context restoration.</p>
+      </description>
+    </release>
     <release version="0.0.1-alpha.3" date="2026-11-08">
       <description>
         <p>Neural noise suppression (RNNoise &amp; spectral denoiser), speech-to-text word-level timestamp alignment, heavy voice cloning runtime (Qwen3-TTS 0.6B) with speaker embedding extraction, synthetic audio watermark provenance headers across exports, and automated MCP evaluation benchmark suite.</p>

@@ -1,6 +1,6 @@
 # ADR 0028: The Acoustic Clone Tier, and Deferring the Qwen3-TTS Neural Runtime
 
-- **Status:** Accepted
+- **Status:** Accepted for the acoustic clone tier; Qwen3-TTS runtime deferral superseded by ADR 0029
 - **Date:** 2026-11-11
 - **Deciders:** Audio Labs Pro Engineering
 - **Consulted:** `Serveurperso/Qwen3-TTS-GGUF` (Apache-2.0 GGUF export), `Qwen/Qwen3-TTS-12Hz-0.6B-Base` (Apache-2.0), the GGUF talker header, `candle-transformers` 0.11 model list, ADR 0008 (inference worker), ADR 0018 (voice profiles and cloning), ADR 0025 (two-tier daemon)

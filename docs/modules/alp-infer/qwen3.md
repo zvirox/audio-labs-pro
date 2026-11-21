@@ -2,118 +2,89 @@
 
 ## Purpose
 
-The heavy neural voice cloning engine for Qwen3-TTS 0.6B (Apache-2.0,
-Alibaba Cloud / Qwen), executed within the out-of-process `alp-infer` worker
-daemon (ADR 0008, ADR 0018).
-
-## Status
-
-**The installation is real and validated.** The engine checks that the
-Apache-2.0 GGUF weights are present, that they really are GGUF containers,
-and that they carry the `qwen3-tts` architecture with the expected talker
-depth.
-
-**The inference runtime is not yet implemented.** Qwen3-TTS is a bespoke
-three-part architecture — a Res2Net speaker encoder (`spk_enc`), a Qwen3
-talker with multi-axis rotary embeddings, and a code predictor (`code_pred`,
-5 blocks) — plus a separate 12 Hz speech-token decoder. Nothing in the tree
-can execute it today, so this engine reports that honestly instead of
-producing synthetic audio that could be mistaken for neural output.
-
-Until the runtime lands, cloned voices are rendered by the acoustic tier
-(`alp_voice::AcousticCloneBackend`), which measures the reference's
-voiceprint and reproduces its timbre. The consent gate, profile storage,
-`.alpvoice` bundles and daemon routing are identical for both tiers.
+The Qwen3-TTS 0.6B neural voice-cloning engine (Apache-2.0, Qwen / Alibaba
+Cloud), executed by `crane-core` 26.9.0's Candle implementation inside the
+out-of-process `alp-infer` worker (ADRs 0008, 0018, 0029).
 
 ## Public API
 
-- `Qwen3Engine::load(model_dir) -> Result<Self, VoiceError>`: validates the
-  installation layout (`gguf/qwen-talker-0.6b-base-Q4_K_M.gguf`,
-  `gguf/qwen-tokenizer-12hz-Q4_K_M.gguf`, `tokenizer_config.json`,
-  `vocab.json`, `merges.txt`, `config.json`) and returns
-  `VoiceError::Unavailable` with user-actionable download commands if
-  required weights are absent.
-  - The talker's GGUF header is parsed and must declare the architecture
-    `qwen3-tts`; a mismatch is a `VoiceError::Backend`.
-  - When the talker declares a block count, it must be 28 (the 0.6B
-    talker's depth).
-  - The decoder is a separate container and must also be readable and
-    declare an architecture.
-- `Qwen3Engine::model_dir()`, `talker_path()`, `decoder_path()`: the
-  validated installation paths.
-- `Qwen3Engine::extract_embedding(reference) -> Vec<f32>`: a 256-dimensional
-  speaker descriptor derived from the reference's measured voiceprint.
-- `TtsBackend` implementation (`id = "qwen3-tts"`): lists the supported voice
-  descriptors; `synthesize` reports the unavailable runtime.
+- `Qwen3Engine::load(model_dir) -> Result<Self, VoiceError>`: verifies the
+  official asset layout and constructs the CPU/F32 model.
+- `Qwen3Engine::model_dir()`, `talker_path()`, `decoder_path()`: installation
+  paths for the model and nested 12 Hz speech-tokenizer weights.
+- `TtsBackend` implementation (`id = "qwen3-tts"`): advertises a dynamic clone
+  voice. Plain `synthesize` refuses because the Base model requires reference
+  conditioning.
 - `CloneBackend` implementation:
-  - `create_profile(reference, transcript)`: generates a `VoiceProfile` of
-    kind `Cloned` containing the speaker descriptor. The consent record is
-    always `None` — the engine never fabricates one.
-  - `synthesize_with(profile, request)`: reports the unavailable runtime.
+  - `create_profile(reference, transcript)`: creates a cloned profile with the
+    `reference.wav` bundle path and required transcript. It never fabricates
+    consent or a neural embedding.
+  - `synthesize_with(profile, request)`: performs ICL voice cloning from the
+    profile's actual reference recording and transcript.
 - Constants: `MODEL_ID = "qwen3-tts"`, `SAMPLE_RATE = 24_000`.
 
 ## Data flow
 
-1. **Load.** `Qwen3Engine::load` checks that every expected file exists.
-   Missing files produce `VoiceError::Unavailable` naming the file and the
-   `alp-cli model download qwen3-tts` command.
-2. **Validate.** The talker's GGUF header is parsed by
-   [`gguf`](./gguf.md). The architecture must be `qwen3-tts`, and the talker
-   block count must be 28. The decoder header must also be readable.
-3. **Dispatch.** In `alp-infer`, a successful load puts the engine in the
-   daemon's *clone* slot, leaving the synthesis and transcription slots
-   untouched. A failed load keeps the acoustic clone tier active.
-4. **Render.** `synthesize` and `synthesize_with` return
-   `VoiceError::Unavailable` naming the missing runtime. No audio is
-   produced, so a caller can never mistake this engine's output for neural
-   speech.
+1. **Install.** The manifest identifies seven official Safetensors/config/
+  tokenizer files from `Qwen/Qwen3-TTS-12Hz-0.6B-Base`. Missing files produce
+  an actionable `VoiceError::Unavailable` naming `alp-cli model download
+  qwen3-tts`.
+2. **Load.** Crane constructs the model using `Device::Cpu` and `DType::F32`.
+  The loaded `Mutex<Model>` serializes mutable generation and remains in the
+  daemon's clone slot. Plain-TTS and STT slots are untouched; status reports
+  `active_clone_model = qwen3-tts`.
+3. **Prepare the profile.** The client resolves a relative bundled reference
+  against the profile-store directory on its cloned outbound request. Stored
+  profiles stay portable. At render time the worker decodes the reference,
+  resamples it to the speaker-encoder rate, and downmixes it to mono.
+4. **Generate.** `generate_voice_clone` performs ICL with temperature 0.9,
+  `top_p = 1.0`, repetition penalty 1.05, and a request-scaled codec-token
+  limit. The acoustic 256-value voiceprint is not used as Qwen conditioning.
+5. **Validate and return.** Output must be non-empty, finite, and non-silent;
+  the engine returns mono 24 kHz `PcmBuffer`. The daemon enforces consent before
+  dispatch. If Qwen is requested but not loaded or generation fails, the request
+  errors instead of silently substituting acoustic synthesis.
 
 ## Allowed dependencies
 
-- `alp-media`: `PcmBuffer`
-- `alp-voice`: `TtsBackend`, `CloneBackend`, `TtsRequest`, `VoiceProfile`,
-  `VoiceError`, `VoiceInfo`, `VoiceParams`, `VoiceKind`
-- `super::gguf`: the GGUF header reader
+- `alp-media`: `PcmBuffer`, `decode`, `resample`
+- `alp-voice`: backend traits, profile/request/error types
+- `crane-core`: official Qwen3-TTS Candle model, generation options, device and
+  tensor types
+- Standard-library paths and `Mutex`
 - Safe Rust only (`unsafe_code = "deny"`).
 
 ## Threading / real-time notes
 
-Daemon-worker process only, never on the real-time audio callback. Instances
-are loaded and dispatched on the sequential accept loop of `alp-infer`.
+Daemon-worker process only, never on the real-time audio callback. Model load
+and generation are blocking and can be slow on CPU. The mutex allows the engine
+to satisfy the thread-safe backend object contract while serializing mutable
+inference state.
 
 ## Error handling
 
-- Missing weight files, tokenizers or configuration produce
-  `VoiceError::Unavailable` detailing the missing file and instructing the
-  user to run `alp-cli model download qwen3-tts`.
-- A wrong architecture or talker depth produces `VoiceError::Backend`.
-- An empty reference audio returns `VoiceError::Backend`.
-- The unavailable runtime produces `VoiceError::Unavailable` naming the
-  acoustic clone tier as the working alternative.
+- Missing weights, tokenizer, or configuration produce `VoiceError::Unavailable`
+  with the missing path and download command.
+- Invalid assets, model/tensor failures, empty input, missing reference or
+  transcript, empty/non-finite/silent output produce `VoiceError::Backend`.
+- Plain synthesis without a cloned profile is refused.
+- An unloaded Qwen model is refused at the daemon boundary; API, CLI, and GUI
+  also prevent a Qwen failure from falling back to the acoustic tier.
 
 ## Testing
 
-Unit tests in `qwen3.rs` verify that:
-
-- loading on an empty directory returns `VoiceError::Unavailable` naming the
-  download command;
-- a missing decoder is reported separately from a missing talker;
-- a file that is not a valid GGUF container is refused rather than accepted;
-- the speaker descriptor is a finite 256-dimensional vector.
+Unit tests cover missing and corrupt assets, reference downmix/resampling, and
+short/long generation limits. Explicit model-gated tests use `ALP_QWEN3_DIR` and
+`ALP_QWEN3_REFERENCE` to execute real neural generation without downloading
+assets during ordinary test runs. The `clone_daemon` integration test also
+checks real socket inference, consent refusal, clone status, and independent
+plain-TTS routing; `ALP_QWEN3_OUTPUT` optionally writes its evidence WAV.
 
 ## Known limits
 
-- **The neural runtime does not exist yet.** Implementing it requires the
-  custom `qwen3-tts` architecture (Res2Net speaker encoder + Qwen3 talker
-  with mRoPE + code predictor) and the 12 Hz codec decoder in Rust. No
-  upstream Rust implementation exists and `candle-transformers` has no
-  `qwen3-tts` model.
-- The engine therefore validates but does not execute.
-- The model manifest points at the Apache-2.0 community GGUF export
-  (`Serveurperso/Qwen3-TTS-GGUF`) plus the text-side tokenizer files from
-  `Qwen/Qwen3-TTS-12Hz-0.6B-Base`; every size and digest in the manifest was
-  read back from the upstream LFS pointers.
-- `Qwen3Engine::extract_embedding` currently returns the acoustic
-  voiceprint, not a neural speaker embedding. It is format-compatible with
-  the acoustic tier's embedding slot but is not what a neural runtime would
-  consume.
+- Only Qwen3-TTS 0.6B Base is wired; 1.7B, VoxCPM2, and OmniVoice are separate
+  backends/tasks.
+- CPU/debug generation is slow and this is not a perceptual speaker-similarity
+  quality evaluation.
+- ICL requires the reference transcript. The separate acoustic clone tier
+  remains available as `acoustic-clone`, but is never presented as Qwen output.

@@ -113,6 +113,14 @@ became "Undo last edit" because that is what it does. See §5.
 | `expected_revision_guards_writes_without_touching_state` | `alp-mcp/src/main.rs` | Stale guard refuses with no state change; current guard accepted |
 | `reads_ignore_expected_revision_and_write_tools_advertise_it` | `alp-mcp/src/main.rs` | Guard is write-only in both behaviour and schema |
 | `the_rate_limit_refuses_the_call_it_cannot_serve` | `alp-mcp/src/main.rs` | Refusal names the limit and the recovery |
+| revocation_discards_a_late_worker_edit_without_touching_live_history | `alp-ui/src/app/ai_control.rs` | Stop AI rejects a prepared completion; project and history are unchanged |
+| complete_mcp_catalog_edits_live_history_and_publishes_measured_changes | same | Real socket + full MCP catalog: live track edit, one shared undo/redo, AI/operator notifications, measured request-to-commit latency |
+| a_worker_completion_cannot_overwrite_a_concurrent_operator_edit | same | A scratch edit based on an old revision cannot overwrite the subsequent human edit |
+| exact_frame_boundary_is_readable_and_oversize_writes_are_rejected | `alp-api/src/control.rs` | 2 MiB framing has consistent reader/writer boundary behavior |
+| response_timeouts_preserve_fragmented_frames | same | A change event split across a 500 ms read timeout is reassembled instead of corrupting the next frame |
+| a_slow_subscriber_is_dropped_when_its_bounded_queue_fills | same | A subscriber that falls 64 changes behind is removed without blocking `publish` |
+| attached_undo_restores_the_path_and_audio_context_of_the_original_project | `alp-ui/src/session/tests.rs` | Undo/redo restores project root and decoded samples when two projects reuse UUIDs |
+| a_read_started_before_a_human_edit_is_not_returned_as_current | `alp-ui/src/app/ai_control.rs` | A worker read snapshot older than the live revision fails with both revision numbers |
 
 ---
 
@@ -139,17 +147,55 @@ became "Undo last edit" because that is what it does. See §5.
 
 ## 5. Control host status (`10.5.2`)
 
-There is **no control host in `alp-ui`**. A search for `UnixListener` in
-`crates/alp-ui` returns nothing; the only Unix sockets in the workspace belong
-to `alp-infer` and the `alp-voice` client. The GUI cannot accept an MCP
-connection, cannot read peer credentials, and cannot share its in-memory
-project with an `alp-mcp` process. Running `alp-mcp` therefore opens the
-project from disk in its own process.
+The control host is implemented in `alp-api::control` and embedded by
+`alp-ui::app::ai_control`. Enabling **Settings → AI control** binds
+`$XDG_RUNTIME_DIR/alp/control.sock`; startup fails closed if the runtime
+variable is absent or the directory/path is unsafe. The `alp` directory is
+`0700`, the socket is `0600`, regular files/symlinks/foreign sockets are never
+removed, and every accepted connection is checked against the app's effective
+UID with `SO_PEERCRED` before its first byte is parsed.
 
-The AI settings card previously implied otherwise ("Listening on
-control.sock", "EMERGENCY STOP: AI session revoked and active tasks
-cancelled", "Rolled back all AI changes to session start"). The copy now states
-the real arrangement: attach policy is recorded locally, revocation asks the
-operator to stop connected clients, and the undo button describes itself as one
-edit. Implementing the control host (Unix socket, `0600`, `SO_PEERCRED`,
-per-session token, one shared command queue) remains open work.
+Each enable creates a fresh random token (two UUIDv4 values), available only from the running UI.
+The authentication handshake precedes all project operations. A new sanitized
+`client_id` displays a human approval dialog with **Deny**, **This session**, and
+**Always allow client**; the persistent choice stores only that ID, never the
+token. Stop AI revokes active clients and removes the socket. Framing is capped
+at 2 MiB, partial reads survive timeouts, and socket workers wait for replies
+off the UI thread. An oversized MCP result becomes a bounded error rather than
+being truncated.
+
+`alp-mcp --attach` forwards complete JSON-RPC envelopes over protocol version 2;
+it does not initialize a workspace or open a disk project. The desktop exposes
+the shared `McpServer` catalog from `alp-mcp`, not an attached-only list. Each
+approved client has a worker and a revision-tagged, scratch `ApiSession`. Every
+call rebases that scratch state from the live GUI project and dispatches through
+the same code as headless mode. Only an unchanged live revision can merge a
+successful result into `EditSession`, where it becomes one live undo entry.
+`history_list`, `history_undo` and `history_redo` operate on that live stack.
+Decode, analysis, rendering, generation and export run on the worker, not the UI
+thread. `rollback_session` refuses in attached mode because its old scratch
+checkpoint could otherwise discard intervening human edits. An attached save
+that races a human edit reports the conflict even though the worker may already
+have written its older snapshot.
+
+`ControlRequest::Subscribe` opens an explicit change feed. After an operator or
+attached edit commits and the view model is synchronized, the feed publishes
+project summary, origin, operation and (for attached edits) measured
+request-to-commit time. The attach proxy gates these native events on MCP
+`resources/subscribe` and emits both `notifications/resources/updated` and the
+documented `notifications/alp/project_changed` extension. The proxy keeps a
+partial frame across timeouts, and the host keeps at most 64 pending changes per
+subscriber, dropping a slow reader instead of blocking publication or revocation.
+Every attached result reports `snapshotRevision` and `liveRevision`; a call whose
+snapshot is older than the live project fails rather than superseding a newer
+change event. Attached undo/redo restores the project root and decoded audio
+alongside the project, even when a copied project reuses UUIDs. Calls are
+currently serialized per attached connection; there is no claim of pipelining,
+generic cancellation, or actual pixel-presentation timing.
+
+The production integration tests authenticate against the real host, compare the
+attached catalog with `tools_for_tier`, perform `track_add`, use shared history
+to undo and redo it, and observe operator and AI notifications on another real
+socket. A cache-ready structural call includes actual elapsed worker decoding
+and live commit latency and must stay within 200 ms. Separate tests prove stale
+conflict rejection, late-result revocation, and the exact framing boundary.

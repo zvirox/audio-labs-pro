@@ -21,7 +21,7 @@ ALLOWED = {
     "alp-ui-kit": set(),
     "alp-api": {"alp-core", "alp-dsp", "alp-engine", "alp-media", "alp-plugin", "alp-voice"},
     "alp-mcp": {"alp-api", "alp-core"},
-    "alp-ui": {"alp-api", "alp-core", "alp-engine", "alp-media", "alp-plugin", "alp-ui-kit", "alp-voice"},
+    "alp-ui": {"alp-api", "alp-core", "alp-engine", "alp-mcp", "alp-media", "alp-plugin", "alp-ui-kit", "alp-voice"},
     "alp-cli": {"alp-core", "alp-dsp", "alp-engine", "alp-media", "alp-plugin", "alp-voice"},
 }
 

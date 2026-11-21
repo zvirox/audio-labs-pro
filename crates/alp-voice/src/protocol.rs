@@ -59,9 +59,9 @@ pub enum InferRequest {
 /// Reply to `GetStatus` / `LoadModel`: which engines are active and whether
 /// the last load succeeded.
 ///
-/// `active_model` is the synthesis (TTS) tier; `active_stt_model` is the
-/// transcription (STT) tier. The slots are independent: loading one does
-/// not disturb the other.
+/// `active_model` is the synthesis (TTS) tier, `active_stt_model` the
+/// transcription (STT) tier, and `active_clone_model` the clone tier. All
+/// three slots are independent: loading one does not disturb the others.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct InferStatus {
     /// Synthesis tier: the model currently serving `Synthesize`, or
@@ -73,6 +73,10 @@ pub struct InferStatus {
     /// Transcription tier: the STT model currently serving `Transcribe`,
     /// `None` while the built-in acoustic backend serves it.
     pub active_stt_model: Option<String>,
+    /// Voice-cloning tier: `qwen3-tts` after neural model load, or `None`
+    /// while the dependency-free acoustic clone backend is active.
+    #[serde(default)]
+    pub active_clone_model: Option<String>,
 }
 
 /// Response messages sent from `alp-infer` to the client.
@@ -85,6 +89,9 @@ pub enum InferResponse {
         active_model: Option<String>,
         ready: bool,
         active_stt_model: Option<String>,
+        /// Clone engine identity, absent in replies from older workers.
+        #[serde(default)]
+        active_clone_model: Option<String>,
     },
     /// Streaming progress update (0.0 to 1.0) for an ongoing request.
     Progress { id: u64, progress: f32 },
@@ -139,6 +146,21 @@ pub fn read_message<R: Read, T: for<'a> Deserialize<'a>>(reader: &mut R) -> Resu
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn legacy_status_without_clone_identity_defaults_to_acoustic() {
+        let json = r#"{"Status":{"active_model":"builtin-acoustic","ready":true,"active_stt_model":null}}"#;
+        let response: InferResponse = serde_json::from_str(json).expect("legacy status");
+        assert_eq!(
+            response,
+            InferResponse::Status {
+                active_model: Some("builtin-acoustic".into()),
+                ready: true,
+                active_stt_model: None,
+                active_clone_model: None,
+            }
+        );
+    }
 
     #[test]
     fn frame_round_trip() {

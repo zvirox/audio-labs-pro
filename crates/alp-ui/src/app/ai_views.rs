@@ -64,12 +64,56 @@ impl App {
 
         let tier_hint = match self.ai_tier {
             PermissionTier::Observe => {
-                "Observe: AI can inspect metrics, waveforms and transcripts only."
+                "Observe: attached AI can read the current project and tracks."
             }
             PermissionTier::Edit => {
-                "Edit: AI can split, edit, generate voice and mix; every change is undoable."
+                "Edit: the full MCP catalog can edit the live project on workers; successful calls share one undo history."
             }
-            PermissionTier::Export => "Export: AI can also write master mixes and stems to disk.",
+            PermissionTier::Export => {
+                "Export: attached AI may also render and export inside the live project's workspace sandbox."
+            }
+        };
+
+        let transport = if self.ai_enabled {
+            let path = self
+                .ai_control
+                .socket_path
+                .as_ref()
+                .map_or_else(String::new, |path| path.display().to_string());
+            let latency = self.ai_control.mcp.last_commit_ms.map_or_else(
+                || "No attached commits yet".into(),
+                |latest| {
+                    format!(
+                        "Request → live commit: {latest} ms latest · {} ms worst of {}. View-model timing, not pixel presentation; preparation and rendering are included in the measurement.",
+                        self.ai_control.mcp.max_commit_ms, self.ai_control.mcp.commits
+                    )
+                },
+            );
+            column![
+                components::muted(
+                    "Full shared MCP catalog: ALP_CONTROL_TOKEN=<token> alp-mcp --attach",
+                    colors,
+                ),
+                row![
+                    components::chip("Per-session token", colors),
+                    components::button(
+                        "Copy token",
+                        ButtonKind::Secondary,
+                        Some(Message::CopyAiToken)
+                    ),
+                    components::muted("0600 socket · peer UID checked · never persisted", colors),
+                ]
+                .spacing(f32::from(Spacing::XS))
+                .align_y(Alignment::Center),
+                components::muted(path, colors),
+                components::muted(latency, colors),
+            ]
+            .spacing(f32::from(Spacing::XXS))
+        } else {
+            column![components::muted(
+                "Enable live attach to create $XDG_RUNTIME_DIR/alp/control.sock. Headless alp-mcp still opens a separate project session.",
+                colors,
+            )]
         };
 
         let safety_actions = row![
@@ -116,6 +160,7 @@ impl App {
             header,
             tier_buttons,
             components::muted(tier_hint, colors),
+            transport,
             safety_actions,
             log_box,
         ]

@@ -7,6 +7,8 @@
 pub mod analysis_ops;
 pub mod audit;
 pub mod checkpoint;
+#[cfg(target_os = "linux")]
+pub mod control;
 pub mod effect_ops;
 pub mod error;
 pub mod export_ops;
@@ -35,7 +37,7 @@ pub use paging::{
 pub use project_ops::{HistoryEntry, ProjectListItem};
 pub use sandbox::WorkspaceSandbox;
 pub use script_voice_ops::{ScriptGenerateReport, ScriptLine, ScriptRegenerateReport};
-pub use session::ApiSession;
+pub use session::{ApiSession, AttachedProjectState};
 pub use track_clip_ops::{BatchOp, EditBatchReport};
 pub use types::{
     AnalysisReport, ApprovalMode, ClipSummary, PermissionTier, ProjectSummary, TrackSummary,

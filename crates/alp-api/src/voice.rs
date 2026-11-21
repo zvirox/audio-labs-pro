@@ -4,8 +4,10 @@
 //! These methods back the Phase 10 MCP voice toolset (ADR 0026). Engines run
 //! daemon-first: an `InferClient` serves whichever tier is active in the
 //! `alp-infer` worker, and the in-process built-in backends cover an absent
-//! or failing daemon. Every result names the engine that actually ran, and
-//! the built-in STT keeps its placeholder-words admission wherever it runs.
+//! or failing daemon only for backends that have a truthful local equivalent.
+//! Qwen requests never fall back to acoustic synthesis. Every result names
+//! the engine that actually ran, and the built-in STT keeps its
+//! placeholder-words admission wherever it runs.
 
 use std::path::PathBuf;
 
@@ -237,13 +239,18 @@ fn synthesize_clone_daemon_first(
     if client.is_alive() {
         match client.synthesize_with_profile(profile, request) {
             Ok(buffer) => {
-                *engine_out = match client.status().ok().and_then(|s| s.active_model) {
+                *engine_out = match client.status().ok().and_then(|s| s.active_clone_model) {
                     Some(model) => format!("daemon:{model}"),
                     None => "daemon:acoustic-clone".to_owned(),
                 };
                 return Ok(buffer);
             }
             Err(error) => {
+                if profile.backend == "qwen3-tts" {
+                    return Err(ApiError::Validation(format!(
+                        "Qwen3-TTS synthesis failed; the acoustic tier was not substituted: {error}"
+                    )));
+                }
                 tracing::warn!(
                     "daemon clone synthesis failed ({error}); falling back to the acoustic clone tier"
                 );
@@ -251,6 +258,11 @@ fn synthesize_clone_daemon_first(
         }
     }
 
+    if profile.backend == "qwen3-tts" {
+        return Err(ApiError::Validation(
+            "Qwen3-TTS requires the alp-infer worker; the acoustic tier was not substituted".into(),
+        ));
+    }
     *engine_out = "acoustic-clone".to_owned();
     AcousticCloneBackend::new()
         .synthesize_with(profile, request)

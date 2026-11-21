@@ -12,16 +12,16 @@ Binary executable with command-line interface:
 ## Data flow
 
 1. Binds to `$XDG_RUNTIME_DIR/alp-infer.sock` (or specified socket path).
-2. Reads framed `InferRequest` messages (`Ping`, `GetStatus`, `LoadModel`, `Synthesize`, `Transcribe`, `DesignVoice`, `Cancel`, `Shutdown`).
+2. Reads framed `InferRequest` messages (`Ping`, `GetStatus`, `LoadModel`, `Synthesize`, `SynthesizeWithProfile`, `Transcribe`, `DesignVoice`, `Cancel`, `Shutdown`).
 3. Executes speech synthesis via the builtin acoustic tier or a loaded neural `style_text_to_speech_2` engine: Kokoro-82M (`kokoro.rs`) or Kitten Nano (`kitten.rs`), both over the shared layer in `style_tts2.rs` (ONNX Runtime via `ort`, MIT G2P front-end from `piper-plus-g2p` with the bundled CMUdict, sentence-chunked long-text reconstruction per ADRs 0023/0024).
 4. Executes transcription via the builtin acoustic STT tier or the loaded neural engine: Moonshine Tiny (`moonshine.rs`, ADR 0025 - 16 kHz encoder, merged decoder with KV cache, Llama-style BPE out).
-5. `LoadModel` dispatches by tier: `moonshine-tiny` loads into the transcription slot without touching synthesis; `kokoro-82m` and `kitten-nano` load into the synthesis slot; anything else is declined honestly. A failed load keeps the previously active engine of that tier and answers `ready: false`. The `builtin-acoustic` reset restores the synthesis tier only - the built-in STT is shadowed, never unloaded.
-6. `Status` reports both slots (`active_model`, `ready`, `active_stt_model`); progress updates stream for synthesis/transcription work and results return as `InferResponse::Audio` (24 kHz mono for both neural TTS engines) or `InferResponse::Transcript` (segments in the caller's frame space).
+5. `LoadModel` dispatches by tier: `moonshine-tiny` loads into the transcription slot without touching synthesis; `kokoro-82m` and `kitten-nano` load into the synthesis slot; `qwen3-tts` loads official Safetensors through Crane/Candle into the independent clone slot. Profile-conditioned clone requests use that slot and enforce consent. A failed load keeps the previously active engine of that tier and answers `ready: false`; unloaded Qwen requests are refused rather than substituted with acoustic audio.
+6. `Status` reports all three slots (`active_model`, `ready`, `active_stt_model`, `active_clone_model`); progress updates stream for synthesis/transcription work and results return as `InferResponse::Audio` (24 kHz mono for neural TTS/clone engines) or `InferResponse::Transcript` (segments in the caller's frame space).
 
 ## Allowed dependencies
 
 - `alp-core`, `alp-media`, `alp-voice`
-- `ort` (ONNX Runtime bindings, pinned per ADR 0008), `piper-plus-g2p` (G2P, per ADR 0010)
+- `ort` (ONNX Runtime bindings), `piper-plus-g2p` (G2P), `crane-core` 26.9.0 (Qwen3-TTS Candle runtime; ADR 0029)
 - `serde`, `serde_json`, `thiserror`
 - Standard library networking and filesystem
 
@@ -35,7 +35,7 @@ Request-level failures return typed `InferResponse::Error` payloads without cras
 
 ## Testing
 
-Acceptance tested in `scripts/phase6-demo.sh` via socket connection, ping/pong health checks, and audio generation. Engine unit tests pin the load contracts (missing files decline honestly, contents decline at the parse/graph stage, corrupt graphs keep the previous engine); the two-slot test loads kitten and Moonshine together and asserts independent reset; gated real-model smoke tests transcribe kitten-spoken speech through Moonshine (ADR 0025).
+Acceptance tested in `scripts/phase6-demo.sh` via socket connection, ping/pong health checks, and audio generation. Engine unit tests pin the load contracts (missing files decline honestly, contents decline at the parse/graph stage, corrupt graphs keep the previous engine); the two-slot test loads kitten and Moonshine together and asserts independent reset. Model-gated Qwen tests execute real CPU ICL and check consent/provenance over the production daemon socket (ADR 0029).
 
 ## Known limits
 

@@ -42,11 +42,16 @@ pub fn tts(
                 println!("synthesizing clone via alp-infer worker...");
                 match client.synthesize_with_profile(&profile, &request) {
                     Ok(buffer) => {
-                        let engine = match client.status().ok().and_then(|s| s.active_model) {
+                        let engine = match client.status().ok().and_then(|s| s.active_clone_model) {
                             Some(model) => format!("daemon:{model}"),
                             None => "daemon:acoustic-clone".to_owned(),
                         };
                         (buffer, engine)
+                    }
+                    Err(error) if profile.backend == "qwen3-tts" => {
+                        bail!(
+                            "Qwen3-TTS synthesis failed; the acoustic tier was not substituted: {error}"
+                        );
                     }
                     Err(error) => {
                         eprintln!(
@@ -59,6 +64,11 @@ pub fn tts(
                     }
                 }
             } else {
+                if profile.backend == "qwen3-tts" {
+                    bail!(
+                        "Qwen3-TTS requires the alp-infer worker; the acoustic tier was not substituted"
+                    );
+                }
                 let buffer = AcousticCloneBackend::new()
                     .synthesize_with(&profile, &request)
                     .map_err(|e| anyhow::anyhow!("{e}"))?;

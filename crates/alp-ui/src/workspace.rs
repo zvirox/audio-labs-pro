@@ -4,6 +4,7 @@
 //! geometries. It is written atomically through `alp-core`, so a crash during a
 //! drag cannot corrupt the last good layout.
 
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 use alp_core::{AppDirs, CoreError, write_atomic};
@@ -27,6 +28,10 @@ pub struct PersistedWorkspace {
     pub glass: String,
     /// Panel geometry in painter-independent order.
     pub panels: Vec<PanelState>,
+    /// Whether the control host should approve known client IDs automatically.
+    /// Tokens are deliberately never persisted.
+    #[serde(default)]
+    pub approved_ai_clients: BTreeSet<String>,
     /// Whether first-run configuration wizard has been completed.
     #[serde(default)]
     pub first_run_completed: bool,
@@ -47,6 +52,7 @@ impl PersistedWorkspace {
             reduce_motion,
             glass: glass.into(),
             panels,
+            approved_ai_clients: BTreeSet::new(),
             first_run_completed: false,
         }
     }
@@ -55,6 +61,13 @@ impl PersistedWorkspace {
     #[must_use]
     pub fn with_first_run_completed(mut self, completed: bool) -> Self {
         self.first_run_completed = completed;
+        self
+    }
+
+    /// Persist client IDs approved for automatic connection approval.
+    #[must_use]
+    pub fn with_approved_ai_clients(mut self, clients: BTreeSet<String>) -> Self {
+        self.approved_ai_clients = clients;
         self
     }
 
@@ -97,11 +110,17 @@ mod tests {
     fn save_and_load_round_trip() {
         let dir = tempfile::tempdir().expect("tempdir");
         let path = dir.path().join("nested").join("workspace.json");
-        let expected = layout().with_first_run_completed(true);
+        let expected = layout()
+            .with_first_run_completed(true)
+            .with_approved_ai_clients(BTreeSet::from(["approved-client".into()]));
         expected.save(&path).expect("save");
         let actual = PersistedWorkspace::load(&path).expect("load");
         assert_eq!(actual, expected);
         assert!(actual.first_run_completed);
+        assert_eq!(
+            actual.approved_ai_clients,
+            BTreeSet::from(["approved-client".into()])
+        );
     }
 
     #[test]

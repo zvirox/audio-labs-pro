@@ -5,6 +5,8 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+## [0.0.1-alpha.4] - 2026-11-21
+
 ### Added
 
 - **`alp-core::CompositeCommand` and stack grouping.** A batch edit is now a
@@ -60,6 +62,18 @@ versions follow the release milestones in the build plan.
   `server/discover` with the caller's remaining budget. An over-budget call
   still returns its real result, with a note reporting the measured overrun
   (`alp-mcp/src/limits.rs`, five unit tests).
+- **Owner-only live GUI control host and full MCP attach.** `alp-api::control`
+  binds `$XDG_RUNTIME_DIR/alp/control.sock` through a `0700` parent, sets `0600`,
+  checks `SO_PEERCRED`, requires a fresh random token and human client approval,
+  uses protocol 2 with 2 MiB bounded frames, and revokes active clients on Stop
+  AI. `alp-mcp --attach` forwards complete JSON-RPC envelopes over that socket
+  without opening a disk project; the desktop runs the same 58-tool dispatcher
+  as headless mode on per-client workers against revision-tagged scratch
+  snapshots. Only an unchanged live revision can commit to the one
+  `EditSession`, producing one ordinary undo entry; history tools use that live
+  stack. Explicit resource subscriptions publish committed operator and AI
+  changes with measured request-to-commit timing. The four native project calls
+  remain for compatibility.
 
 ### Fixed
 
@@ -69,6 +83,20 @@ versions follow the release milestones in the build plan.
   reports each command's actual label (`Rename track`, `Add clip`, …);
   `project_info.undo_steps`/`redo_steps` are real counts that agree with the
   list (MCP test `history_list_reports_the_real_command_labels`).
+
+- **Attached undo restores the whole project context.** An attached edit's undo
+  entry now carries the project root and the decoded source-audio cache, not
+  just the project JSON. Undoing or redoing a copied project that reuses source
+  UUIDs can no longer leave playback and autosave pointed at another project's
+  media.
+- **Stale attached reads no longer masquerade as current.** Every attached
+  result reports `snapshotRevision` and `liveRevision`. A read that finishes
+  after a newer commit now fails with both revisions instead of returning old
+  data after the change notification.
+- **Attached change events survive fragmentation and slow subscribers.** The
+  proxy retains a partial frame across socket timeouts, while the host keeps at
+  most 64 pending changes per subscriber and disconnects a client that falls
+  behind. Bounded write timeouts keep Stop AI from waiting on a stalled reader.
 
 - **Several MCP tools reported work they never did.** `export_stems` wrote the
   master mix N times, `export_transcript` wrote a one-line header,
@@ -93,10 +121,10 @@ versions follow the release milestones in the build plan.
 - **The `alp://effects/catalog` resource serves the live catalog**, and
   `alp://docs/agent-guide` serves `docs/mcp/AGENT_GUIDE.md` via `include_str!`;
   the `produce_podcast_episode` prompt is implemented.
-- **The GUI no longer claims a control socket it does not have.** There is no
-  `UnixListener` in `alp-ui`, so the AI card now states that MCP clients start
-  their own `alp-mcp` process, the stop action is "Revoke attach", and "Undo AI
-  changes" became "Undo last edit" (which is what it does).
+- **AI controls now describe their actual transport and undo scope.** The card
+  distinguishes the live native attach surface from the separate headless MCP
+  process, Stop AI really revokes attached clients, and the one-step undo action
+  remains labelled “Undo last edit” rather than claiming checkpoint rollback.
 
 ### Changed
 
@@ -105,8 +133,8 @@ versions follow the release milestones in the build plan.
   application shell, window icon, desktop integration assets, hicolor icon theme
   (scalable SVG and 48px to 256px HiDPI PNGs), packaging metadata, and documentation.
 - **`MASTER_CHECKLIST.md` Phase 10 now matches the code.** It records the real
-  58-tool surface, the honest partials, and the absence of a control host,
-  instead of the stale 22-shipped table.
+  58-tool headless surface, the honest partials, and the limited native control
+  host boundary instead of the stale 22-shipped/no-host table.
 - **The tool dispatch moved out of `server.rs` into `dispatch.rs`.** The server
   keeps transport, limits, the project lock and the concurrency guard; the
   module that maps a tool name to an operation is solely about that mapping.
@@ -146,27 +174,38 @@ versions follow the release milestones in the build plan.
   cannot be dropped by a path that forgot to set it. The MCP `export_audio`
   tool still exposes no metadata flags, so the tag remains impossible to
   disable through MCP.
+- **Real Qwen3-TTS 0.6B neural cloning.** The pinned `crane-core` 26.9.0
+  runtime executes the seven official Qwen Safetensors/config/tokenizer assets
+  with CPU/F32 ICL from the actual reference recording and transcript. It runs
+  in the worker's independent clone slot, returns mono 24 kHz PCM, and reports
+  `active_clone_model = qwen3-tts`. API/CLI provenance names the clone engine,
+  and Qwen requests fail explicitly rather than silently falling back to the
+  still-available `acoustic-clone` tier. The workspace MSRV is now Rust 1.95,
+  required by Crane's `sysinfo 0.39` transitive dependency. A real daemon test
+  verified consent refusal, consented neural synthesis, output, status, and
+  unchanged plain-TTS routing (ADR 0029).
+- **Nested model installation paths.** `ModelManager::install_file` creates
+  manifest subdirectories such as `speech_tokenizer/` before the atomic `.part`
+  rename.
 - **A dependency-free GGUF header reader.** `alp-infer::gguf` parses a GGUF
-  v3 header (magic, version, counts and metadata) without any new crate, so
-  a heavy-model installation can be validated before its runtime is loaded.
+  v3 header (magic, version, counts and metadata) without any new crate. It is
+  retained as a test-only parsing utility after Qwen moved to official
+  Safetensors.
 
-### Fixed
+### Fixed (voice and Qwen)
 
 - **The Qwen3-TTS model manifest pointed at files that do not exist.** The
   catalogue entry listed `gguf/qwen3-tts-0.6b-q4_k_m.gguf` and
   `onnx/speech_decoder.onnx` under `Qwen/Qwen3-TTS-12Hz-0.6B-Base` — that
   repository ships neither GGUF nor ONNX — and carried a placeholder SHA-256
-  (`a1b2c3d4…`). The manifest now lists the real Apache-2.0 files: the
-  `Serveurperso/Qwen3-TTS-GGUF` talker and 12 Hz tokenizer exports, plus the
-  upstream text-side tokenizer files, with every size and digest read back
-  from the upstream LFS pointers.
+  (`a1b2c3d4…`). The manifest now lists only the seven official Apache-2.0
+  `Qwen/Qwen3-TTS-12Hz-0.6B-Base` assets, with verified sizes and SHA-256
+  digests; the intermediate community-GGUF manifest has been superseded.
 - **The heavy clone engine reported synthesis it could not perform.** The
   previous `qwen3` engine described a "reference-conditioned acoustic mode"
   that did not exist and presented formant synthesis as neural output.
-  `Qwen3Engine` now validates the installation for real (files present, GGUF
-  headers parsed, architecture `qwen3-tts` and 28 talker blocks checked) and
-  returns `VoiceError::Unavailable` naming the missing runtime. It never
-  produces audio, so its output can never be mistaken for neural speech.
+  `Qwen3Engine` now executes real neural inference. An unavailable model or
+  failed generation returns an error and cannot be labelled as Qwen audio.
 - **The GUI's clone dialog saved a profile with no voiceprint.** It now
   measures the reference through `AcousticCloneBackend::create_profile`, so
   the saved profile carries real conditioning. The GUI's generation and story
@@ -176,12 +215,9 @@ versions follow the release milestones in the build plan.
 
 ### Known gaps
 
-- **The Qwen3-TTS neural runtime is not implemented.** Qwen3-TTS is a bespoke
-  three-part architecture (a Res2Net speaker encoder, a 28-block Qwen3 talker
-  with interleaved mRoPE, and a 5-block code predictor) plus a separate 12 Hz
-  codec decoder. `candle-transformers` 0.11 has no `qwen3-tts` model and no
-  upstream Rust implementation exists, so executing it is a separate project.
-  The engine validates and defers honestly; see ADR 0028.
+- **Neural clone quality and performance remain workload-dependent.** Real
+  Qwen3-TTS execution and routing are tested, but the socket test is not a
+  perceptual speaker-similarity benchmark; debug CPU inference is slow.
 - **The acoustic clone tier reproduces timbre, not identity.** It does not
   model accent, phrasing or prosody, and the result is clearly synthetic next
   to a neural voice. Every surface names it `acoustic-clone` so the

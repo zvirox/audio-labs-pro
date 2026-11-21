@@ -22,6 +22,11 @@ Phase 10 enables AI clients, Claude Desktop, and autonomous coding assistants to
 ### 2. Decision D10: Transport Architecture
 - **Headless Mode:** Standard Input/Output (`stdio`) streaming line-delimited JSON-RPC 2.0 messages. This integrates natively with Claude Desktop, Cursor, and IDE extensions without binding network ports.
 - **Attach Mode:** Dedicated Unix domain socket in `$XDG_RUNTIME_DIR/alp/control.sock` mode 0600 with peer UID checking.
+  `alp-api::control` implements admission and `alp-ui` commits approved calls to
+  its one live `EditSession`. A fresh token and first-client GUI approval are
+  required. The first native protocol revision intentionally carries only
+  `project_info`, `track_list`, `track_add`, and `clip_split`; the stdio MCP
+  catalog is not implicitly reopened on this socket.
 
 ### 3. Decision D11: Permission Tiers and Approval Modes
 - Defined hierarchical permission tiers in `alp-api::types::PermissionTier`:

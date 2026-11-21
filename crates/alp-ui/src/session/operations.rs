@@ -3,14 +3,14 @@
 use std::collections::BTreeMap;
 
 use alp_core::{
-    AddMarker, ClipId, CrossfadeClips, DeleteRange, DuplicateClip, EnvelopePoint, FrameRange,
-    Marker, MarkerId, NormalizeClip, PasteClips, RemoveClip, RemoveMarker, Selection,
+    AddMarker, AddTrack, ClipId, CrossfadeClips, DeleteRange, DuplicateClip, EnvelopePoint,
+    FrameRange, Marker, MarkerId, NormalizeClip, PasteClips, RemoveClip, RemoveMarker, Selection,
     SetClipEnvelope, SetClipFades, SetClipGain, SetClipInverted, SetClipReversed, SetLoopRange,
     SetMasterGain, SetTrackArm, SetTrackGain, SetTrackMuted, SetTrackPan, SetTrackSolo,
-    SilenceRange, SplitClip, Track, TrimClip, copy_range, frames_to_secs, secs_to_frames,
+    SilenceRange, SplitClip, Track, TrackId, TrimClip, copy_range, frames_to_secs, secs_to_frames,
 };
 
-use super::{EditSession, NORMALIZE_TARGET, short_id};
+use super::{EditSession, NORMALIZE_TARGET, clear_attached_context, short_id};
 
 impl EditSession {
     /// Track count in the project.
@@ -23,6 +23,32 @@ impl EditSession {
     #[must_use]
     pub fn tracks(&self) -> &[Track] {
         &self.project.tracks
+    }
+
+    /// Append a track through the same undo stack used by human edits.
+    pub fn add_track(&mut self, name: &str) -> Result<alp_api::TrackSummary, String> {
+        let name = name.trim();
+        if name.is_empty() || name.chars().count() > 128 {
+            return Err("track name must contain 1-128 characters".into());
+        }
+        let id = TrackId::new();
+        let index = self.project.tracks.len();
+        let track = Track::new(id, name);
+        if !self.run(Box::new(AddTrack::new(track, index)), "AI add track") {
+            return Err(self.status.clone());
+        }
+        let track = &self.project.tracks[index];
+        Ok(alp_api::TrackSummary {
+            id: track.id.to_string(),
+            name: track.name.clone(),
+            index,
+            gain: track.gain,
+            pan: track.pan,
+            muted: track.muted,
+            solo: track.solo,
+            armed: track.armed,
+            clip_count: track.clips.len(),
+        })
     }
 
     /// Current master gain.
@@ -424,6 +450,36 @@ impl EditSession {
         }
     }
 
+    /// Split an addressed clip for an attached automation client.
+    pub fn split_clip_at(&mut self, clip_id: &str, split_secs: f64) -> Result<(), String> {
+        let id: ClipId = clip_id
+            .parse()
+            .map_err(|error| format!("invalid clip id: {error}"))?;
+        let (_, clip) = self
+            .project
+            .clip(id)
+            .ok_or_else(|| format!("clip '{clip_id}' not found"))?;
+        let rate = self.project.sample_rate;
+        let split_frame = secs_to_frames(split_secs, rate);
+        if !split_secs.is_finite()
+            || split_frame <= clip.timeline_start
+            || split_frame >= clip.timeline_end()
+        {
+            return Err(format!(
+                "split position must be inside [{:.6}s, {:.6}s]",
+                frames_to_secs(clip.timeline_start, rate),
+                frames_to_secs(clip.timeline_end(), rate)
+            ));
+        }
+        let offset = split_frame - clip.timeline_start;
+        let right = ClipId::new();
+        if !self.run(Box::new(SplitClip::new(id, offset, right)), "AI split clip") {
+            return Err(self.status.clone());
+        }
+        self.selected_clip = Some(right);
+        Ok(())
+    }
+
     /// Duplicate the selected clip immediately after it.
     pub fn duplicate(&mut self) {
         let Some(id) = self.selected_clip else {
@@ -556,6 +612,7 @@ impl EditSession {
 
     /// Undo the last command.
     pub fn undo(&mut self) {
+        clear_attached_context(&self.attached_context);
         match self.stack.undo(&mut self.project) {
             Ok(true) => self.after_change("Undo"),
             Ok(false) => self.status = "Nothing to undo".into(),
@@ -565,6 +622,7 @@ impl EditSession {
 
     /// Redo the next command.
     pub fn redo(&mut self) {
+        clear_attached_context(&self.attached_context);
         match self.stack.redo(&mut self.project) {
             Ok(true) => self.after_change("Redo"),
             Ok(false) => self.status = "Nothing to redo".into(),

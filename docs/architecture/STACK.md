@@ -8,7 +8,7 @@ phase; **deferred** is not in v1.
 
 | Concern | Choice | Version | License | Status | Notes |
 |---|---|---|---|---|---|
-| Language | Rust | 1.89+ (edition 2024) | — | P2 | one language for app, tests, CLI |
+| Language | Rust | 1.95+ (edition 2024) | — | P0 | one language; raised by the Qwen/Crane dependency chain (ADR 0029) |
 | UI | iced | `=0.14.0` (pinned) | MIT | P2 | wgpu renderer, `canvas` + `advanced`; no tokio |
 | UI kit | in-house `alp-ui-kit` | — | Apache-2.0 | P2 | tokens, Inter, controls, overlays, motion, waveform |
 | Font | Inter variable | bundled `InterVariable.ttf` | OFL-1.1 | P2 | family name `Inter Variable`; OFL text bundled |
@@ -27,7 +27,7 @@ phase; **deferred** is not in v1.
 | FFT | `rustfft` / `realfft` | 6.4 / 3.5 | MIT | P1 (transitive) | spectrogram, spectral tools |
 | Inference (light) | `ort` + ONNX Runtime | 2.0.0-rc.15 / 1.31 | MIT/Apache | planned (Phase 6) | Kokoro, Kitten, Moonshine |
 | G2P | `piper-plus-g2p` | 0.5.2 | MIT | planned | eSpeak-free, CMUdict |
-| Inference (heavy) | `alp-infer` process; llama.cpp/gguf or candle | — | MIT | Phase 8 | ADR 0008 |
+| Inference (heavy) | `alp-infer` process; `crane-core` + Candle | `=26.9.0` | MIT | P0 | official Qwen3-TTS Safetensors, CPU/F32 ICL; ADR 0029 |
 | Serialization | `serde` + `serde_json` | 1 | MIT/Apache | P1 | versioned project/workspace schemas |
 | CLI | `clap` + `anyhow` | 4.6 / 1.0 | MIT/Apache | P1 | headless acceptance harness |
 | Directories | `dirs` | 7.0 | MIT/Apache | P1 | XDG roots |

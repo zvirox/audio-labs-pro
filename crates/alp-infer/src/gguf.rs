@@ -114,15 +114,6 @@ impl GgufHeader {
             _ => None,
         }
     }
-
-    /// The value of a metadata key as an unsigned integer, when present.
-    #[must_use]
-    pub fn u64(&self, key: &str) -> Option<u64> {
-        match self.get(key) {
-            Some(MetadataValue::U64(value)) => Some(*value),
-            _ => None,
-        }
-    }
 }
 
 /// A GGUF metadata value, reduced to the types the installer inspects.

@@ -1,7 +1,7 @@
 # Audio Labs Pro — Master Checklist
 
 > Consolidated from `ALP_BUILD_PLAN.md` (Phases 0–11) + `plan.md` (UI Modernization)
-> **Last updated:** 2026-11-12 | **Branch:** `main`
+> **Last updated:** 2026-11-21 | **Branch:** `main`
 > **Legend:** ✅ Done | ⚠️ Partial | ⬜ Pending | 🔄 In Progress
 
 ---
@@ -12,8 +12,8 @@
 |---|------|--------|----------|
 | P0.1 | Kokoro-82M TTS executes behind the `alp-infer` protocol | ✅ | `alp-infer/src/kokoro.rs`, real `ort` execution |
 | P0.2 | Moonshine Tiny STT executes behind the `alp-infer` protocol | ✅ | `alp-infer/src/moonshine.rs`, two-slot daemon (ADR 0025) |
-| P0.3 | Heavy clone tier behind the existing `CloneBackend` / consent / profile plumbing | ⚠️ | `AcousticCloneBackend` is real and working; Qwen3-TTS validates its install but its **neural runtime is deferred** (ADR 0028) |
-| P0.4 | Qwen3-TTS 0.6B neural inference runtime | ⬜ | Needs the custom `qwen3-tts` architecture (Res2Net `spk_enc` + Qwen3 talker with mRoPE + `code_pred`) and the 12 Hz codec decoder in Rust; no upstream Rust implementation exists |
+| P0.3 | Heavy clone tier behind the existing `CloneBackend` / consent / profile plumbing | ✅ | Acoustic and Qwen3-TTS neural engines use real profile conditioning; daemon/API/UI/CLI preserve consent and truthful tier routing (ADR 0029) |
+| P0.4 | Qwen3-TTS 0.6B neural inference runtime | ✅ | `crane-core =26.9.0` executes official Safetensors with CPU/F32 ICL; direct and real-daemon model-gated tests pass, producing finite mono 24 kHz audio (ADR 0029) |
 | P0.5 | Synthetic-voice export tag | ✅ | `AudioMetadata::synthetic_speech` is now the single source; every TTS export path (API, CLI, UI) writes it; MCP exposes no way to disable it |
 | P0.6 | Clone tier reachable without the GUI | ✅ | `alp-cli tts --profile <id>` renders a stored profile; *creation* stays GUI-only (human consent gate) |
 | P0.7 | Model manifest integrity | ✅ | The Qwen3 manifest's fabricated URLs/digests were replaced with real Apache-2.0 files verified against the upstream LFS pointers |
@@ -30,7 +30,7 @@
 | 0.3 | Floating-panel spike: drag, resize, dock, snap in transparent window | ✅ | `alp-ui` panel manager |
 | 0.4 | Audio spike: cpal record/playback + ring buffer; symphonia decode + peak pyramid | ✅ | `docs/spikes/PHASE0-RESULTS.md` |
 | 0.5 | Model spike A (light): Kitten nano, Kokoro via `ort`; phonemization; Moonshine ONNX | ✅ | `alp-infer` engines |
-| 0.6 | Model spike B (heavy): Qwen3-TTS via GGUF/ggml vs `candle` vs Python sidecar | ✅ | Spike done; **no engine shipped** |
+| 0.6 | Model spike B (heavy): Qwen3-TTS via GGUF/ggml vs `candle` vs Python sidecar | ✅ | Spike completed; Crane/Candle selected and neural Qwen3-TTS engine shipped (ADR 0029) |
 | 0.7 | License pass: checklist for every model; GPL/LGPL deps → D1 decision | ✅ | `THIRD_PARTY.md`, `docs/adr/0001` |
 | 0.8 | Design-system spike: button set, dropdown, modal, toast, command palette; evaluate iced-plus/aw/ui | ✅ | `alp-ui-kit`, `docs/adr/0007` |
 | 0.9 | Motion spike: panel open/close, hover/press, toast with `lilt` & `iced_anim`; Reduce-motion | ✅ | `alp-ui-kit::motion`, `docs/adr/0007` |
@@ -156,14 +156,14 @@
 | 8.1 | Voice profile system: library independent of projects (`~/.local/share/.../voices/`), `{id, name, type, backend, reference, transcript, embedding, tags, params, created, consent}`; import/export `.alpvoice` (zip) | ✅ | `alp-voice/src/profile.rs` |
 | 8.2 | Prebuilt profiles: wrap Kitten/Kokoro voices as profiles with names, tags, previews | ✅ | "Aura", "Atlas", "Echo", "Sol" |
 | 8.3 | Hardware detection: RAM/VRAM/CPU/GPU probe; Fast vs Best recommendation; big-download warnings | ✅ | `alp-voice/src/hardware.rs` |
-| 8.4 | **Clone backends (optional downloads): Qwen3-TTS 0.6B/1.7B, VoxCPM2, OmniVoice behind `CloneBackend`** | ⚠️ | `CloneBackend` implemented by the acoustic tier (real, works); Qwen3-TTS validates its install but its neural runtime is deferred (ADR 0028); VoxCPM2/OmniVoice not started |
+| 8.4 | **Clone backends (optional downloads): Qwen3-TTS 0.6B/1.7B, VoxCPM2, OmniVoice behind `CloneBackend`** | ⚠️ | Acoustic + Qwen3-TTS 0.6B neural tiers execute through `CloneBackend` (ADR 0029); Qwen 1.7B, VoxCPM2/OmniVoice not started |
 | 8.5 | Reference capture/import: quality checks (length, clipping, noise, silence, SR) with advice; optional auto-clean (Phase 5); optional transcript | ✅ | `analyze_reference_quality` |
 | 8.6 | Voice design: text description → voice (VoxCPM2), save as profile | ⬜ | No design backend |
 | 8.7 | Generation controls: per-profile style/speed/emotion (capability flags drive UI) | ⚠️ | UI exists; backend flags pending |
 | 8.8 | **Consent & safety:** human-only gate before clone (stored in profile); no CLI/MCP bypass; no bundled real voices; synthetic-voice metadata tag on exports (on by default); usage note | ✅ | `ConsentRecord` enforced at lib level **and at render time** (daemon, API fallback, UI fallback); tag now written by every TTS export path via `AudioMetadata::synthetic_speech` |
 | 8.9 | Compare tool: A/B reference vs generated; side-by-side profile preview | ✅ | `compare_audio` |
 | 8.10 | Cache generated audio by `(profile, text, params)` | ✅ | `VoiceGenerationCache` |
-| 8.11 | Acceptance: create profile from ≥5s ref → generate paragraph → place on timeline offline; backends install/remove independently; crash/OOM in heavy model recoverable; consent visible; export tag works | ⚠️ | **Acoustic tier passes offline**; heavy-model recovery still blocked on the neural runtime (ADR 0028) |
+| 8.11 | Acceptance: create profile from ≥5s ref → generate paragraph → place on timeline offline; backends install/remove independently; crash/OOM in heavy model recoverable; consent visible; export tag works | ⚠️ | Acoustic tier passes offline; real Qwen neural synthesis/consent/routing passes through the daemon (ADR 0029); heavy crash/OOM recovery remains process-design evidence rather than a new forced-OOM soak |
 
 ---
 
@@ -221,7 +221,7 @@
 | 10.2.3 | Schemas: every tool has `inputSchema`/`outputSchema` (JSON Schema 2020-12), `structuredContent` + text summary, annotations | ⚠️ | All 58 have `inputSchema` (write tools advertise `expected_revision`, list tools `limit`/`cursor`), every result carries `structuredContent` plus a text summary, annotations on every tool; **`outputSchema` still missing** |
 | 10.2.4 | Errors: protocol errors only for malformed; fixable errors → `isError: true` + cause + suggested next call | ✅ | Denials and validation errors name the fix (e.g. "call `tts_voices` for the known ids") |
 | 10.2.5 | Long jobs: Tasks extension → task handle; else progress notifications + `job_id` polling; cancellation → `job_cancel` | ⚠️ | `job_status`/`job_cancel` work against real jobs for TTS/STT/script; **no Tasks, no progress notifications** |
-| 10.2.6 | Human confirmation: MCP elicitation where supported; else GUI prompt (attach) or refuse (headless) | ⚠️ | Clone creation is refused outright; there is no elicitation round-trip and no GUI prompt (no control host) |
+| 10.2.6 | Human confirmation: MCP elicitation where supported; else GUI prompt (attach) or refuse (headless) | ⚠️ | Clone creation is refused outright and there is no elicitation round-trip; the native control host now has first-client GUI approval, but destructive-operation confirmation is still missing |
 | 10.2.7 | Size/pagination: ~20 KB text cap, `limit`/`cursor` on lists, `detail` arg for summary/full | ⚠️ | `limit`/`cursor` on all five list tools (`alp-api/src/paging.rs`, default 50, max 200, opaque cursors, `total` + `next_cursor`); **no ~20 KB text cap and no `detail` arg yet** |
 | 10.2.8 | Logging: stderr + audit log (protocol logging deprecated) | ✅ | `tracing` to stderr + `audit.jsonl` |
 
@@ -264,12 +264,12 @@ Not shipped: `transcript_get`, `edit_cut_transcript_ranges` (both need §10.0.3)
 | # | Task | Status | Evidence |
 |---|------|--------|----------|
 | 10.5.1 | Settings → AI control: master switch, tier, folders, approval mode, transport | ⚠️ | Master switch and tier exist in the AI card; folders/approval/transport are not exposed there |
-| 10.5.2 | Control host in `alp-ui` via `alp-api`: Unix socket `$XDG_RUNTIME_DIR`, 0600, `SO_PEERCRED`, per-session token | ⬜ | **Does not exist** — no `UnixListener` in `alp-ui`; `alp-mcp` opens the project from disk in its own process. UI copy that claimed a socket was corrected |
-| 10.5.3 | AI activity panel: live tool calls, highlighting, **Stop AI** kill switch, **Undo all AI changes** (session-start checkpoint) | ⚠️ | Local audit trail and attach policy are shown; without 10.5.2 there is no live tool feed, and the panel is now labelled honestly ("Revoke attach", "Undo last edit") |
+| 10.5.2 | Control host in `alp-ui` via `alp-api`: Unix socket `$XDG_RUNTIME_DIR`, 0600, `SO_PEERCRED`, per-session token | ✅ | Protocol 2 has 2 MiB bounded framing and opaque MCP envelopes. `alp-mcp --attach` reuses the complete shared dispatcher on desktop workers; production-socket tests prove catalog parity, revision-checked live edits, shared undo/redo, imported audio reconciliation and late-result revocation |
+| 10.5.3 | AI activity panel: live tool calls, highlighting, **Stop AI** kill switch, **Undo all AI changes** (session-start checkpoint) | ⚠️ | Full MCP calls log preparatory outcomes, measured commits and one shared undo step; Stop AI revokes queued worker results. Edit highlighting and safe AI-only/full-session rollback remain missing (“Undo last edit” is labelled honestly) |
 | 10.5.4 | Approval modes: Auto / Confirm destructive (default) / Review (stretch: staged checkpoint) | ⚠️ | `ApprovalMode` type exists; no enforcement path and no Review mode |
-| 10.5.5 | Concurrency: human + AI share command queue; revision conflicts → actionable errors; UI never blocks | ⬜ | Only possible once 10.5.2 exists |
-| 10.5.6 | Change notifications to subscribed clients on human edits | ⬜ | Not built |
-| 10.5.7 | Attach latency: AI edit visible ≤ 200 ms | ⬜ | Not measurable without 10.5.2 |
+| 10.5.5 | Concurrency: human + AI share command queue; revision conflicts → actionable errors; UI never blocks | ⚠️ | Heavy MCP calls run against revision-tagged scratch state on workers; tested human/AI races, stale-read rejection and revocation preserve the one live project/history, with one undo entry and full path/audio context per committed call. Broad multi-client/flood/heavy-call soak remains unverified |
+| 10.5.6 | Change notifications to subscribed clients on human edits | ✅ | Explicit control subscriptions receive post-commit GUI and attached project changes; real-socket integration verifies operator and AI events, and `--attach` gates forwarded standard resource-update/detail notifications on MCP `resources/subscribe`. Fragmented events survive timeouts and slow subscribers are bounded and dropped |
+| 10.5.7 | Attach latency: AI edit visible ≤ 200 ms | ⚠️ | Real integration asserts request → worker preparation → revision-checked commit/view-model synchronization ≤200 ms for a cache-ready structural edit and exposes latest/worst timing. Actual pixel/audio presentation and heavy-call latency are not claimed |
 
 ### 10.6 Safety & Security
 
@@ -282,7 +282,7 @@ Not shipped: `transcript_get`, `edit_cut_transcript_ranges` (both need §10.0.3)
 | 10.6.5 | Process confinement: stdio shares client trust; sandbox `alp-mcp` (Landlock/bubblewrap) | ⬜ | **Not done** |
 | 10.6.6 | Limits: rate limits, per-call timeouts, max payload, max concurrent jobs | ⚠️ | Sliding-window rate limit (600 req/60 s), 1 MiB payload cap, advisory 120 s call budget — all CLI-tunable and published in `server/discover` (`alp-mcp/src/limits.rs`); **no max-concurrent-jobs cap (jobs are synchronous)** |
 | 10.6.7 | Audit log: every call, viewable in AI panel; hashes/lengths only | ✅ | JSONL + the AI card's activity list |
-| 10.6.8 | Visibility: persistent AI-activity indicator when session attached | ⚠️ | The AI card shows the recorded attach policy; there is no attached session to indicate |
+| 10.6.8 | Visibility: persistent AI-activity indicator when session attached | ⚠️ | Enabling the native host shows the active AI badge and full attached MCP activity including measured commits; per-connection indicators remain missing |
 
 ### 10.7 Docs & Tooling
 
@@ -349,9 +349,9 @@ Not shipped: `transcript_get`, `edit_cut_transcript_ranges` (both need §10.0.3)
 
 | Category | Total | ✅ Done | ⚠️ Partial | ⬜ Pending |
 |----------|-------|---------|------------|----------|
-| **P0 — Model tier real** | 8 | 6 | 1 | 1 |
+| **P0 — Model tier real** | 8 | 8 | 0 | 0 |
 | **Phases 0–9 (Core Product)** | ~85 | ~70 | ~9 | ~7 |
-| **Phase 10 (MCP)** | 60 | 25 | 20 | 15 |
+| **Phase 10 (MCP)** | 60 | 26 | 21 | 13 |
 | **Phase 11 (Plugins)** | 5 | 5 | 0 | 0 |
 | **UI Modernization** | 5 | 0 | 0 | 5 |
 | **Post-1.0 Backlog** | 9 | 0 | 0 | 9 |
@@ -360,8 +360,8 @@ Not shipped: `transcript_get`, `edit_cut_transcript_ranges` (both need §10.0.3)
 
 ## Next Actions (Priority Order)
 
-1. **P0 — Model tier real:** ✅ Done except **P0.4** (the Qwen3-TTS neural runtime): implement the `qwen3-tts` architecture and the 12 Hz codec decoder in Rust, then swap `Qwen3Engine` from "validates and defers" to "executes"
-2. **P1 — MCP depth:** the 58-tool surface is complete and honest about its limits ([`docs/mcp/AUDIT.md`](docs/mcp/AUDIT.md)). Done this round: `expected_revision` on writes (10.1.3), `title`/`annotations` + `ttlMs`/`cacheScope` (10.2.2), `limit`/`cursor` pagination on the five list tools (10.2.7), and rate limit / payload cap / advisory call budget (10.6.6). Remaining: the `alp-ui` control host (10.5.2) so attached sessions share one project, `outputSchema` (10.2.3), `notifications` on human edits, word-level timestamps (10.0.3) to unblock filler removal and transcript cutting, the ~20 KB text cap, and the evaluation harness golden artifacts / LLM trials (10.8)
+1. **P0 — Model tier real:** ✅ Complete. P0.4 now has genuine Qwen3-TTS 0.6B CPU inference via pinned Crane/Candle and official Safetensors, with reference PCM + transcript ICL, consent enforcement, truthful clone-specific provenance, no Qwen-to-acoustic substitution, and passing direct/daemon model-gated tests (ADR 0029)
+2. **P1 — MCP depth:** the 58-tool headless surface is complete and honest about its limits ([`docs/mcp/AUDIT.md`](docs/mcp/AUDIT.md)). Done this round: `expected_revision` on writes (10.1.3), `title`/`annotations` + `ttlMs`/`cacheScope` (10.2.2), `limit`/`cursor` pagination on the five list tools (10.2.7), rate limit / payload cap / advisory call budget (10.6.6), and the owner-only `alp-ui` control host with human approval, per-session tokens and 2 MiB framing (10.5.2). The complete shared MCP dispatcher is now available through `alp-mcp --attach`, with worker-prepared edits committed to the live GUI project/undo stack; production-socket integration covers catalog parity, media/audio reconciliation, human-edit conflicts, revocation, notifications and measured request-to-live-commit latency (10.5.2/10.5.6/10.5.7). Remaining: `outputSchema` (10.2.3), word-level timestamps (10.0.3) to unblock filler removal and transcript cutting, the ~20 KB text cap, actual rendered-pixel latency, and the evaluation harness golden artifacts / LLM trials (10.8)
 3. **P2 — Phase 5 completion:** RNNoise/spectral noise reduction; silence/breath tools in `alp-dsp`
 4. **P3 — Recording/timeline depth:** Multi-input overdub, spectrogram + minimap, monitoring resampler, async import, project picker/save-as
 5. **P4 — Release assurance:** Cross-desktop matrix, clean-machine passes, `phase2-demo.sh`

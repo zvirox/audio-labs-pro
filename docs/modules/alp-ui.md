@@ -26,6 +26,10 @@ Inside the binary:
 
 - `app::{App, Message}` — state machine, subscriptions and update logic.
 - `app::update` — the message reducer and recording/export helpers.
+- `app::ai_control` — authenticated control-host state, first-client approval,
+  activity logging, live commit/publication and legacy native dispatch.
+- `app::ai_mcp` — persistent per-client shared MCP dispatch on workers,
+  live-snapshot rebasing, prepared transaction/audio reconciliation and timing.
 - `app::views` — pure screen and panel rendering.
 - `app::workspace_layout` — `WorkflowTab`, the icon rail, docked player,
   `card`/`card_auto`, `header`, `metric_badge`, `profile_card`/`profile_grid`
@@ -64,6 +68,11 @@ iced window/input ──► Message ──► App::update ──► panels/comma
 
 alp_media::PeakBuilder ──► WaveformPeaks ──► WaveformWidget ──► canvas
 worker thread ──► mpsc ◄── JobQueue::poll during a frame ──► Export panel
+control socket ──► bounded mpsc ◄── Message::AiControl ──► legacy cheap calls
+   + MCP proxy         │                         └─► attached MCP worker
+                     └──► prepared transaction ──► revision-checked EditSession
+                     (peer UID + fresh token + human approval before this point)
+committed EditSession ──► ControlHost::publish ──► subscribed MCP/native clients
 generation thread ──► Arc<Mutex<Option<Result<RenderOutput, String>>>>
                      ◄── drained in Message::Frame ──► history row
 ```
@@ -76,8 +85,8 @@ never calls cpal directly and never runs mixer code on the UI thread.
 
 ## Allowed dependencies
 
-`alp-api`, `alp-core`, `alp-engine`, `alp-media`, `alp-plugin`, `alp-ui-kit`,
-`alp-voice`, `iced`, `serde`, `serde_json`, `tracing` and `x11rb`.
+`alp-api`, `alp-core`, `alp-engine`, `alp-mcp`, `alp-media`, `alp-plugin`,
+`alp-voice`, `alp-ui-kit`, `iced`, `serde`, `serde_json`, `tracing` and `x11rb`.
 `scripts/check-deps.sh` rejects an `alp-infer`, `alp-dsp` or cpal dependency, so
 effect DSP that the UI must call has to route through `alp-api`. `alp-ui-kit`
 must never depend on an ALP crate.
@@ -85,13 +94,18 @@ must never depend on an ALP crate.
 ## Threading / real-time notes
 
 All UI state lives on the main thread. Frames are subscribed only while a panel
-moves, a recording or playback runs, a job runs, or a diagnostic env var requests
-them; otherwise the app idles at zero CPU. Workers use standard threads and
-report over a non-blocking channel. Recording meters are atomics sampled from a
-frame; capture finalization and import can briefly block after a stop. Mix
-export runs on a worker from a cloned `MixScene`; voice generation and story
-rendering run on their own thread and publish one result that
-`Message::Frame` drains.
+moves, a recording or playback runs, a job runs, live AI attach is enabled, or a
+diagnostic env var requests them; otherwise the app idles at zero CPU. Enabling
+attach therefore supplies a wakeup path even when no playback or animation is
+active. Workers use standard threads and report over a non-blocking channel.
+The control listener and clients wait off the UI thread; at most 64 control
+messages are drained per frame. Cheap native commands commit immediately;
+attached MCP work decodes/analyzes/renders on per-client workers and only the
+revision-checked live commit/view synchronization occurs on the UI thread.
+Recording meters are atomics sampled from a frame; capture finalization and
+import can briefly block after a stop. Mix export runs on a worker from a cloned
+`MixScene`; voice generation and story rendering run on their own thread and
+publish one result that `Message::Frame` drains.
 
 ## Error handling
 
@@ -106,7 +120,9 @@ use `expect` only where the adjacent API guarantees them.
 
 ## Testing
 
-`cargo test -p alp-ui` runs 48 tests covering app shortcuts/time formatting,
+`cargo test -p alp-ui` covers app shortcuts/time formatting,
+production-socket full MCP attach, shared live history, stale/revoked worker
+protection, operator/AI project notifications and measured live commits, plus
 command filtering, panel geometry and persistence, workspace round-trips, job
 lifecycle, glass mode resolution, demo peaks, `EditSession` demo/edit/import
 behavior, the `WorkflowTab` slug round-trip used by `ALP_START_TAB`, and the
@@ -119,6 +135,10 @@ palette, wizard) and `ALP_FORCE_TINT`; results are in
 
 ## Known limits
 
+- Attached MCP uses the full shared dispatcher on workers and commits to the
+  live project/undo stack. Calls are sequential per connection; full-session
+  rollback is refused, media/heavy-call flood acceptance and pixel-presentation
+  timing remain unverified.
 - The timeline still draws the synthetic demo waveform rather than the live
   project; the inspector and the docked player operate on real data.
 - The inspector edits a real in-memory demo project, but it is not yet opened
