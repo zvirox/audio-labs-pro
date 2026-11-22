@@ -11,22 +11,25 @@ every caller becomes instantaneous when the user asks for less motion.
 - `Toggle` with `new(initial)`, `with_duration(ms)`, `set_reduce_motion`,
   `toggle(target)`, `tick(now)`, `value()`, `is_on()` and `is_animating()`.
 - `PanelMotion { open, offset }` with `from_open(&Toggle)`.
+- `offset(content, x, y)` — draws a child with a translation that does not
+  change its layout bounds.
 - `overlay_toggle()` and `panel_toggle()` constructors.
 - `scaled(motion, duration)` applies the token policy to a duration.
 
 ## Data flow
 
 `App` creates one `Toggle` per panel from the restored open state and a panel
-duration token. A frame calls `tick(now)` for every toggle; `App::view` reads
-`PanelMotion::from_open` and offsets the panel by up to 14 logical pixels while
-it opens. `is_animating()` decides whether the frame subscription stays alive.
-Reduce motion sets the duration to zero and calls lilt's instantaneous
-transition, so the next `value()` is final.
+duration token, plus a one-shot workspace toggle that re-arms on tab changes.
+A frame calls `tick(now)` for every toggle; `App::view` reads
+`PanelMotion::from_open`, calls `offset` on the workspace content and settles it
+by up to 8 logical pixels. `is_animating()` keeps the frame subscription alive
+only while a transition is running. Reduce motion sets the duration to zero and
+calls lilt's instantaneous transition, so the next `value()` is final.
 
 ## Allowed dependencies
 
-`lilt` 0.8.2 and `crate::tokens::{Duration, Motion}`. It does not depend on iced
-or any ALP crate.
+`lilt` 0.8.2, `iced` widget/renderer types for the translation wrapper and
+`crate::tokens::{Duration, Motion}`. It does not depend on any ALP domain crate.
 
 ## Threading / real-time notes
 
@@ -44,14 +47,14 @@ defined reduced-motion path. An out-of-range initial value is compared against
 ## Testing
 
 Tests prove reduced motion is instantaneous and not reported as animating, and
-that a panel starts flush when open and gains a 14 px offset after closing.
+that content starts flush when open and gains an 8 px offset after closing.
 Token tests cover the 120/200/320 ms scale and reduced-motion duration mapping.
 
 ## Known limits
 
-- Panel close animates only position, not opacity or scale.
+- The workspace transition animates position only, not opacity or scale.
 - Drag settle snaps immediately; there is no spring overshoot or interruptible
   velocity handoff yet, despite the Phase 0 plan mentioning a spring.
-- Only panel toggles use the module; buttons and toasts do not animate entrance
-  or exit.
+- Buttons use distinct cube hover/pressed fills, but they do not run a timed
+  interpolation; toasts and dialogs appear without an entrance transition.
 - Motion is visual only; it never conveys audio state.

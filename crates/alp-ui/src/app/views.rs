@@ -4,6 +4,7 @@
 //! They never mutate the project or the panel model directly.
 
 use alp_ui_kit::icons;
+use alp_ui_kit::tokens::{Icon, Layout};
 use iced::widget::{Space, column, container, mouse_area, row, stack, text};
 
 use super::*;
@@ -23,10 +24,20 @@ impl App {
         let colors = self.colors();
         let mut layers: Vec<Element<'_, Message>> = Vec::new();
 
-        let workspace = container(self.workspace_view(colors))
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .padding([Spacing::XL, Control::PAGE]);
+        let page_padding = if self.window_size.width < Layout::COMPACT {
+            f32::from(Spacing::XL)
+        } else {
+            f32::from(Control::PAGE)
+        };
+        let settle = PanelMotion::from_open(&self.workspace_motion).offset;
+        let workspace = container(alp_ui_kit::motion::offset(
+            self.workspace_view(colors),
+            0.0,
+            settle,
+        ))
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .padding([f32::from(Spacing::XL), page_padding]);
 
         let frame = container(
             column![
@@ -157,7 +168,7 @@ impl App {
                     } else {
                         icons::ACTIVITY
                     },
-                    13.0,
+                    Icon::XS,
                     ButtonKind::Ghost,
                     Some(Message::ToggleReduceMotion)
                 ),
@@ -167,7 +178,7 @@ impl App {
             components::with_tooltip(
                 components::glyph_button(
                     icons::THEME,
-                    14.0,
+                    Icon::SM,
                     ButtonKind::Ghost,
                     Some(Message::ToggleTheme)
                 ),
@@ -177,7 +188,7 @@ impl App {
             components::with_tooltip(
                 components::glyph_button(
                     icons::KEYBOARD,
-                    13.0,
+                    Icon::XS,
                     ButtonKind::Ghost,
                     Some(Message::OpenShortcutsHelp)
                 ),

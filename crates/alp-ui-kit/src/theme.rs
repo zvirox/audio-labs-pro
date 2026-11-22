@@ -1,23 +1,24 @@
 //! Dark and light studio palettes.
 //!
 //! Every screen reads colors from [`ThemeColors`]; no widget owns a literal
-//! color. The dark palette is the studio default: near-black surfaces,
-//! hairline white borders and a cyberpunk [`Neon`] accent that the shell swaps
-//! per workspace. The light palette mirrors it with paper surfaces and a
-//! deepened neon set, so one component set serves both.
+//! color. The dark palette is the studio default: calm slate surfaces,
+//! high-contrast text and a restrained accent that the shell swaps per
+//! workspace. The light palette uses paper surfaces and deepened accents so
+//! one component set serves both modes.
 
 use iced::widget::container;
 use iced::{Background, Border, Color, Shadow, Theme, Vector};
 
 use crate::tokens::{Radius, ThemeMode};
 
-/// Cyberpunk neon accent hues, one per shell workspace.
+/// Restrained workspace accent hues, one per shell workspace.
 ///
-/// The kit stays workspace-agnostic: hues are named for the color itself and
-/// the shell maps each workspace onto one. Bases come in two calibrated sets —
-/// vivid neon on the dark studio surfaces and a deepened set for paper light —
-/// and every derived color ([`ThemeColors::accent_hover`], waveform hot, ink)
-/// is computed from the base, so a hue can never drift out of sync.
+/// Hues are named for the color itself and the shell maps each workspace onto
+/// one. The vivid set is calibrated for dark slate surfaces and the deepened
+/// set for paper light. Every derived color ([`ThemeColors::accent_hover`],
+/// waveform hot, ink) comes from the base, so a hue cannot drift out of sync.
+/// All accent/ink pairs are checked against the surface palette in the tests
+/// below.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Neon {
     /// Electric cyan — synthesis and creation.
@@ -56,20 +57,20 @@ impl Neon {
     #[must_use]
     pub const fn base(self, dark: bool) -> Color {
         let (r, g, b) = match (self, dark) {
-            (Self::Cyan, true) => (0.0, 0.898, 1.0),         // #00E5FF
-            (Self::Cyan, false) => (0.055, 0.455, 0.565),    // #0E7490
-            (Self::Magenta, true) => (1.0, 0.180, 0.592),    // #FF2E97
-            (Self::Magenta, false) => (0.784, 0.118, 0.471), // #C81E78
-            (Self::Acid, true) => (0.357, 1.0, 0.302),       // #5BFF4D
-            (Self::Acid, false) => (0.082, 0.502, 0.239),    // #15803D
-            (Self::Violet, true) => (0.690, 0.149, 1.0),     // #B026FF
-            (Self::Violet, false) => (0.486, 0.227, 0.929),  // #7C3AED
-            (Self::Ember, true) => (1.0, 0.478, 0.161),      // #FF7A29
-            (Self::Ember, false) => (0.761, 0.255, 0.047),   // #C2410C
-            (Self::Volt, true) => (0.302, 0.702, 1.0),       // #4DB3FF
-            (Self::Volt, false) => (0.145, 0.388, 0.922),    // #2563EB
-            (Self::Solar, true) => (0.988, 0.933, 0.039),    // #FCEE0A
-            (Self::Solar, false) => (0.792, 0.541, 0.016),   // #CA8A04
+            (Self::Cyan, true) => (0.220, 0.741, 0.973),  // #38BDF8
+            (Self::Cyan, false) => (0.014, 0.412, 0.635), // #0369A1
+            (Self::Magenta, true) => (0.957, 0.447, 0.714), // #F472B6
+            (Self::Magenta, false) => (0.745, 0.094, 0.365), // #BE185D
+            (Self::Acid, true) => (0.290, 0.871, 0.502),  // #4ADE80
+            (Self::Acid, false) => (0.082, 0.502, 0.239), // #15803D
+            (Self::Violet, true) => (0.655, 0.545, 0.980), // #A78BFA
+            (Self::Violet, false) => (0.486, 0.227, 0.929), // #7C3AED
+            (Self::Ember, true) => (0.984, 0.573, 0.235), // #FB923C
+            (Self::Ember, false) => (0.761, 0.255, 0.047), // #C2410C
+            (Self::Volt, true) => (0.376, 0.647, 0.980),  // #60A5FA
+            (Self::Volt, false) => (0.114, 0.306, 0.847), // #1D4ED8
+            (Self::Solar, true) => (0.984, 0.749, 0.141), // #FBBF24
+            (Self::Solar, false) => (0.631, 0.384, 0.027), // #A16207
         };
         Color::from_rgb(r, g, b)
     }
@@ -155,65 +156,66 @@ pub struct ThemeColors {
 }
 
 impl ThemeColors {
-    /// Studio dark: near-black frame, graphite cards, electric cyan accent
-    /// (the kit default hue — the shell swaps [`Neon`] per workspace).
+    /// Studio dark: slate frame, graphite cards, high-contrast text and a
+    /// restrained cyan default accent (the shell swaps [`Neon`] per workspace).
     pub const DARK: Self = Self {
-        background: Color::from_rgb(0.039, 0.039, 0.039),
-        glass: Color::from_rgb(0.055, 0.055, 0.055),
-        glass_strong: Color::from_rgb(0.078, 0.078, 0.078),
-        surface_raised: Color::from_rgb(0.106, 0.106, 0.106),
-        text: Color::from_rgb(0.960, 0.960, 0.960),
-        muted: Color::from_rgb(0.620, 0.620, 0.620),
-        faint: Color::from_rgb(0.400, 0.400, 0.400),
+        background: Color::from_rgb(0.043, 0.071, 0.125),
+        glass: Color::from_rgb(0.067, 0.102, 0.169),
+        glass_strong: Color::from_rgb(0.086, 0.133, 0.208),
+        surface_raised: Color::from_rgb(0.114, 0.169, 0.247),
+        text: Color::from_rgb(0.945, 0.961, 0.976),
+        muted: Color::from_rgb(0.667, 0.722, 0.800),
+        faint: Color::from_rgb(0.518, 0.592, 0.690),
         accent: DARK_ACCENT,
         accent_text: Neon::Cyan.on(true),
-        accent_hover: mix(DARK_ACCENT, Color::WHITE, 0.10),
-        accent_pressed: mix(DARK_ACCENT, Color::BLACK, 0.15),
-        accent_secondary: Color::from_rgb(0.655, 0.647, 0.620),
-        border: Color::from_rgba(1.0, 1.0, 1.0, 0.10),
+        accent_hover: mix(DARK_ACCENT, Color::WHITE, 0.08),
+        accent_pressed: mix(DARK_ACCENT, Color::BLACK, 0.18),
+        accent_secondary: Color::from_rgb(0.667, 0.722, 0.800),
+        border: Color::from_rgba(0.75, 0.82, 0.92, 0.12),
         border_strong: Color {
-            a: 0.55,
+            a: 0.62,
             ..DARK_ACCENT
         },
-        shadow: Color::from_rgba(0.0, 0.0, 0.0, 0.50),
-        scrim: Color::from_rgba(0.0, 0.0, 0.0, 0.72),
-        success: Color::from_rgb(0.478, 0.769, 0.541),
-        warning: Color::from_rgb(0.878, 0.698, 0.361),
-        danger: Color::from_rgb(0.878, 0.424, 0.373),
+        shadow: Color::from_rgba(0.0, 0.0, 0.0, 0.40),
+        scrim: Color::from_rgba(0.02, 0.04, 0.08, 0.74),
+        success: Color::from_rgb(0.404, 0.827, 0.573),
+        warning: Color::from_rgb(0.937, 0.769, 0.353),
+        danger: Color::from_rgb(0.957, 0.478, 0.443),
         wave: DARK_ACCENT,
-        wave_hot: mix(DARK_ACCENT, Color::WHITE, 0.38),
-        grid: Color::from_rgba(1.0, 1.0, 1.0, 0.055),
-        playhead: Color::from_rgb(0.960, 0.960, 0.960),
+        wave_hot: mix(DARK_ACCENT, Color::WHITE, 0.32),
+        grid: Color::from_rgba(0.75, 0.82, 0.92, 0.08),
+        playhead: Color::from_rgb(0.945, 0.961, 0.976),
     };
 
-    /// Studio light: paper surfaces, graphite ink and the deepened default hue.
+    /// Studio light: paper frame and cards, slate ink and a deepened default
+    /// accent (the shell swaps [`Neon`] per workspace).
     pub const LIGHT: Self = Self {
-        background: Color::from_rgb(0.910, 0.910, 0.910),
-        glass: Color::from_rgb(0.898, 0.898, 0.898),
-        glass_strong: Color::from_rgb(0.969, 0.969, 0.969),
-        surface_raised: Color::from_rgb(1.0, 1.0, 1.0),
-        text: Color::from_rgb(0.078, 0.078, 0.078),
-        muted: Color::from_rgb(0.430, 0.430, 0.430),
-        faint: Color::from_rgb(0.600, 0.600, 0.600),
+        background: Color::from_rgb(0.945, 0.961, 0.976),
+        glass: Color::from_rgb(0.910, 0.933, 0.957),
+        glass_strong: Color::from_rgb(1.0, 1.0, 1.0),
+        surface_raised: Color::from_rgb(0.973, 0.980, 0.988),
+        text: Color::from_rgb(0.059, 0.090, 0.165),
+        muted: Color::from_rgb(0.278, 0.337, 0.416),
+        faint: Color::from_rgb(0.353, 0.420, 0.502),
         accent: LIGHT_ACCENT,
         accent_text: Neon::Cyan.on(false),
-        accent_hover: mix(LIGHT_ACCENT, Color::WHITE, 0.10),
-        accent_pressed: mix(LIGHT_ACCENT, Color::BLACK, 0.15),
-        accent_secondary: Color::from_rgb(0.380, 0.380, 0.380),
-        border: Color::from_rgba(0.0, 0.0, 0.0, 0.12),
+        accent_hover: mix(LIGHT_ACCENT, Color::WHITE, 0.08),
+        accent_pressed: mix(LIGHT_ACCENT, Color::BLACK, 0.18),
+        accent_secondary: Color::from_rgb(0.278, 0.337, 0.416),
+        border: Color::from_rgba(0.10, 0.16, 0.25, 0.14),
         border_strong: Color {
-            a: 0.65,
+            a: 0.70,
             ..LIGHT_ACCENT
         },
-        shadow: Color::from_rgba(0.0, 0.0, 0.0, 0.16),
-        scrim: Color::from_rgba(0.0, 0.0, 0.0, 0.45),
-        success: Color::from_rgb(0.208, 0.518, 0.290),
+        shadow: Color::from_rgba(0.02, 0.04, 0.08, 0.12),
+        scrim: Color::from_rgba(0.02, 0.04, 0.08, 0.48),
+        success: Color::from_rgb(0.129, 0.510, 0.290),
         warning: Color::from_rgb(0.663, 0.467, 0.114),
         danger: Color::from_rgb(0.741, 0.243, 0.212),
         wave: LIGHT_ACCENT,
-        wave_hot: mix(LIGHT_ACCENT, Color::WHITE, 0.38),
-        grid: Color::from_rgba(0.0, 0.0, 0.0, 0.07),
-        playhead: Color::from_rgb(0.078, 0.078, 0.078),
+        wave_hot: mix(LIGHT_ACCENT, Color::WHITE, 0.18),
+        grid: Color::from_rgba(0.10, 0.16, 0.25, 0.09),
+        playhead: Color::from_rgb(0.059, 0.090, 0.165),
     };
 
     /// Resolve a theme mode, including the desktop preference.
@@ -225,9 +227,9 @@ impl ThemeColors {
         }
     }
 
-    /// Swap the accent family onto a cyberpunk [`Neon`] hue.
+    /// Swap the accent family onto a workspace [`Neon`] hue.
     ///
-    /// The base surfaces stay graphite/paper; the hue takes over the accent
+    /// The base surfaces stay slate/paper; the hue takes over the accent
     /// (fills, focus borders, waveform body and highlight) together with its
     /// derived hover, pressed, hot and ink variants. The shell calls this once
     /// per view with the active workspace's hue, so buttons, sliders, toggles
@@ -240,14 +242,18 @@ impl ThemeColors {
         Self {
             accent: base,
             accent_text: neon.on(dark),
-            accent_hover: mix(base, Color::WHITE, 0.10),
-            accent_pressed: mix(base, Color::BLACK, 0.15),
+            accent_hover: mix(base, Color::WHITE, 0.08),
+            accent_pressed: mix(base, Color::BLACK, 0.18),
             border_strong: Color {
-                a: if dark { 0.55 } else { 0.65 },
+                a: if dark { 0.62 } else { 0.70 },
                 ..base
             },
             wave: base,
-            wave_hot: mix(base, Color::WHITE, 0.38),
+            wave_hot: if dark {
+                mix(base, Color::WHITE, 0.32)
+            } else {
+                mix(base, Color::WHITE, 0.18)
+            },
             ..self
         }
     }
@@ -291,12 +297,12 @@ impl ThemeColors {
             border: Border {
                 radius: f32::from(Radius::XL).into(),
                 width: 1.0,
-                color: Color::from_rgba(1.0, 1.0, 1.0, 0.07),
+                color: self.border,
             },
             shadow: Shadow {
                 color: self.shadow,
-                offset: Vector::new(0.0, 18.0),
-                blur_radius: 48.0,
+                offset: Vector::new(0.0, 12.0),
+                blur_radius: 32.0,
             },
             snap: true,
         }
@@ -447,6 +453,56 @@ mod tests {
                 let dark = raw_luma(palette.background) <= 0.5;
                 let colors = palette.with_neon(hue);
                 assert_eq!(colors.accent_text, hue.on(dark), "{hue:?} (dark={dark})");
+            }
+        }
+    }
+
+    fn linear(channel: f32) -> f32 {
+        if channel <= 0.04045 {
+            channel / 12.92
+        } else {
+            ((channel + 0.055) / 1.055).powf(2.4)
+        }
+    }
+
+    fn luminance(color: Color) -> f32 {
+        0.2126 * linear(color.r) + 0.7152 * linear(color.g) + 0.0722 * linear(color.b)
+    }
+
+    fn contrast(foreground: Color, background: Color) -> f32 {
+        let (light, dark) = match (luminance(foreground), luminance(background)) {
+            (a, b) if a >= b => (a, b),
+            (a, b) => (b, a),
+        };
+        (light + 0.05) / (dark + 0.05)
+    }
+
+    #[test]
+    fn every_text_role_passes_wcag_aa_on_every_surface() {
+        for palette in [ThemeColors::DARK, ThemeColors::LIGHT] {
+            for surface in [palette.glass, palette.glass_strong, palette.surface_raised] {
+                for (role, color) in [
+                    ("text", palette.text),
+                    ("muted", palette.muted),
+                    ("faint", palette.faint),
+                ] {
+                    let ratio = contrast(color, surface);
+                    assert!(ratio >= 4.5, "{role} on surface: {ratio:.2}:1 needs 4.5:1");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn every_accent_ink_passes_wcag_aa() {
+        for hue in Neon::ALL {
+            for dark in [true, false] {
+                let base = hue.base(dark);
+                let ratio = contrast(hue.on(dark), base);
+                assert!(
+                    ratio >= 4.5,
+                    "{hue:?} ink on base: {ratio:.2}:1 needs 4.5:1 (dark={dark})"
+                );
             }
         }
     }

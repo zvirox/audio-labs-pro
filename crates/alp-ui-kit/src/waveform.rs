@@ -16,6 +16,7 @@ use iced::{Color, Element, Length, Point, Rectangle, Renderer, Size, Theme, mous
 
 use crate::fonts;
 use crate::theme::ThemeColors;
+use crate::tokens::{Spacing, TypeScale};
 
 /// One pyramid level.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -272,7 +273,7 @@ impl WaveformWidget {
         );
     }
 
-    /// Build a canvas element.
+    /// Build a canvas element with a ruler and range label.
     #[must_use]
     pub fn view<Message: 'static>(&self) -> Element<'_, Message> {
         canvas(WaveformCanvas {
@@ -282,6 +283,24 @@ impl WaveformWidget {
             playhead_secs: self.playhead_secs,
             selection: self.selection,
             colors: self.colors,
+            show_labels: true,
+        })
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .into()
+    }
+
+    /// Build a canvas element without ruler and range labels, for compact docks.
+    #[must_use]
+    pub fn compact_view<Message: 'static>(&self) -> Element<'_, Message> {
+        canvas(WaveformCanvas {
+            peaks: self.peaks.clone(),
+            scroll_secs: self.scroll_secs,
+            visible_secs: self.visible_secs,
+            playhead_secs: self.playhead_secs,
+            selection: self.selection,
+            colors: self.colors,
+            show_labels: false,
         })
         .width(Length::Fill)
         .height(Length::Fill)
@@ -296,6 +315,7 @@ struct WaveformCanvas {
     playhead_secs: f32,
     selection: Option<(f32, f32)>,
     colors: ThemeColors,
+    show_labels: bool,
 }
 
 impl<Message> canvas::Program<Message> for WaveformCanvas {
@@ -312,14 +332,19 @@ impl<Message> canvas::Program<Message> for WaveformCanvas {
         let mut frame = canvas::Frame::new(renderer, bounds.size());
         let width = bounds.width.max(1.0);
         let height = bounds.height.max(1.0);
-        let mid = height / 2.0;
         let c = self.colors;
+        let ruler = if self.show_labels { 20.0 } else { 0.0 };
+        let footer = if self.show_labels { 16.0 } else { 0.0 };
+        let wave_height = (height - ruler - footer).max(1.0);
+        let mid = ruler + wave_height / 2.0;
+        let amplitude = wave_height * 0.46;
 
         frame.fill_rectangle(Point::ORIGIN, bounds.size(), c.background);
         draw_grid(
             &mut frame,
             width,
-            height,
+            ruler,
+            wave_height,
             self.scroll_secs,
             self.visible_secs,
             c,
@@ -329,8 +354,8 @@ impl<Message> canvas::Program<Message> for WaveformCanvas {
             let x0 = ((start - self.scroll_secs) / self.visible_secs * width).clamp(0.0, width);
             let x1 = ((end - self.scroll_secs) / self.visible_secs * width).clamp(0.0, width);
             frame.fill_rectangle(
-                Point::new(x0, 0.0),
-                Size::new((x1 - x0).max(1.0), height),
+                Point::new(x0, ruler),
+                Size::new((x1 - x0).max(1.0), wave_height),
                 Color {
                     a: 0.16,
                     ..c.accent
@@ -363,8 +388,8 @@ impl<Message> canvas::Program<Message> for WaveformCanvas {
                 a: 0.92,
             };
             frame.fill_rectangle(
-                Point::new(column as f32, mid - max * mid * 0.92),
-                Size::new(1.0, ((max - min) * mid * 0.92).max(1.0)),
+                Point::new(column as f32, mid - max * amplitude),
+                Size::new(1.0, ((max - min) * amplitude).max(1.0)),
                 color,
             );
         }
@@ -372,7 +397,7 @@ impl<Message> canvas::Program<Message> for WaveformCanvas {
         frame.fill_rectangle(
             Point::new(0.0, mid),
             Size::new(width, 1.0),
-            Color { a: 0.10, ..c.text },
+            Color { a: 0.14, ..c.text },
         );
 
         let playhead_x =
@@ -381,21 +406,28 @@ impl<Message> canvas::Program<Message> for WaveformCanvas {
             && self.playhead_secs <= self.scroll_secs + self.visible_secs
         {
             frame.fill_rectangle(
-                Point::new(playhead_x, 0.0),
-                Size::new(2.0, height),
+                Point::new(playhead_x, ruler),
+                Size::new(2.0, wave_height),
                 c.playhead,
             );
         }
 
-        let (start, end) = (self.scroll_secs, self.scroll_secs + self.visible_secs);
-        frame.fill_text(canvas::Text {
-            content: format!("{:.1}s – {:.1}s", start, end),
-            position: Point::new(8.0, height - 16.0),
-            color: c.muted,
-            size: 10.0.into(),
-            font: fonts::regular(),
-            ..canvas::Text::default()
-        });
+        if self.show_labels {
+            let (start, end) = (self.scroll_secs, self.scroll_secs + self.visible_secs);
+            frame.fill_rectangle(
+                Point::new(0.0, height - footer),
+                Size::new(width, footer),
+                c.glass,
+            );
+            frame.fill_text(canvas::Text {
+                content: format!("{:.1}s – {:.1}s", start, end),
+                position: Point::new(Spacing::SM as f32, height - footer + 1.0),
+                color: c.muted,
+                size: f32::from(TypeScale::CAPTION).into(),
+                font: fonts::regular(),
+                ..canvas::Text::default()
+            });
+        }
 
         vec![frame.into_geometry()]
     }
@@ -404,7 +436,8 @@ impl<Message> canvas::Program<Message> for WaveformCanvas {
 fn draw_grid(
     frame: &mut canvas::Frame,
     width: f32,
-    height: f32,
+    ruler: f32,
+    wave_height: f32,
     scroll_secs: f32,
     visible_secs: f32,
     colors: ThemeColors,
@@ -412,17 +445,30 @@ fn draw_grid(
     let tick = nice_tick(visible_secs, width);
     let first = (scroll_secs / tick).ceil() * tick;
     let mut at = first;
+    if ruler > 0.0 {
+        frame.fill_rectangle(
+            Point::ORIGIN,
+            Size::new(width, ruler + wave_height),
+            colors.background,
+        );
+    }
     while at < scroll_secs + visible_secs {
         let x = (at - scroll_secs) / visible_secs * width;
-        frame.fill_rectangle(Point::new(x, 0.0), Size::new(1.0, height), colors.grid);
-        frame.fill_text(canvas::Text {
-            content: format_time(at),
-            position: Point::new(x + 4.0, 5.0),
-            color: colors.faint,
-            size: 9.0.into(),
-            font: fonts::regular(),
-            ..canvas::Text::default()
-        });
+        frame.fill_rectangle(
+            Point::new(x, ruler),
+            Size::new(1.0, wave_height),
+            colors.grid,
+        );
+        if ruler > 0.0 {
+            frame.fill_text(canvas::Text {
+                content: format_time(at),
+                position: Point::new(x + f32::from(Spacing::XS), 2.0),
+                color: colors.muted,
+                size: f32::from(TypeScale::CAPTION).into(),
+                font: fonts::regular(),
+                ..canvas::Text::default()
+            });
+        }
         at += tick;
     }
 }

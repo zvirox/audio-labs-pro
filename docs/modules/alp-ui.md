@@ -9,14 +9,14 @@ recording/metering, voice and story generation, capture transcription and
 worker-backed mix export. It is the only crate that renders UI and the only
 place allowed to talk to the compositor through `glass`.
 
-The shell uses the studio palette from `alp-ui-kit`: near-black surfaces,
-graphite cards, a cyberpunk neon accent per workspace (Generate cyan, Stories
-magenta, Captures acid green, Voices violet, Effects ember, Models volt blue,
-Settings solar yellow) on filled buttons, an
-80 px icon rail, rectangular controls with minimal corners,
-6/10/14/18 px radii and hairline borders. A
-light paper variant mirrors the roles, and every scrolling surface shares one
-themed scroller through `App::scroll`.
+The shell uses the studio palette from `alp-ui-kit`: slate surfaces, graphite
+cards, a subdued accent per workspace (Generate cyan, Stories magenta, Captures
+green, Voices violet, Effects orange, Models blue, Settings amber) on filled
+buttons, an 88 px labelled navigation rail, rectangular controls with minimal
+corners, 6/10/14/18 px radii and low-alpha borders. A light paper variant mirrors
+the roles, and every scrolling surface shares one themed scroller through
+`App::scroll`. Window size is fitted to the primary monitor on open, and the
+grid, gutters and dock controls step down on compact windows.
 
 ## Public API
 
@@ -132,6 +132,15 @@ and `scripts/check-ui.sh` guard the crate. Manual acceptance runs use
 `ALP_START_TAB`, `ALP_START_OVERLAY` (create-voice, consent, shortcuts,
 palette, wizard) and `ALP_FORCE_TINT`; results are in
 `docs/spikes/PHASE2-RESULTS.md`.
+
+Visual verification for the minimal UI pass used isolated Xvfb displays at
+1440×900 and 1024×768, in both dark and light themes. The screenshots showed no
+clipped rail captions, no waveform ruler text painted over peak data, no opaque
+tooltip text over cards, and a two-column profile grid with the dock and history
+panel fully inside the compact window. The initial window is now clamped to the
+primary monitor on open; internal grids, gutters and dock controls step down
+below `Layout::COMPACT`. Reduced-motion behaviour is covered by
+`alp-ui-kit::motion` tests.
 
 ## Known limits
 

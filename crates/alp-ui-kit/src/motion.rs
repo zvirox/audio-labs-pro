@@ -6,11 +6,15 @@
 
 use std::time::Instant;
 
+use iced::advanced::Renderer as _;
+use iced::{Element, Vector};
 use lilt::{Animated, Easing};
 
 use crate::tokens::{Duration, Motion};
 
 const BASE_MS: f32 = 200.0;
+/// Subtle settle offset for entering content (logical pixels).
+const SETTLE_OFFSET: f32 = 8.0;
 
 /// A two-state animated value with an explicit target.
 #[derive(Debug)]
@@ -109,7 +113,7 @@ impl PanelMotion {
         let open = toggle.value();
         Self {
             open,
-            offset: (1.0 - open) * 14.0,
+            offset: (1.0 - open) * SETTLE_OFFSET,
         }
     }
 }
@@ -130,6 +134,136 @@ pub fn panel_toggle() -> Toggle {
 #[must_use]
 pub fn scaled(motion: Motion, duration: u16) -> u16 {
     motion.duration_ms(duration)
+}
+
+/// Draw a child with a small translation, without changing its layout bounds.
+///
+/// This is used for workspace and overlay settle motion. The transform only
+/// affects painting, so it cannot reflow surrounding content or cause layout
+/// shift; keep offsets below the surrounding padding.
+#[must_use]
+pub fn offset<'a, Message: 'a>(
+    content: impl Into<Element<'a, Message>>,
+    x: f32,
+    y: f32,
+) -> Element<'a, Message> {
+    Element::new(Offset {
+        content: content.into(),
+        x,
+        y,
+    })
+}
+
+struct Offset<'a, Message> {
+    content: Element<'a, Message>,
+    x: f32,
+    y: f32,
+}
+
+impl<Message> iced::advanced::Widget<Message, iced::Theme, iced::Renderer> for Offset<'_, Message> {
+    fn size(&self) -> iced::Size<iced::Length> {
+        self.content.as_widget().size()
+    }
+
+    fn size_hint(&self) -> iced::Size<iced::Length> {
+        self.content.as_widget().size_hint()
+    }
+
+    fn layout(
+        &mut self,
+        tree: &mut iced::advanced::widget::Tree,
+        renderer: &iced::Renderer,
+        limits: &iced::advanced::layout::Limits,
+    ) -> iced::advanced::layout::Node {
+        self.content.as_widget_mut().layout(tree, renderer, limits)
+    }
+
+    fn draw(
+        &self,
+        tree: &iced::advanced::widget::Tree,
+        renderer: &mut iced::Renderer,
+        theme: &iced::Theme,
+        style: &iced::advanced::renderer::Style,
+        layout: iced::advanced::Layout<'_>,
+        cursor: iced::advanced::mouse::Cursor,
+        viewport: &iced::Rectangle,
+    ) {
+        renderer.with_translation(Vector::new(self.x, self.y), |renderer| {
+            self.content
+                .as_widget()
+                .draw(tree, renderer, theme, style, layout, cursor, viewport);
+        });
+    }
+
+    fn tag(&self) -> iced::advanced::widget::tree::Tag {
+        self.content.as_widget().tag()
+    }
+
+    fn state(&self) -> iced::advanced::widget::tree::State {
+        self.content.as_widget().state()
+    }
+
+    fn children(&self) -> Vec<iced::advanced::widget::Tree> {
+        self.content.as_widget().children()
+    }
+
+    fn diff(&self, tree: &mut iced::advanced::widget::Tree) {
+        self.content.as_widget().diff(tree);
+    }
+
+    fn operate(
+        &mut self,
+        tree: &mut iced::advanced::widget::Tree,
+        layout: iced::advanced::Layout<'_>,
+        renderer: &iced::Renderer,
+        operation: &mut dyn iced::advanced::widget::Operation,
+    ) {
+        self.content
+            .as_widget_mut()
+            .operate(tree, layout, renderer, operation);
+    }
+
+    fn update(
+        &mut self,
+        tree: &mut iced::advanced::widget::Tree,
+        event: &iced::Event,
+        layout: iced::advanced::Layout<'_>,
+        cursor: iced::advanced::mouse::Cursor,
+        renderer: &iced::Renderer,
+        clipboard: &mut dyn iced::advanced::Clipboard,
+        shell: &mut iced::advanced::Shell<'_, Message>,
+        viewport: &iced::Rectangle,
+    ) {
+        self.content.as_widget_mut().update(
+            tree, event, layout, cursor, renderer, clipboard, shell, viewport,
+        );
+    }
+
+    fn mouse_interaction(
+        &self,
+        tree: &iced::advanced::widget::Tree,
+        layout: iced::advanced::Layout<'_>,
+        cursor: iced::advanced::mouse::Cursor,
+        viewport: &iced::Rectangle,
+        renderer: &iced::Renderer,
+    ) -> iced::advanced::mouse::Interaction {
+        self.content
+            .as_widget()
+            .mouse_interaction(tree, layout, cursor, viewport, renderer)
+    }
+
+    fn overlay<'b>(
+        &'b mut self,
+        tree: &'b mut iced::advanced::widget::Tree,
+        layout: iced::advanced::Layout<'b>,
+        renderer: &iced::Renderer,
+        viewport: &iced::Rectangle,
+        translation: iced::Vector,
+    ) -> Option<iced::advanced::overlay::Element<'b, Message, iced::Theme, iced::Renderer>> {
+        self.content
+            .as_widget_mut()
+            .overlay(tree, layout, renderer, viewport, translation)
+    }
 }
 
 #[cfg(test)]
@@ -153,6 +287,6 @@ mod tests {
         assert!((closed.offset - 0.0).abs() < 1e-6);
         toggle.toggle(false);
         let open = PanelMotion::from_open(&toggle);
-        assert!((open.offset - 14.0).abs() < 1e-6);
+        assert!((open.offset - SETTLE_OFFSET).abs() < 1e-6);
     }
 }

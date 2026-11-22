@@ -54,7 +54,7 @@ pub struct Rail;
 
 impl Rail {
     /// Fixed rail width.
-    pub const WIDTH: u16 = 80;
+    pub const WIDTH: u16 = 88;
     /// Circular navigation button diameter.
     pub const BUTTON: u16 = 44;
     /// Brand mark tile.
@@ -78,6 +78,8 @@ impl Control {
     pub const TITLE_BAR: u16 = 34;
     /// Docked player / track editor height.
     pub const DOCK: u16 = 96;
+    /// Voice profile card height.
+    pub const CARD: u16 = 132;
     /// Resize grip hit area.
     pub const GRIP: u16 = 14;
     /// Custom window chrome height (title, panel menu and controls).
@@ -180,20 +182,50 @@ impl ThemeMode {
 pub struct TypeScale;
 
 impl TypeScale {
-    /// Small labels.
-    pub const CAPTION: u16 = 12;
-    /// Field labels and meta text.
-    pub const LABEL: u16 = 13;
+    /// Small labels, captions and dense metadata.
+    pub const CAPTION: u16 = 13;
+    /// Field labels and secondary text.
+    pub const LABEL: u16 = 14;
     /// Body text.
-    pub const BODY: u16 = 14;
+    pub const BODY: u16 = 15;
     /// Emphasized body text.
-    pub const BODY_STRONG: u16 = 15;
+    pub const BODY_STRONG: u16 = 16;
     /// Card titles and dialog headings.
-    pub const HEADING: u16 = 17;
+    pub const HEADING: u16 = 18;
     /// Section titles inside a page.
-    pub const TITLE: u16 = 22;
+    pub const TITLE: u16 = 24;
     /// Screen titles.
     pub const DISPLAY: u16 = 30;
+}
+
+/// Icon sizes in logical pixels.
+///
+/// One family and one size set keeps Lucide glyphs optically aligned with the
+/// type scale: `XS` sits with captions, `SM` with body text, `MD` with rail and
+/// toolbar targets, and `LG` with the brand mark.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Icon;
+
+impl Icon {
+    /// Caption-height glyphs in dense rows.
+    pub const XS: f32 = 14.0;
+    /// Body-height glyphs in cards and toolbars.
+    pub const SM: f32 = 16.0;
+    /// Navigation rail and primary toolbar glyphs.
+    pub const MD: f32 = 18.0;
+    /// Brand mark glyphs.
+    pub const LG: f32 = 22.0;
+}
+
+/// Width breakpoints for the desktop shell.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Layout;
+
+impl Layout {
+    /// Below this width, secondary columns step aside and padding tightens.
+    pub const COMPACT: f32 = 1_100.0;
+    /// Reference width used for the default three/ four-column grids.
+    pub const WIDE: f32 = 1_440.0;
 }
 
 /// Detect a dark desktop preference from the environment.

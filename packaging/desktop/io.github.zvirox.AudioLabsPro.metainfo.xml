@@ -33,6 +33,11 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.0.1-alpha.5" date="2026-11-22">
+      <description>
+        <p>Minimal slate/light studio theme with contrast-checked text, larger type, labelled navigation, responsive grids and window fitting, opaque tooltips, waveform label fixes, visible workspace settle motion, and README status, install, FAQ and troubleshooting updates.</p>
+      </description>
+    </release>
     <release version="0.0.1-alpha.4" date="2026-11-21">
       <description>
         <p>Full MCP catalog in owner-only live attach mode with one shared GUI undo history, change subscriptions, stale-read and conflict protection, and measured commit latency; real Qwen3-TTS neural cloning with verified assets and provenance; acoustic and neural clone routing, Flatpak/Rust toolchain updates, and attach path/audio context restoration.</p>

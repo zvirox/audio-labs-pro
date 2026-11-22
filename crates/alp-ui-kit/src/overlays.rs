@@ -64,7 +64,8 @@ pub fn modal<'a, Message: Clone + 'a>(
         .spacing(f32::from(Spacing::MD)),
     )
     .padding(Spacing::XXL)
-    .width(Length::Fixed(560.0))
+    .width(Length::Fill)
+    .max_width(560.0)
     .style(move |_theme| colors.panel_style(true));
 
     scrim(dialog.into(), colors)
@@ -118,9 +119,11 @@ pub fn dialog<'a, Message: Clone + 'a>(
     ]
     .spacing(f32::from(Spacing::LG))
     .padding(Spacing::XXL)
-    .width(Length::Fixed(width));
+    .width(Length::Fill);
 
-    let panel = container(panel).style(move |_theme| colors.panel_style(true));
+    let panel = container(panel)
+        .max_width(width)
+        .style(move |_theme| colors.panel_style(true));
     scrim(panel.into(), colors)
 }
 
@@ -237,9 +240,11 @@ pub fn command_palette<'a, Message: Clone + 'a>(
     ]
     .spacing(f32::from(Spacing::MD))
     .padding(Spacing::LG)
-    .width(Length::Fixed(620.0));
+    .width(Length::Fill);
 
-    let panel = container(panel).style(move |_theme| colors.panel_style(true));
+    let panel = container(panel)
+        .max_width(620.0)
+        .style(move |_theme| colors.panel_style(true));
 
     container(panel)
         .padding([Spacing::XXL, Spacing::XXL])

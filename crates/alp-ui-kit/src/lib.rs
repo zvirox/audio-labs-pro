@@ -16,5 +16,7 @@ pub mod waveform;
 pub use components::ButtonKind;
 pub use overlays::CommandItem;
 pub use theme::{Neon, ThemeColors};
-pub use tokens::{Control, Duration, Motion, Radius, Rail, Spacing, ThemeMode, TypeScale};
+pub use tokens::{
+    Control, Duration, Icon, Layout, Motion, Radius, Rail, Spacing, ThemeMode, TypeScale,
+};
 pub use waveform::{PeakLevel, WaveformError, WaveformPeaks, WaveformWidget};

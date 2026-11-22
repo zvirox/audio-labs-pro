@@ -155,9 +155,9 @@ impl App {
             ticks = ticks.push(
                 container(
                     text(format_time(secs))
-                        .size(10.0)
+                        .size(f32::from(TypeScale::CAPTION))
                         .font(fonts::mono())
-                        .color(colors.faint),
+                        .color(colors.muted),
                 )
                 .width(Length::Fill)
                 .align_x(if index == 5 {
@@ -219,19 +219,20 @@ impl App {
                     .project()
                     .source(clip.source_id)
                     .map_or_else(|| name.to_owned(), |source| source.name.clone());
-                let label = shorten(&label, 18);
+                let label = shorten(&label, 16);
                 blocks = blocks.push(
                     mouse_area(
                         container(
                             column![
                                 text(label)
                                     .size(f32::from(TypeScale::CAPTION))
+                                    .wrapping(text::Wrapping::Word)
                                     .font(fonts::semibold())
                                     .color(colors.text),
                                 components::progress(clip.gain.clamp(0.0, 1.0), colors),
                             ]
-                            .spacing(2.0)
-                            .padding([3.0, 6.0]),
+                            .spacing(f32::from(Spacing::XXS))
+                            .padding([f32::from(Spacing::XS), f32::from(Spacing::SM)]),
                         )
                         .width(Length::FillPortion(portion(duration, total_secs)))
                         .height(Length::Fixed(LANE_HEIGHT - 6.0))

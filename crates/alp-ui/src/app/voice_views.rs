@@ -167,7 +167,7 @@ impl App {
 
     /// Voice library, inspector and the consent gate for clones.
     pub(super) fn voices_workspace(&self, colors: ThemeColors) -> Element<'_, Message> {
-        let grid = self.profile_grid(4, colors);
+        let grid = self.profile_grid(self.profile_columns(4), colors);
 
         let library = column![
             self.scroll(grid, colors).height(Length::Fill),

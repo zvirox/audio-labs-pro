@@ -27,6 +27,7 @@ impl App {
                 Task::batch([
                     window::run(id, |window| glass::probe(window)).map(Message::GlassProbed),
                     window::size(id).map(Message::WindowResized),
+                    window::monitor_size(id).map(Message::MonitorSized),
                 ])
             }
             Message::WindowEvent(_id, event) => match event {
@@ -40,6 +41,17 @@ impl App {
             Message::WindowResized(size) => {
                 self.apply_window_size(size);
                 Task::none()
+            }
+            Message::MonitorSized(monitor) => {
+                let Some((id, monitor)) = self.window.zip(monitor) else {
+                    return Task::none();
+                };
+                let width = monitor.width.clamp(960.0, 1_440.0);
+                let height = monitor.height.clamp(640.0, 900.0);
+                Task::batch([
+                    window::resize(id, Size::new(width, height)),
+                    window::size(id).map(Message::WindowResized),
+                ])
             }
             Message::CloseRequested => {
                 self.save_workspace();
@@ -117,6 +129,7 @@ impl App {
                 for toggle in self.panel_motion.values_mut() {
                     toggle.tick(now);
                 }
+                self.workspace_motion.tick(now);
                 Task::none()
             }
             Message::DragPanel(kind) => {
@@ -190,6 +203,7 @@ impl App {
                 for toggle in self.panel_motion.values_mut() {
                     toggle.set_reduce_motion(self.reduce_motion);
                 }
+                self.workspace_motion.set_reduce_motion(self.reduce_motion);
                 self.save_workspace();
                 Task::none()
             }
@@ -843,6 +857,12 @@ impl App {
             Message::SelectWorkflowTab(tab) => {
                 self.workflow_tab = tab;
                 self.palette.open = false;
+                self.workspace_motion = {
+                    let mut motion = Toggle::new(0.0).with_duration(MotionDuration::BASE_MS);
+                    motion.set_reduce_motion(self.reduce_motion);
+                    motion.toggle(true);
+                    motion
+                };
                 Task::none()
             }
             Message::Noop => Task::none(),
@@ -1085,6 +1105,7 @@ impl App {
     }
 
     fn apply_window_size(&mut self, size: Size) {
+        self.window_size = size;
         if !self.layout_restored && !self.bounds_initialized {
             self.panels = PanelManager::default_for(size);
             self.bounds_initialized = true;

@@ -13,7 +13,7 @@ use super::{App, Message, format_time};
 impl App {
     /// Generate workspace: pick a voice, render a take, review history.
     pub(super) fn generate_workspace(&self, colors: ThemeColors) -> Element<'_, Message> {
-        let grid = self.profile_grid(3, colors);
+        let grid = self.profile_grid(self.profile_columns(3), colors);
 
         let left = column![grid, self.generate_box(colors)]
             .spacing(f32::from(Spacing::LG))

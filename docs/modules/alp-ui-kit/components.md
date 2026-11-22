@@ -24,7 +24,9 @@ heights, rail targets) and its studio component language.
   leading Lucide icon.
 - `icon_button(glyph, on_press)`, `glyph_button(glyph, size, kind, on_press)`
   and `glyph_button_compact(...)` (28 px).
-- `rail_button(glyph, active, on_press)` — 44 px circular rail target.
+- `rail_button(glyph, active, on_press)` — 44 px icon-only rail target.
+- `rail_tab_button(glyph, label, active, on_press)` — labelled 60 px rail tab
+  with an accent fill and semibold caption when active.
 - `toggle(label, value, on_toggle)` and `switch(value, on_toggle)`
   (unlabelled, for dense rows) — rendered by the iced-cube `Switch`.
 - `checkbox(label, checked, on_toggle: Fn(bool) -> Message)` — iced-cube
@@ -39,7 +41,8 @@ heights, rail targets) and its studio component language.
 - `icon_view(glyph, size, kind)` — Lucide icon pre-tinted with a variant's
   rest colour.
 - `scroll_style(colors)` — transparent rail with a subtle muted scroller.
-- `with_tooltip(content, label, colors)`, `progress(value, colors)`.
+- `with_tooltip(content, label, colors)` — opaque, bordered caption bubble that
+  snaps inside the viewport; `progress(value, colors)`.
 - `page_title`, `section_title`, `card_title`, `field_label`, `kicker`, `muted`.
 
 ## Data flow
@@ -76,9 +79,10 @@ The pinned `Shrink` button is additionally wrapped in a port of iced-cube's
 `natural` shell: a shrink-width widget is measured without an upper width
 bound, so when the parent row runs out of room the whole button overflows
 instead of being squeezed until its label wraps or paints past the edges.
-Sizes follow iced-cube's mapping onto the studio scale: 36 px buttons use
-13 px text (cube `Size::Sm`), 44 px buttons use 15 px text and larger
-horizontal padding (cube `Size::Lg`).
+Sizes follow the kit type scale: 36 px buttons use 14 px labels, 44 px buttons
+use 16 px labels, and icon sizes come from `Icon::{XS, SM, MD, LG}` rather than
+per-widget literals. The natural shell keeps short labels from wrapping in dense
+rows; call sites with long labels shorten them before building the button.
 
 ## Allowed dependencies
 

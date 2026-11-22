@@ -11,7 +11,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use alp_ui_kit::components;
-use alp_ui_kit::motion::Toggle;
+use alp_ui_kit::motion::{PanelMotion, Toggle};
 use alp_ui_kit::overlays::{self, CommandItem};
 use alp_ui_kit::tokens::{Control, Duration as MotionDuration, Spacing, TypeScale};
 use alp_ui_kit::{ButtonKind, ThemeColors, ThemeMode, WaveformWidget, fonts};
@@ -90,6 +90,8 @@ pub enum Message {
     WindowEvent(window::Id, window::Event),
     /// The window's current inner size.
     WindowResized(Size),
+    /// Primary monitor size, used to fit the initial window.
+    MonitorSized(Option<Size>),
     /// Close request from the compositor.
     CloseRequested,
     /// Glass probe completed.
@@ -445,6 +447,10 @@ pub struct App {
     window: Option<window::Id>,
     panels: PanelManager,
     panel_motion: HashMap<PanelKind, Toggle>,
+    /// One-shot settle motion for workspace changes.
+    workspace_motion: Toggle,
+    /// Latest window size, used for responsive columns and gutters.
+    window_size: Size,
     drag: Option<Drag>,
     last_cursor: Point,
 
@@ -615,6 +621,8 @@ impl App {
             toggle.set_reduce_motion(reduce_motion);
             panel_motion.insert(kind, toggle);
         }
+        let mut workspace_motion = Toggle::new(1.0).with_duration(MotionDuration::BASE_MS);
+        workspace_motion.set_reduce_motion(reduce_motion);
 
         // Smoke runs can pin a workspace so each tab can be screenshotted.
         let start_tab = std::env::var("ALP_START_TAB")
@@ -708,6 +716,8 @@ impl App {
             window: None,
             panels,
             panel_motion,
+            workspace_motion,
+            window_size: bounds,
             drag: None,
             last_cursor: Point::ORIGIN,
             theme_mode,
@@ -901,7 +911,7 @@ impl App {
     }
 
     fn animating(&self) -> bool {
-        self.panel_motion.values().any(Toggle::is_animating)
+        self.panel_motion.values().any(Toggle::is_animating) || self.workspace_motion.is_animating()
     }
 
     /// iced theme.

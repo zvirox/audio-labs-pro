@@ -17,8 +17,8 @@
 //! own sizes.
 
 use iced::widget::{
-    button as raw_button, button::Status as ButtonStatus, button::Style as ButtonStyle, pick_list,
-    progress_bar, row, slider, text, text_editor, text_input, tooltip,
+    button as raw_button, button::Status as ButtonStatus, button::Style as ButtonStyle, column,
+    container, pick_list, progress_bar, row, slider, text, text_editor, text_input, tooltip,
 };
 use iced::{Background, Border, Color, Element, Length, Shadow};
 use iced_cube::primitives::button as cube_button;
@@ -29,7 +29,7 @@ use iced_cube::theme::Tokens as CubeTokens;
 use crate::fonts;
 use crate::icons::{self, Glyph};
 use crate::theme::{self, ThemeColors};
-use crate::tokens::{Control, Radius, Rail, Spacing, TypeScale};
+use crate::tokens::{Control, Icon, Radius, Rail, Spacing, TypeScale};
 
 /// Semantic button variants.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -124,10 +124,10 @@ fn sized_button<'a, Message: Clone + 'a>(
     let enabled = on_press.is_some();
     let large = height >= Control::LG;
     let (text_size, icon_size, padding_x) = if large {
-        (TypeScale::BODY_STRONG, 18.0, f32::from(Spacing::XL))
+        (TypeScale::BODY_STRONG, Icon::SM, f32::from(Spacing::XL))
     } else {
-        // 36 px matches iced-cube's `Size::Sm`, whose text is 13 px.
-        (TypeScale::LABEL, 16.0, f32::from(Spacing::LG))
+        // 36 px matches iced-cube's compact control height with our 14 px label.
+        (TypeScale::LABEL, Icon::XS, f32::from(Spacing::LG))
     };
     let label = text(label)
         .size(f32::from(text_size))
@@ -308,7 +308,7 @@ pub fn icon_button<'a, Message: Clone + 'a>(
     glyph: Glyph,
     on_press: Option<Message>,
 ) -> Element<'a, Message> {
-    glyph_button(glyph, 16.0, ButtonKind::Icon, on_press)
+    glyph_button(glyph, Icon::SM, ButtonKind::Icon, on_press)
 }
 
 /// A rounded icon button used by the navigation rail.
@@ -326,7 +326,7 @@ pub fn rail_button<'a, Message: Clone + 'a>(
             tokens.muted_foreground
         }
     };
-    let icon = icons::themed(glyph, 18.0, iced_cube::icon::opacity(enabled), tint);
+    let icon = icons::themed(glyph, Icon::MD, iced_cube::icon::opacity(enabled), tint);
     let content = iced::widget::container(icon)
         .width(Length::Fill)
         .height(Length::Fill)
@@ -336,7 +336,50 @@ pub fn rail_button<'a, Message: Clone + 'a>(
         .width(Length::Fixed(f32::from(Rail::BUTTON)))
         .height(Length::Fixed(f32::from(Rail::BUTTON)))
         .padding(0.0)
-        .style(move |_theme, status| rail_button_style(active, status))
+        .style(move |theme, status| rail_button_style(active, status, theme))
+        .on_press_maybe(on_press)
+        .into()
+}
+
+/// A labelled navigation rail target for a primary workspace.
+///
+/// The caption is the accessible and discoverable name; the icon stays a
+/// consistent Lucide glyph beside it. Active state uses both fill and weight
+/// so it does not depend on color alone.
+pub fn rail_tab_button<'a, Message: Clone + 'a>(
+    glyph: Glyph,
+    label: &'a str,
+    active: bool,
+    on_press: Option<Message>,
+) -> Element<'a, Message> {
+    let enabled = on_press.is_some();
+    let tint = move |theme: &iced::Theme| {
+        let tokens = CubeTokens::of(theme);
+        if active {
+            tokens.primary
+        } else {
+            tokens.muted_foreground
+        }
+    };
+    let icon = icons::themed(glyph, Icon::MD, iced_cube::icon::opacity(enabled), tint);
+    let caption = text(label.to_owned())
+        .size(f32::from(TypeScale::CAPTION))
+        .font(fonts::medium());
+    let content = column![
+        container(icon)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .align_x(iced::Alignment::Center)
+            .align_y(iced::Alignment::Center),
+        caption,
+    ]
+    .spacing(f32::from(Spacing::XXS))
+    .align_x(iced::Alignment::Center);
+    raw_button(content)
+        .width(Length::Fill)
+        .height(Length::Fixed(60.0))
+        .padding([f32::from(Spacing::XS), 0.0])
+        .style(move |theme, status| rail_tab_style(active, status, theme))
         .on_press_maybe(on_press)
         .into()
 }
@@ -713,13 +756,32 @@ pub fn with_tooltip<'a, Message: 'a>(
 ) -> Element<'a, Message> {
     tooltip(
         content,
-        text(label.into())
-            .size(f32::from(TypeScale::CAPTION))
-            .font(fonts::regular())
-            .color(colors.text),
+        container(
+            text(label.into())
+                .size(f32::from(TypeScale::CAPTION))
+                .font(fonts::regular())
+                .color(colors.text),
+        )
+        .padding([f32::from(Spacing::XS), f32::from(Spacing::SM)]),
         tooltip::Position::Top,
     )
     .gap(f32::from(Spacing::XS))
+    .snap_within_viewport(true)
+    .style(move |_theme| iced::widget::container::Style {
+        background: Some(Background::Color(colors.glass_strong)),
+        border: Border {
+            radius: f32::from(Radius::SM).into(),
+            width: 1.0,
+            color: colors.border,
+        },
+        shadow: Shadow {
+            color: colors.shadow,
+            offset: iced::Vector::new(0.0, 4.0),
+            blur_radius: 12.0,
+        },
+        text_color: Some(colors.text),
+        snap: true,
+    })
     .into()
 }
 
@@ -885,30 +947,47 @@ fn cube_style(kind: ButtonKind, theme: &iced::Theme, status: ButtonStatus) -> Bu
     style
 }
 
-fn rail_button_style(active: bool, status: ButtonStatus) -> ButtonStyle {
+fn rail_button_style(active: bool, status: ButtonStatus, theme: &iced::Theme) -> ButtonStyle {
+    let tokens = CubeTokens::of(theme);
     let hovered = matches!(status, ButtonStatus::Hovered | ButtonStatus::Pressed);
     let background = if active {
-        Background::Color(Color::from_rgba(1.0, 1.0, 1.0, 0.07))
+        Color {
+            a: 0.14,
+            ..tokens.primary
+        }
     } else if hovered {
-        Background::Color(Color::from_rgba(1.0, 1.0, 1.0, 0.05))
+        Color {
+            a: 0.10,
+            ..tokens.foreground
+        }
     } else {
-        Background::Color(Color::TRANSPARENT)
+        Color::TRANSPARENT
     };
     ButtonStyle {
-        background: Some(background),
+        background: Some(Background::Color(background)),
         text_color: Color::TRANSPARENT,
         border: Border {
             radius: f32::from(Radius::BUTTON).into(),
             width: if active { 1.0 } else { 0.0 },
-            color: if active {
-                Color::from_rgba(1.0, 1.0, 1.0, 0.08)
-            } else {
-                Color::TRANSPARENT
+            color: Color {
+                a: 0.40,
+                ..tokens.primary
             },
         },
         shadow: Shadow::default(),
         snap: true,
     }
+}
+
+fn rail_tab_style(active: bool, status: ButtonStatus, theme: &iced::Theme) -> ButtonStyle {
+    let mut style = rail_button_style(active, status, theme);
+    let tokens = CubeTokens::of(theme);
+    style.text_color = if active {
+        tokens.primary
+    } else {
+        tokens.muted_foreground
+    };
+    style
 }
 
 fn segment_style(selected: bool, colors: ThemeColors, status: ButtonStatus) -> ButtonStyle {
@@ -924,7 +1003,7 @@ fn segment_style(selected: bool, colors: ThemeColors, status: ButtonStatus) -> B
             radius: f32::from(Radius::BUTTON).into(),
             width: if selected { 1.0 } else { 0.0 },
             color: if selected {
-                colors.border
+                colors.border_strong
             } else {
                 Color::TRANSPARENT
             },

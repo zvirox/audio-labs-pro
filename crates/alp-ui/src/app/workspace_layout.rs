@@ -6,7 +6,7 @@
 
 use alp_ui_kit::components;
 use alp_ui_kit::icons;
-use alp_ui_kit::tokens::{Control, Radius, Rail, Spacing, TypeScale};
+use alp_ui_kit::tokens::{Control, Icon, Layout, Radius, Rail, Spacing, TypeScale};
 use alp_ui_kit::{ButtonKind, ThemeColors, fonts};
 use iced::widget::{Scrollable, Space, column, container, mouse_area, row, scrollable, text};
 use iced::{Alignment, Background, Border, Element, Length};
@@ -220,7 +220,7 @@ impl App {
     pub(super) fn sidebar_view(&self, colors: ThemeColors) -> Element<'_, Message> {
         let logo = container(icons::tinted(
             icons::WAVEFORM,
-            22.0,
+            Icon::LG,
             Some(colors.accent_text),
         ))
         .width(Length::Fixed(f32::from(Rail::LOGO)))
@@ -242,10 +242,11 @@ impl App {
         let mut nav = column![].spacing(f32::from(Spacing::XS));
         for tab in WorkflowTab::ALL {
             let active = self.workflow_tab == tab;
-            nav = nav.push(components::with_tooltip(
-                components::rail_button(tab.glyph(), active, Some(Message::SelectWorkflowTab(tab))),
-                tab.title().to_string(),
-                colors,
+            nav = nav.push(components::rail_tab_button(
+                tab.glyph(),
+                tab.title(),
+                active,
+                Some(Message::SelectWorkflowTab(tab)),
             ));
         }
 
@@ -344,7 +345,7 @@ impl App {
                 components::with_tooltip(
                     components::glyph_button_compact(
                         icons::PLAY,
-                        12.0,
+                        Icon::XS,
                         ButtonKind::Ghost,
                         Some(Message::SelectProfile(id.clone()))
                     ),
@@ -354,7 +355,7 @@ impl App {
                 components::with_tooltip(
                     components::glyph_button_compact(
                         icons::ARROW_DOWN,
-                        12.0,
+                        Icon::XS,
                         ButtonKind::Ghost,
                         Some(Message::ExportProfile(id.clone()))
                     ),
@@ -367,7 +368,7 @@ impl App {
                     components::with_tooltip(
                         components::glyph_button_compact(
                             icons::DELETE_KEY,
-                            12.0,
+                            Icon::XS,
                             ButtonKind::Ghost,
                             Some(Message::DeleteProfile(id)),
                         ),
@@ -384,7 +385,7 @@ impl App {
 
         container(body)
             .width(Length::Fill)
-            .height(Length::Fixed(128.0))
+            .height(Length::Fixed(f32::from(Control::CARD)))
             .padding(Spacing::MD)
             .style(move |_theme| container::Style {
                 background: Some(Background::Color(colors.glass_strong)),
@@ -402,6 +403,15 @@ impl App {
                 snap: true,
             })
             .into()
+    }
+
+    /// Drop one profile-grid column on compact windows.
+    pub(super) fn profile_columns(&self, wide: usize) -> usize {
+        if self.window_size.width < Layout::COMPACT {
+            wide.saturating_sub(1).max(2)
+        } else {
+            wide
+        }
     }
 
     /// A responsive grid of voice cards that keeps equal column widths even on
@@ -433,7 +443,8 @@ impl App {
             icons::PLAY
         };
         let progress = (self.position_secs / self.media_duration.max(1.0)).clamp(0.0, 1.0);
-        let waveform = container(self.waveform.view())
+        let compact = self.window_size.width < Layout::COMPACT;
+        let waveform = container(self.waveform.compact_view())
             .width(Length::Fill)
             .height(Length::Fixed(48.0))
             .clip(true);
@@ -472,28 +483,36 @@ impl App {
                 .width(Length::Fill)
                 .height(Length::Fill),
                 column![
-                    components::muted(
-                        format!("{:.0} fps", 1000.0 / self.frame_ms.max(0.1)),
-                        colors
-                    ),
+                    if compact {
+                        Space::new().height(Length::Fixed(0.0)).into()
+                    } else {
+                        components::muted(
+                            format!("{:.0} fps", 1000.0 / self.frame_ms.max(0.1)),
+                            colors,
+                        )
+                    },
                     row![
                         text("VOL")
-                            .size(9.0)
+                            .size(f32::from(TypeScale::CAPTION))
                             .font(fonts::semibold())
-                            .color(colors.faint),
+                            .color(colors.muted),
                         container(components::themed_slider(
                             (self.gain / 4.0).clamp(0.0, 1.0),
                             colors,
                             |value| Message::SetMasterGain(value * 4.0)
                         ))
-                        .width(Length::Fixed(88.0)),
+                        .width(Length::Fixed(if compact {
+                            72.0
+                        } else {
+                            88.0
+                        })),
                     ]
                     .spacing(f32::from(Spacing::XS))
                     .align_y(Alignment::Center),
                     components::progress(progress, colors),
                 ]
                 .spacing(f32::from(Spacing::XS))
-                .width(Length::Fixed(150.0))
+                .width(Length::Fixed(if compact { 104.0 } else { 150.0 }))
                 .align_x(Alignment::End),
             ]
             .spacing(f32::from(Spacing::MD))

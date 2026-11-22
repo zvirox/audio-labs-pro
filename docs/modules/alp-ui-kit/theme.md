@@ -22,10 +22,10 @@ defines a literal colour; everything reads a `ThemeColors` value.
 ## Data flow
 
 `App::colors()` resolves the stored `ThemeMode` against `system_is_dark()`,
-applies the active workspace's [`Neon`] hue through `with_neon()` and returns a
+applies the active workspace's [`Neon`] accent through `with_neon()` and returns a
 copy. The view passes that value to kit builders, which close over it in style
 callbacks. The same value feeds the waveform's grid/wave/playhead colours and
-`to_theme()`, which maps it onto an iced-cube `Config`: the neon accent becomes
+`to_theme()`, which maps it onto an iced-cube `Config`: the workspace accent becomes
 the cube `primary`, raised surfaces become its secondary and hover accent,
 danger/success/warning pass through, and the studio hairline becomes the cube
 border. Dark or light is chosen by background luminance, and derived cube
@@ -33,14 +33,14 @@ tokens (foreground-on-primary and friends) are computed from that mapping, so
 switches, checkboxes and buttons recolour on the same palette switch that the
 workspace or theme flip produces.
 
-The dark palette uses near-black surfaces (background 0.039, glass 0.055, cards
-0.078, inputs 0.106), text at 0.96/0.62/0.40 and a cyberpunk neon accent with
-ink derived by iced-cube's luminance rule. Borders are white at 10% and the
-accent border at 55%. The light palette mirrors the same roles on paper
-surfaces with a deepened neon set. Each shell workspace owns one hue —
-Generate cyan, Stories magenta, Captures acid green, Voices violet, Effects
-ember, Models volt blue, Settings solar yellow — and the kit default (also the
-boot workspace) is cyan. The window root paints the background colour behind
+The dark palette uses calm slate surfaces (background 0.043, glass 0.067, cards
+0.086, inputs 0.114) with text at 0.945/0.667/0.518 and restrained workspace
+accents whose ink is derived by iced-cube's luminance rule. Borders are a
+low-alpha slate tint and the accent border uses the active hue. The light palette
+mirrors the same roles on paper surfaces with deepened accents. Each shell
+workspace owns one hue — Generate cyan, Stories magenta, Captures green, Voices
+violet, Effects orange, Models blue, Settings amber — and the kit default (also
+the boot workspace) is cyan. The window root paints the background colour behind
 the 18 px frame; there is no separate alpha scrim in the frame.
 
 ## Allowed dependencies
@@ -64,7 +64,8 @@ missing palette.
 Tests assert the dark/light background and text differ, that the two palettes
 already carry the default cyan hue, that `with_neon()` is idempotent for the
 default hue, that all seven hues stay distinct per mode with ordered
-hover/pressed/hot variants, and that ink follows the cube luminance rule.
+hover/pressed/hot variants, that ink follows the cube luminance rule, and that
+every text role and accent ink meets WCAG AA on every surface in both themes.
 Token tests cover theme cycling and parsing.
 
 ## Known limits
@@ -74,8 +75,8 @@ Token tests cover theme cycling and parsing.
 - There is no high-contrast theme or user-editable accent mapping yet (the
   hue set is fixed per workspace in code).
 - Blur strength cannot be controlled by the app; only tint opacity is ours.
-- Colour contrast has not been audited against WCAG text thresholds for every
-  state.
-- The iced-cube mapping is fixed: neon accent → cube primary, raised surface
+- Colour contrast is checked by unit tests for text/muted/faint roles and
+  accent ink, but not for every possible translucent overlay combination.
+- The iced-cube mapping is fixed: workspace accent → cube primary, raised surface
   → secondary/accent. Cube-derived hovers (dark-theme primary darkens) follow
   iced-cube's emphasis convention rather than a per-token ALP choice.

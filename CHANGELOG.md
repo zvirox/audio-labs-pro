@@ -5,6 +5,26 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+## [0.0.1-alpha.5] - 2026-11-22
+
+### Changed
+
+- **Minimal, responsive studio UI.** The dark palette now uses calm slate
+  surfaces and the light palette paper surfaces, with restrained workspace
+  accents, larger type, a labelled navigation rail, higher-contrast secondary
+  text and a compact waveform ruler that no longer paints over peak data.
+  Tooltips are opaque and viewport-clamped; grids, padding and dock controls
+  step down on compact windows, and the initial window fits the primary monitor.
+- **Visible workspace motion.** The existing lilt toggles now drive an 8 px
+  workspace settle transition through a layout-safe translation wrapper, with
+  reduced motion collapsing it to an instant state.
+
+### Added
+
+- WCAG AA contrast tests for every text role and accent ink in both themes.
+- README status, configuration, FAQ and troubleshooting sections aligned with
+  the shipped 58-tool MCP surface and current release evidence.
+
 ## [0.0.1-alpha.4] - 2026-11-21
 
 ### Added

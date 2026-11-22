@@ -4,24 +4,26 @@
 
 # Audio Labs Pro: Local Voice Studio & Multitrack Editor
 
+[![CI](https://github.com/zvirox/audio-labs-pro/actions/workflows/ci.yml/badge.svg)](https://github.com/zvirox/audio-labs-pro/actions/workflows/ci.yml)
+[![Version](https://img.shields.io/badge/Version-v0.0.1--alpha.5-success.svg)](https://github.com/zvirox/audio-labs-pro/releases)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-v0.0.1--alpha.4-success.svg)](https://github.com/zvirox/audio-labs-pro/releases)
-[![Platform](https://img.shields.io/badge/Platform-Linux_(Wayland_&_X11)-orange.svg)](#3-minimum-requirements)
+[![Platform](https://img.shields.io/badge/Platform-Linux_(Wayland_&_X11)-orange.svg)](#4-minimum-requirements)
 [![Rust](https://img.shields.io/badge/Rust-1.95+-informational.svg)](https://www.rust-lang.org)
-[![UI](https://img.shields.io/badge/UI-iced_0.14_·_frosted_glass-indigo.svg)](docs/adr/0012-phase2-shell-and-glass.md)
-[![Workspaces](https://img.shields.io/badge/Workspaces-7_selectable_rooms-brightgreen.svg)](#the-seven-workspaces)
+[![UI](https://img.shields.io/badge/UI-iced_0.14_·_minimal_slate-indigo.svg)](docs/adr/0012-phase2-shell-and-glass.md)
 
-A Linux audio studio written in Rust: multitrack recording, editing, mixing and
-export, plus local AI text-to-speech, dictation, voice profiles and CLAP/LV2
-plugin hosting. Fully offline — the only network traffic is user-initiated model
-downloads.
+A local, offline-by-default voice workstation for Linux: non-destructive
+multitrack recording, editing, mixing and WAV/FLAC export, plus local speech
+synthesis, dictation, voice profiles, consent-gated cloning and CLAP/LV2 plugin
+hosting. Use the desktop shell, the headless CLI, or the 58-tool MCP server;
+the inference worker runs out of process so model crashes cannot take down the
+editor.
 
 The shell ships **seven workspaces** — Generate, Stories, Captures, Voices,
-Effects, Models and Settings — each carried by its own cyberpunk neon hue and
-switched live from the icon rail. Every one of them is the same studio: same
-motion, same geometry, same icons, same navigation, one docked player.
-
-Audio Labs Pro is integrated into the **[Starship Control](https://github.com/zvirox/starship-control)** ecosystem (`Mother Ship / Starship Control`), enabling autonomous agent orchestration via the `starship-plugin` bridge over Unix domain sockets and stdio MCP.
+Effects, Models and Settings. A compact labelled rail switches rooms, a docked
+player stays available, and one restrained accent per workspace gives orientation
+without turning the interface into a light show. The UI scales its grids, gutters
+and dock controls to the window; a first-run wizard explains hardware, appearance
+and motion before you start.
 
 ---
 
@@ -39,7 +41,7 @@ Audio Labs Pro is integrated into the **[Starship Control](https://github.com/zv
 │   desktop shell     │ │   headless tools    │ │  AI automation server   │
 ├─────────────────────┤ ├─────────────────────┤ ├─────────────────────────┤
 │ • Seven workspaces  │ │ • gen/decode/peaks  │ │ • JSON-RPC 2.0 (stdio)  │
-│ • Frosted glass     │ │ • new/import/render │ │ • 14 sandboxed tools    │
+│ • Minimal slate UI  │ │ • new/import/render │ │ • 58 sandboxed tools    │
 │ • GPU waveform      │ │ • play/record/recover│ │ • Session rollback +   │
 │ • Command palette   │ │ • voices/dictation  │ │   JSONL audit trail     │
 │ • iced 0.14 + kit   │ │ • plugin scan/list  │ │ • Client sandboxing     │
@@ -79,7 +81,7 @@ touches cpal or ONNX. See
 An icon rail on the left switches rooms; a player is docked at the bottom of
 every screen (Stories replaces it with its track editor).
 
-| Workspace | Neon | What it holds |
+| Workspace | Accent | What it holds |
 |---|---|---|
 | **Generate** | cyan | Voice cards, prompt editor, generate/play controls and take history |
 | **Stories** | magenta | Multi-line scripts, per-line render, stitch, and the docked track editor |
@@ -89,11 +91,12 @@ every screen (Stories replaces it with its track editor).
 | **Models** | volt | Model catalogue, licences, offline policy and storage |
 | **Settings** | solar | Appearance, motion, AI control, storage, delivery and panels |
 
-One hue per workspace: the palette derives vivid neon bases for dark surfaces
-and deepened bases for light, both contrast-checked so filled controls stay
-legible under the kit's automatic ink rule. The surfaces stay frosted glass —
-KWin on X11 gets real compositor blur; Wayland and GNOME keep the legible tint
-fallback ([ADR 0012](docs/adr/0012-phase2-shell-and-glass.md)).
+One restrained hue per workspace: dark slate surfaces use lighter accents and
+paper surfaces use deepened accents. Every text, muted-text and accent-ink pair
+is contrast-checked in both themes, and the active rail target carries both a
+fill and a text label so selection never depends on color alone. KWin/X11 can use
+compositor blur; Wayland and GNOME keep a legible opaque tint
+([ADR 0012](docs/adr/0012-phase2-shell-and-glass.md)).
 
 ### Multitrack timeline & editing
 
@@ -117,9 +120,10 @@ fallback ([ADR 0012](docs/adr/0012-phase2-shell-and-glass.md)).
 
 ### Generate & Voice Lab
 
-- Built-in neural TTS with text normalizer and a pronunciation dictionary;
-  synthesis runs in the isolated `alp-infer` worker so model failures can never
-  take down the studio.
+- Local text-to-speech with text normalization and a pronunciation dictionary.
+  The built-in acoustic tier works without a model download; optional neural
+  TTS/STT models run in the isolated `alp-infer` worker so failures cannot take
+  down the studio.
 - Voice profiles — prebuilt **Aura**, **Atlas**, **Echo**, **Sol** — plus `.alpvoice`
   bundles you can import by dropping them on the window. Cloning is behind an
   enforced human consent attestation, with reference-audio quality auditing,
@@ -153,16 +157,40 @@ fallback ([ADR 0012](docs/adr/0012-phase2-shell-and-glass.md)).
 
 ### AI automation (MCP)
 
-`alp-mcp` speaks JSON-RPC 2.0 (spec 2026-07-28) over stdio: 14 tools from
-`project_info` to `rollback_session`, directory-jail sandboxing, path-traversal
-prevention, and a persistent JSONL audit trail. Connection guides for Claude
-Desktop, Cursor and VS Code live in
+`alp-mcp` speaks JSON-RPC 2.0 (spec 2026-07-28) over stdio and exposes **58
+tools** with workspace-jail sandboxing, path-traversal prevention, pagination,
+limits and a JSONL audit trail. Its `--attach` mode proxies the same dispatcher
+over an owner-only Unix socket into the running desktop: successful edits commit
+to the one GUI undo history, history tools operate on that live stack, and
+subscribed clients receive committed-change notifications.
+
+Settings → AI control enables the socket with a fresh token, per-client human
+approval, `SO_PEERCRED`, `0600` permissions and 2 MiB bounded frames. Cloning,
+model installation, settings changes, shell execution and arbitrary file access
+are outside MCP authority. Connection guides live in
 [docs/mcp/CLIENT_SETUP.md](docs/mcp/CLIENT_SETUP.md); the security model in
-[docs/mcp/SECURITY.md](docs/mcp/SECURITY.md).
+[docs/mcp/SECURITY.md](docs/mcp/SECURITY.md), and honest remaining gaps in
+[docs/mcp/AUDIT.md](docs/mcp/AUDIT.md).
 
 ---
 
-## 3. Minimum Requirements
+## 3. Current status (v0.0.1-alpha.5)
+
+- **Done:** P0 model tier; Phases 0–9 and 11; the seven-workspace shell; the
+  58-tool headless MCP catalog; live attach with shared GUI undo, change
+  subscriptions, revision/stale-read protection and measured request-to-commit
+  latency; real Qwen3-TTS neural cloning with verified assets and consent
+  enforcement.
+- **Partial:** MCP `outputSchema`, word-level timestamp-dependent transcript
+  cutting and filler removal, ~20 KB text response cap, multi-client flood
+  soak, and rendering/pixel-presentation latency measurement.
+- **Not shipped:** Streamable HTTP transport, cross-process project file locks,
+  max-concurrent-job cap, and AI-only “undo all” (the UI offers one honest undo
+  step). See [MASTER_CHECKLIST.md](MASTER_CHECKLIST.md) for item-by-item evidence.
+
+---
+
+## 4. Minimum Requirements
 
 | Component | Minimum | Recommended |
 |---|---|---|
@@ -170,7 +198,7 @@ Desktop, Cursor and VS Code live in
 | **Architecture** | x86_64 | x86_64 (vectorized DSP paths) |
 | **CPU** | 2 cores | 4+ cores for synthesis tiers |
 | **RAM** | 2 GB (shell idle ≈ 86 MB RSS) | 8 GB for neural TTS/STT models |
-| **Storage** | ~30 MB installed (release binary + assets) | + model directory (per-model, see Models workspace) |
+| **Storage** | ~86 MB for the three stripped release binaries + assets | + model directory (per-model, see Models workspace) |
 | **Audio** | ALSA device (48 kHz verified) | PipeWire / JACK-capable interface |
 | **Build** | Rust 1.95+, `pkg-config`, ALSA headers, winit/iced graphics libs | `sccache`, cached `~/.cargo` |
 
@@ -179,12 +207,12 @@ no models — every dialog explains what it needs before touching hardware.
 
 ---
 
-## 4. Installation
+## 5. Installation
 
 ### Method 1: Packages from the release
 
 The
-[v0.0.1-alpha.4 release](https://github.com/zvirox/audio-labs-pro/releases)
+[v0.0.1-alpha.5 release](https://github.com/zvirox/audio-labs-pro/releases)
 ships `.deb`, `.rpm`, `.flatpak` and a `sha256sums.txt`.
 
 ```bash
@@ -192,18 +220,19 @@ ships `.deb`, `.rpm`, `.flatpak` and a `sha256sums.txt`.
 sha256sum -c sha256sums.txt   # (asset names may differ slightly from the manifest)
 
 # Debian / Ubuntu
-sudo apt install ./audio-labs-pro_0.0.1-alpha.4_amd64.deb
+sudo apt install ./audio-labs-pro_0.0.1-alpha.5_amd64.deb
 
-# Fedora / openSUSE (the RPM orders as a pre-release: 0.0.1~alpha.4)
-sudo dnf install ./audio-labs-pro-0.0.1~alpha.4-1.x86_64.rpm
+# Fedora / openSUSE (the RPM orders as a pre-release: 0.0.1~alpha.5)
+sudo dnf install ./audio-labs-pro-0.0.1~alpha.5-1.x86_64.rpm
 
 # Flatpak, any distribution (Freedesktop 25.08 runtime)
-flatpak install --user ./Audio-Labs-Pro-0.0.1-alpha.4-x86_64.flatpak
+flatpak install --user ./Audio-Labs-Pro-0.0.1-alpha.5-x86_64.flatpak
 ```
 
 The packages install `audio-labs-pro` (workstation), `alp-cli` and `alp-infer`,
-with the desktop entry, AppStream metadata, icon scheme (SVG + 48/64/128 px and
-HiDPI PNGs) and MIME types (`application/x-audio-labs-pro[-voice]`).
+with the desktop entry, AppStream metadata, icon scheme and MIME types
+(`application/x-audio-labs-pro[-voice]`). `alp-mcp` is not packaged; use the
+source build below if you need the MCP server.
 
 ### Method 2: Build from source
 
@@ -234,19 +263,48 @@ cargo run -p alp-cli -- render demo.alp mix.flac --format flac \
   --bit-depth int24 --dither triangular --title "My mix"
 ```
 
-Everything the UI does — voices, dictation, plugins, MCP tooling — is also
-drivable without a display (see [Method 4](#6-the-command-line-tools)).
+Most project operations are also drivable without a display. Creating a cloned
+voice profile and giving the required consent remain GUI-only by design
+([Section 7](#7-the-command-line-tools)).
 
 ### Method 4: The MCP server
 
 ```bash
-cargo build -p alp-mcp
-# then point your client at the stdio binary; see docs/mcp/CLIENT_SETUP.md
+cargo build --release -p alp-mcp
+
+# Headless: opens its own workspace
+./target/release/alp-mcp --workspace /tmp/alp-workspace --tier export
+
+# Attached: forwards to the running desktop (no workspace is opened)
+# Enable Settings → AI control, approve the client, then copy its token.
+ALP_CONTROL_TOKEN='TOKEN_FROM_THE_RUNNING_UI' \
+  ./target/release/alp-mcp --attach --client-id my-local-client
 ```
+
+Attach needs `XDG_RUNTIME_DIR`; the socket is `$XDG_RUNTIME_DIR/alp/control.sock`.
+Client setup for Claude Desktop, Cursor and VS Code is in
+[docs/mcp/CLIENT_SETUP.md](docs/mcp/CLIENT_SETUP.md).
+
+### Configuration
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `ALP_CONFIG_HOME` | `$XDG_CONFIG_HOME/alp` | Workspace, theme and trusted-client settings |
+| `ALP_DATA_HOME` | `$XDG_DATA_HOME/alp` | Projects, generated audio, voices and models |
+| `ALP_CACHE_HOME` | `$XDG_CACHE_HOME/alp` | Peak and plugin caches |
+| `ALP_CONTROL_TOKEN` | none | Fresh token from the running UI, required only for `alp-mcp --attach` |
+| `ALP_START_TAB` | `generate` | Boot a named workspace for smoke tests |
+| `ALP_FORCE_TINT` | unset | Skip compositor blur and use the opaque tint |
+| `ALP_METRICS` | unset | Print frame timing to stderr |
+| `ALP_OFFLINE` | unset | Force offline model downloads (`=1`) |
+
+Model-specific overrides (`ALP_KITTEN_DIR`, `ALP_KOKORO_DIR`,
+`ALP_MOONSHINE_DIR`, `ALP_QWEN3_DIR`) and the full list are documented in
+[docs/README.md](docs/README.md) and [docs/mcp/CLIENT_SETUP.md](docs/mcp/CLIENT_SETUP.md).
 
 ---
 
-## 5. Keyboard & Mouse
+## 6. Keyboard & Mouse
 
 | Shortcut | Action |
 |---|---|
@@ -268,7 +326,7 @@ the same modal opens inside the app with F1.
 
 ---
 
-## 6. The Command-Line Tools
+## 7. The Command-Line Tools
 
 `alp-cli` exercises the whole engine without a display, and every subcommand is
 script-safe (non-zero exit on failure):
@@ -284,6 +342,12 @@ script-safe (non-zero exit on failure):
 | `record` / `recover` | Chunked capture with recovery ledger; restore after a kill |
 | `autosave` / `recover-project` | Snapshot edits; restore the last snapshot |
 | `null-test` | Bit-transparency check between reference and rendered audio |
+| `info` | Inspect a project, optionally as JSON |
+| `lufs` / `cleanup` | Loudness measurement; voice cleanup chain |
+| `tts` / `script render` | Speech from text or a JSON script |
+| `model list` / `accept-license` / `download` / `verify` | Model catalogue, license gate, verified downloads |
+| `profile` / `transcribe` / `vad` | Voice profiles, subtitles and speech segmentation |
+| `hardware` | Report the local inference hardware profile |
 | `plugin scan` / `list` / `inspect` | CLAP/LV2 discovery, registry and inspection |
 
 `alp-infer` is the out-of-process inference worker the UI and API talk to; it
@@ -295,9 +359,12 @@ forced-kill recovery, `--soak --minutes 30` for the dropout gate).
 
 ---
 
-## 7. Testing & Verification
+## 8. Testing & Verification
 
-Every push runs the same gate as a release:
+Pushes to `main` and pull requests run the full gate below in
+[.github/workflows/ci.yml](.github/workflows/ci.yml). Tagged releases run the
+locked tests, a release build and packaging in
+[.github/workflows/release.yml](.github/workflows/release.yml):
 
 ```bash
 cargo fmt --all -- --check
@@ -317,7 +384,58 @@ release by [.github/workflows/release.yml](.github/workflows/release.yml).
 
 ---
 
-## 8. Documentation
+## 9. FAQ
+
+**Is this Linux-only?** Yes. Packages target x86_64 Linux; the shell supports
+X11 and Wayland. Wayland uses an opaque tint rather than compositor blur because
+the blur protocol needs unsafe code, which this project forbids.
+
+**Does it work without audio hardware or models?** Yes. The shell starts with a
+synthetic demo waveform and the acoustic TTS tier needs no download. Hardware
+and model dialogs explain what is missing before they touch anything.
+
+**Can an AI client clone my voice?** No. Creating a clone profile requires an
+explicit human consent attestation in the GUI. MCP can design voices but cannot
+create clones, install models, change settings, run commands or escape the
+workspace.
+
+**Which version am I running?** Release packages and tags use `v0.0.1-alpha.5`.
+A source build reports workspace version `0.1.0` from `--version`; this is
+intentional, not a different release.
+
+**Why is `alp-mcp` missing after installing a package?** Packages ship
+`audio-labs-pro`, `alp-cli` and `alp-infer`. Build `alp-mcp` from source for
+headless or attached automation.
+
+**Does it export MP3 or OGG?** No. WAV and FLAC are supported; MP3/OGG remain
+out while their licensing is reviewed.
+
+**What does attach latency measure?** Request-to-live-view-model commit time,
+not actual pixels on screen. Expensive worker preparation is included in the
+measurement; rendered-pixel latency is not claimed.
+
+---
+
+## 10. Troubleshooting
+
+| Symptom | What to check |
+|---|---|
+| No window or a black canvas | Run with `ALP_FORCE_TINT=1`; confirm Mesa/WGPU libraries are installed and the session exposes X11 or Wayland. |
+| No input or output device | `arecord -l` and `aplay -l`; add your user to `audio`; prefer a PipeWire session when available. |
+| Clicks or xruns under PipeWire | Raise the quantum, for example `pw-metadata -n settings 0 clock.quantum 1024`. |
+| A recording was interrupted | `alp-cli recover <file>` restores the committed frames from the recovery ledger. |
+| A project edit was not saved | `alp-cli autosave <project>.alp` then `alp-cli recover-project <project>.alp`; the desktop also validates autosaves before restoring them. |
+| A model download fails | Accept the model licence first with `alp-cli model accept-license <id>`, then retry; downloads are checksum-verified and stale `.part` files are kept for resume. |
+| Neural synthesis is slow | Debug CPU inference is workload-dependent; the acoustic tier is instant and clearly labelled. Check `alp-cli hardware --json`. |
+| Attach says “no socket” or authentication fails | Enable Settings → AI control, approve the client, copy the fresh token into `ALP_CONTROL_TOKEN`, and confirm `XDG_RUNTIME_DIR` is set. The token rotates on every enable; stale reads now fail with both `snapshotRevision` and `liveRevision`. |
+| Wayland blur looks different | Expected: only KWin/X11 receives the blur hint; other sessions use the legible tint fallback. |
+
+More detail is in [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) and
+[docs/mcp/CLIENT_SETUP.md](docs/mcp/CLIENT_SETUP.md).
+
+---
+
+## 11. Documentation
 
 - [`docs/README.md`](docs/README.md) — the index: architecture, stack, module docs, ADRs.
 - [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) — the studio manual, workspace by workspace.
@@ -335,17 +453,19 @@ release by [.github/workflows/release.yml](.github/workflows/release.yml).
 
 ---
 
-## 9. Legal
+## 12. Legal
 
 Audio Labs Pro is an independent open-source project. It is not affiliated with,
 endorsed by or sponsored by any model vendor or streaming service. Model, codec
 and plugin names are used only to describe compatibility and remain the
 trademarks of their owners.
 
-Everything runs locally. The only network traffic is a model download you
-explicitly start from the Models workspace; there is no telemetry, no account
-and no background listener. Model downloads are SHA-256 verified and the
-licensing of each model is shown before you keep it.
+Everything runs locally. The only outbound traffic is a model download you
+explicitly start from the Models workspace; there is no telemetry or account.
+The optional AI control socket exists only while you enable it: it is owned by
+your user, rejects other UIDs, requires a fresh token and human approval, and is
+removed when you stop AI control. Model downloads are SHA-256 verified and each
+model's licence is shown before you keep it.
 
 Voice cloning is gated: creating a clone profile requires an explicit human
 consent attestation that you are the speaker or have the speaker's permission,
@@ -361,7 +481,7 @@ Apache-2.0 licence below.
 
 ---
 
-## 10. License
+## 13. License
 
 Licensed under the **Apache License 2.0**. See the [LICENSE](LICENSE) file for
 details. Third-party notices are collected in [THIRD_PARTY.md](THIRD_PARTY.md).

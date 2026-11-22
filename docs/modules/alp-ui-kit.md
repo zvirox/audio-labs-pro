@@ -8,19 +8,18 @@ builders, motion primitives and the peak-pyramid waveform canvas. Screens consum
 these modules instead of raw iced widgets, which is how the shell keeps one
 visual language and how the no-raw-button rule stays enforceable.
 
-The studio language is deliberately restrained: near-black surfaces, graphite
-cards, a cyberpunk neon accent (one hue per workspace) with ink chosen by
-iced-cube's luminance rule on filled buttons, 6/10/14/18 px
-radii, rectangular controls with minimal (4 px) corners, hairline white borders at 10% and soft shadows. Icons
-are embedded Lucide SVGs rendered through iced-cube; buttons, switches,
-checkboxes and icon tints borrow iced-cube's style functions, resolved from the
-`iced::Theme` that `theme::ThemeColors::to_theme` builds from the studio
-palette.
+The studio language is deliberately restrained: slate surfaces, graphite
+cards, one subdued accent per workspace with ink chosen by iced-cube's luminance
+rule on filled buttons, 6/10/14/18 px radii, rectangular controls with minimal
+(4 px) corners, low-alpha slate borders and soft shadows. Icons are embedded
+Lucide SVGs rendered through iced-cube; buttons, switches, checkboxes and icon
+tints borrow iced-cube's style functions, resolved from the `iced::Theme` that
+`theme::ThemeColors::to_theme` builds from the studio palette.
 
 ## Public API
 
-- `tokens` — `Spacing`, `Radius`, `Control`, `Rail`, `TypeScale`, `Motion`,
-  `ThemeMode`, `Duration`, `system_is_dark`.
+- `tokens` — `Spacing`, `Radius`, `Control`, `Rail`, `Icon`, `Layout`,
+  `TypeScale`, `Motion`, `ThemeMode`, `Duration`, `system_is_dark`.
 - `fonts` — bundled `INTER_BYTES`, `FAMILY`, `regular`, `medium`, `semibold`,
   `bold`, `mono`, `register_with_cube`.
 - `theme` — `ThemeColors` (`DARK`, `LIGHT`), `for_mode`, `to_theme`,
@@ -29,12 +28,12 @@ palette.
 - `icons` — `Glyph`, `themed`, `tinted` and the Lucide constant vocabulary
   (`PLAY`, `GENERATE`, `WAVEFORM`, `TRIM`, …).
 - `components` — `ButtonKind`, rectangular and icon-labelled buttons, rail/glyph/
-  compact buttons, iced-cube-powered toggle/switch/checkbox, sliders, text
+  compact buttons, labelled rail tabs, iced-cube-powered toggle/switch/checkbox, sliders, text
   fields and areas, dropdowns, segmented control, tabs, chips, avatar, tooltip,
   progress, scrolling style and the page/card/section/field text helpers.
 - `overlays` — cards, dialog, toast, command palette, property row, empty state.
-- `motion` — `Toggle`, `PanelMotion`, overlay/panel constructors and duration
-  scaling.
+- `motion` — `Toggle`, `PanelMotion`, offset wrapper, overlay/panel constructors
+  and duration scaling.
 - `waveform` — validated peak levels, `WaveformPeaks`, `WaveformError` and the
   scrollable `WaveformWidget`.
 - Crate-level re-exports of the commonly used token/theme/component names.

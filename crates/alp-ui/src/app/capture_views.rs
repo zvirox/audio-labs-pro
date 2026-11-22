@@ -2,7 +2,7 @@
 
 use alp_ui_kit::components;
 use alp_ui_kit::icons;
-use alp_ui_kit::tokens::{Radius, Spacing, TypeScale};
+use alp_ui_kit::tokens::{Icon, Radius, Spacing, TypeScale};
 use alp_ui_kit::{ButtonKind, ThemeColors, fonts};
 use iced::widget::{Space, column, container, mouse_area, row, text};
 use iced::{Alignment, Background, Border, Element, Length};
@@ -92,48 +92,49 @@ impl App {
         }
         for (index, capture) in self.captures.iter().enumerate() {
             let selected = index == self.selected_capture;
-            let body =
-                row![
-                    container(text(if selected { "●" } else { "○" }).size(10.0).color(
-                        if selected {
-                            colors.accent
-                        } else {
-                            colors.faint
-                        }
-                    ),)
-                    .width(Length::Fixed(16.0))
-                    .align_x(Alignment::Center),
-                    column![
-                        text(shorten(&capture.name, 48))
-                            .size(f32::from(TypeScale::BODY_STRONG))
-                            .font(fonts::semibold())
-                            .color(colors.text),
-                        row![
-                            components::chip_mono(format_time(capture.duration_secs), colors),
-                            components::chip(format!("peak {:.0}%", capture.peak * 100.0), colors),
-                        ]
-                        .spacing(f32::from(Spacing::XXS)),
+            let body = row![
+                container(icons::tinted(
+                    icons::RECORD,
+                    Icon::XS,
+                    Some(if selected {
+                        colors.accent
+                    } else {
+                        colors.muted
+                    }),
+                ))
+                .width(Length::Fixed(f32::from(Spacing::LG)))
+                .align_x(Alignment::Center),
+                column![
+                    text(shorten(&capture.name, 48))
+                        .size(f32::from(TypeScale::BODY_STRONG))
+                        .font(fonts::semibold())
+                        .color(colors.text),
+                    row![
+                        components::chip_mono(format_time(capture.duration_secs), colors),
+                        components::chip(format!("peak {:.0}%", capture.peak * 100.0), colors),
                     ]
-                    .spacing(f32::from(Spacing::XS)),
-                    Space::new().width(Length::Fill),
-                    components::with_tooltip(
-                        components::glyph_button(
-                            icons::GRID,
-                            13.0,
-                            if selected {
-                                ButtonKind::Secondary
-                            } else {
-                                ButtonKind::Ghost
-                            },
-                            Some(Message::SelectCapture(index))
-                        ),
-                        "Select this capture".to_string(),
-                        colors,
-                    ),
+                    .spacing(f32::from(Spacing::XXS)),
                 ]
-                .spacing(f32::from(Spacing::MD))
-                .align_y(Alignment::Center)
-                .padding(Spacing::MD);
+                .spacing(f32::from(Spacing::XS)),
+                Space::new().width(Length::Fill),
+                components::with_tooltip(
+                    components::glyph_button(
+                        icons::GRID,
+                        13.0,
+                        if selected {
+                            ButtonKind::Secondary
+                        } else {
+                            ButtonKind::Ghost
+                        },
+                        Some(Message::SelectCapture(index))
+                    ),
+                    "Select this capture".to_string(),
+                    colors,
+                ),
+            ]
+            .spacing(f32::from(Spacing::MD))
+            .align_y(Alignment::Center)
+            .padding(Spacing::MD);
 
             rows = rows.push(
                 mouse_area(container(body).width(Length::Fill).style(move |_theme| {
