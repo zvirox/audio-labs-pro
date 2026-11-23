@@ -5,6 +5,7 @@ members = [
     "audio-spike",
     "model-spike",
     "wayland-probe",
+    "ui-tauri",
 ]
 
 # Phase 0 spikes are throwaway evidence artifacts. They are NOT part of the

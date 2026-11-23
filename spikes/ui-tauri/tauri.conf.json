@@ -1,0 +1,25 @@
+{
+  "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/refs/heads/v2/crates/tauri-cli/schema.json",
+  "productName": "ui-tauri-spike",
+  "version": "0.0.0",
+  "identifier": "io.github.zvirox.alp.ui-tauri-spike",
+  "build": {
+    "frontendDist": "./ui"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "Audio Labs Pro — M0 Tauri Spike",
+        "width": 1024,
+        "height": 720,
+        "resizable": true,
+        "decorations": false,
+        "transparent": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  }
+}
