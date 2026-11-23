@@ -608,7 +608,11 @@ impl App {
         );
 
         let inspector_toggle = components::button_icon(
-            if self.inspector_open { "Hide Inspector" } else { "Inspector" },
+            if self.inspector_open {
+                "Hide Inspector"
+            } else {
+                "Inspector"
+            },
             icons::SETTINGS,
             if self.inspector_open {
                 ButtonKind::Secondary

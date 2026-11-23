@@ -121,10 +121,10 @@ impl EnvelopeCurve {
             return self.points[0].gain;
         }
 
-        if let Some(last) = self.points.last() {
-            if frame >= last.frame {
-                return last.gain;
-            }
+        if let Some(last) = self.points.last()
+            && frame >= last.frame
+        {
+            return last.gain;
         }
 
         // Binary search to find segment [p0, p1]

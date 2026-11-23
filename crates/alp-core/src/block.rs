@@ -142,15 +142,17 @@ impl SampleBlock {
             return Err(CoreError::validation("non-f32 format decoding unsupported"));
         }
 
-        if self.payload.len() % 4 != 0 {
-            return Err(CoreError::validation("payload size is not aligned to 4 bytes"));
+        if !self.payload.len().is_multiple_of(4) {
+            return Err(CoreError::validation(
+                "payload size is not aligned to 4 bytes",
+            ));
         }
 
         let count = self.payload.len() / 4;
         let mut samples = Vec::with_capacity(count);
-        for chunk in self.payload.chunks_exact(4) {
-            let bytes = [chunk[0], chunk[1], chunk[2], chunk[3]];
-            samples.push(f32::from_le_bytes(bytes));
+        let (chunks, _) = self.payload.as_chunks::<4>();
+        for chunk in chunks {
+            samples.push(f32::from_le_bytes(*chunk));
         }
 
         Ok(samples)
@@ -264,8 +266,7 @@ mod tests {
     fn sample_block_round_trip() {
         let original_samples: Vec<f32> = vec![0.0, 0.5, -0.5, 0.25, -0.25, 0.125];
         let block_id = BlockId::new();
-        let block =
-            SampleBlock::from_f32_interleaved(block_id, &original_samples, 1, 48_000);
+        let block = SampleBlock::from_f32_interleaved(block_id, &original_samples, 1, 48_000);
 
         assert!(block.verify_integrity());
         assert_eq!(block.header.frame_count, 6);
