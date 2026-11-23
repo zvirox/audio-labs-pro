@@ -8,6 +8,8 @@ Provides typed Tauri 2 IPC command handlers bridging requests from the React fro
 
 - `get_project_summary(state)` — Returns the active session's authoritative `ProjectSummary`.
 - `get_workspace_state(state)` — Returns the persisted layout and preference state (`PersistedWorkspace`).
+- `save_workspace_state(workspace, state)` — Persists layout and preferences to `workspace.json`.
+- `reset_workspace_layout(state)` — Resets panel geometry to default arrangement and persists to disk.
 - `get_glass_report(state)` — Returns the active compositor glass inspection report (`GlassReport`).
 - `trigger_demo_edit(app, action, state)` — Applies a timeline modification and broadcasts `session_revision_changed` event.
 - `SessionRevisionPayload` — Struct transmitted across the Tauri event bridge.

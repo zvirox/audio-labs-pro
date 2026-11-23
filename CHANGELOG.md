@@ -5,6 +5,9 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+- Feature: Phase M3 built studio component kit (`frontend/src/kit/`: Button, Toggle, Slider, Input, Tabs, Dialog, Tooltip, Menu, Meter, Card) and dual-axis layout shell (56px PrimaryRail, 40px SubtabTopBar, 280px InspectorDrawer, 64px DockedPlayer)
+- Feature: Phase M3 implemented floating panel container system (`PanelContainer`) supporting drag, resize, z-order focus, collapse, and docking, synchronized with `workspace.json` through `save_workspace_state` and `reset_workspace_layout`
+- Feature: Phase M3 integrated `cmdk` Command Palette (`Ctrl+K`), Shortcuts modal (`F1`), Theme cycling (`Ctrl+D`), and Reduce motion (`Ctrl+Shift+M`) with complete keyboard parity
 - Feature: Phase M2 created `alp-desktop` native desktop shell (Tauri 2) with safe KWin blur via `x11rb`, translucent tint fallback (alpha >= 0.70), and zero `unsafe` hand-written code under `#![deny(unsafe_code)]`
 - Feature: Phase M2 scaffolded `frontend/` (Vite, React 19, TypeScript strict mode, Tailwind CSS v4, Lucide icons) with full studio design token palette and live IPC bridge to `alp-session`
 - Packaging: Phase M2 verified early Flatpak de-risk manifest (`packaging/flatpak/throwaway-tauri-derisk.yaml`) on GNOME Platform 48 with WebKitGTK 4.1 and test tone playback

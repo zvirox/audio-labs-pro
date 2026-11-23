@@ -331,4 +331,11 @@ alp-session (Headless EditSession, JobQueue, PersistedWorkspace, PanelManager)
   - `frontend/` scaffolded with Vite, React 19, TypeScript strict mode, Tailwind CSS v4, and design tokens ported from `alp-ui-kit`.
   - Safe KWin blur module ported to `alp-desktop::glass` using safe `x11rb` and `raw-window-handle 0.6`.
   - Early Flatpak de-risk manifest (`packaging/flatpak/throwaway-tauri-derisk.yaml`) created and verified with GNOME Platform 48, WebKitGTK 4.1 presence, and test tone generation.
+- **Phase M3 — Kit + App Shell:** COMPLETE.
+  - Complete studio primitive kit created (`frontend/src/kit/`: Button, Toggle, Slider, Input, Tabs, Dialog, Tooltip, Menu, Meter, Card).
+  - Dual-axis navigation implemented (56px PrimaryRail + 40px SubtabTopBar + 280px collapsible InspectorDrawer).
+  - 64px DockedPlayer transport bar with play/pause (`Space`), record (`R`), loop (`L`), timecode display, timeline scrubber, master volume, and stereo LED meters.
+  - Floating and docked panel container system (`PanelContainer`) supporting drag, resize, z-order focus, collapse, and docking.
+  - Keyboard shortcuts (`Ctrl+1..7`, `Ctrl+K`, `F1`, `Ctrl+D`, `Ctrl+Shift+M`, `Ctrl+B`) and `cmdk` Command Palette.
+  - Persistent workspace state synchronized through `alp-session` and `workspace.json`.
 

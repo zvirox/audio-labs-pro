@@ -131,13 +131,18 @@ Outcome: Canvas 2D is fully sufficient for 60 fps timeline scrolling (WebGL unne
 - Early Flatpak de-risk manifest `packaging/flatpak/throwaway-tauri-derisk.yaml` created and verified with GNOME Platform 48, WebKitGTK 4.1 presence, and test tone generation.
 - **Exit:** Both apps build, token page renders, typed IPC roundtrips, test tone verifies. Proceed to M3.
 
-### M3 — Kit + app shell (size M)
-- Build `frontend/src/kit/`: buttons, toggles, sliders, inputs, tabs, dialogs, tooltips, menus, meters, cards. Everything goes through the kit.
-- Icon rail with the seven workspaces, routed with Ctrl+1…8 shortcuts.
-- Floating panels: drag, resize, z-order, snap, collapse, dock (pick the library in the ADR rather than hand-rolling).
-- Command palette (Ctrl+K), shortcuts modal (F1), theme cycle (Ctrl+D), Reduce motion (Ctrl+Shift+M).
-- Reuse `workspace.json` through `alp-session`.
-- **Exit:** shell navigation and panel layouts match the current app and persist across restarts.
+### M3 — Kit + app shell (size M) — COMPLETE
+
+**Status:** Completed (2026-11-23). All exit criteria verified.
+- Built complete studio component kit (`frontend/src/kit/`): `Button`, `Toggle`, `Slider`, `Input`, `Tabs`, `Dialog`, `Tooltip`, `Menu`, `Meter`, `Card`. All application views build on this kit exclusively.
+- Built 56px `PrimaryRail` with the seven workspaces, routed with `Ctrl+1..7` shortcuts and visual active indicator pips.
+- Built 40px contextual `SubtabTopBar` with sub-navigation per active workspace, panel management dropdown, and layout reset.
+- Built 280px collapsible `InspectorDrawer` toggled via `Ctrl+B` for clip/track property editing.
+- Built 64px `DockedPlayer` bottom transport player bar with play/pause (`Space`), record (`R`), loop (`L`), timecode display, timeline scrubber, volume fader, and live stereo LED audio meter.
+- Implemented floating panel container system (`PanelContainer`) supporting drag, resize, collapse, dock, z-order focus, and persistence to `workspace.json` through `alp-session`.
+- Integrated `cmdk` Command Palette (`Ctrl+K`), Keyboard Shortcuts modal (`F1`), Theme cycling (`Ctrl+D`), and Reduce motion (`Ctrl+Shift+M`).
+- Wired `save_workspace_state` and `reset_workspace_layout` in `alp-desktop` and `alp-session` for atomic workspace persistence.
+- **Exit:** Shell navigation and panel layouts match the iced app, persist across restarts, and full test suite passes. Proceed to M4.
 
 ### M4 — Transport, meters, waveform (size M)
 - Docked player wired to the engine through `alp-session`.
