@@ -5,58 +5,38 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
-- Feature: Phase 13 implemented high-resolution Short-Time Fourier Transform (STFT) spectrogram engine in `alp-dsp::spectral` with configurable FFT sizes (512, 1024, 2048, 4096, 8192), hop sizes, analysis window functions (Hanning, Hamming, Blackman-Harris, Rectangular), dBFS PSD normalization, and Linear/Logarithmic/Mel frequency bin aggregation
-- Feature: Phase 13 integrated timeline multi-view track lanes in `alp-session` and `MultitrackCanvas.tsx`, supporting `Waveform`, `Spectrogram`, and `Split` (dual 50/50 waveform + spectrogram multi-view) with track header view mode selector buttons
-- Feature: Phase 13 built 2D time-frequency spectral selection box tool (`SpectralSelectionDto`) calculating geometric center frequency \( f_c = \sqrt{f_1 \cdot f_2} \), bandwidth \( \Delta f = f_2 - f_1 \), and filter quality factor \( Q = f_c / \Delta f \) with live floating HUD readout
-- Feature: Phase 13 added clip stereo pan automation envelope editing with keyframe nodes and non-destructive slip editing (`slip_offset_secs`, Alt+drag)
-- Feature: Phase 13 exposed 5 typed Tauri IPC commands in `alp-desktop` (`get_clip_spectrogram`, `timeline_set_track_view_mode`, `timeline_set_spectral_selection`, `timeline_set_clip_pan_envelope`, `timeline_slip_clip`)
-- Feature: Phase 13 implemented 5 autonomous MCP agent tools (`timeline_spectral_analyze`, `timeline_spectral_select`, `timeline_set_view_mode`, `clip_set_pan_envelope`, `clip_slip`), expanding the autonomous MCP tool suite to 68 tools
-- UX & Frontend: Phase 13 built `SpectrogramCanvas.tsx` with calibrated Magma, Inferno, and Viridis heatmaps, logarithmic frequency grid overlays (50 Hz to 20 kHz), and hover inspector
-- Generative UI: Phase 13 generated interactive live multi-view playground artifact `phase13_spectral_multiview.html` showcasing colormap switching, 2D spectral box selection, pan automation, and STFT specs
-- Verification: Phase 13 verified pure-tone spectral peak detection, window symmetry, monotonic binning, session operations undo/redo, 8/8 timeline tests, and workspace compilation with zero `unsafe` hand-written code
+## [0.0.1-alpha.8] - 2026-11-23
 
-- Packaging: Phase M8 updated Linux packaging manifests for `.deb` (`libwebkit2gtk-4.1-0`, `libgtk-3-0`), `.rpm` (`webkit2gtk4.1`, `gtk3`), and Flatpak (`org.gnome.Platform // 48` runtime, `org.gnome.Sdk`, `org.freedesktop.Sdk.Extension.node20`, target binary `alp-desktop` installed as `audio-labs-pro`)
-- Metadata: Phase M8 recorded `0.0.1-alpha.8` release notes in AppStream metadata (`io.github.zvirox.AudioLabsPro.metainfo.xml`)
-- Cutover & Cleanup: Phase M8 cleanly removed legacy iced crates (`crates/alp-ui`, `crates/alp-ui-kit`) and workspace dependencies (`iced`, `iced-cube`, `lilt`), achieving complete cutover to the Tauri 2 + React desktop shell
-- Guard Tooling: Phase M8 updated `scripts/check-deps.sh` for 12 ALP crates and updated `scripts/check-ui.sh` to verify frontend kit compliance and zero legacy iced references
-- Documentation Debt: Phase M8 resolved documentation debt across `docs/TROUBLESHOOTING.md` (WebKitGTK distro packages, NVIDIA/Wayland webview flags), `docs/USER_GUIDE.md` (build target updated to `alp-desktop`, React studio workflows, canvas timeline), `docs/KEYBOARD_SHORTCUTS.md` (full shortcut parity verified), `THIRD_PARTY.md` (Tauri 2 crates, WebKitGTK 4.1, and npm package inventory; iced marked retired), and `docs/architecture/ARCHITECTURE.md`
+### Added
 
-- Feature: Phase M7 implemented headless `AiControlManager` in `alp-session::ai` hosting owner-only Unix domain control socket at `$XDG_RUNTIME_DIR/alp/control.sock` (mode 0600) with per-session token authentication (`ALP_CONTROL_TOKEN`)
-- Feature: Phase M7 enabled full Model Context Protocol (MCP) tool dispatching on dedicated worker threads (`alp-attached-mcp-{client_id}`) executing against base-revision scratch snapshots
-- Reliability: Phase M7 enforced live atomic transaction commit into `EditSession`, where multi-step agent operations commit as a single undo entry, with automatic rejection of stale writes on revision conflict
-- Feature: Phase M7 exposed 6 typed AI IPC commands in `alp-desktop` (`get_ai_status`, `toggle_ai_control`, `set_ai_permission_tier`, `respond_ai_approval`, `get_ai_activity_log`, `undo_ai_change`) and continuous background event pump emitting `session_revision_changed`, `ai_client_approval`, and `ai_activity_event`
-- UX & Frontend: Phase M7 upgraded `SettingsWorkspace` with active/standby MCP host indicator, 1-click token copy, shell attach command snippet generator, permission tier selector (`Observe`, `Edit`, `Export`), latency metrics, interactive client approval prompt banner, and live AI audit log stream
-- Verification: Phase M7 verified full MCP catalog parity (`tools/list`), live undoable edits (`tools/call track_add`), and MCP rollback (`tools/call history_undo`) with `test_attached_mcp_full_catalog_and_tool_commit` passing in `alp-session`
+- **Phase 13 High-Resolution Spectrogram Engine (`alp-dsp::spectral`):** Short-Time Fourier Transform (STFT) with `realfft 3.4`, configurable FFT sizes (512, 1024, 2048, 4096, 8192), hop sizes, analysis window functions (Hanning, Hamming, Blackman-Harris, Rectangular), dBFS PSD normalization, and Linear/Logarithmic/Mel frequency bin aggregation.
+- **Phase 13 Timeline Multi-View Track Lanes (`alp-session`, `MultitrackCanvas.tsx`):** Track lanes supporting `Waveform`, `Spectrogram`, and `Split` (dual 50/50 waveform + spectrogram multi-view) with track header view mode selector buttons (`W`, `S`, `Dual`).
+- **Phase 13 2D Time-Frequency Spectral Selection Tool:** Selection box (`SpectralSelectionDto`) calculating geometric center frequency \( f_c = \sqrt{f_1 \cdot f_2} \), bandwidth \( \Delta f = f_2 - f_1 \), and filter quality factor \( Q = f_c / \Delta f \) with live floating HUD readout.
+- **Phase 13 Pan Automation & Slip Editing:** Clip stereo pan automation envelope editing with keyframe nodes and non-destructive slip editing (`slip_offset_secs`, Alt+drag).
+- **Phase 13 Tauri IPC Commands:** Exposed `get_clip_spectrogram`, `timeline_set_track_view_mode`, `timeline_set_spectral_selection`, `timeline_set_clip_pan_envelope`, and `timeline_slip_clip` in `alp-desktop`.
+- **Phase 13 Autonomous MCP Tools:** Added `timeline_spectral_analyze`, `timeline_spectral_select`, `timeline_set_view_mode`, `clip_set_pan_envelope`, and `clip_slip`, expanding the autonomous MCP tool suite to 68 tools.
+- **Phase 13 Frontend Spectrogram Canvas (`SpectrogramCanvas.tsx`):** Calibrated Magma, Inferno, and Viridis heatmaps, logarithmic frequency grid overlays (50 Hz to 20 kHz), and hover inspector.
+- **Phase 13 Generative UI Playground:** Live interactive multi-view playground artifact `phase13_spectral_multiview.html`.
+- **Phase M8 Packaging Cutover:** Updated Linux packaging manifests for `.deb` (`libwebkit2gtk-4.1-0`, `libgtk-3-0`), `.rpm` (`webkit2gtk4.1`, `gtk3`), and Flatpak (`org.gnome.Platform // 48` runtime, `org.gnome.Sdk`, `org.freedesktop.Sdk.Extension.node20`, target binary `alp-desktop` installed as `audio-labs-pro`).
+- **Phase M8 AppStream Metadata:** Recorded `0.0.1-alpha.8` release notes in `io.github.zvirox.AudioLabsPro.metainfo.xml`.
+- **Phase M7 Headless AI Control Manager (`alp-session::ai`):** Unix domain control socket at `$XDG_RUNTIME_DIR/alp/control.sock` (mode 0600) with token authentication (`ALP_CONTROL_TOKEN`) and MCP worker dispatch.
+- **Phase M7 AI IPC & Settings Workspace:** Typed AI IPC commands, event pump (`session_revision_changed`, `ai_client_approval`, `ai_activity_event`), permission tiers (`Observe`, `Edit`, `Export`), and live AI audit log.
+- **Phase M6 HTML5 Canvas 2D Multitrack Timeline:** Track lanes, clips, waveform overviews, fade curves, volume automation envelopes, timecode ruler, loop boundaries, cue markers, playhead beam, and magnetic snapping.
+- **Phase M6 Timeline Commands & IPC:** 16 typed timeline commands wired into `alp-desktop` and `alp-session`.
+- **Phase M5 React Studio Workspaces:** Voice Lab with neural TTS and voice cloning consent modal, Effects workspace with 6-stage vocal cleanup chain and plugin discovery, Captures workspace with live VAD and word-level transcript editor, Stories workspace with multi-character script editor.
+- **Phase M4 Transport Controller & Waveform Canvas:** Low-latency playback IPC, calibrated stereo meter streaming over Tauri Channel, and dynamic decimation Canvas 2D waveform renderer.
+- **Phase M3 Studio UI Kit & Shell:** Dual-axis layout shell (PrimaryRail, SubtabTopBar, InspectorDrawer, DockedPlayer), floating draggable/resizable panel container system, command palette (`Ctrl+K`), shortcuts modal (`F1`), and theme switching.
+- **Phase M2 Native Desktop Shell & Frontend Scaffold:** Tauri 2 shell with safe KWin blur, React 19 + TypeScript + Tailwind CSS v4 frontend.
+- **Phase M1 Headless Session Extraction:** Extracted headless `alp-session` crate with zero GUI dependencies and verified MCP live attach parity.
 
-- Feature: Phase M6 implemented high-performance HTML5 Canvas 2D multitrack timeline editor (`MultitrackCanvas.tsx` and `MultitrackWorkspace.tsx`) with track lanes, non-destructive clips, waveform overviews, fade curves, volume automation envelopes, timecode ruler, loop boundaries, cue markers, and playhead beam
-- Feature: Phase M6 developed framework-free mathematical hit-testing and drag interaction state machine (`frontend/src/timeline/timelineMath.ts`, `dragLogic.ts`) with magnetic snapping to markers, playhead, and adjacent clip boundaries
-- Verification: Phase M6 created direct Node test suite (`frontend/src/timeline/timelineMath.test.ts`, `npm test`) validating coordinate projections, 8px handle detection, fade geometry, and IPC command payloads (8/8 tests passing)
-- Feature: Phase M6 wired 16 typed timeline IPC commands into `alp-desktop` and `alp-session` (`get_timeline_state`, `timeline_undo`, `timeline_redo`, `timeline_split_clip`, `timeline_delete_selected`, `timeline_cut`, `timeline_copy`, `timeline_paste`, `timeline_move_clip`, `timeline_trim_clip`, `timeline_set_clip_fades`, `timeline_set_clip_envelope`, `timeline_set_loop_range`, `timeline_add_marker`, `timeline_remove_marker`, `timeline_select_clip`, `timeline_set_selection`)
-- Verification: Phase M6 verified keyboard editing shortcuts parity (`Ctrl+Z`, `Ctrl+Y`, `Ctrl+B`, `Delete`, `Ctrl+C`, `Ctrl+X`, `Ctrl+V`, `R`, `Ctrl+A`, `Space`, `Home`), identical clip ID restoration across redo (`timeline_operations_undo_redo_and_clip_id_preservation`), and zero hand-written `unsafe` code in `alp-desktop`
-- Feature: Phase M5 ported all 7 studio workspaces to React/TypeScript/Tailwind using kit primitives: Settings (`SettingsWorkspace`), Models (`ModelsWorkspace`), Voices (`VoicesWorkspace`), Generate (`GenerateWorkspace`), Effects (`EffectsWorkspace`), Captures (`CapturesWorkspace`), and Stories (`StoriesWorkspace`)
-- Security & Safety: Phase M5 strictly preserved the affirmative human-only legal consent gate for zero-shot voice cloning (`CloningConsentModal`), requiring non-empty speaker names, attester identity, reference audio, and explicit policy agreement
-- Feature: Phase M5 added hosted CLAP / LV2 plugin discovery and rescan UI, 6-stage vocal cleanup chain with stage bypass toggles, and signal path metering in Effects workspace
-- Feature: Phase M5 integrated live VAD, input meter health audit, takes list, and interactive word-level transcript editor with click-to-seek and segment cuts in Captures workspace
-- Feature: Phase M5 built multi-character chapter dialogue script editor, cast assignment, line status tracking, and batch synthesis in Stories workspace
-- UX: Phase M5 unified workspace switching and floating panel overlay in `SubtabTopBar` with one-click view toggling and full keyboard accessibility
-- Feature: Phase M4 implemented `alp_session::TransportController` and wired live audio playback to `alp-desktop` IPC (`play_transport`, `pause_transport`, `stop_transport`, `seek_transport`, `set_transport_volume`, `set_transport_loop`, `get_transport_state`)
-- Feature: Phase M4 established real-time calibrated stereo meter streaming over Tauri 2 `Channel` at ~30 Hz (`subscribe_meters`), paired with client-side playhead interpolation at 60–120 fps (`useTransport`) via monotonic timestamp anchors
-- Feature: Phase M4 built high-performance `WaveformCanvas` in HTML5 Canvas 2D with dynamic decimation, level-of-detail pyramid selection (256, 1024, 4096 spl), interactive scrubber seeking, and zero-idle-draw optimization
-- Feature: Phase M4 built `TimelineWaveformPanel` integrated into floating panels with real-time 1-hour benchmark testing mode (675,000 min/max buckets @ 48 kHz)
-- Verification: Phase M4 verified 1-hour waveform autoscroll gate (60.0 FPS sustained) and 10-minute playback soak with 0 dropped callbacks (`test_10_minute_playback_soak_no_dropped_callbacks`)
-- Feature: Phase M3 built studio component kit (`frontend/src/kit/`: Button, Toggle, Slider, Input, Tabs, Dialog, Tooltip, Menu, Meter, Card) and dual-axis layout shell (56px PrimaryRail, 40px SubtabTopBar, 280px InspectorDrawer, 64px DockedPlayer)
-- Feature: Phase M3 implemented floating panel container system (`PanelContainer`) supporting drag, resize, z-order focus, collapse, and docking, synchronized with `workspace.json` through `save_workspace_state` and `reset_workspace_layout`
-- Feature: Phase M3 integrated `cmdk` Command Palette (`Ctrl+K`), Shortcuts modal (`F1`), Theme cycling (`Ctrl+D`), and Reduce motion (`Ctrl+Shift+M`) with complete keyboard parity
-- Feature: Phase M2 created `alp-desktop` native desktop shell (Tauri 2) with safe KWin blur via `x11rb`, translucent tint fallback (alpha >= 0.70), and zero `unsafe` hand-written code under `#![deny(unsafe_code)]`
-- Feature: Phase M2 scaffolded `frontend/` (Vite, React 19, TypeScript strict mode, Tailwind CSS v4, Lucide icons) with full studio design token palette and live IPC bridge to `alp-session`
-- Packaging: Phase M2 verified early Flatpak de-risk manifest (`packaging/flatpak/throwaway-tauri-derisk.yaml`) on GNOME Platform 48 with WebKitGTK 4.1 and test tone playback
-- Refactor: Phase M1 extracted headless `alp-session` crate (`EditSession`, `JobQueue`, `PersistedWorkspace`, `PanelManager`) with zero GUI dependencies, split `app.rs` from 1,054 down to 669 lines, and verified all 144+ workspace tests and MCP live attach parity
-- Spike: Phase M0 Tauri 2 + WebKitGTK feasibility spike and live benchmarks (GO gate passed; see `docs/spikes/PHASE-M0-RESULTS.md`)
-- Docs: UI migration plan and ADR 0013 accepted
+### Changed
 
-### Planned (Phase 13–19 Adoption Roadmap)
+- **Clean Cutover from Iced to Tauri 2 + React:** Cleanly removed legacy iced crates (`crates/alp-ui`, `crates/alp-ui-kit`) and workspace dependencies (`iced`, `iced-cube`, `lilt`), achieving complete cutover.
+- **Guard Tooling:** Updated `scripts/check-deps.sh` for 12 ALP crates and updated `scripts/check-ui.sh` for frontend kit compliance.
+- **Workflows & Packaging:** Updated `.github/workflows/ci.yml` and `.github/workflows/release.yml` for WebKitGTK 4.1, Node 20, GNOME 48 SDK, and `alp-desktop`.
 
-- **Phase 13 (`v0.0.1-alpha.8`):** Interactive Multitrack timeline canvas, clip splitting/slip/ripple, simultaneous Waveform + STFT Spectrogram, and 2D time-frequency spectral selection tool.
+### Planned (Phase 14–19 Adoption Roadmap)
+
 - **Phase 14 (`v0.0.1-alpha.9`):** Subtractive spectral denoiser with noise profiling, 2D spectral notch/repair, realtime insert FX racks, and high-fidelity WSOLA time-stretching.
 - **Phase 15 (`v0.0.1-alpha.10`):** Zero-shot voice cloning embeddings, prompt-driven voice design, persona cards & avatars, and custom pronunciation lexicon with IPA/SSML.
 - **Phase 16 (`v0.1.0-beta.1`):** Audiobook Studio with EPUB/Markdown ingestion, multi-character cast tagging, cadence pacing rules, and M4B container packaging with QuickTime chapter markers.

@@ -35,7 +35,17 @@
   <releases>
     <release version="0.0.1-alpha.8" date="2026-11-23">
       <description>
-        <p>Complete cutover to Tauri 2 and React frontend desktop shell (alp-desktop and alp-session), replacing the legacy Iced UI. High-performance HTML5 canvas multitrack timeline editor, full AI MCP parity with live undo history, WebKitGTK 4.1 packaging updates across deb, rpm, and Flatpak.</p>
+        <p>Phase 13 interactive multitrack canvas and spectral multi-view: real-time STFT spectrogram engine with configurable windows and scales, Magma/Inferno/Viridis heatmaps, 2D time-frequency spectral selection box with geometric center and Q factor HUD, clip pan automation envelopes, and slip editing. Complete cutover to Tauri 2 and React desktop shell (alp-desktop and alp-session) replacing legacy Iced UI, full AI MCP parity expanding catalog to 68 tools, WebKitGTK 4.1 packaging updates across deb, rpm, and Flatpak.</p>
+      </description>
+    </release>
+    <release version="0.0.1-alpha.7" date="2026-11-23">
+      <description>
+        <p>Dual-Axis Navigation shell (56px vertical primary rail + 40px horizontal subtab top bar), collapsible right inspector drawer, multi-point envelope curves (Linear, Smooth cosine S-curve, Exponential decibel), sample block SQLite WAL audio storage schema.</p>
+      </description>
+    </release>
+    <release version="0.0.1-alpha.6" date="2026-11-23">
+      <description>
+        <p>Voice profile parity with lock, unlock, and update tools, batch TTS synthesis queueing, audiobook encode parity, and expanded MCP control surface.</p>
       </description>
     </release>
     <release version="0.0.1-alpha.5" date="2026-11-22">

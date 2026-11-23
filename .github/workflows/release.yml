@@ -39,11 +39,22 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \
             libasound2-dev pkg-config \
+            libwebkit2gtk-4.1-dev libsoup-3.0-dev \
             libxkbcommon-dev libwayland-dev wayland-protocols \
             libx11-dev libxcursor-dev libxrandr-dev libxi-dev \
             libgl1-mesa-dev libegl1-mesa-dev libfontconfig1-dev \
             libxcb1-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev \
             rpm
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build frontend
+        run: |
+          npm --prefix frontend install
+          npm --prefix frontend run build
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -85,7 +96,7 @@ jobs:
                    "$STAGE/usr/share/metainfo" \
                    "$STAGE/usr/share/mime/packages" \
                    "$STAGE/usr/share/icons/hicolor"
-          cp target/release/alp-ui "$STAGE/usr/bin/audio-labs-pro"
+          cp target/release/alp-desktop "$STAGE/usr/bin/audio-labs-pro"
           cp target/release/alp-cli "$STAGE/usr/bin/alp-cli"
           cp target/release/alp-infer "$STAGE/usr/bin/alp-infer"
           chmod +x "$STAGE/usr/bin/"*
@@ -179,9 +190,10 @@ jobs:
           flatpak --user remote-add --if-not-exists flathub \
             https://dl.flathub.org/repo/flathub.flatpakrepo
           flatpak --user install --noninteractive flathub \
-            org.freedesktop.Platform//25.08 \
-            org.freedesktop.Sdk//25.08 \
-            org.freedesktop.Sdk.Extension.rust-stable//25.08
+            org.gnome.Platform//48 \
+            org.gnome.Sdk//48 \
+            org.freedesktop.Sdk.Extension.rust-stable \
+            org.freedesktop.Sdk.Extension.node20
 
       - name: Flatpak build
         run: |
