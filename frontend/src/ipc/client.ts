@@ -15,6 +15,15 @@ import type {
   TransportState,
   MeterFrame,
   WaveformPeaksDto,
+  AudioDevice,
+  ModelItem,
+  VoiceProfile,
+  ConsentRecord,
+  EffectStage,
+  DiscoveredPlugin,
+  CaptureTake,
+  TranscriptWord,
+  StoryScript,
 } from './types';
 
 export const isTauriEnvironment = (): boolean => {
@@ -406,4 +415,348 @@ export async function subscribeMeters(
   return () => {
     clearInterval(interval);
   };
+}
+
+// --- M5 Workspace APIs & Datasets ---
+
+export async function getAudioDevices(): Promise<AudioDevice[]> {
+  if (isTauriEnvironment()) {
+    try {
+      return await invoke<AudioDevice[]>('get_audio_devices');
+    } catch {
+      // Fallback to detected defaults
+    }
+  }
+
+  return [
+    {
+      name: 'PipeWire Audio Sink (Default)',
+      is_default: true,
+      direction: 'output',
+      channels: 2,
+      sample_rate: 48000,
+      sample_format: 'f32',
+    },
+    {
+      name: 'ALSA HDA Intel PCH (Analog Stereo)',
+      is_default: false,
+      direction: 'output',
+      channels: 2,
+      sample_rate: 44100,
+      sample_format: 'i16',
+    },
+    {
+      name: 'PipeWire Audio Capture (Default Mic)',
+      is_default: true,
+      direction: 'input',
+      channels: 2,
+      sample_rate: 48000,
+      sample_format: 'f32',
+    },
+    {
+      name: 'USB Studio Condenser Mic (Direct ALSA)',
+      is_default: false,
+      direction: 'input',
+      channels: 1,
+      sample_rate: 48000,
+      sample_format: 'f32',
+    },
+  ];
+}
+
+export async function getModelCatalogue(): Promise<ModelItem[]> {
+  if (isTauriEnvironment()) {
+    try {
+      return await invoke<ModelItem[]>('get_model_catalogue');
+    } catch {
+      // Fallback
+    }
+  }
+
+  return [
+    {
+      id: 'kokoro-tts-v0_19',
+      name: 'Kokoro TTS (Light)',
+      kind: 'tts_light',
+      size_mb: 84.5,
+      status: 'installed',
+      license: 'Apache 2.0',
+      spdx: 'Apache-2.0',
+      description: 'Ultra-fast lightweight speech synthesis with sub-50ms latency.',
+      is_builtin: true,
+    },
+    {
+      id: 'styletts2-medium',
+      name: 'StyleTTS 2 Studio',
+      kind: 'tts_medium',
+      size_mb: 235.0,
+      status: 'verified',
+      license: 'MIT',
+      spdx: 'MIT',
+      description: 'High-fidelity expressive neural speech synthesis with multi-style diffusion.',
+      is_builtin: false,
+    },
+    {
+      id: 'sherpa-onnx-stt',
+      name: 'Sherpa-ONNX Whisper',
+      kind: 'stt',
+      size_mb: 142.0,
+      status: 'installed',
+      license: 'Apache 2.0',
+      spdx: 'Apache-2.0',
+      description: 'Real-time local speech-to-text with word-level timestamps and VAD.',
+      is_builtin: true,
+    },
+    {
+      id: 'acoustic-voice-clone',
+      name: 'Acoustic Voiceprint Cloner',
+      kind: 'cloning',
+      size_mb: 68.0,
+      status: 'installed',
+      license: 'Proprietary ALP Gate',
+      spdx: 'LicenseRef-ALP-Consent',
+      description: 'Zero-shot voice cloning engine strictly gated by human legal consent record.',
+      is_builtin: true,
+    },
+  ];
+}
+
+let mockVoiceProfiles: VoiceProfile[] = [
+  {
+    id: 'voice-linus',
+    name: 'Linus Sebastian',
+    language: 'English',
+    tags: ['tech', 'energetic', 'clear'],
+    kind: 'cloned',
+    speed: 1.05,
+    pitch: 0.0,
+    energy: 1.1,
+    emotion: 'warm',
+    consent: {
+      speaker_name: 'Linus Sebastian',
+      attested_by: 'User (Producer)',
+      timestamp: Date.now() - 86400000,
+      statement: 'I certify that the speaker provided explicit consent to generate this clone.',
+    },
+  },
+  {
+    id: 'voice-narrator',
+    name: 'Studio Narrator (Acoustic)',
+    language: 'English',
+    tags: ['audiobook', 'deep', 'calm'],
+    kind: 'prebuilt',
+    speed: 0.95,
+    pitch: -1.5,
+    energy: 0.95,
+    emotion: 'neutral',
+  },
+  {
+    id: 'voice-broadcast',
+    name: 'Radio Broadcaster',
+    language: 'English',
+    tags: ['broadcast', 'punchy', 'commercial'],
+    kind: 'acoustic',
+    speed: 1.1,
+    pitch: 0.5,
+    energy: 1.25,
+    emotion: 'excited',
+  },
+];
+
+export async function getVoiceProfiles(): Promise<VoiceProfile[]> {
+  if (isTauriEnvironment()) {
+    try {
+      return await invoke<VoiceProfile[]>('get_voice_profiles');
+    } catch {
+      // Fallback
+    }
+  }
+  return [...mockVoiceProfiles];
+}
+
+export async function createVoiceProfile(
+  profile: Partial<VoiceProfile>,
+  consent: ConsentRecord
+): Promise<VoiceProfile> {
+  // Validate consent gate strictly
+  if (!consent.speaker_name.trim() || !consent.attested_by.trim() || consent.statement.length < 10) {
+    throw new Error('Consent gate violation: valid human consent record is mandatory.');
+  }
+
+  const newProfile: VoiceProfile = {
+    id: `voice-${Date.now()}`,
+    name: profile.name || 'New Voice',
+    language: profile.language || 'English',
+    tags: profile.tags || ['custom'],
+    kind: 'cloned',
+    speed: profile.speed || 1.0,
+    pitch: profile.pitch || 0.0,
+    energy: profile.energy || 1.0,
+    emotion: profile.emotion || 'neutral',
+    consent,
+  };
+
+  mockVoiceProfiles.unshift(newProfile);
+  return newProfile;
+}
+
+export async function getEffectsChain(): Promise<EffectStage[]> {
+  return [
+    {
+      id: 'hum_removal',
+      name: '50/60Hz Hum Filter',
+      category: 'Denoise',
+      enabled: true,
+      params: { freq: 60, q: 8.0, reduction: -24 },
+    },
+    {
+      id: 'click_removal',
+      name: 'De-Clicker & De-Plosive',
+      category: 'Restoration',
+      enabled: true,
+      params: { threshold: -18, sensitivity: 0.75 },
+    },
+    {
+      id: 'parametric_eq',
+      name: '4-Band Parametric EQ',
+      category: 'Tone',
+      enabled: true,
+      params: { lowGain: -1.5, midGain: 2.0, highGain: 1.0, highFreq: 8500 },
+    },
+    {
+      id: 'de_esser',
+      name: 'Dynamic De-Esser',
+      category: 'Vocal',
+      enabled: true,
+      params: { threshold: -22, frequency: 6500, ratio: 4.0 },
+    },
+    {
+      id: 'compressor',
+      name: 'Multiband Compressor',
+      category: 'Dynamics',
+      enabled: true,
+      params: { threshold: -16, ratio: 3.5, attack: 15, release: 120 },
+    },
+    {
+      id: 'peak_limiter',
+      name: 'Broadcast Peak Limiter',
+      category: 'Mastering',
+      enabled: true,
+      params: { ceiling: -1.0, release: 50 },
+    },
+  ];
+}
+
+export async function getDiscoveredPlugins(): Promise<DiscoveredPlugin[]> {
+  return [
+    {
+      id: 'u-he-satin',
+      name: 'Satin Tape Machine',
+      vendor: 'u-he',
+      format: 'CLAP',
+      category: 'Saturation',
+    },
+    {
+      id: 'valhalla-vintage-verb',
+      name: 'VintageVerb Studio',
+      vendor: 'Valhalla DSP',
+      format: 'CLAP',
+      category: 'Reverb',
+    },
+    {
+      id: 'lsp-compressor-stereo',
+      name: 'LSP Multiband Compressor',
+      vendor: 'Linux Studio Plugins',
+      format: 'LV2',
+      category: 'Dynamics',
+    },
+    {
+      id: 'calf-parametric-eq',
+      name: 'Calf 8-Band Parametric EQ',
+      vendor: 'Calf Studio Gear',
+      format: 'LV2',
+      category: 'Equalizer',
+    },
+  ];
+}
+
+export async function getCaptures(): Promise<CaptureTake[]> {
+  return [
+    {
+      id: 'take-01',
+      name: 'Lead Vocal — Verse 1 (Take 1)',
+      duration_secs: 18.4,
+      timestamp: 'Today at 11:42 AM',
+      peak_db: -2.4,
+      rms_db: -16.8,
+      clipped: false,
+    },
+    {
+      id: 'take-02',
+      name: 'Lead Vocal — Verse 1 (Take 2)',
+      duration_secs: 19.1,
+      timestamp: 'Today at 11:46 AM',
+      peak_db: -0.8,
+      rms_db: -15.2,
+      clipped: false,
+    },
+    {
+      id: 'take-03',
+      name: 'ADR Dub Dialogue — Cue 04',
+      duration_secs: 7.8,
+      timestamp: 'Today at 12:15 PM',
+      peak_db: -3.1,
+      rms_db: -18.2,
+      clipped: false,
+    },
+  ];
+}
+
+export async function getTranscript(): Promise<TranscriptWord[]> {
+  return [
+    { word: 'Welcome', start_secs: 0.2, end_secs: 0.7, confidence: 0.99, speaker: 'Linus' },
+    { word: 'to', start_secs: 0.75, end_secs: 0.9, confidence: 0.98, speaker: 'Linus' },
+    { word: 'Audio', start_secs: 0.95, end_secs: 1.4, confidence: 0.99, speaker: 'Linus' },
+    { word: 'Labs', start_secs: 1.45, end_secs: 1.85, confidence: 0.99, speaker: 'Linus' },
+    { word: 'Pro,', start_secs: 1.9, end_secs: 2.3, confidence: 0.97, speaker: 'Linus' },
+    { word: 'the', start_secs: 2.6, end_secs: 2.8, confidence: 0.96, speaker: 'Linus' },
+    { word: 'open-source', start_secs: 2.85, end_secs: 3.6, confidence: 0.98, speaker: 'Linus' },
+    { word: 'studio', start_secs: 3.65, end_secs: 4.1, confidence: 0.99, speaker: 'Linus' },
+    { word: 'workstation', start_secs: 4.15, end_secs: 4.9, confidence: 0.98, speaker: 'Linus' },
+    { word: 'engineered', start_secs: 5.1, end_secs: 5.8, confidence: 0.99, speaker: 'Linus' },
+    { word: 'for', start_secs: 5.85, end_secs: 6.0, confidence: 0.99, speaker: 'Linus' },
+    { word: 'Linux.', start_secs: 6.05, end_secs: 6.6, confidence: 0.99, speaker: 'Linus' },
+  ];
+}
+
+export async function getStories(): Promise<StoryScript[]> {
+  return [
+    {
+      id: 'story-01',
+      title: 'The AI Audio Revolution',
+      chapter: 1,
+      lines: [
+        {
+          id: 'l-01',
+          speaker: 'Studio Narrator (Acoustic)',
+          text: 'In the heart of the digital workstation, silence gave way to sound.',
+          status: 'ready',
+          take_duration: 4.8,
+        },
+        {
+          id: 'l-02',
+          speaker: 'Linus Sebastian',
+          text: 'We are finally building studio audio tools that do not rely on cloud servers or closed silos.',
+          status: 'ready',
+          take_duration: 6.2,
+        },
+        {
+          id: 'l-03',
+          speaker: 'Radio Broadcaster',
+          text: 'And the audio latency? Zero buffer underruns at forty-eight kilohertz!',
+          status: 'pending',
+        },
+      ],
+    },
+  ];
 }
