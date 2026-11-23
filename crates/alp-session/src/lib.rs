@@ -11,6 +11,7 @@
 pub mod jobs;
 pub mod panels;
 pub mod session;
+pub mod timeline;
 pub mod transport;
 pub mod workspace;
 
@@ -18,6 +19,10 @@ pub use alp_api::ProjectSummary;
 pub use jobs::{Job, JobQueue, JobReporter, JobStatus};
 pub use panels::{DockSide, PanelKind, PanelManager, PanelRect, PanelState, Point, Size};
 pub use session::{EditSession, ImportedAudio, NORMALIZE_TARGET};
+pub use timeline::{
+    TimelineClipDto, TimelineDto, TimelineEnvelopePointDto, TimelineLoopRangeDto,
+    TimelineMarkerDto, TimelineSelectionDto, TimelineTrackDto,
+};
 pub use transport::{
     MeterFrame, PeakLevelDto, TransportController, TransportState, WaveformPeaksDto,
 };
