@@ -8,8 +8,10 @@ pub mod limits;
 pub mod live;
 pub mod protocol;
 pub mod server;
+pub mod starship;
 pub mod tool_defs;
 
 pub use protocol::{JsonRpcRequest, JsonRpcResponse, ToolCallResult};
 pub use server::McpServer;
+pub use starship::build_alp_bridge;
 pub use tool_defs::tools_for_tier;
