@@ -66,13 +66,18 @@ fn start_daemon() -> Option<Daemon> {
 /// Start the real worker, optionally overriding its Qwen model directory for
 /// an explicit model-gated integration run.
 fn start_daemon_with_qwen(qwen_dir: Option<&Path>) -> Option<Daemon> {
+    static COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
     let dir = tempfile::tempdir().expect("tempdir");
     // The socket must outlive the `tempdir`, so it lives in its own
     // directory that is removed by the OS rather than by `TempDir`.
     let socket = std::env::temp_dir().join(format!(
-        "alp-infer-test-{}-{}.sock",
+        "alp-infer-test-{}-{}-{}.sock",
         std::process::id(),
-        Instant::now().elapsed().as_nanos()
+        COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos()
     ));
     let binary = PathBuf::from(env!("CARGO_BIN_EXE_alp-infer"));
 
@@ -128,7 +133,15 @@ fn the_daemon_renders_a_cloned_profile_with_its_voiceprint() {
     assert_eq!(profile.kind, VoiceKind::Cloned);
 
     let client = InferClient::with_socket(&daemon.socket);
-    assert!(client.is_alive(), "the daemon must answer a ping");
+    let mut alive = false;
+    for _ in 0..20 {
+        if client.is_alive() {
+            alive = true;
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    assert!(alive, "the daemon must answer a ping");
 
     let request = TtsRequest {
         text: "The daemon renders this cloned voice".into(),

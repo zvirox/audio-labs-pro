@@ -216,3 +216,99 @@ fn export_presets_are_accessible() {
     assert_eq!(settings.format, alp_media::ExportFormat::Flac);
     assert_eq!(settings.sample_rate, Some(44_100));
 }
+
+#[test]
+fn timeline_operations_undo_redo_and_clip_id_preservation() {
+    let mut session = EditSession::demo();
+    let dto = session.timeline_dto();
+    assert!(!dto.tracks.is_empty());
+    assert!(!dto.tracks[0].clips.is_empty());
+
+    let original_clip_id = dto.tracks[0].clips[0].id.clone();
+    let original_start = dto.tracks[0].clips[0].timeline_start_secs;
+    let track_id = dto.tracks[0].id.clone();
+
+    // 1. Test Split Clip & ID Preservation on Redo
+    let split_pos = original_start + 1.0;
+    session
+        .split_clip_at(&original_clip_id, split_pos)
+        .expect("split succeeds");
+
+    let post_split_dto = session.timeline_dto();
+    let split_clip_ids: Vec<String> = post_split_dto.tracks[0]
+        .clips
+        .iter()
+        .map(|c| c.id.clone())
+        .collect();
+    assert!(split_clip_ids.contains(&original_clip_id));
+    assert_eq!(split_clip_ids.len(), dto.tracks[0].clips.len() + 1);
+
+    // Undo restores the single clip
+    session.undo();
+    let undo_dto = session.timeline_dto();
+    assert_eq!(undo_dto.tracks[0].clips.len(), dto.tracks[0].clips.len());
+    assert_eq!(undo_dto.tracks[0].clips[0].id, original_clip_id);
+
+    // Redo restores the exact same split clip ids!
+    session.redo();
+    let redo_dto = session.timeline_dto();
+    let redo_ids: Vec<String> = redo_dto.tracks[0]
+        .clips
+        .iter()
+        .map(|c| c.id.clone())
+        .collect();
+    assert_eq!(redo_ids, split_clip_ids);
+
+    // Undo back to clean state
+    session.undo();
+
+    // 2. Test Move Clip
+    let moved_start = 5.0;
+    session
+        .move_clip_by_id(&original_clip_id, &track_id, moved_start)
+        .expect("move succeeds");
+    let moved_dto = session.timeline_dto();
+    let moved_clip = moved_dto.tracks[0]
+        .clips
+        .iter()
+        .find(|c| c.id == original_clip_id)
+        .expect("found clip");
+    assert!((moved_clip.timeline_start_secs - moved_start).abs() < 0.01);
+
+    session.undo();
+    let reverted_move_dto = session.timeline_dto();
+    let reverted_clip = reverted_move_dto.tracks[0]
+        .clips
+        .iter()
+        .find(|c| c.id == original_clip_id)
+        .expect("found clip");
+    assert!((reverted_clip.timeline_start_secs - original_start).abs() < 0.01);
+
+    // 3. Test Set Fades
+    session
+        .set_clip_fades_by_id(&original_clip_id, 0.25, 0.5)
+        .expect("fades succeed");
+    let fade_dto = session.timeline_dto();
+    let fade_clip = fade_dto.tracks[0]
+        .clips
+        .iter()
+        .find(|c| c.id == original_clip_id)
+        .expect("found clip");
+    assert!((fade_clip.fade_in_secs - 0.25).abs() < 0.01);
+    assert!((fade_clip.fade_out_secs - 0.5).abs() < 0.01);
+
+    // 4. Test Envelope
+    session
+        .set_clip_envelope_by_id(&original_clip_id, vec![(0.0, 1.0), (0.5, 0.4), (1.0, 1.0)])
+        .expect("envelope succeeds");
+    let env_dto = session.timeline_dto();
+    let env_clip = env_dto.tracks[0]
+        .clips
+        .iter()
+        .find(|c| c.id == original_clip_id)
+        .expect("found clip");
+    assert_eq!(env_clip.envelope.len(), 3);
+
+    // Project validation invariant (null test)
+    session.project().validate().expect("project is valid");
+}

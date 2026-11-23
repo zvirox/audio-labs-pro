@@ -24,6 +24,11 @@ import type {
   CaptureTake,
   TranscriptWord,
   StoryScript,
+  TimelineDto,
+  TimelineClipDto,
+  AiControlStatus,
+  AiActivityEntry,
+  PermissionTier,
 } from './types';
 
 export const isTauriEnvironment = (): boolean => {
@@ -759,4 +764,484 @@ export async function getStories(): Promise<StoryScript[]> {
       ],
     },
   ];
+}
+
+// Mock timeline state for browser testing
+let mockTimeline: TimelineDto = {
+  sample_rate: 48000,
+  duration_secs: 24.0,
+  tracks: [
+    {
+      id: 'track-01',
+      name: 'Vocal Lead (Acoustic)',
+      gain: 1.0,
+      pan: 0.0,
+      muted: false,
+      solo: false,
+      armed: true,
+      clips: [
+        {
+          id: 'clip-01',
+          source_id: 'src-01',
+          name: 'lead-take-01.wav',
+          timeline_start_secs: 1.5,
+          duration_secs: 8.5,
+          source_start_secs: 0.0,
+          gain: 1.0,
+          fade_in_secs: 0.25,
+          fade_out_secs: 0.5,
+          envelope: [
+            { offset_secs: 0.0, gain: 1.0 },
+            { offset_secs: 4.2, gain: 0.8 },
+            { offset_secs: 8.5, gain: 1.0 },
+          ],
+        },
+        {
+          id: 'clip-02',
+          source_id: 'src-02',
+          name: 'lead-take-02.wav',
+          timeline_start_secs: 11.0,
+          duration_secs: 9.0,
+          source_start_secs: 0.0,
+          gain: 1.0,
+          fade_in_secs: 0.1,
+          fade_out_secs: 0.3,
+          envelope: [],
+        },
+      ],
+    },
+    {
+      id: 'track-02',
+      name: 'Background Harmonies',
+      gain: 0.8,
+      pan: -0.2,
+      muted: false,
+      solo: false,
+      armed: false,
+      clips: [
+        {
+          id: 'clip-03',
+          source_id: 'src-03',
+          name: 'harmony-stack.wav',
+          timeline_start_secs: 3.0,
+          duration_secs: 7.0,
+          source_start_secs: 0.0,
+          gain: 0.75,
+          fade_in_secs: 0.5,
+          fade_out_secs: 0.5,
+          envelope: [],
+        },
+      ],
+    },
+    {
+      id: 'track-03',
+      name: 'Sub-bass & Floor Ambient',
+      gain: 0.9,
+      pan: 0.0,
+      muted: false,
+      solo: false,
+      armed: false,
+      clips: [],
+    },
+  ],
+  markers: [
+    { id: 'marker-01', time_secs: 1.5, label: 'Intro' },
+    { id: 'marker-02', time_secs: 11.0, label: 'Verse 1' },
+  ],
+  loop_range: {
+    start_secs: 1.5,
+    end_secs: 10.0,
+  },
+  selection: null,
+  selected_clip_id: 'clip-01',
+  can_undo: true,
+  can_redo: false,
+  undo_steps: 4,
+  redo_steps: 0,
+  revision: 1,
+};
+
+let undoStack: TimelineDto[] = [];
+let redoStack: TimelineDto[] = [];
+
+function pushTimelineState(next: TimelineDto) {
+  undoStack.push(JSON.parse(JSON.stringify(mockTimeline)));
+  redoStack = [];
+  mockTimeline = next;
+  mockTimeline.revision += 1;
+  mockTimeline.can_undo = undoStack.length > 0;
+  mockTimeline.can_redo = redoStack.length > 0;
+  mockTimeline.undo_steps = undoStack.length;
+  mockTimeline.redo_steps = redoStack.length;
+  window.dispatchEvent(
+    new CustomEvent('session_revision_changed', {
+      detail: { revision: mockTimeline.revision, is_dirty: true, reason: 'timeline_edit' },
+    })
+  );
+}
+
+export async function getTimelineState(): Promise<TimelineDto> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimelineDto>('get_timeline_state');
+  }
+  return JSON.parse(JSON.stringify(mockTimeline));
+}
+
+export async function timelineUndo(): Promise<TimelineDto> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimelineDto>('timeline_undo');
+  }
+  if (undoStack.length > 0) {
+    redoStack.push(JSON.parse(JSON.stringify(mockTimeline)));
+    mockTimeline = undoStack.pop()!;
+    mockTimeline.can_undo = undoStack.length > 0;
+    mockTimeline.can_redo = redoStack.length > 0;
+    mockTimeline.undo_steps = undoStack.length;
+    mockTimeline.redo_steps = redoStack.length;
+  }
+  return JSON.parse(JSON.stringify(mockTimeline));
+}
+
+export async function timelineRedo(): Promise<TimelineDto> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimelineDto>('timeline_redo');
+  }
+  if (redoStack.length > 0) {
+    undoStack.push(JSON.parse(JSON.stringify(mockTimeline)));
+    mockTimeline = redoStack.pop()!;
+    mockTimeline.can_undo = undoStack.length > 0;
+    mockTimeline.can_redo = redoStack.length > 0;
+    mockTimeline.undo_steps = undoStack.length;
+    mockTimeline.redo_steps = redoStack.length;
+  }
+  return JSON.parse(JSON.stringify(mockTimeline));
+}
+
+export async function timelineSplitClip(clipId: string, splitSecs: number): Promise<TimelineDto> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimelineDto>('timeline_split_clip', { clipId, splitSecs });
+  }
+  const next = JSON.parse(JSON.stringify(mockTimeline)) as TimelineDto;
+  for (const track of next.tracks) {
+    const idx = track.clips.findIndex((c) => c.id === clipId);
+    if (idx !== -1) {
+      const clip = track.clips[idx];
+      const offset = splitSecs - clip.timeline_start_secs;
+      if (offset > 0.05 && offset < clip.duration_secs - 0.05) {
+        const leftDuration = offset;
+        const rightDuration = clip.duration_secs - offset;
+        const rightClip: TimelineClipDto = {
+          ...clip,
+          id: `clip-split-${Date.now().toString(36)}`,
+          timeline_start_secs: splitSecs,
+          duration_secs: rightDuration,
+          source_start_secs: clip.source_start_secs + offset,
+          fade_in_secs: 0.05,
+        };
+        clip.duration_secs = leftDuration;
+        clip.fade_out_secs = 0.05;
+        track.clips.splice(idx + 1, 0, rightClip);
+        next.selected_clip_id = rightClip.id;
+        pushTimelineState(next);
+        break;
+      }
+    }
+  }
+  return JSON.parse(JSON.stringify(mockTimeline));
+}
+
+export async function timelineDeleteSelected(ripple = false): Promise<TimelineDto> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimelineDto>('timeline_delete_selected', { ripple });
+  }
+  const next = JSON.parse(JSON.stringify(mockTimeline)) as TimelineDto;
+  if (next.selected_clip_id) {
+    for (const track of next.tracks) {
+      const idx = track.clips.findIndex((c) => c.id === next.selected_clip_id);
+      if (idx !== -1) {
+        track.clips.splice(idx, 1);
+        next.selected_clip_id = null;
+        pushTimelineState(next);
+        break;
+      }
+    }
+  }
+  return JSON.parse(JSON.stringify(mockTimeline));
+}
+
+export async function timelineCut(ripple = false): Promise<TimelineDto> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimelineDto>('timeline_cut', { ripple });
+  }
+  return timelineDeleteSelected(ripple);
+}
+
+export async function timelineCopy(): Promise<void> {
+  if (isTauriEnvironment()) {
+    await invoke('timeline_copy');
+  }
+}
+
+export async function timelinePaste(): Promise<TimelineDto> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimelineDto>('timeline_paste');
+  }
+  return JSON.parse(JSON.stringify(mockTimeline));
+}
+
+export async function timelineMoveClip(
+  clipId: string,
+  targetTrackId: string,
+  newStartSecs: number
+): Promise<TimelineDto> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimelineDto>('timeline_move_clip', {
+      clipId,
+      targetTrackId,
+      newStartSecs,
+    });
+  }
+  const next = JSON.parse(JSON.stringify(mockTimeline)) as TimelineDto;
+  let foundClip: TimelineClipDto | null = null;
+  for (const track of next.tracks) {
+    const idx = track.clips.findIndex((c) => c.id === clipId);
+    if (idx !== -1) {
+      foundClip = track.clips.splice(idx, 1)[0];
+      break;
+    }
+  }
+  if (foundClip) {
+    foundClip.timeline_start_secs = Math.max(0, newStartSecs);
+    const targetTrack = next.tracks.find((t) => t.id === targetTrackId) || next.tracks[0];
+    targetTrack.clips.push(foundClip);
+    targetTrack.clips.sort((a, b) => a.timeline_start_secs - b.timeline_start_secs);
+    next.selected_clip_id = foundClip.id;
+    pushTimelineState(next);
+  }
+  return JSON.parse(JSON.stringify(mockTimeline));
+}
+
+export async function timelineTrimClip(
+  clipId: string,
+  newStartSecs: number,
+  newDurationSecs: number
+): Promise<TimelineDto> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimelineDto>('timeline_trim_clip', {
+      clipId,
+      newStartSecs,
+      newDurationSecs,
+    });
+  }
+  const next = JSON.parse(JSON.stringify(mockTimeline)) as TimelineDto;
+  for (const track of next.tracks) {
+    const clip = track.clips.find((c) => c.id === clipId);
+    if (clip) {
+      clip.timeline_start_secs = Math.max(0, newStartSecs);
+      clip.duration_secs = Math.max(0.05, newDurationSecs);
+      pushTimelineState(next);
+      break;
+    }
+  }
+  return JSON.parse(JSON.stringify(mockTimeline));
+}
+
+export async function timelineSetClipFades(
+  clipId: string,
+  fadeInSecs: number,
+  fadeOutSecs: number
+): Promise<TimelineDto> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimelineDto>('timeline_set_clip_fades', {
+      clipId,
+      fadeInSecs,
+      fadeOutSecs,
+    });
+  }
+  const next = JSON.parse(JSON.stringify(mockTimeline)) as TimelineDto;
+  for (const track of next.tracks) {
+    const clip = track.clips.find((c) => c.id === clipId);
+    if (clip) {
+      clip.fade_in_secs = Math.max(0, fadeInSecs);
+      clip.fade_out_secs = Math.max(0, fadeOutSecs);
+      pushTimelineState(next);
+      break;
+    }
+  }
+  return JSON.parse(JSON.stringify(mockTimeline));
+}
+
+export async function timelineSetLoopRange(
+  startSecs: number,
+  endSecs: number,
+  enabled: boolean
+): Promise<TimelineDto> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimelineDto>('timeline_set_loop_range', {
+      startSecs,
+      endSecs,
+      enabled,
+    });
+  }
+  mockTimeline.loop_range = enabled ? { start_secs: startSecs, end_secs: endSecs } : null;
+  return JSON.parse(JSON.stringify(mockTimeline));
+}
+
+export async function timelineAddMarker(timeSecs: number, label: string): Promise<TimelineDto> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimelineDto>('timeline_add_marker', { timeSecs, label });
+  }
+  const next = JSON.parse(JSON.stringify(mockTimeline)) as TimelineDto;
+  next.markers.push({
+    id: `m-${Date.now().toString(36)}`,
+    time_secs: timeSecs,
+    label,
+  });
+  pushTimelineState(next);
+  return JSON.parse(JSON.stringify(mockTimeline));
+}
+
+export async function timelineRemoveMarker(markerId: string): Promise<TimelineDto> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimelineDto>('timeline_remove_marker', { markerId });
+  }
+  const next = JSON.parse(JSON.stringify(mockTimeline)) as TimelineDto;
+  next.markers = next.markers.filter((m) => m.id !== markerId);
+  pushTimelineState(next);
+  return JSON.parse(JSON.stringify(mockTimeline));
+}
+
+export async function timelineSelectClip(clipId: string | null): Promise<TimelineDto> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimelineDto>('timeline_select_clip', { clipId });
+  }
+  mockTimeline.selected_clip_id = clipId;
+  return JSON.parse(JSON.stringify(mockTimeline));
+}
+
+export async function timelineSetSelection(startSecs: number, endSecs: number): Promise<TimelineDto> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimelineDto>('timeline_set_selection', { startSecs, endSecs });
+  }
+  mockTimeline.selection = {
+    track_id: mockTimeline.tracks[0]?.id || null,
+    start_secs: startSecs,
+    end_secs: endSecs,
+  };
+  return JSON.parse(JSON.stringify(mockTimeline));
+}
+
+// ---------------------------------------------------------------------------
+// AI / Model Context Protocol (MCP) Attach Client
+// ---------------------------------------------------------------------------
+
+let mockAiStatus: AiControlStatus = {
+  enabled: false,
+  socket_path: null,
+  token: null,
+  tier: 'edit',
+  trusted_clients: ['claude-desktop', 'alp-local-agent'],
+  pending_clients: [],
+  commits: 0,
+  last_commit_ms: null,
+  max_commit_ms: 0,
+  last_status: 'AI attach standby: socket inactive',
+};
+
+const mockActivityLog: AiActivityEntry[] = [
+  {
+    timestamp: '12:00:00',
+    client_id: 'system',
+    operation: 'init',
+    outcome: 'ready',
+    queue_to_commit_ms: null,
+    committed: false,
+  },
+];
+
+export async function getAiStatus(): Promise<AiControlStatus> {
+  if (isTauriEnvironment()) {
+    return await invoke<AiControlStatus>('get_ai_status');
+  }
+  return { ...mockAiStatus };
+}
+
+export async function toggleAiControl(): Promise<AiControlStatus> {
+  if (isTauriEnvironment()) {
+    return await invoke<AiControlStatus>('toggle_ai_control');
+  }
+  mockAiStatus.enabled = !mockAiStatus.enabled;
+  if (mockAiStatus.enabled) {
+    mockAiStatus.socket_path = '/run/user/1000/alp/control.sock';
+    mockAiStatus.token = 'alp_token_demo_9a8b7c6d5e4f3a2b1c';
+    mockAiStatus.last_status = 'Live control socket active at /run/user/1000/alp/control.sock';
+  } else {
+    mockAiStatus.socket_path = null;
+    mockAiStatus.token = null;
+    mockAiStatus.last_status = 'AI attach standby: socket inactive';
+  }
+  return { ...mockAiStatus };
+}
+
+export async function setAiPermissionTier(tier: PermissionTier): Promise<AiControlStatus> {
+  if (isTauriEnvironment()) {
+    return await invoke<AiControlStatus>('set_ai_permission_tier', { tier });
+  }
+  mockAiStatus.tier = tier;
+  return { ...mockAiStatus };
+}
+
+export async function respondAiApproval(
+  clientId: string,
+  decision: 'session' | 'always' | 'deny',
+  remember: boolean,
+): Promise<boolean> {
+  if (isTauriEnvironment()) {
+    return await invoke<boolean>('respond_ai_approval', {
+      clientId,
+      decision,
+      remember,
+    });
+  }
+  mockAiStatus.pending_clients = mockAiStatus.pending_clients.filter((c) => c !== clientId);
+  if (decision !== 'deny') {
+    mockAiStatus.trusted_clients.push(clientId);
+  }
+  return true;
+}
+
+export async function getAiActivityLog(): Promise<AiActivityEntry[]> {
+  if (isTauriEnvironment()) {
+    return await invoke<AiActivityEntry[]>('get_ai_activity_log');
+  }
+  return [...mockActivityLog];
+}
+
+export async function undoAiChange(): Promise<TimelineDto> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimelineDto>('undo_ai_change');
+  }
+  return timelineUndo();
+}
+
+export async function onAiClientApproval(
+  callback: (payload: { clientId: string }) => void,
+): Promise<UnlistenFn> {
+  if (isTauriEnvironment()) {
+    return await listen<{ clientId: string }>('ai_client_approval', (event) => {
+      callback(event.payload);
+    });
+  }
+  return () => {};
+}
+
+export async function onAiActivityEvent(
+  callback: (entry: AiActivityEntry) => void,
+): Promise<UnlistenFn> {
+  if (isTauriEnvironment()) {
+    return await listen<AiActivityEntry>('ai_activity_event', (event) => {
+      callback(event.payload);
+    });
+  }
+  return () => {};
 }

@@ -4,9 +4,9 @@ use std::collections::BTreeMap;
 
 use alp_core::{
     AddMarker, AddTrack, ClipId, CrossfadeClips, DeleteRange, DuplicateClip, EnvelopePoint,
-    FrameRange, Marker, MarkerId, NormalizeClip, PasteClips, RemoveClip, RemoveMarker, Selection,
-    SetClipEnvelope, SetClipFades, SetClipGain, SetClipInverted, SetClipReversed, SetLoopRange,
-    SetMasterGain, SetTrackArm, SetTrackGain, SetTrackMuted, SetTrackPan, SetTrackSolo,
+    FrameRange, Marker, MarkerId, MoveClip, NormalizeClip, PasteClips, RemoveClip, RemoveMarker,
+    Selection, SetClipEnvelope, SetClipFades, SetClipGain, SetClipInverted, SetClipReversed,
+    SetLoopRange, SetMasterGain, SetTrackArm, SetTrackGain, SetTrackMuted, SetTrackPan, SetTrackSolo,
     SilenceRange, SplitClip, Track, TrackId, TrimClip, copy_range, frames_to_secs, secs_to_frames,
 };
 
@@ -627,6 +627,278 @@ impl EditSession {
             Ok(true) => self.after_change("Redo"),
             Ok(false) => self.status = "Nothing to redo".into(),
             Err(error) => self.status = error.to_string(),
+        }
+    }
+
+    /// Move a clip to a target track and start position in seconds.
+    pub fn move_clip_by_id(
+        &mut self,
+        clip_id_str: &str,
+        target_track_id_str: &str,
+        new_start_secs: f64,
+    ) -> Result<(), String> {
+        let clip_id: ClipId = clip_id_str
+            .parse()
+            .map_err(|e| format!("invalid clip id: {e}"))?;
+        let target_track_id: TrackId = target_track_id_str
+            .parse()
+            .map_err(|e| format!("invalid track id: {e}"))?;
+
+        let rate = self.project.sample_rate;
+        let timeline_start = secs_to_frames(new_start_secs.max(0.0), rate);
+
+        let target_track = self
+            .project
+            .track(target_track_id)
+            .ok_or_else(|| format!("target track '{target_track_id_str}' not found"))?;
+
+        let target_index = target_track
+            .clips
+            .iter()
+            .filter(|c| c.id != clip_id)
+            .position(|c| c.timeline_start > timeline_start)
+            .unwrap_or_else(|| {
+                target_track
+                    .clips
+                    .iter()
+                    .filter(|c| c.id != clip_id)
+                    .count()
+            });
+
+        if self.run(
+            Box::new(MoveClip::new(
+                clip_id,
+                target_track_id,
+                target_index,
+                timeline_start,
+            )),
+            "Move clip",
+        ) {
+            self.selected_clip = Some(clip_id);
+            Ok(())
+        } else {
+            Err(self.status.clone())
+        }
+    }
+
+    /// Trim clip boundaries non-destructively within source constraints.
+    pub fn trim_clip_by_id(
+        &mut self,
+        clip_id_str: &str,
+        new_start_secs: f64,
+        new_duration_secs: f64,
+    ) -> Result<(), String> {
+        let clip_id: ClipId = clip_id_str
+            .parse()
+            .map_err(|e| format!("invalid clip id: {e}"))?;
+
+        let (_, clip) = self
+            .project
+            .clip(clip_id)
+            .ok_or_else(|| format!("clip '{clip_id_str}' not found"))?;
+
+        let rate = self.project.sample_rate;
+        let source_id = clip.source_id;
+        let source = self
+            .project
+            .source(source_id)
+            .ok_or_else(|| format!("source '{source_id}' not found"))?;
+
+        let new_start_frame = secs_to_frames(new_start_secs.max(0.0), rate);
+        let new_len_frames = secs_to_frames(new_duration_secs.max(0.01), rate).max(1);
+
+        let start_delta = new_start_frame as i64 - clip.timeline_start as i64;
+        let new_source_start =
+            (clip.source_range.start as i64 + start_delta).clamp(0, source.frames as i64) as u64;
+        let new_source_end = (new_source_start + new_len_frames).min(source.frames);
+
+        if new_source_end <= new_source_start {
+            return Err("trim results in empty or invalid range".into());
+        }
+
+        let new_range = FrameRange::new(new_source_start, new_source_end)
+            .map_err(|e| format!("invalid frame range: {e}"))?;
+
+        if self.run(
+            Box::new(TrimClip::new(clip_id, new_range, new_start_frame)),
+            "Trim clip",
+        ) {
+            self.selected_clip = Some(clip_id);
+            Ok(())
+        } else {
+            Err(self.status.clone())
+        }
+    }
+
+    /// Set linear fade-in and fade-out durations in seconds.
+    pub fn set_clip_fades_by_id(
+        &mut self,
+        clip_id_str: &str,
+        fade_in_secs: f64,
+        fade_out_secs: f64,
+    ) -> Result<(), String> {
+        let clip_id: ClipId = clip_id_str
+            .parse()
+            .map_err(|e| format!("invalid clip id: {e}"))?;
+
+        let (_, clip) = self
+            .project
+            .clip(clip_id)
+            .ok_or_else(|| format!("clip '{clip_id_str}' not found"))?;
+
+        let rate = self.project.sample_rate;
+        let fade_in = secs_to_frames(fade_in_secs.max(0.0), rate);
+        let fade_out = secs_to_frames(fade_out_secs.max(0.0), rate);
+
+        let max_fades = clip.len();
+        let total = fade_in.saturating_add(fade_out);
+        let (fi, fo) = if total > max_fades && total > 0 {
+            let scale = max_fades as f64 / total as f64;
+            ((fade_in as f64 * scale) as u64, (fade_out as f64 * scale) as u64)
+        } else {
+            (fade_in, fade_out)
+        };
+
+        if self.run(Box::new(SetClipFades::new(clip_id, fi, fo)), "Set clip fades") {
+            Ok(())
+        } else {
+            Err(self.status.clone())
+        }
+    }
+
+    /// Set volume envelope control points for a clip.
+    pub fn set_clip_envelope_by_id(
+        &mut self,
+        clip_id_str: &str,
+        points: Vec<(f64, f32)>,
+    ) -> Result<(), String> {
+        let clip_id: ClipId = clip_id_str
+            .parse()
+            .map_err(|e| format!("invalid clip id: {e}"))?;
+
+        let (_, clip) = self
+            .project
+            .clip(clip_id)
+            .ok_or_else(|| format!("clip '{clip_id_str}' not found"))?;
+
+        let rate = self.project.sample_rate;
+        let mut envelope = Vec::new();
+        for (offset_secs, gain) in points {
+            let frame = secs_to_frames(offset_secs.max(0.0), rate).min(clip.len());
+            envelope.push(EnvelopePoint {
+                frame,
+                gain: gain.max(0.0),
+            });
+        }
+        envelope.sort_by_key(|p| p.frame);
+        envelope.dedup_by_key(|p| p.frame);
+
+        if self.run(
+            Box::new(SetClipEnvelope::new(clip_id, envelope)),
+            "Set clip envelope",
+        ) {
+            Ok(())
+        } else {
+            Err(self.status.clone())
+        }
+    }
+
+    /// Retrieve full multitrack timeline serialization DTO.
+    #[must_use]
+    pub fn timeline_dto(&self) -> crate::timeline::TimelineDto {
+        let rate = self.project.sample_rate;
+        let tracks = self
+            .project
+            .tracks
+            .iter()
+            .map(|track| {
+                let clips = track
+                    .clips
+                    .iter()
+                    .map(|clip| {
+                        let source_name = self
+                            .project
+                            .source(clip.source_id)
+                            .map(|s| s.name.clone())
+                            .unwrap_or_else(|| {
+                                let id_str = clip.id.to_string();
+                                format!("clip-{}", &id_str[..id_str.len().min(8)])
+                            });
+
+                        crate::timeline::TimelineClipDto {
+                            id: clip.id.to_string(),
+                            source_id: clip.source_id.to_string(),
+                            name: source_name,
+                            timeline_start_secs: frames_to_secs(clip.timeline_start, rate),
+                            duration_secs: frames_to_secs(clip.len(), rate),
+                            source_start_secs: frames_to_secs(clip.source_range.start, rate),
+                            gain: clip.gain,
+                            fade_in_secs: frames_to_secs(clip.fade_in_frames, rate),
+                            fade_out_secs: frames_to_secs(clip.fade_out_frames, rate),
+                            envelope: clip
+                                .envelope
+                                .iter()
+                                .map(|p| crate::timeline::TimelineEnvelopePointDto {
+                                    offset_secs: frames_to_secs(p.frame, rate),
+                                    gain: p.gain,
+                                })
+                                .collect(),
+                        }
+                    })
+                    .collect();
+
+                crate::timeline::TimelineTrackDto {
+                    id: track.id.to_string(),
+                    name: track.name.clone(),
+                    gain: track.gain,
+                    pan: track.pan,
+                    muted: track.muted,
+                    solo: track.solo,
+                    armed: track.armed,
+                    clips,
+                }
+            })
+            .collect();
+
+        let markers = self
+            .project
+            .markers
+            .iter()
+            .map(|m| crate::timeline::TimelineMarkerDto {
+                id: m.id.to_string(),
+                time_secs: frames_to_secs(m.frame, rate),
+                label: m.label.clone(),
+            })
+            .collect();
+
+        let loop_range = self.project.loop_range.map(|r| crate::timeline::TimelineLoopRangeDto {
+            start_secs: frames_to_secs(r.start, rate),
+            end_secs: frames_to_secs(r.end, rate),
+        });
+
+        let selection = if self.selection.is_empty() {
+            None
+        } else {
+            Some(crate::timeline::TimelineSelectionDto {
+                track_id: Some(self.selection.track_id().to_string()),
+                start_secs: frames_to_secs(self.selection.range().start, rate),
+                end_secs: frames_to_secs(self.selection.range().end, rate),
+            })
+        };
+
+        crate::timeline::TimelineDto {
+            sample_rate: rate,
+            duration_secs: self.duration_secs(),
+            tracks,
+            markers,
+            loop_range,
+            selection,
+            selected_clip_id: self.selected_clip.map(|id| id.to_string()),
+            can_undo: self.can_undo(),
+            can_redo: self.can_redo(),
+            undo_steps: self.undo_steps(),
+            redo_steps: self.redo_steps(),
+            revision: self.revision(),
         }
     }
 }

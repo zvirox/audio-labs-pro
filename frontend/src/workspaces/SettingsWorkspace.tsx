@@ -13,13 +13,33 @@ import {
   getAudioDevices,
   getGlassReport,
   getProjectSummary,
+  getAiStatus,
+  toggleAiControl,
+  setAiPermissionTier,
+  undoAiChange,
+  getAiActivityLog,
+  respondAiApproval,
+  onAiActivityEvent,
+  onAiClientApproval,
 } from '../ipc/client';
-import type { AudioDevice, GlassReport, ProjectSummary } from '../ipc/types';
+import type {
+  AudioDevice,
+  GlassReport,
+  ProjectSummary,
+  AiControlStatus,
+  AiActivityEntry,
+  PermissionTier,
+} from '../ipc/types';
 import {
   Sliders,
   Volume2,
   FileCheck,
   ShieldCheck,
+  Copy,
+  Check,
+  RotateCcw,
+  Terminal,
+  AlertCircle,
 } from 'lucide-react';
 
 export interface SettingsWorkspaceProps {
@@ -41,8 +61,15 @@ export function SettingsWorkspace({
   const [selectedOutput, setSelectedOutput] = useState<string>('');
   const [selectedInput, setSelectedInput] = useState<string>('');
   const [testToneActive, setTestToneActive] = useState<boolean>(false);
-  const [aiTier, setAiTier] = useState<'observe' | 'edit' | 'automate'>('edit');
   const [exportNotice, setExportNotice] = useState<string | null>(null);
+
+  // AI & MCP Attach State
+  const [aiStatus, setAiStatus] = useState<AiControlStatus | null>(null);
+  const [activityLogs, setActivityLogs] = useState<AiActivityEntry[]>([]);
+  const [copiedToken, setCopiedToken] = useState<boolean>(false);
+  const [copiedCmd, setCopiedCmd] = useState<boolean>(false);
+  const [undoNotice, setUndoNotice] = useState<string | null>(null);
+  const [pendingApproval, setPendingApproval] = useState<string | null>(null);
 
   useEffect(() => {
     getAudioDevices().then((devs) => {
@@ -55,6 +82,24 @@ export function SettingsWorkspace({
 
     getGlassReport().then(setGlass);
     getProjectSummary().then(setSummary);
+    getAiStatus().then(setAiStatus);
+    getAiActivityLog().then(setActivityLogs);
+
+    // Listen for AI activity and approval events
+    const unlistenActivity = onAiActivityEvent((entry) => {
+      setActivityLogs((prev) => [entry, ...prev.slice(0, 19)]);
+      getAiStatus().then(setAiStatus);
+      getProjectSummary().then(setSummary);
+    });
+
+    const unlistenApproval = onAiClientApproval((payload) => {
+      setPendingApproval(payload.clientId);
+    });
+
+    return () => {
+      unlistenActivity.then((fn) => fn());
+      unlistenApproval.then((fn) => fn());
+    };
   }, []);
 
   const handleTestTone = () => {
@@ -65,6 +110,64 @@ export function SettingsWorkspace({
   const handleExportPreset = (preset: string, lufs: number) => {
     setExportNotice(`Queued export with ${preset} (${lufs} LUFS target)`);
     setTimeout(() => setExportNotice(null), 3500);
+  };
+
+  const handleToggleAi = async () => {
+    try {
+      const updated = await toggleAiControl();
+      setAiStatus(updated);
+      const logs = await getAiActivityLog();
+      setActivityLogs(logs);
+    } catch (err) {
+      console.error('Failed to toggle AI control:', err);
+    }
+  };
+
+  const handleTierChange = async (tier: PermissionTier) => {
+    try {
+      const updated = await setAiPermissionTier(tier);
+      setAiStatus(updated);
+      const logs = await getAiActivityLog();
+      setActivityLogs(logs);
+    } catch (err) {
+      console.error('Failed to set AI tier:', err);
+    }
+  };
+
+  const handleCopyToken = () => {
+    if (!aiStatus?.token) return;
+    navigator.clipboard.writeText(aiStatus.token);
+    setCopiedToken(true);
+    setTimeout(() => setCopiedToken(false), 2000);
+  };
+
+  const handleCopyCommand = () => {
+    if (!aiStatus?.token) return;
+    const cmd = `ALP_CONTROL_TOKEN='${aiStatus.token}' alp-mcp --attach`;
+    navigator.clipboard.writeText(cmd);
+    setCopiedCmd(true);
+    setTimeout(() => setCopiedCmd(false), 2000);
+  };
+
+  const handleUndoAi = async () => {
+    try {
+      await undoAiChange();
+      const updatedSummary = await getProjectSummary();
+      setSummary(updatedSummary);
+      setUndoNotice('Successfully rolled back last AI edit');
+      setTimeout(() => setUndoNotice(null), 3000);
+    } catch (err) {
+      setUndoNotice(`Undo failed: ${err}`);
+      setTimeout(() => setUndoNotice(null), 3000);
+    }
+  };
+
+  const handleApproval = async (decision: 'session' | 'always' | 'deny') => {
+    if (!pendingApproval) return;
+    await respondAiApproval(pendingApproval, decision, decision === 'always');
+    setPendingApproval(null);
+    getAiStatus().then(setAiStatus);
+    getAiActivityLog().then(setActivityLogs);
   };
 
   const outputs = devices.filter((d) => d.direction === 'output');
@@ -82,6 +185,34 @@ export function SettingsWorkspace({
           Configure real-time audio devices, window compositor effects, autonomous AI security tiers, and mastering presets.
         </p>
       </div>
+
+      {/* Pending Client Approval Banner */}
+      {pendingApproval && (
+        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-4 animate-in fade-in duration-200">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+            <div>
+              <div className="font-semibold text-amber-200 text-sm">
+                AI Client Connection Request: <span className="font-mono text-cyan-300">"{pendingApproval}"</span>
+              </div>
+              <div className="text-xs text-slate-300">
+                A local agent authenticated with your session token and requests attachment to this workspace.
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button variant="secondary" size="sm" onClick={() => handleApproval('deny')}>
+              Deny
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => handleApproval('session')}>
+              Approve This Session
+            </Button>
+            <Button variant="primary" size="sm" onClick={() => handleApproval('always')}>
+              Always Approve
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Audio Hardware & ALSA Card */}
@@ -173,18 +304,60 @@ export function SettingsWorkspace({
         </Card>
 
         {/* AI Control & MCP Tiers Card */}
-        <Card title="AI Agent Control & Security" subtitle="Model Context Protocol authorization boundaries">
+        <Card title="AI Agent Control & Security" subtitle="Model Context Protocol (MCP) live socket host">
           <div className="space-y-4 text-xs">
+            {/* Status & Toggle Header */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-slate-950/80 border border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div
+                  className={`w-2.5 h-2.5 rounded-full ${
+                    aiStatus?.enabled ? 'bg-emerald-400 shadow-sm shadow-emerald-400/50 animate-pulse' : 'bg-slate-600'
+                  }`}
+                />
+                <div>
+                  <div className="font-semibold text-slate-200 flex items-center gap-2">
+                    <span>MCP Attach Host</span>
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded font-mono font-medium ${
+                        aiStatus?.enabled
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                          : 'bg-slate-800 text-slate-400 border border-white/10'
+                      }`}
+                    >
+                      {aiStatus?.enabled ? 'ACTIVE' : 'STANDBY'}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-400 font-mono mt-0.5 truncate max-w-xs">
+                    {aiStatus?.enabled
+                      ? aiStatus.socket_path || '$XDG_RUNTIME_DIR/alp/control.sock'
+                      : 'Unix socket standby'}
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                variant={aiStatus?.enabled ? 'danger' : 'secondary'}
+                size="sm"
+                onClick={handleToggleAi}
+              >
+                {aiStatus?.enabled ? 'Stop MCP' : 'Allow MCP'}
+              </Button>
+            </div>
+
+            {/* Permission Tier Selector */}
             <div>
-              <label className="block text-slate-400 mb-1.5 font-medium">Permission Tier</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-slate-400 font-medium">Permission Tier</label>
+                <span className="text-slate-500 text-[11px]">Enforced on all tool calls</span>
+              </div>
               <div className="grid grid-cols-3 gap-2">
-                {(['observe', 'edit', 'automate'] as const).map((tier) => (
+                {(['observe', 'edit', 'export'] as const).map((tier) => (
                   <button
                     key={tier}
                     type="button"
-                    onClick={() => setAiTier(tier)}
+                    onClick={() => handleTierChange(tier)}
                     className={`py-2 px-3 rounded-lg font-medium text-center capitalize border transition-all ${
-                      aiTier === tier
+                      aiStatus?.tier === tier
                         ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 shadow-sm shadow-cyan-500/20'
                         : 'bg-slate-900 text-slate-400 border-white/10 hover:text-slate-200'
                     }`}
@@ -193,14 +366,79 @@ export function SettingsWorkspace({
                   </button>
                 ))}
               </div>
+              <p className="text-[11px] text-slate-400 mt-1.5 italic">
+                {aiStatus?.tier === 'observe' && 'Observe: attached AI can read project metadata and tracks (read-only).'}
+                {aiStatus?.tier === 'edit' && 'Edit: full MCP tool catalog edits live project; commits share one undo entry.'}
+                {aiStatus?.tier === 'export' && 'Export: attached AI may also master and render audio into the project sandbox.'}
+              </p>
             </div>
 
-            <div className="p-3 rounded-lg bg-slate-950/80 border border-white/10 space-y-2">
+            {/* Live Socket Transport Details */}
+            {aiStatus?.enabled && (
+              <div className="space-y-2 p-3 rounded-lg bg-slate-950/80 border border-white/10 font-mono text-[11px]">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Session Token:</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-300 truncate max-w-[140px]">
+                      {aiStatus.token ? `${aiStatus.token.slice(0, 16)}...` : 'None'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleCopyToken}
+                      aria-label="Copy session token"
+                      className="p-1 rounded hover:bg-white/10 text-cyan-400 transition-colors"
+                      title="Copy full token"
+                    >
+                      {copiedToken ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-1 border-t border-white/5">
+                  <span className="text-slate-400">CLI Attach:</span>
+                  <button
+                    type="button"
+                    onClick={handleCopyCommand}
+                    className="flex items-center gap-1 text-cyan-300 hover:text-cyan-200 text-[10px] underline"
+                  >
+                    <Terminal className="w-3 h-3" />
+                    <span>{copiedCmd ? 'Command Copied!' : 'Copy Shell Command'}</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[10px]">
+                  <span className="text-slate-400">Commits / Latency:</span>
+                  <span className="text-slate-300">
+                    {aiStatus.commits} commits · {aiStatus.last_commit_ms != null ? `${aiStatus.last_commit_ms} ms latest` : 'no edits yet'} (max {aiStatus.max_commit_ms} ms)
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Safety & Undo Controls */}
+            <div className="flex items-center justify-between pt-2 border-t border-white/5">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleUndoAi}
+                leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
+              >
+                Undo Last AI Edit
+              </Button>
+              {undoNotice && (
+                <span className="text-[11px] text-cyan-400 font-mono animate-in fade-in">
+                  {undoNotice}
+                </span>
+              )}
+            </div>
+
+            {/* Invariant Highlights */}
+            <div className="p-3 rounded-lg bg-slate-950/80 border border-white/10 space-y-1.5">
               <div className="flex items-center gap-2 text-slate-200 font-medium">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
                 <span>Active Protection Invariants</span>
               </div>
-              <ul className="text-[11px] text-slate-400 space-y-1 list-disc list-inside">
+              <ul className="text-[11px] text-slate-400 space-y-0.5 list-disc list-inside">
                 <li>Voice cloning consent gate cannot be bypassed by automated agents.</li>
                 <li>Revision snapshots enforce single-undo checkpoints for batch operations.</li>
                 <li>File writes restricted strictly to project sandbox paths.</li>
@@ -232,6 +470,50 @@ export function SettingsWorkspace({
         </Card>
       </div>
 
+      {/* AI Activity Audit Trail */}
+      <Card
+        title="AI Agent Activity Audit Log"
+        subtitle="Real-time log of autonomous actions, tool dispatches, and undo checkpoints"
+      >
+        <div className="space-y-2 text-xs">
+          {activityLogs.length === 0 ? (
+            <div className="p-6 text-center text-slate-500 italic">No agent activity recorded yet.</div>
+          ) : (
+            <div className="max-h-48 overflow-y-auto space-y-1 pr-1 font-mono text-[11px]">
+              {activityLogs.map((log, idx) => (
+                <div
+                  key={`${log.timestamp}-${idx}`}
+                  className="p-2 rounded bg-slate-950/60 border border-white/5 flex items-center justify-between gap-3"
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <span className="text-slate-500 text-[10px]">{log.timestamp}</span>
+                    <span className="text-cyan-400 font-semibold">{log.client_id}</span>
+                    <span className="text-slate-400">›</span>
+                    <span className="text-slate-200 font-medium">{log.operation}</span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {log.queue_to_commit_ms != null && (
+                      <span className="text-slate-500 text-[10px]">{log.queue_to_commit_ms} ms</span>
+                    )}
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                        log.committed
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                          : log.outcome.startsWith('refused')
+                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                          : 'bg-slate-800 text-slate-400'
+                      }`}
+                    >
+                      {log.outcome}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Card>
+
       {/* Delivery Export Presets Card */}
       <Card title="Delivery & Export Presets" subtitle="Loudness-calibrated export workflows">
         <div className="space-y-3 text-xs">
@@ -261,9 +543,8 @@ export function SettingsWorkspace({
               Voice-over (-24 LUFS)
             </Button>
           </div>
-
           {exportNotice && (
-            <div className="p-2.5 rounded-lg bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 text-xs font-mono animate-fade-in">
+            <div className="p-2.5 rounded-lg bg-cyan-950/40 border border-cyan-500/30 text-cyan-300 font-mono text-[11px] animate-in fade-in">
               {exportNotice}
             </div>
           )}

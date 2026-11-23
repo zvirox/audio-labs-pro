@@ -8,6 +8,7 @@ BUILD_DIR="${ROOT_DIR}/target/appimage"
 APP_DIR="${BUILD_DIR}/AppDir"
 
 echo "== [1/4] Building release binaries =="
+(cd "${ROOT_DIR}/frontend" && npm run build)
 cargo build --release --workspace
 
 echo "== [2/4] Assembling AppDir structure =="
@@ -19,7 +20,7 @@ mkdir -p "${APP_DIR}/usr/bin" \
          "${APP_DIR}/usr/share/icons/hicolor"
 
 # Copy binaries
-cp "${ROOT_DIR}/target/release/alp-ui" "${APP_DIR}/usr/bin/audio-labs-pro"
+cp "${ROOT_DIR}/target/release/alp-desktop" "${APP_DIR}/usr/bin/audio-labs-pro"
 cp "${ROOT_DIR}/target/release/alp-cli" "${APP_DIR}/usr/bin/alp-cli"
 cp "${ROOT_DIR}/target/release/alp-infer" "${APP_DIR}/usr/bin/alp-infer"
 chmod +x "${APP_DIR}/usr/bin/"*

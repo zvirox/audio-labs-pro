@@ -12,7 +12,7 @@ bash scripts/check-docs.sh
 bash scripts/check-ui.sh
 
 echo "== [2/6] Building release binaries =="
-cargo build --release --bin alp-cli --bin alp-infer --bin alp-ui
+cargo build --release --bin alp-cli --bin alp-infer --bin alp-desktop
 
 echo "== [3/6] Validating Linux desktop integration and metadata =="
 DESKTOP_FILE="packaging/desktop/io.github.zvirox.AudioLabsPro.desktop"
