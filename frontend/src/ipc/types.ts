@@ -220,3 +220,5 @@ export interface StoryScript {
   chapter: number;
   lines: StoryLine[];
 }
+
+export * from '../timeline/types';

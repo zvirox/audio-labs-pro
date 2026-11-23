@@ -12,3 +12,4 @@ export * from './GenerateWorkspace';
 export * from './EffectsWorkspace';
 export * from './CapturesWorkspace';
 export * from './StoriesWorkspace';
+export * from './MultitrackWorkspace';

@@ -4,7 +4,6 @@ import {
   Play,
   Radio,
   RefreshCw,
-  Layers,
 } from 'lucide-react';
 
 import { PrimaryRail, WORKSPACE_LIST } from './layout/PrimaryRail';
@@ -31,6 +30,7 @@ import {
   EffectsWorkspace,
   CapturesWorkspace,
   StoriesWorkspace,
+  MultitrackWorkspace,
 } from './workspaces';
 
 import {
@@ -408,7 +408,11 @@ export default function App() {
           {/* Main Canvas Surface */}
           <main className="flex-1 relative overflow-hidden">
             {viewMode === 'workspace' ? (
-              <div className="h-full w-full overflow-y-auto p-4">
+              <div
+                className={`h-full w-full overflow-hidden ${
+                  activeWorkspace === 'multitrack' ? '' : 'overflow-y-auto p-4'
+                }`}
+              >
                 {renderActiveWorkspace(
                   activeWorkspace,
                   activeSubtab,
@@ -416,7 +420,7 @@ export default function App() {
                   handleToggleTheme,
                   reduceMotion,
                   () => setReduceMotion(!reduceMotion),
-                  transport.seek
+                  transport
                 )}
               </div>
             ) : (
@@ -504,7 +508,7 @@ function renderActiveWorkspace(
   onToggleTheme: () => void,
   reduceMotion: boolean,
   onToggleReduceMotion: () => void,
-  onSeek: (secs: number) => void
+  transport: ReturnType<typeof useTransport>
 ) {
   switch (workspace) {
     case 'settings':
@@ -536,7 +540,7 @@ function renderActiveWorkspace(
       return <StoriesWorkspace />;
 
     case 'tools':
-      return <CapturesWorkspace onSeek={onSeek} />;
+      return <CapturesWorkspace onSeek={transport.seek} />;
 
     case 'dubbing':
       return <GenerateWorkspace />;
@@ -544,17 +548,12 @@ function renderActiveWorkspace(
     case 'multitrack':
     default:
       return (
-        <div className="h-full flex flex-col items-center justify-center text-center p-8 text-[var(--color-fg-muted)] space-y-3">
-          <div className="p-4 rounded-full bg-[var(--color-surface-2)] border border-[var(--color-border)]">
-            <Layers className="w-8 h-8 text-[var(--color-accent)] animate-pulse" />
-          </div>
-          <div className="text-base font-semibold text-[var(--color-fg)]">
-            Multitrack Timeline & Mixer Canvas
-          </div>
-          <p className="max-w-md text-xs text-[var(--color-fg-subtle)]">
-            Non-linear multitrack arranger, clip envelopes, and zero-latency mixing. Switch to Panels view to arrange floating timeline and mixer windows.
-          </p>
-        </div>
+        <MultitrackWorkspace
+          currentTimeSecs={transport.positionSecs}
+          isPlaying={transport.playing}
+          onSeek={transport.seek}
+          onTogglePlay={transport.togglePlay}
+        />
       );
   }
 }
