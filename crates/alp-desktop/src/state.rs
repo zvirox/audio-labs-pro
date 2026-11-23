@@ -5,7 +5,7 @@
 
 use std::sync::{Arc, Mutex};
 
-use alp_session::{EditSession, PersistedWorkspace};
+use alp_session::{EditSession, PersistedWorkspace, Size};
 
 use crate::glass::GlassReport;
 
@@ -18,17 +18,13 @@ pub struct AppState {
 }
 
 impl AppState {
-    /// Create a new application state with demo session and default workspace.
+    /// Create a new application state with demo session and persisted workspace.
     #[must_use]
     pub fn new_demo() -> Self {
+        let workspace = PersistedWorkspace::load_or_default(Size::new(1280.0, 800.0));
         Self {
             session: Arc::new(Mutex::new(EditSession::demo())),
-            workspace: Arc::new(Mutex::new(PersistedWorkspace::new(
-                "dark",
-                false,
-                "compositor_blur",
-                Vec::new(),
-            ))),
+            workspace: Arc::new(Mutex::new(workspace)),
             glass: Arc::new(Mutex::new(GlassReport::pending())),
         }
     }

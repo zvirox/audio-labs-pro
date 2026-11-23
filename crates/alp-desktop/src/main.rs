@@ -10,14 +10,15 @@ mod state;
 use tauri::Manager;
 
 use crate::commands::{
-    get_glass_report, get_project_summary, get_workspace_state, trigger_demo_edit,
+    get_glass_report, get_project_summary, get_workspace_state, reset_workspace_layout,
+    save_workspace_state, trigger_demo_edit,
 };
 use crate::glass::probe;
 use crate::state::AppState;
 
 fn main() {
     tracing_subscriber::fmt::init();
-    tracing::info!("Starting Audio Labs Pro desktop shell (Phase M2)...");
+    tracing::info!("Starting Audio Labs Pro desktop shell (Phase M3)...");
 
     let app_state = AppState::new_demo();
     let state_for_setup = app_state.clone();
@@ -39,6 +40,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             get_project_summary,
             get_workspace_state,
+            save_workspace_state,
+            reset_workspace_layout,
             get_glass_report,
             trigger_demo_edit,
         ])

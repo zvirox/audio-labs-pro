@@ -6,7 +6,7 @@
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, State};
 
-use alp_session::{PersistedWorkspace, ProjectSummary};
+use alp_session::{PanelManager, PersistedWorkspace, ProjectSummary, Size};
 
 use crate::glass::GlassReport;
 use crate::state::AppState;
@@ -39,6 +39,34 @@ pub fn get_workspace_state(state: State<'_, AppState>) -> Result<PersistedWorksp
     Ok(workspace.clone())
 }
 
+/// Save updated workspace preferences and panel configuration to disk.
+#[tauri::command]
+pub fn save_workspace_state(
+    workspace: PersistedWorkspace,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    workspace.save_default()?;
+    let mut lock = state
+        .workspace
+        .lock()
+        .map_err(|e| format!("workspace lock poisoned: {e}"))?;
+    *lock = workspace;
+    Ok(())
+}
+
+/// Reset panels to default arrangement and persist to disk.
+#[tauri::command]
+pub fn reset_workspace_layout(state: State<'_, AppState>) -> Result<PersistedWorkspace, String> {
+    let mut lock = state
+        .workspace
+        .lock()
+        .map_err(|e| format!("workspace lock poisoned: {e}"))?;
+    let pm = PanelManager::default_for(Size::new(1280.0, 800.0));
+    lock.panels = pm.panels().to_vec();
+    lock.save_default()?;
+    Ok(lock.clone())
+}
+
 /// Retrieve the active glass compositor inspection report.
 #[tauri::command]
 pub fn get_glass_report(state: State<'_, AppState>) -> Result<GlassReport, String> {
@@ -61,7 +89,6 @@ pub fn trigger_demo_edit(
         .lock()
         .map_err(|e| format!("session lock poisoned: {e}"))?;
 
-    // In M2 demo session, simulate an undoable edit operation
     let revision = session.revision() + 1;
     let payload = SessionRevisionPayload {
         revision,
@@ -69,7 +96,6 @@ pub fn trigger_demo_edit(
         reason: action,
     };
 
-    // Emit event across Tauri event bridge to all listening webviews
     app.emit("session_revision_changed", &payload)
         .map_err(|e| format!("failed to emit session_revision_changed: {e}"))?;
 

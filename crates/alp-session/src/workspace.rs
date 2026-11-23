@@ -93,6 +93,31 @@ impl PersistedWorkspace {
         let bytes = serde_json::to_vec_pretty(self)?;
         write_atomic(path, &bytes)
     }
+
+    /// Standard application workspace path from the system configuration directory.
+    pub fn default_path() -> Result<PathBuf, String> {
+        let dirs = AppDirs::discover().map_err(|e| e.to_string())?;
+        Ok(Self::path(&dirs))
+    }
+
+    /// Load the persisted workspace from the default configuration path,
+    /// or return a default layout with `size` bounds.
+    #[must_use]
+    pub fn load_or_default(size: impl Into<crate::panels::Size>) -> Self {
+        if let Ok(path) = Self::default_path() {
+            if let Some(loaded) = Self::load(&path) {
+                return loaded;
+            }
+        }
+        let pm = crate::panels::PanelManager::default_for(size);
+        Self::new("dark", false, "compositor_blur", pm.panels().to_vec())
+    }
+
+    /// Save the workspace to the default configuration path.
+    pub fn save_default(&self) -> Result<(), String> {
+        let path = Self::default_path()?;
+        self.save(&path).map_err(|e| e.to_string())
+    }
 }
 
 #[cfg(test)]
