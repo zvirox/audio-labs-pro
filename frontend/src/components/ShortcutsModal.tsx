@@ -78,7 +78,7 @@ export function ShortcutsModal({ open, onClose }: ShortcutsModalProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {SHORTCUT_CATEGORIES.map((cat) => (
           <div key={cat.title} className="space-y-2.5">
-            <h3 className="text-xs font-bold text-[var(--color-accent)] uppercase tracking-wider">
+            <h3 className="text-xs font-medium text-[var(--color-accent)]">
               {cat.title}
             </h3>
             <div className="space-y-1.5">
@@ -88,7 +88,7 @@ export function ShortcutsModal({ open, onClose }: ShortcutsModalProps) {
                   className="flex items-center justify-between p-2 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] text-xs"
                 >
                   <span className="text-[var(--color-fg-muted)]">{item.desc}</span>
-                  <kbd className="px-2 py-0.5 rounded bg-[var(--color-surface-3)] font-mono text-[10px] text-[var(--color-fg)] font-semibold border border-[var(--color-border)]">
+                  <kbd className="px-2 py-0.5 rounded bg-[var(--color-surface-3)] font-mono text-[10px] text-[var(--color-fg)] font-medium border border-[var(--color-border)]">
                     {item.key}
                   </kbd>
                 </div>

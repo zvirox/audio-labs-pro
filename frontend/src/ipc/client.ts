@@ -533,7 +533,7 @@ export async function getModelCatalogue(): Promise<ModelItem[]> {
 let mockVoiceProfiles: VoiceProfile[] = [
   {
     id: 'voice-linus',
-    name: 'Linus Sebastian',
+    name: 'Marcus Reed',
     language: 'English',
     tags: ['tech', 'energetic', 'clear'],
     kind: 'cloned',
@@ -542,7 +542,7 @@ let mockVoiceProfiles: VoiceProfile[] = [
     energy: 1.1,
     emotion: 'warm',
     consent: {
-      speaker_name: 'Linus Sebastian',
+      speaker_name: 'Marcus Reed',
       attested_by: 'User (Producer)',
       timestamp: Date.now() - 86400000,
       statement: 'I certify that the speaker provided explicit consent to generate this clone.',
@@ -723,18 +723,18 @@ export async function getCaptures(): Promise<CaptureTake[]> {
 
 export async function getTranscript(): Promise<TranscriptWord[]> {
   return [
-    { word: 'Welcome', start_secs: 0.2, end_secs: 0.7, confidence: 0.99, speaker: 'Linus' },
-    { word: 'to', start_secs: 0.75, end_secs: 0.9, confidence: 0.98, speaker: 'Linus' },
-    { word: 'Audio', start_secs: 0.95, end_secs: 1.4, confidence: 0.99, speaker: 'Linus' },
-    { word: 'Labs', start_secs: 1.45, end_secs: 1.85, confidence: 0.99, speaker: 'Linus' },
-    { word: 'Pro,', start_secs: 1.9, end_secs: 2.3, confidence: 0.97, speaker: 'Linus' },
-    { word: 'the', start_secs: 2.6, end_secs: 2.8, confidence: 0.96, speaker: 'Linus' },
-    { word: 'open-source', start_secs: 2.85, end_secs: 3.6, confidence: 0.98, speaker: 'Linus' },
-    { word: 'studio', start_secs: 3.65, end_secs: 4.1, confidence: 0.99, speaker: 'Linus' },
-    { word: 'workstation', start_secs: 4.15, end_secs: 4.9, confidence: 0.98, speaker: 'Linus' },
-    { word: 'engineered', start_secs: 5.1, end_secs: 5.8, confidence: 0.99, speaker: 'Linus' },
-    { word: 'for', start_secs: 5.85, end_secs: 6.0, confidence: 0.99, speaker: 'Linus' },
-    { word: 'Linux.', start_secs: 6.05, end_secs: 6.6, confidence: 0.99, speaker: 'Linus' },
+    { word: 'Welcome', start_secs: 0.2, end_secs: 0.7, confidence: 0.99, speaker: 'Marcus' },
+    { word: 'to', start_secs: 0.75, end_secs: 0.9, confidence: 0.98, speaker: 'Marcus' },
+    { word: 'Audio', start_secs: 0.95, end_secs: 1.4, confidence: 0.99, speaker: 'Marcus' },
+    { word: 'Labs', start_secs: 1.45, end_secs: 1.85, confidence: 0.99, speaker: 'Marcus' },
+    { word: 'Pro,', start_secs: 1.9, end_secs: 2.3, confidence: 0.97, speaker: 'Marcus' },
+    { word: 'the', start_secs: 2.6, end_secs: 2.8, confidence: 0.96, speaker: 'Marcus' },
+    { word: 'open-source', start_secs: 2.85, end_secs: 3.6, confidence: 0.98, speaker: 'Marcus' },
+    { word: 'studio', start_secs: 3.65, end_secs: 4.1, confidence: 0.99, speaker: 'Marcus' },
+    { word: 'workstation', start_secs: 4.15, end_secs: 4.9, confidence: 0.98, speaker: 'Marcus' },
+    { word: 'engineered', start_secs: 5.1, end_secs: 5.8, confidence: 0.99, speaker: 'Marcus' },
+    { word: 'for', start_secs: 5.85, end_secs: 6.0, confidence: 0.99, speaker: 'Marcus' },
+    { word: 'Linux.', start_secs: 6.05, end_secs: 6.6, confidence: 0.99, speaker: 'Marcus' },
   ];
 }
 
@@ -754,7 +754,7 @@ export async function getStories(): Promise<StoryScript[]> {
         },
         {
           id: 'l-02',
-          speaker: 'Linus Sebastian',
+          speaker: 'Marcus Reed',
           text: 'We are finally building studio audio tools that do not rely on cloud servers or closed silos.',
           status: 'ready',
           take_duration: 6.2,

@@ -60,7 +60,7 @@ export function Dialog({
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)]">
           <div>
-            <h2 id="dialog-title" className="text-sm font-bold text-[var(--color-fg)]">
+            <h2 id="dialog-title" className="text-sm font-medium text-[var(--color-fg)]">
               {title}
             </h2>
             {description && (
@@ -85,7 +85,7 @@ export function Dialog({
 
         {/* Optional footer */}
         {footer && (
-          <div className="flex items-center justify-end gap-2 p-3.5 bg-[var(--color-surface-2)] border-t border-[var(--color-border)]">
+          <div className="flex items-center justify-end gap-2 p-4 bg-[var(--color-surface-2)] border-t border-[var(--color-border)]">
             {footer}
           </div>
         )}

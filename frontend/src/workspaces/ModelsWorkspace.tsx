@@ -44,11 +44,11 @@ export function ModelsWorkspace() {
     <div className="space-y-6 max-w-6xl mx-auto p-2 pb-12 select-none">
       {/* Workspace Header */}
       <div>
-        <h2 className="text-xl font-bold tracking-tight text-slate-100 flex items-center gap-2">
-          <Brain className="w-5 h-5 text-purple-400" />
+        <h2 className="text-xl font-medium text-[var(--color-fg)] flex items-center gap-2">
+          <Brain className="w-4 h-4 text-[var(--color-fg-muted)]" />
           Neural Models & Hardware Engine
         </h2>
-        <p className="text-xs text-slate-400 mt-1">
+        <p className="text-xs text-[var(--color-fg-muted)] mt-1">
           Manage local AI speech models, offline verification, SPDX licenses, and on-device hardware accelerators.
         </p>
       </div>
@@ -61,33 +61,33 @@ export function ModelsWorkspace() {
               {models.map((model) => (
                 <div
                   key={model.id}
-                  className="p-3.5 rounded-xl bg-slate-900/80 border border-white/10 hover:border-white/20 transition-all space-y-2 text-xs"
+                  className="p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] hover:border-white/20 transition-[color,background-color,border-color,opacity,transform] space-y-2 text-xs"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-slate-200 text-sm">{model.name}</span>
+                      <span className="font-medium text-[var(--color-fg)] text-sm">{model.name}</span>
                       {model.is_builtin && (
-                        <span className="px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-mono text-[10px]">
+                        <span className="px-1.5 py-0.5 rounded bg-[var(--color-accent)]/20 text-[var(--color-accent)] border border-[var(--color-border-strong)] font-mono text-[10px]">
                           Built-in
                         </span>
                       )}
                     </div>
                     <span
                       className={`px-2 py-0.5 rounded font-mono text-[11px] font-medium border ${
-                        model.status === 'verified'
-                          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                          : model.status === 'installed'
-                          ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30'
-                          : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-                      }`}
+ model.status === 'verified'
+ ? 'bg-emerald-500/20 text-[var(--color-fg-muted)] border-[var(--color-border-strong)]'
+ : model.status === 'installed'
+ ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)] border-[var(--color-border-strong)]'
+ : 'bg-amber-500/20 text-[var(--color-fg-muted)] border-amber-500/30'
+ }`}
                     >
                       {model.status.toUpperCase()}
                     </span>
                   </div>
 
-                  <p className="text-slate-400 text-xs">{model.description}</p>
+                  <p className="text-[var(--color-fg-muted)] text-xs">{model.description}</p>
 
-                  <div className="pt-2 border-t border-white/5 flex flex-wrap items-center justify-between gap-2 font-mono text-[11px] text-slate-400">
+                  <div className="pt-2 border-t border-[var(--color-border)] flex flex-wrap items-center justify-between gap-2 font-mono text-[11px] text-[var(--color-fg-muted)]">
                     <div className="flex items-center gap-3">
                       <span>Size: {model.size_mb} MB</span>
                       <span>License: {model.spdx}</span>
@@ -101,9 +101,9 @@ export function ModelsWorkspace() {
                         disabled={verifyingId === model.id}
                         leftIcon={
                           verifyingId === model.id ? (
-                            <RefreshCw className="w-3 h-3 animate-spin" />
+                            <RefreshCw className="w-4 h-4 animate-spin" />
                           ) : (
-                            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                            <CheckCircle2 className="w-4 h-4 text-[var(--color-fg-muted)]" />
                           )
                         }
                       >
@@ -124,19 +124,19 @@ export function ModelsWorkspace() {
             <div className="space-y-4 text-xs">
               <div className="flex items-center justify-between py-1">
                 <div>
-                  <div className="font-semibold text-slate-200">Offline Enforcement</div>
-                  <div className="text-slate-400 text-[11px]">Strictly zero outbound web traffic</div>
+                  <div className="font-medium text-[var(--color-fg)]">Offline Enforcement</div>
+                  <div className="text-[var(--color-fg-muted)] text-[11px]">Strictly zero outbound web traffic</div>
                 </div>
                 <Toggle checked={offlineOnly} onChange={setOfflineOnly} label="" />
               </div>
 
-              <div className="p-3 rounded-lg bg-slate-950/80 border border-white/10 space-y-2">
-                <div className="flex items-center gap-1.5 text-slate-300 font-medium">
-                  <Shield className="w-3.5 h-3.5 text-purple-400" />
+              <div className="p-3 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)] space-y-2">
+                <div className="flex items-center gap-1.5 text-[var(--color-fg-muted)] font-medium">
+                  <Shield className="w-4 h-4 text-[var(--color-fg-muted)]" />
                   <span>Integrity Safeguards</span>
                 </div>
-                <p className="text-slate-400 text-[11px] leading-relaxed">
-                  Audio Labs Pro does not fetch neural weights silently. Models must be explicitly placed in the storage folder and audited with SHA-256 hashes via <code className="text-cyan-400">alp-cli model verify</code>.
+                <p className="text-[var(--color-fg-muted)] text-[11px] leading-relaxed">
+                  Audio Labs Pro does not fetch neural weights silently. Models must be explicitly placed in the storage folder and audited with SHA-256 hashes via <code className="text-[var(--color-accent)]">alp-cli model verify</code>.
                 </p>
               </div>
             </div>
@@ -146,25 +146,25 @@ export function ModelsWorkspace() {
           <Card title="Hardware Telemetry" subtitle="On-device inference execution">
             <div className="space-y-3 text-xs font-mono">
               <div className="flex items-center justify-between">
-                <span className="text-slate-400 flex items-center gap-1.5">
-                  <Cpu className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="text-[var(--color-fg-muted)] flex items-center gap-1.5">
+                  <Cpu className="w-4 h-4 text-[var(--color-accent)]" />
                   CPU Host:
                 </span>
-                <span className="text-slate-200">x86_64 AVX2 / FMA</span>
+                <span className="text-[var(--color-fg)]">x86_64 AVX2 / FMA</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-400 flex items-center gap-1.5">
-                  <HardDrive className="w-3.5 h-3.5 text-purple-400" />
+                <span className="text-[var(--color-fg-muted)] flex items-center gap-1.5">
+                  <HardDrive className="w-4 h-4 text-[var(--color-fg-muted)]" />
                   Inference RAM:
                 </span>
-                <span className="text-slate-200">528 MB allocated</span>
+                <span className="text-[var(--color-fg)]">528 MB allocated</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-400 flex items-center gap-1.5">
-                  <Download className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="text-[var(--color-fg-muted)] flex items-center gap-1.5">
+                  <Download className="w-4 h-4 text-[var(--color-fg-muted)]" />
                   Acceleration:
                 </span>
-                <span className="text-emerald-400 font-semibold">Vulkan Engine Active</span>
+                <span className="text-[var(--color-fg-muted)] font-medium">Vulkan Engine Active</span>
               </div>
             </div>
           </Card>

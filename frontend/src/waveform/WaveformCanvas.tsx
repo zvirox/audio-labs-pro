@@ -372,7 +372,7 @@ export function WaveformCanvas({
   };
 
   return (
-    <div ref={containerRef} className="relative w-full flex flex-col select-none bg-slate-950/80 rounded border border-white/10 overflow-hidden">
+    <div ref={containerRef} className="relative w-full flex flex-col select-none bg-[var(--color-bg-solid)] rounded border border-[var(--color-border)] overflow-hidden">
       {/* Waveform Canvas */}
       <canvas
         ref={canvasRef}
@@ -388,15 +388,15 @@ export function WaveformCanvas({
 
       {/* Floating Viewport Telemetry Overlay */}
       <div className="absolute top-2 right-3 flex items-center gap-2 pointer-events-none text-xs font-mono">
-        <span className="px-1.5 py-0.5 rounded bg-black/60 text-slate-300 border border-white/10">
+        <span className="px-1.5 py-0.5 rounded bg-black/60 text-[var(--color-fg)] border border-[var(--color-border)]">
           Level: {activeLevel?.bucket_samples} spl ({peaks.levels.indexOf(activeLevel)})
         </span>
         {isPlaying && (
           <span
-            className={`px-1.5 py-0.5 rounded font-semibold border ${
+            className={`px-1.5 py-0.5 rounded font-medium border ${
               fps >= 55
-                ? 'bg-emerald-950/80 text-emerald-400 border-emerald-500/30'
-                : 'bg-amber-950/80 text-amber-400 border-amber-500/30'
+                ? 'bg-[var(--color-surface-2)] text-[var(--color-fg-muted)] border-[var(--color-border-strong)]'
+                : 'bg-amber-950/80 text-[var(--color-fg-muted)] border-amber-500/30'
             }`}
           >
             {fps} FPS

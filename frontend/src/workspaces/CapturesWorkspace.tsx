@@ -88,11 +88,11 @@ export function CapturesWorkspace({ onSeek }: CapturesWorkspaceProps) {
     <div className="space-y-6 max-w-6xl mx-auto p-2 pb-12 select-none">
       {/* Workspace Header */}
       <div>
-        <h2 className="text-xl font-bold tracking-tight text-slate-100 flex items-center gap-2">
-          <Mic className="w-5 h-5 text-red-400" />
+        <h2 className="text-xl font-medium text-[var(--color-fg)] flex items-center gap-2">
+          <Mic className="w-4 h-4 text-red-400" />
           Captures & Transcript Editor
         </h2>
-        <p className="text-xs text-slate-400 mt-1">
+        <p className="text-xs text-[var(--color-fg-muted)] mt-1">
           Record vocal takes with real-time level auditing, speech-to-text transcription, and word-level non-destructive editing.
         </p>
       </div>
@@ -104,12 +104,12 @@ export function CapturesWorkspace({ onSeek }: CapturesWorkspaceProps) {
           <Card title="Live Audio Capture" subtitle="ALSA / PipeWire direct hardware input">
             <div className="space-y-4 text-xs">
               {/* Record Action & Timer */}
-              <div className="p-4 rounded-xl bg-slate-900 border border-white/10 flex items-center justify-between">
+              <div className="p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] flex items-center justify-between">
                 <div className="space-y-1">
-                  <div className="text-[11px] font-mono uppercase text-slate-400">
+                  <div className="text-[11px] font-mono text-[var(--color-fg-muted)]">
                     {isRecording ? 'Recording Active' : 'Input Standby'}
                   </div>
-                  <div className="text-2xl font-bold font-mono text-slate-100">
+                  <div className="text-2xl font-medium font-mono text-[var(--color-fg)]">
                     {Math.floor(recordSecs / 60).toString().padStart(2, '0')}:
                     {Math.floor(recordSecs % 60).toString().padStart(2, '0')}.
                     {Math.floor((recordSecs % 1) * 10).toString()}
@@ -134,7 +134,7 @@ export function CapturesWorkspace({ onSeek }: CapturesWorkspaceProps) {
 
               {/* Input Meter */}
               <div className="space-y-1.5">
-                <div className="flex justify-between text-[11px] font-mono text-slate-400">
+                <div className="flex justify-between text-[11px] font-mono text-[var(--color-fg-muted)]">
                   <span>Input Gain Meter</span>
                   <span>{isRecording ? '-1.2 dBFS' : '-inf'}</span>
                 </div>
@@ -142,13 +142,13 @@ export function CapturesWorkspace({ onSeek }: CapturesWorkspaceProps) {
               </div>
 
               {/* Monitor & Punch-In Toggles */}
-              <div className="pt-2 border-t border-white/5 space-y-2">
+              <div className="pt-2 border-t border-[var(--color-border)] space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-300">Software Input Monitoring</span>
+                  <span className="text-[var(--color-fg-muted)]">Software Input Monitoring</span>
                   <Toggle checked={monitor} onChange={setMonitor} label="" />
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-300">Punch-In Overwrite Mode</span>
+                  <span className="text-[var(--color-fg-muted)]">Punch-In Overwrite Mode</span>
                   <Toggle checked={punchIn} onChange={setPunchIn} label="" />
                 </div>
               </div>
@@ -161,20 +161,20 @@ export function CapturesWorkspace({ onSeek }: CapturesWorkspaceProps) {
               {takes.map((take) => (
                 <div
                   key={take.id}
-                  className="p-3 rounded-lg bg-slate-900/80 border border-white/10 hover:border-white/20 transition-all space-y-1.5"
+                  className="p-3 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] hover:border-white/20 transition-[color,background-color,border-color,opacity,transform] space-y-1.5"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-slate-200">{take.name}</span>
-                    <span className="font-mono text-[11px] text-cyan-400 font-bold">{take.duration_secs}s</span>
+                    <span className="font-medium text-[var(--color-fg)]">{take.name}</span>
+                    <span className="font-mono text-[11px] text-[var(--color-accent)] font-medium">{take.duration_secs}s</span>
                   </div>
 
-                  <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+                  <div className="flex items-center justify-between text-[11px] font-mono text-[var(--color-fg-muted)]">
                     <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-slate-500" />
+                      <Clock className="w-4 h-4 text-[var(--color-fg-muted)]" />
                       {take.timestamp}
                     </span>
-                    <span className="flex items-center gap-1 text-emerald-400">
-                      <CheckCircle2 className="w-3 h-3" />
+                    <span className="flex items-center gap-1 text-[var(--color-fg-muted)]">
+                      <CheckCircle2 className="w-4 h-4" />
                       Peak: {take.peak_db} dBFS
                     </span>
                   </div>
@@ -189,7 +189,7 @@ export function CapturesWorkspace({ onSeek }: CapturesWorkspaceProps) {
           <Card title="Interactive Word Transcript" subtitle="Sherpa-ONNX speech-to-text alignment with timeline click-to-seek">
             <div className="space-y-4 text-xs">
               {/* Word Chips Surface */}
-              <div className="p-4 rounded-xl bg-slate-900/90 border border-white/10 min-h-[220px] flex flex-wrap gap-2 items-center leading-loose">
+              <div className="p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] min-h-[220px] flex flex-wrap gap-2 items-center leading-loose">
                 {transcript.map((item, idx) => {
                   const isSelected = selectedWordIdx === idx;
 
@@ -198,11 +198,11 @@ export function CapturesWorkspace({ onSeek }: CapturesWorkspaceProps) {
                       key={`${item.word}-${idx}`}
                       type="button"
                       onClick={() => handleWordClick(item, idx)}
-                      className={`px-2 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1 border ${
-                        isSelected
-                          ? 'bg-cyan-500 text-slate-950 border-cyan-400 shadow-md shadow-cyan-500/30 scale-105'
-                          : 'bg-slate-800 text-slate-200 border-white/10 hover:bg-slate-700 hover:border-white/20'
-                      }`}
+                      className={`px-2 py-1 rounded-md text-xs font-medium transition-[color,background-color,border-color,opacity,transform] flex items-center gap-1 border ${
+ isSelected
+ ? 'bg-[var(--color-accent)] text-[var(--color-accent-fg)] border-[var(--color-border-strong)] shadow-md'
+ : 'bg-[var(--color-surface-2)] text-[var(--color-fg)] border-[var(--color-border)] hover:bg-[var(--color-surface-3)] hover:border-white/20'
+ }`}
                       title={`${item.start_secs}s - ${item.end_secs}s (${(item.confidence * 100).toFixed(0)}% conf)`}
                     >
                       <span>{item.word}</span>
@@ -216,12 +216,12 @@ export function CapturesWorkspace({ onSeek }: CapturesWorkspaceProps) {
 
               {/* Word Action Bar */}
               {selectedWordIdx !== null && transcript[selectedWordIdx] && (
-                <div className="p-3 rounded-lg bg-cyan-950/60 border border-cyan-500/30 flex items-center justify-between animate-fade-in">
+                <div className="p-3 rounded-lg bg-cyan-950/60 border border-[var(--color-border-strong)] flex items-center justify-between animate-fade-in">
                   <div className="space-y-0.5 font-mono text-[11px]">
-                    <span className="text-cyan-300 font-bold text-sm">
+                    <span className="text-[var(--color-accent)] font-medium text-sm">
                       &ldquo;{transcript[selectedWordIdx].word}&rdquo;
                     </span>
-                    <span className="text-slate-400 block">
+                    <span className="text-[var(--color-fg-muted)] block">
                       Range: {transcript[selectedWordIdx].start_secs}s – {transcript[selectedWordIdx].end_secs}s · Confidence: {(transcript[selectedWordIdx].confidence * 100).toFixed(1)}%
                     </span>
                   </div>
@@ -231,7 +231,7 @@ export function CapturesWorkspace({ onSeek }: CapturesWorkspaceProps) {
                       variant="danger"
                       size="xs"
                       onClick={() => handleDeleteWord(selectedWordIdx)}
-                      leftIcon={<Scissors className="w-3 h-3" />}
+                      leftIcon={<Scissors className="w-4 h-4" />}
                     >
                       Cut Word Segment
                     </Button>
@@ -239,8 +239,8 @@ export function CapturesWorkspace({ onSeek }: CapturesWorkspaceProps) {
                 </div>
               )}
 
-              <div className="p-3 rounded-lg bg-slate-950/80 border border-white/10 text-[11px] text-slate-400 space-y-1">
-                <span className="font-semibold text-slate-300 block">Non-Destructive Text Editing:</span>
+              <div className="p-3 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)] text-[11px] text-[var(--color-fg-muted)] space-y-1">
+                <span className="font-medium text-[var(--color-fg-muted)] block">Non-Destructive Text Editing:</span>
                 <p>
                   Clicking any word seeks the audio playhead directly to its start timestamp. Cutting words executes non-destructive range split and ripple edits in the session command stack.
                 </p>

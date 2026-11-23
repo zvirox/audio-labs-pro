@@ -5,6 +5,14 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+### Redesigned
+
+- **Full UI unslop pass** (direction: exact, nocturnal, instrument-like; ink control-room surfaces, one signal-teal accent, waveform and timecode as the moments). Across all eight screens: removed the seven per-workspace neon hues and colored glows/shadows, migrated ~193 hardcoded dark-only colors to the ink neutral ramp with three text roles, neutralized decorative icons and pulse/scale motion, normalized to a 4px spacing grid, and replaced hype/tracked/uppercase copy with plain sentence case.
+- The dashboard is now a quiet launcher with one featured Voice Studio tile carrying a real waveform; the floating-panel canvas lost its decorative watermark; meters keep their meaningful green-to-red signal gradient.
+- The demo cloned persona is now the fictional "Marcus Reed" instead of a real public figure.
+- Lighthouse accessibility on the dashboard: 1.0; zero uppercase-tracked labels, hover-scales, non-live pulses or `transition-all` utilities across all workspaces.
+
+
 ### Added
 
 - **Dashboard (Home) landing view.** The app now boots into a Dashboard that presents the

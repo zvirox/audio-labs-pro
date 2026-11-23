@@ -91,11 +91,11 @@ export function StoriesWorkspace() {
       {/* Workspace Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-slate-100 flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-purple-400" />
+          <h2 className="text-xl font-medium text-[var(--color-fg)] flex items-center gap-2">
+            <BookOpen className="w-4 h-4 text-[var(--color-fg-muted)]" />
             Stories & Script Narrator
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-[var(--color-fg-muted)] mt-1">
             Produce multi-character audiobook scripts, assign cast personas per dialogue line, and stitch takes directly onto the timeline.
           </p>
         </div>
@@ -105,7 +105,7 @@ export function StoriesWorkspace() {
             variant="secondary"
             size="sm"
             onClick={handleStitchTimeline}
-            leftIcon={<Layers className="w-4 h-4 text-cyan-400" />}
+            leftIcon={<Layers className="w-4 h-4 text-[var(--color-accent)]" />}
           >
             Stitch to Timeline
           </Button>
@@ -122,7 +122,7 @@ export function StoriesWorkspace() {
       </div>
 
       {stitchNotice && (
-        <div className="p-3 rounded-lg bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-xs font-mono flex items-center gap-2 animate-fade-in">
+        <div className="p-3 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border-strong)] text-[var(--color-fg-muted)] text-xs font-mono flex items-center gap-2 animate-fade-in">
           <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
           <span>{stitchNotice}</span>
         </div>
@@ -137,14 +137,14 @@ export function StoriesWorkspace() {
                 <div
                   key={story.id}
                   onClick={() => setActiveStoryId(story.id)}
-                  className={`p-3 rounded-xl border transition-all cursor-pointer space-y-1 ${
-                    story.id === activeStoryId
-                      ? 'bg-slate-900 border-purple-500/60 shadow-md shadow-purple-500/10'
-                      : 'bg-slate-950/60 border-white/5 hover:border-white/15'
-                  }`}
+                  className={`p-3 rounded-xl border transition-[color,background-color,border-color,opacity,transform] cursor-pointer space-y-1 ${
+ story.id === activeStoryId
+ ? 'bg-[var(--color-surface)] border-[var(--color-border-strong)] shadow-md'
+ : 'bg-[var(--color-bg)] border-[var(--color-border)] hover:border-white/15'
+ }`}
                 >
-                  <div className="font-semibold text-slate-200">{story.title}</div>
-                  <div className="text-[11px] font-mono text-slate-400">
+                  <div className="font-medium text-[var(--color-fg)]">{story.title}</div>
+                  <div className="text-[11px] font-mono text-[var(--color-fg-muted)]">
                     Chapter {story.chapter} · {story.lines.length} dialogue lines
                   </div>
                 </div>
@@ -165,36 +165,36 @@ export function StoriesWorkspace() {
                 {activeStory?.lines.map((line, idx) => (
                   <div
                     key={line.id}
-                    className="p-3 rounded-xl bg-slate-900/90 border border-white/10 space-y-2"
+                    className="p-3 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] space-y-2"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-slate-500 font-bold w-4">#{idx + 1}</span>
-                        <span className="font-semibold text-cyan-400">{line.speaker}</span>
+                        <span className="font-mono text-[var(--color-fg-muted)] font-medium w-4">#{idx + 1}</span>
+                        <span className="font-medium text-[var(--color-accent)]">{line.speaker}</span>
                       </div>
 
                       <span
-                        className={`px-2 py-0.5 rounded font-mono text-[10px] font-bold uppercase border ${
-                          line.status === 'ready'
-                            ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                            : line.status === 'rendering'
-                            ? 'bg-purple-500/20 text-purple-400 border-purple-500/30 animate-pulse'
-                            : 'bg-white/5 text-slate-400 border-white/10'
-                        }`}
+                        className={`px-2 py-0.5 rounded font-mono text-[10px] font-medium border ${
+ line.status === 'ready'
+ ? 'bg-emerald-500/20 text-[var(--color-fg-muted)] border-[var(--color-border-strong)]'
+ : line.status === 'rendering'
+ ? 'bg-[var(--color-surface-2)] text-[var(--color-fg-muted)] border-[var(--color-border)]'
+ : 'bg-[var(--color-surface-2)] text-[var(--color-fg-muted)] border-[var(--color-border)]'
+ }`}
                       >
                         {line.status}
                       </span>
                     </div>
 
-                    <p className="text-slate-200 text-xs italic pl-6 leading-relaxed">
+                    <p className="text-[var(--color-fg)] text-xs italic pl-6 leading-relaxed">
                       &ldquo;{line.text}&rdquo;
                     </p>
 
                     {line.take_duration && (
-                      <div className="pl-6 text-[10px] font-mono text-slate-400 flex items-center gap-2">
+                      <div className="pl-6 text-[10px] font-mono text-[var(--color-fg-muted)] flex items-center gap-2">
                         <span>Duration: {line.take_duration}s</span>
                         <span>·</span>
-                        <span className="text-emerald-400">Audio ready for playback</span>
+                        <span className="text-[var(--color-fg-muted)]">Audio ready for playback</span>
                       </div>
                     )}
                   </div>
@@ -202,14 +202,14 @@ export function StoriesWorkspace() {
               </div>
 
               {/* Add Dialogue Line Box */}
-              <div className="pt-3 border-t border-white/10 space-y-3">
+              <div className="pt-3 border-t border-[var(--color-border)] space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <div className="sm:col-span-1">
-                    <label className="block text-slate-400 mb-1 text-[11px] font-medium">Cast Speaker</label>
+                    <label className="block text-[var(--color-fg-muted)] mb-1 text-[11px] font-medium">Cast Speaker</label>
                     <select
                       value={newLineSpeaker}
                       onChange={(e) => setNewLineSpeaker(e.target.value)}
-                      className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-white/10 text-slate-200 focus:outline-none focus:border-cyan-500 font-mono text-xs"
+                      className="w-full px-2.5 py-1.5 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-fg)] focus:outline-none focus:border-[var(--color-border-strong)] font-mono text-xs"
                     >
                       {voices.map((v) => (
                         <option key={v.id} value={v.name}>
@@ -220,7 +220,7 @@ export function StoriesWorkspace() {
                   </div>
 
                   <div className="sm:col-span-2">
-                    <label className="block text-slate-400 mb-1 text-[11px] font-medium">Spoken Line</label>
+                    <label className="block text-[var(--color-fg-muted)] mb-1 text-[11px] font-medium">Spoken Line</label>
                     <div className="flex gap-2">
                       <input
                         type="text"
@@ -228,9 +228,9 @@ export function StoriesWorkspace() {
                         onChange={(e) => setNewLineText(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleAddLine()}
                         placeholder="Enter dialog line to append..."
-                        className="flex-1 px-3 py-1.5 rounded-lg bg-slate-900 border border-white/10 text-slate-200 focus:outline-none focus:border-cyan-500 text-xs"
+                        className="flex-1 px-3 py-1.5 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-fg)] focus:outline-none focus:border-[var(--color-border-strong)] text-xs"
                       />
-                      <Button variant="secondary" size="sm" onClick={handleAddLine} leftIcon={<Plus className="w-3.5 h-3.5" />}>
+                      <Button variant="secondary" size="sm" onClick={handleAddLine} leftIcon={<Plus className="w-4 h-4" />}>
                         Add
                       </Button>
                     </div>

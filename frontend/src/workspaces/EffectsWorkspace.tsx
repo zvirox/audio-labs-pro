@@ -54,41 +54,41 @@ export function EffectsWorkspace() {
     <div className="space-y-6 max-w-6xl mx-auto p-2 pb-12 select-none">
       {/* Workspace Header */}
       <div>
-        <h2 className="text-xl font-bold tracking-tight text-slate-100 flex items-center gap-2">
-          <Wand2 className="w-5 h-5 text-cyan-400" />
+        <h2 className="text-xl font-medium text-[var(--color-fg)] flex items-center gap-2">
+          <Wand2 className="w-4 h-4 text-[var(--color-accent)]" />
           Effects Chain & Hosted Plugins
         </h2>
-        <p className="text-xs text-slate-400 mt-1">
+        <p className="text-xs text-[var(--color-fg-muted)] mt-1">
           Polish vocal clarity with the 6-stage studio cleanup chain or host third-party CLAP and LV2 plugins inside the sandboxed DSP host.
         </p>
       </div>
 
       {/* Signal Path Metrics Banner */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="p-3.5 rounded-xl bg-slate-900/60 border border-white/10 flex items-center justify-between">
+        <div className="p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] flex items-center justify-between">
           <div>
-            <div className="text-[11px] text-slate-400 font-medium">Active Cleanup Stages</div>
-            <div className="text-lg font-bold font-mono text-cyan-400 mt-0.5">
+            <div className="text-[11px] text-[var(--color-fg-muted)] font-medium">Active Cleanup Stages</div>
+            <div className="text-lg font-medium font-mono text-[var(--color-accent)] mt-0.5">
               {enabledCount} / {stages.length} Active
             </div>
           </div>
-          <Activity className="w-6 h-6 text-cyan-500/40" />
+          <Activity className="w-6 h-6 text-[var(--color-accent)]/40" />
         </div>
 
-        <div className="p-3.5 rounded-xl bg-slate-900/60 border border-white/10 flex items-center justify-between">
+        <div className="p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] flex items-center justify-between">
           <div>
-            <div className="text-[11px] text-slate-400 font-medium">Mastering Target</div>
-            <div className="text-lg font-bold font-mono text-purple-400 mt-0.5">-16.0 LUFS</div>
+            <div className="text-[11px] text-[var(--color-fg-muted)] font-medium">Mastering Target</div>
+            <div className="text-lg font-medium font-mono text-[var(--color-fg-muted)] mt-0.5">-16.0 LUFS</div>
           </div>
-          <Sliders className="w-6 h-6 text-purple-500/40" />
+          <Sliders className="w-6 h-6 text-[var(--color-fg-muted)]" />
         </div>
 
-        <div className="p-3.5 rounded-xl bg-slate-900/60 border border-white/10 flex items-center justify-between">
+        <div className="p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] flex items-center justify-between">
           <div>
-            <div className="text-[11px] text-slate-400 font-medium">True Peak Ceiling</div>
-            <div className="text-lg font-bold font-mono text-emerald-400 mt-0.5">-1.0 dBFS</div>
+            <div className="text-[11px] text-[var(--color-fg-muted)] font-medium">True Peak Ceiling</div>
+            <div className="text-lg font-medium font-mono text-[var(--color-fg-muted)] mt-0.5">-1.0 dBFS</div>
           </div>
-          <Check className="w-6 h-6 text-emerald-500/40" />
+          <Check className="w-6 h-6 text-[var(--color-fg-muted)]" />
         </div>
       </div>
 
@@ -104,17 +104,17 @@ export function EffectsWorkspace() {
                   <div
                     key={stage.id}
                     onClick={() => setActiveStageId(stage.id)}
-                    className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
-                      isSelected
-                        ? 'bg-slate-900 border-cyan-500/60 shadow-md shadow-cyan-500/10'
-                        : 'bg-slate-950/60 border-white/5 hover:border-white/15'
-                    }`}
+                    className={`p-3 rounded-xl border transition-[color,background-color,border-color,opacity,transform] cursor-pointer flex items-center justify-between ${
+ isSelected
+ ? 'bg-[var(--color-surface)] border-[var(--color-border-strong)] shadow-md'
+ : 'bg-[var(--color-bg)] border-[var(--color-border)] hover:border-white/15'
+ }`}
                   >
                     <div className="flex items-center gap-3">
-                      <span className="font-mono text-slate-500 font-bold w-4">{idx + 1}</span>
+                      <span className="font-mono text-[var(--color-fg-muted)] font-medium w-4">{idx + 1}</span>
                       <div>
-                        <div className="font-semibold text-slate-200">{stage.name}</div>
-                        <div className="text-[10px] font-mono text-slate-400">{stage.category}</div>
+                        <div className="font-medium text-[var(--color-fg)]">{stage.name}</div>
+                        <div className="text-[10px] font-mono text-[var(--color-fg-muted)]">{stage.category}</div>
                       </div>
                     </div>
 
@@ -123,13 +123,13 @@ export function EffectsWorkspace() {
                         type="button"
                         onClick={() => toggleStage(stage.id)}
                         className={`p-1.5 rounded-lg border transition-colors ${
-                          stage.enabled
-                            ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40'
-                            : 'bg-white/5 text-slate-600 border-white/5'
-                        }`}
+ stage.enabled
+ ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)] border-[var(--color-border-strong)]'
+ : 'bg-[var(--color-surface-2)] text-[var(--color-fg-subtle)] border-[var(--color-border)]'
+ }`}
                         title={stage.enabled ? 'Bypass stage' : 'Enable stage'}
                       >
-                        <Power className="w-3.5 h-3.5" />
+                        <Power className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
@@ -161,9 +161,9 @@ export function EffectsWorkspace() {
                   ))}
                 </div>
 
-                <div className="pt-3 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-500 font-mono">
+                <div className="pt-3 border-t border-[var(--color-border)] flex items-center justify-between text-[11px] text-[var(--color-fg-muted)] font-mono">
                   <span>64-bit double precision float internal DSP processing</span>
-                  <span className={activeStage.enabled ? 'text-emerald-400' : 'text-slate-500'}>
+                  <span className={activeStage.enabled ? 'text-[var(--color-fg-muted)]' : 'text-[var(--color-fg-muted)]'}>
                     {activeStage.enabled ? 'ONLINE (In Signal Path)' : 'BYPASS'}
                   </span>
                 </div>
@@ -175,8 +175,8 @@ export function EffectsWorkspace() {
           <Card title="Hosted Plugins (CLAP / LV2)" subtitle={`${plugins.length} discovered native Linux audio plugins`}>
             <div className="space-y-4 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-slate-400 text-xs">
-                  Plugins execute inside the isolated <code className="text-cyan-400">alp-plugin</code> sandbox.
+                <span className="text-[var(--color-fg-muted)] text-xs">
+                  Plugins execute inside the isolated <code className="text-[var(--color-accent)]">alp-plugin</code> sandbox.
                 </span>
                 <Button
                   variant="secondary"
@@ -185,9 +185,9 @@ export function EffectsWorkspace() {
                   disabled={isRescanning}
                   leftIcon={
                     isRescanning ? (
-                      <RefreshCw className="w-3 h-3 animate-spin" />
+                      <RefreshCw className="w-4 h-4 animate-spin" />
                     ) : (
-                      <RefreshCw className="w-3 h-3" />
+                      <RefreshCw className="w-4 h-4" />
                     )
                   }
                 >
@@ -199,15 +199,15 @@ export function EffectsWorkspace() {
                 {plugins.map((plugin) => (
                   <div
                     key={plugin.id}
-                    className="p-2.5 rounded-lg bg-slate-900 border border-white/10 flex items-center justify-between"
+                    className="p-2.5 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] flex items-center justify-between"
                   >
                     <div>
-                      <div className="font-semibold text-slate-200">{plugin.name}</div>
-                      <div className="text-[10px] font-mono text-slate-400">
+                      <div className="font-medium text-[var(--color-fg)]">{plugin.name}</div>
+                      <div className="text-[10px] font-mono text-[var(--color-fg-muted)]">
                         {plugin.vendor} · {plugin.category}
                       </div>
                     </div>
-                    <span className="px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                    <span className="px-2 py-0.5 rounded font-mono text-[10px] font-medium bg-purple-500/20 text-[var(--color-fg-muted)] border border-[var(--color-border-strong)]">
                       {plugin.format}
                     </span>
                   </div>

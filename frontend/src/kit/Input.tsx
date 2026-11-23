@@ -55,12 +55,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             value={value}
             disabled={disabled}
             className={`w-full h-8 rounded-lg bg-[var(--color-surface-2)] text-[var(--color-fg)] text-xs border transition-colors placeholder:text-[var(--color-fg-subtle)] focus:outline-none focus:ring-1 focus:ring-[var(--color-focus)] disabled:opacity-40 disabled:cursor-not-allowed ${
-              leftIcon ? 'pl-8' : 'pl-3'
-            } ${rightIcon || onClear ? 'pr-8' : 'pr-3'} ${
-              hasError
-                ? 'border-red-500/60 focus:border-red-500 focus:ring-red-500/30'
-                : 'border-[var(--color-border)] focus:border-[var(--color-focus)]'
-            }`}
+ leftIcon ? 'pl-8' : 'pl-3'
+ } ${rightIcon || onClear ? 'pr-8' : 'pr-3'} ${
+ hasError
+ ? 'border-red-500/60 focus:border-red-500 focus:ring-red-500/30'
+ : 'border-[var(--color-border)] focus:border-[var(--color-focus)]'
+ }`}
             aria-invalid={hasError}
             aria-describedby={
               hasError
@@ -79,7 +79,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               className="absolute right-2 text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] p-0.5"
               title="Clear input"
             >
-              <XCircle className="w-3.5 h-3.5" />
+              <XCircle className="w-4 h-4" />
             </button>
           )}
 

@@ -85,9 +85,9 @@ export function CloningConsentModal({ open, onClose, onCreated }: CloningConsent
       <div className="space-y-5 text-xs">
         {/* Safety Warning Banner */}
         <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
-          <ShieldAlert className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
-          <div className="space-y-1 text-slate-300">
-            <div className="font-semibold text-amber-300">Mandatory Human Consent Record</div>
+          <ShieldAlert className="w-4 h-4 text-[var(--color-fg-muted)] flex-shrink-0 mt-0.5" />
+          <div className="space-y-1 text-[var(--color-fg-muted)]">
+            <div className="font-medium text-[var(--color-fg-muted)]">Mandatory Human Consent Record</div>
             <p className="text-[11px] leading-relaxed">
               In accordance with Audio Labs Pro safety guidelines, automated AI agents and background scripts cannot forge or bypass this attestation. The consent statement is cryptographically signed and stored in the profile bundle.
             </p>
@@ -95,29 +95,29 @@ export function CloningConsentModal({ open, onClose, onCreated }: CloningConsent
         </div>
 
         {/* Source Tab Toggle */}
-        <div className="flex items-center gap-2 border-b border-white/10 pb-3">
+        <div className="flex items-center gap-2 border-b border-[var(--color-border)] pb-3">
           <button
             type="button"
             onClick={() => setSourceTab('record')}
             className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-medium transition-colors ${
-              sourceTab === 'record'
-                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
+ sourceTab === 'record'
+ ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)] border border-[var(--color-border-strong)]'
+ : 'text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]'
+ }`}
           >
-            <Mic className="w-3.5 h-3.5" />
+            <Mic className="w-4 h-4" />
             Record Reference Sample
           </button>
           <button
             type="button"
             onClick={() => setSourceTab('upload')}
             className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-medium transition-colors ${
-              sourceTab === 'upload'
-                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
+ sourceTab === 'upload'
+ ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)] border border-[var(--color-border-strong)]'
+ : 'text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]'
+ }`}
           >
-            <Upload className="w-3.5 h-3.5" />
+            <Upload className="w-4 h-4" />
             Upload WAV Reference
           </button>
         </div>
@@ -125,7 +125,7 @@ export function CloningConsentModal({ open, onClose, onCreated }: CloningConsent
         {/* Form Fields */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-slate-300 mb-1 font-medium">Speaker Name (Target Voice)</label>
+            <label className="block text-[var(--color-fg-muted)] mb-1 font-medium">Speaker Name (Target Voice)</label>
             <Input
               value={speakerName}
               onChange={(e) => setSpeakerName(e.target.value)}
@@ -134,7 +134,7 @@ export function CloningConsentModal({ open, onClose, onCreated }: CloningConsent
           </div>
 
           <div>
-            <label className="block text-slate-300 mb-1 font-medium">Attesting User (Your Identity)</label>
+            <label className="block text-[var(--color-fg-muted)] mb-1 font-medium">Attesting User (Your Identity)</label>
             <Input
               value={attestedBy}
               onChange={(e) => setAttestedBy(e.target.value)}
@@ -143,23 +143,23 @@ export function CloningConsentModal({ open, onClose, onCreated }: CloningConsent
           </div>
 
           <div className="md:col-span-2">
-            <label className="block text-slate-300 mb-1 font-medium">Reference Text Transcript</label>
+            <label className="block text-[var(--color-fg-muted)] mb-1 font-medium">Reference Text Transcript</label>
             <Input
               value={referenceText}
               onChange={(e) => setReferenceText(e.target.value)}
               placeholder="Enter the exact words spoken in the 5-15 second reference audio sample..."
             />
-            <span className="text-[10px] text-slate-500 mt-1 block">
+            <span className="text-[10px] text-[var(--color-fg-muted)] mt-1 block">
               Acoustic analysis matches phonetic alignment between audio and transcript.
             </span>
           </div>
 
           <div>
-            <label className="block text-slate-300 mb-1 font-medium">Spoken Language</label>
+            <label className="block text-[var(--color-fg-muted)] mb-1 font-medium">Spoken Language</label>
             <select
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-white/10 text-slate-200 focus:outline-none focus:border-cyan-500 font-mono text-xs"
+              className="w-full px-3 py-2 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-fg)] focus:outline-none focus:border-[var(--color-border-strong)] font-mono text-xs"
             >
               {LANGUAGES.map((lang) => (
                 <option key={lang} value={lang}>
@@ -171,16 +171,16 @@ export function CloningConsentModal({ open, onClose, onCreated }: CloningConsent
         </div>
 
         {/* Consent Checkbox */}
-        <div className="pt-3 border-t border-white/10 space-y-2">
+        <div className="pt-3 border-t border-[var(--color-border)] space-y-2">
           <label className="flex items-start gap-2.5 cursor-pointer">
             <input
               type="checkbox"
               checked={consentAcknowledged}
               onChange={(e) => setConsentAcknowledged(e.target.checked)}
-              className="mt-0.5 rounded border-white/20 bg-slate-900 text-cyan-500 focus:ring-cyan-500/20"
+              className="mt-0.5 rounded border-white/20 bg-[var(--color-surface)] text-[var(--color-accent)] focus:ring-cyan-500/20"
             />
-            <span className="text-slate-200 text-xs leading-relaxed select-none">
-              <strong className="text-cyan-400">Human Legal Attestation:</strong> I declare under penalty of terms violation that the speaker has given explicit permission to clone their voice for use in this workstation.
+            <span className="text-[var(--color-fg)] text-xs leading-relaxed select-none">
+              <strong className="text-[var(--color-accent)]">Human Legal Attestation:</strong> I declare under penalty of terms violation that the speaker has given explicit permission to clone their voice for use in this workstation.
             </span>
           </label>
         </div>
@@ -193,7 +193,7 @@ export function CloningConsentModal({ open, onClose, onCreated }: CloningConsent
         )}
 
         {/* Dialog Action Buttons */}
-        <div className="pt-3 border-t border-white/10 flex items-center justify-end gap-2">
+        <div className="pt-3 border-t border-[var(--color-border)] flex items-center justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={onClose}>
             Cancel
           </Button>

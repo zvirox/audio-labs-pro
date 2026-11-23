@@ -153,7 +153,7 @@ export function DockedPlayer({
           variant="secondary"
           size="sm"
           onClick={handleStop}
-          leftIcon={<Square className="w-3.5 h-3.5" />}
+          leftIcon={<Square className="w-4 h-4" />}
           title="Stop and return to 0:00"
           aria-label="Stop"
         />
@@ -163,7 +163,7 @@ export function DockedPlayer({
           variant={isRecording ? 'danger' : 'secondary'}
           size="sm"
           onClick={() => setIsRecording(!isRecording)}
-          leftIcon={<Circle className={`w-3.5 h-3.5 ${isRecording ? 'fill-current' : 'text-red-400'}`} />}
+          leftIcon={<Circle className={`w-4 h-4 ${isRecording ? 'fill-current' : 'text-red-400'}`} />}
           title="Arm recording (R)"
           aria-label="Record"
         />
@@ -173,7 +173,7 @@ export function DockedPlayer({
           variant={activeLooping ? 'primary' : 'ghost'}
           size="sm"
           onClick={handleLoopToggle}
-          leftIcon={<Repeat className="w-3.5 h-3.5" />}
+          leftIcon={<Repeat className="w-4 h-4" />}
           title="Toggle loop playback (L)"
           aria-label="Loop"
         />
@@ -182,7 +182,7 @@ export function DockedPlayer({
       {/* Center: Timecode & Timeline Scrubber */}
       <div className="flex-1 max-w-2xl flex items-center gap-3">
         {/* Digital Clock readout */}
-        <div className="px-2.5 py-1 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] font-mono text-xs font-bold text-[var(--color-accent)] tracking-wider">
+        <div className="px-2.5 py-1 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] font-mono text-xs font-medium text-[var(--color-accent)]">
           {formatTimecode(activeTime)}
         </div>
 

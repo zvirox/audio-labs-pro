@@ -68,7 +68,7 @@ export function WindowControls() {
       </button>
       <button
         type="button"
-        className={`${base} hover:bg-[var(--color-danger)] hover:text-white`}
+        className={`${base} hover:bg-[var(--color-danger)] hover:text-[var(--color-accent-fg)]`}
         title="Close"
         aria-label="Close window"
         onClick={() => win.close().catch(() => undefined)}

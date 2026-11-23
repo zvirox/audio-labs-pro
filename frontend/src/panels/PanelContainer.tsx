@@ -184,16 +184,16 @@ export function PanelContainer({
         zIndex: panel.z,
       }}
       className={`absolute top-0 left-0 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-2xl overflow-hidden flex flex-col transition-shadow ${
-        isDragging ? 'shadow-cyan-500/20 ring-1 ring-[var(--color-accent)]' : ''
-      }`}
+ isDragging ? ' ring-1 ring-[var(--color-accent)]' : ''
+ }`}
     >
       {/* Title Bar / Drag Header */}
       <div
         onMouseDown={handleMouseDownHeader}
         className="h-9 px-3 bg-[var(--color-surface-2)] border-b border-[var(--color-border)] flex items-center justify-between cursor-move select-none"
       >
-        <div className="flex items-center gap-2 text-xs font-semibold text-[var(--color-fg)] truncate">
-          <Icon className="w-3.5 h-3.5 text-[var(--color-accent)] flex-shrink-0" />
+        <div className="flex items-center gap-2 text-xs font-medium text-[var(--color-fg)] truncate">
+          <Icon className="w-4 h-4 text-[var(--color-accent)] flex-shrink-0" />
           <span className="truncate">{title}</span>
         </div>
 
@@ -203,7 +203,7 @@ export function PanelContainer({
             className="p-1 rounded text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] hover:bg-[var(--color-surface-3)]"
             title={panel.collapsed ? 'Expand panel' : 'Collapse panel'}
           >
-            {panel.collapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+            {panel.collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
           </button>
           <button
             onClick={() =>
@@ -215,14 +215,14 @@ export function PanelContainer({
             className="p-1 rounded text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] hover:bg-[var(--color-surface-3)]"
             title={panel.docked ? 'Undock panel' : 'Dock panel right'}
           >
-            {panel.docked ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
+            {panel.docked ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
           <button
             onClick={() => onClose(panel.kind)}
             className="p-1 rounded text-[var(--color-fg-muted)] hover:text-red-400 hover:bg-[var(--color-surface-3)]"
             title="Close panel"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -235,7 +235,7 @@ export function PanelContainer({
           {/* Bottom-right corner resize handle */}
           <div
             onMouseDown={handleMouseDownResize}
-            className="absolute bottom-1 right-1 w-3 h-3 cursor-se-resize text-[var(--color-fg-subtle)] hover:text-[var(--color-accent)]"
+            className="absolute bottom-1 right-1 w-4 h-4 cursor-se-resize text-[var(--color-fg-subtle)] hover:text-[var(--color-accent)]"
             title="Resize panel"
           >
             <svg viewBox="0 0 6 6" className="w-full h-full fill-current">

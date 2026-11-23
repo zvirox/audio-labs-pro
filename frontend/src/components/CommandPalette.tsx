@@ -72,7 +72,7 @@ export function CommandPalette({
           <div className="flex items-center px-4 border-b border-[var(--color-border)]">
             <Command.Input
               autoFocus
-              placeholder="Type a command or search workspaces, panels, tools..."
+              placeholder="Search workspaces, panels and actions"
               className="w-full h-11 bg-transparent text-xs text-[var(--color-fg)] placeholder:text-[var(--color-fg-subtle)] focus:outline-none"
             />
           </div>
@@ -83,7 +83,7 @@ export function CommandPalette({
             </Command.Empty>
 
             {/* Workspaces Group */}
-            <Command.Group heading="Studio Workspaces" className="text-[11px] font-bold text-[var(--color-fg-subtle)] uppercase px-2 py-1">
+            <Command.Group heading="Studio Workspaces" className="text-[11px] font-medium text-[var(--color-fg-subtle)] px-2 py-1">
               <Command.Item
                 onSelect={() => {
                   onSelectWorkspace('dashboard');
@@ -92,7 +92,7 @@ export function CommandPalette({
                 className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-[var(--color-fg)] hover:bg-[var(--color-surface-2)] aria-selected:bg-[var(--color-surface-2)]"
               >
                 <div className="flex items-center gap-2.5">
-                  <Home className="w-4 h-4 text-cyan-400" />
+                  <Home className="w-4 h-4 text-[var(--color-accent)]" />
                   <span>Dashboard (Home)</span>
                 </div>
                 <kbd className="text-[10px] font-mono text-[var(--color-fg-subtle)]">Ctrl+0</kbd>
@@ -106,7 +106,7 @@ export function CommandPalette({
                 className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-[var(--color-fg)] hover:bg-[var(--color-surface-2)] aria-selected:bg-[var(--color-surface-2)]"
               >
                 <div className="flex items-center gap-2.5">
-                  <Mic className="w-4 h-4 text-cyan-400" />
+                  <Mic className="w-4 h-4 text-[var(--color-accent)]" />
                   <span>Voice Studio Lab</span>
                 </div>
                 <kbd className="text-[10px] font-mono text-[var(--color-fg-subtle)]">Ctrl+1</kbd>
@@ -134,7 +134,7 @@ export function CommandPalette({
                 className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-[var(--color-fg)] hover:bg-[var(--color-surface-2)] aria-selected:bg-[var(--color-surface-2)]"
               >
                 <div className="flex items-center gap-2.5">
-                  <BookOpen className="w-4 h-4 text-amber-400" />
+                  <BookOpen className="w-4 h-4 text-[var(--color-fg-muted)]" />
                   <span>Audiobook Production Lab</span>
                 </div>
                 <kbd className="text-[10px] font-mono text-[var(--color-fg-subtle)]">Ctrl+3</kbd>
@@ -162,7 +162,7 @@ export function CommandPalette({
                 className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-[var(--color-fg)] hover:bg-[var(--color-surface-2)] aria-selected:bg-[var(--color-surface-2)]"
               >
                 <div className="flex items-center gap-2.5">
-                  <Wrench className="w-4 h-4 text-emerald-400" />
+                  <Wrench className="w-4 h-4 text-[var(--color-fg-muted)]" />
                   <span>Audio Tools, Batch & Repair</span>
                 </div>
                 <kbd className="text-[10px] font-mono text-[var(--color-fg-subtle)]">Ctrl+5</kbd>
@@ -176,7 +176,7 @@ export function CommandPalette({
                 className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-[var(--color-fg)] hover:bg-[var(--color-surface-2)] aria-selected:bg-[var(--color-surface-2)]"
               >
                 <div className="flex items-center gap-2.5">
-                  <Sparkles className="w-4 h-4 text-purple-400" />
+                  <Sparkles className="w-4 h-4 text-[var(--color-fg-muted)]" />
                   <span>DSP Effects & Plugins Rack</span>
                 </div>
                 <kbd className="text-[10px] font-mono text-[var(--color-fg-subtle)]">Ctrl+6</kbd>
@@ -190,7 +190,7 @@ export function CommandPalette({
                 className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-[var(--color-fg)] hover:bg-[var(--color-surface-2)] aria-selected:bg-[var(--color-surface-2)]"
               >
                 <div className="flex items-center gap-2.5">
-                  <Settings className="w-4 h-4 text-slate-400" />
+                  <Settings className="w-4 h-4 text-[var(--color-fg-muted)]" />
                   <span>Preferences & Hardware</span>
                 </div>
                 <kbd className="text-[10px] font-mono text-[var(--color-fg-subtle)]">Ctrl+7</kbd>
@@ -198,7 +198,7 @@ export function CommandPalette({
             </Command.Group>
 
             {/* Studio Panels Group */}
-            <Command.Group heading="Floating Panels" className="text-[11px] font-bold text-[var(--color-fg-subtle)] uppercase px-2 py-1 mt-2">
+            <Command.Group heading="Floating Panels" className="text-[11px] font-medium text-[var(--color-fg-subtle)] px-2 py-1 mt-2">
               <Command.Item
                 onSelect={() => {
                   onTogglePanel('mixer');
@@ -254,7 +254,7 @@ export function CommandPalette({
             </Command.Group>
 
             {/* Global Actions */}
-            <Command.Group heading="Studio Actions & Views" className="text-[11px] font-bold text-[var(--color-fg-subtle)] uppercase px-2 py-1 mt-2">
+            <Command.Group heading="Studio Actions & Views" className="text-[11px] font-medium text-[var(--color-fg-subtle)] px-2 py-1 mt-2">
               <Command.Item
                 onSelect={() => {
                   onTriggerEdit();
@@ -263,7 +263,7 @@ export function CommandPalette({
                 className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-[var(--color-fg)] hover:bg-[var(--color-surface-2)] aria-selected:bg-[var(--color-surface-2)]"
               >
                 <div className="flex items-center gap-2.5">
-                  <Zap className="w-4 h-4 text-amber-400" />
+                  <Zap className="w-4 h-4 text-[var(--color-fg-muted)]" />
                   <span>Trigger Timeline Demo Edit</span>
                 </div>
               </Command.Item>
@@ -276,7 +276,7 @@ export function CommandPalette({
                 className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-[var(--color-fg)] hover:bg-[var(--color-surface-2)] aria-selected:bg-[var(--color-surface-2)]"
               >
                 <div className="flex items-center gap-2.5">
-                  <RotateCcw className="w-4 h-4 text-cyan-400" />
+                  <RotateCcw className="w-4 h-4 text-[var(--color-accent)]" />
                   <span>Reset Floating Panels to Default</span>
                 </div>
               </Command.Item>
@@ -289,7 +289,7 @@ export function CommandPalette({
                 className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-[var(--color-fg)] hover:bg-[var(--color-surface-2)] aria-selected:bg-[var(--color-surface-2)]"
               >
                 <div className="flex items-center gap-2.5">
-                  {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-400" />}
+                  {theme === 'dark' ? <Sun className="w-4 h-4 text-[var(--color-fg-muted)]" /> : <Moon className="w-4 h-4 text-indigo-400" />}
                   <span>Toggle Dark / Light Theme</span>
                 </div>
                 <kbd className="text-[10px] font-mono text-[var(--color-fg-subtle)]">Ctrl+D</kbd>
@@ -303,7 +303,7 @@ export function CommandPalette({
                 className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-[var(--color-fg)] hover:bg-[var(--color-surface-2)] aria-selected:bg-[var(--color-surface-2)]"
               >
                 <div className="flex items-center gap-2.5">
-                  <HelpCircle className="w-4 h-4 text-cyan-400" />
+                  <HelpCircle className="w-4 h-4 text-[var(--color-accent)]" />
                   <span>Open Keyboard Shortcuts Cheatsheet</span>
                 </div>
                 <kbd className="text-[10px] font-mono text-[var(--color-fg-subtle)]">F1</kbd>

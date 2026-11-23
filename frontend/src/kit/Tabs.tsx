@@ -27,7 +27,7 @@ export function Tabs({
 }: TabsProps) {
   const sizeStyles = {
     sm: 'text-xs h-7 px-2.5 gap-1.5',
-    md: 'text-xs h-8 px-3.5 gap-2',
+    md: 'text-xs h-8 px-4 gap-2',
   };
 
   if (variant === 'segmented') {
@@ -45,18 +45,18 @@ export function Tabs({
               aria-selected={isActive}
               disabled={tab.disabled}
               onClick={() => onChange(tab.id)}
-              className={`inline-flex items-center justify-center font-medium rounded-md transition-all cursor-pointer ${
-                sizeStyles[size]
-              } ${
-                isActive
-                  ? 'bg-[var(--color-surface)] text-[var(--color-fg)] shadow-xs font-semibold'
-                  : 'text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]'
-              } disabled:opacity-40 disabled:pointer-events-none`}
+              className={`inline-flex items-center justify-center font-medium rounded-md transition-[color,background-color,border-color,opacity,transform] cursor-pointer ${
+ sizeStyles[size]
+ } ${
+ isActive
+ ? 'bg-[var(--color-surface)] text-[var(--color-fg)] shadow-xs font-medium'
+ : 'text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]'
+ } disabled:opacity-40 disabled:pointer-events-none`}
             >
               {tab.icon}
               <span>{tab.label}</span>
               {tab.badge !== undefined && (
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-[var(--color-surface-3)] text-[var(--color-fg-muted)]">
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-[var(--color-surface-3)] text-[var(--color-fg-muted)]">
                   {tab.badge}
                 </span>
               )}
@@ -84,17 +84,17 @@ export function Tabs({
             disabled={tab.disabled}
             onClick={() => onChange(tab.id)}
             className={`relative inline-flex shrink-0 items-center justify-center whitespace-nowrap font-medium transition-colors cursor-pointer rounded-md ${
-              sizeStyles[size]
-            } ${
-              isActive
-                ? 'bg-[var(--color-surface)] text-[var(--color-fg)] border border-[var(--color-border)]'
-                : 'text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] hover:bg-[var(--color-surface-2)]'
-            } disabled:opacity-40 disabled:pointer-events-none`}
+ sizeStyles[size]
+ } ${
+ isActive
+ ? 'bg-[var(--color-surface)] text-[var(--color-fg)] border border-[var(--color-border)]'
+ : 'text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] hover:bg-[var(--color-surface-2)]'
+ } disabled:opacity-40 disabled:pointer-events-none`}
           >
             {tab.icon}
             <span>{tab.label}</span>
             {tab.badge !== undefined && (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-[var(--color-surface-3)] text-[var(--color-fg-muted)]">
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-[var(--color-surface-3)] text-[var(--color-fg-muted)]">
                 {tab.badge}
               </span>
             )}

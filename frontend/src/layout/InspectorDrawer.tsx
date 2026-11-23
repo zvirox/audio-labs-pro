@@ -31,8 +31,8 @@ export function InspectorDrawer({
       {/* Header */}
       <div className="h-10 px-4 border-b border-[var(--color-border)] bg-[var(--color-surface-2)] flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Sliders className="w-3.5 h-3.5 text-[var(--color-accent)]" />
-          <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-fg)]">
+          <Sliders className="w-4 h-4 text-[var(--color-accent)]" />
+          <span className="text-xs font-medium text-[var(--color-fg)]">
             Inspector
           </span>
         </div>
@@ -52,7 +52,7 @@ export function InspectorDrawer({
         {/* Selected Clip Card */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase text-[var(--color-fg-muted)] tracking-wider">
+            <span className="text-[11px] font-medium text-[var(--color-fg-muted)]">
               Selected Clip
             </span>
             <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--color-surface-2)] text-[var(--color-accent)]">
@@ -62,8 +62,8 @@ export function InspectorDrawer({
 
           <div className="p-3 rounded-xl bg-[var(--color-surface-2)] border border-[var(--color-border)] space-y-2.5">
             <div className="flex items-center gap-2">
-              <Music className="w-4 h-4 text-cyan-400" />
-              <div className="font-semibold truncate text-[var(--color-fg)]">
+              <Music className="w-4 h-4 text-[var(--color-accent)]" />
+              <div className="font-medium truncate text-[var(--color-fg)]">
                 Demo Lead Voice Take
               </div>
             </div>
@@ -84,7 +84,7 @@ export function InspectorDrawer({
               variant={normalized ? 'outline' : 'secondary'}
               size="xs"
               className="w-full mt-1"
-              leftIcon={normalized ? <Check className="w-3 h-3 text-emerald-400" /> : <Zap className="w-3 h-3 text-amber-400" />}
+              leftIcon={normalized ? <Check className="w-4 h-4 text-[var(--color-fg-muted)]" /> : <Zap className="w-4 h-4 text-[var(--color-fg-muted)]" />}
               onClick={() => setNormalized(!normalized)}
             >
               {normalized ? 'Normalized (-0.2 dBFS)' : 'Normalize Clip'}
@@ -95,7 +95,7 @@ export function InspectorDrawer({
         {/* Track Gain & Pan Controls */}
         <div className="space-y-3 pt-3 border-t border-[var(--color-border)]">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase text-[var(--color-fg-muted)] tracking-wider">
+            <span className="text-[11px] font-medium text-[var(--color-fg-muted)]">
               Track Mixing
             </span>
             <span className="text-[10px] font-mono text-[var(--color-fg-subtle)]">trk_0 (Audio)</span>
@@ -130,33 +130,33 @@ export function InspectorDrawer({
             <button
               type="button"
               onClick={() => setIsMuted(!isMuted)}
-              className={`h-8 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
-                isMuted
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                  : 'bg-[var(--color-surface-2)] text-[var(--color-fg-muted)] border-[var(--color-border)] hover:bg-[var(--color-surface-3)]'
-              }`}
+              className={`h-8 rounded-lg text-xs font-medium transition-[color,background-color,border-color,opacity,transform] border cursor-pointer ${
+ isMuted
+ ? 'bg-amber-500/20 text-[var(--color-fg-muted)] border-amber-500/40'
+ : 'bg-[var(--color-surface-2)] text-[var(--color-fg-muted)] border-[var(--color-border)] hover:bg-[var(--color-surface-3)]'
+ }`}
             >
               MUTE
             </button>
             <button
               type="button"
               onClick={() => setIsSolo(!isSolo)}
-              className={`h-8 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
-                isSolo
-                  ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
-                  : 'bg-[var(--color-surface-2)] text-[var(--color-fg-muted)] border-[var(--color-border)] hover:bg-[var(--color-surface-3)]'
-              }`}
+              className={`h-8 rounded-lg text-xs font-medium transition-[color,background-color,border-color,opacity,transform] border cursor-pointer ${
+ isSolo
+ ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)] border-[var(--color-border-strong)]'
+ : 'bg-[var(--color-surface-2)] text-[var(--color-fg-muted)] border-[var(--color-border)] hover:bg-[var(--color-surface-3)]'
+ }`}
             >
               SOLO
             </button>
             <button
               type="button"
               onClick={() => setIsArmed(!isArmed)}
-              className={`h-8 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
-                isArmed
-                  ? 'bg-red-500/30 text-red-300 border-red-500/50'
-                  : 'bg-[var(--color-surface-2)] text-[var(--color-fg-muted)] border-[var(--color-border)] hover:bg-[var(--color-surface-3)]'
-              }`}
+              className={`h-8 rounded-lg text-xs font-medium transition-[color,background-color,border-color,opacity,transform] border cursor-pointer ${
+ isArmed
+ ? 'bg-red-500/30 text-red-300 border-red-500/50'
+ : 'bg-[var(--color-surface-2)] text-[var(--color-fg-muted)] border-[var(--color-border)] hover:bg-[var(--color-surface-3)]'
+ }`}
             >
               ARM
             </button>
@@ -165,7 +165,7 @@ export function InspectorDrawer({
 
         {/* Audio Engine Specs */}
         <div className="space-y-2 pt-3 border-t border-[var(--color-border)]">
-          <div className="text-[11px] font-bold uppercase text-[var(--color-fg-muted)] tracking-wider">
+          <div className="text-[11px] font-medium text-[var(--color-fg-muted)]">
             Audio Stream Engine
           </div>
           <div className="p-3 rounded-xl bg-[var(--color-surface-2)] border border-[var(--color-border)] space-y-1.5 text-[11px] font-mono">

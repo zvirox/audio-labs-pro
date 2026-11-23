@@ -87,7 +87,7 @@ export function TimelineWaveformPanel({
             onClick={onTogglePlay}
             aria-label={isPlaying ? 'Pause' : 'Play'}
           >
-            {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+            {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
           </Button>
 
           <Button
@@ -96,12 +96,12 @@ export function TimelineWaveformPanel({
             onClick={onToggleLoop}
             aria-label="Toggle loop playback"
           >
-            <Repeat className="w-3.5 h-3.5" />
+            <Repeat className="w-4 h-4" />
           </Button>
 
-          <div className="h-4 w-px bg-white/10 mx-1" />
+          <div className="h-4 w-px bg-[var(--color-surface-2)] mx-1" />
 
-          <span className="font-mono text-cyan-400 font-semibold px-2 py-0.5 rounded bg-black/40 border border-cyan-500/20">
+          <span className="font-mono text-[var(--color-accent)] font-medium px-2 py-0.5 rounded bg-black/40 border border-[var(--color-border-strong)]">
             {formatTime(currentTime)}
           </span>
           <span className="text-[var(--color-fg-muted)] font-mono">/ {formatTime(activeDuration)}</span>
@@ -117,19 +117,19 @@ export function TimelineWaveformPanel({
             />
           </div>
 
-          <div className="h-4 w-px bg-white/10" />
+          <div className="h-4 w-px bg-[var(--color-surface-2)]" />
 
           {/* 1-Hour Benchmark Gate Switch */}
           <button
             type="button"
             onClick={() => setIs1HourBenchmark(!is1HourBenchmark)}
             className={`flex items-center gap-1.5 px-2 py-1 rounded transition-colors border ${
-              is1HourBenchmark
-                ? 'bg-purple-950/80 text-purple-300 border-purple-500/50 shadow-sm shadow-purple-500/20'
-                : 'bg-[var(--color-surface-2)] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] border-[var(--color-border)]'
-            }`}
+ is1HourBenchmark
+ ? 'bg-[var(--color-surface-2)] text-[var(--color-fg-muted)] border-[var(--color-border-strong)] shadow-sm'
+ : 'bg-[var(--color-surface-2)] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] border-[var(--color-border)]'
+ }`}
           >
-            <Activity className="w-3.5 h-3.5 text-purple-400" />
+            <Activity className="w-4 h-4 text-[var(--color-fg-muted)]" />
             <span className="font-medium">
               {is1HourBenchmark ? '1-Hour Benchmark (Active)' : 'Test 1-Hour Gate'}
             </span>
@@ -157,7 +157,7 @@ export function TimelineWaveformPanel({
           />
         ) : (
           <div className="flex flex-col items-center justify-center h-40 bg-[var(--color-surface-2)] rounded border border-[var(--color-border)] text-[var(--color-fg-muted)]">
-            <div className="w-5 h-5 border-2 border-cyan-500/30 border-t-cyan-400 rounded-full animate-spin mb-2" />
+            <div className="w-4 h-4 border-2 border-[var(--color-border-strong)] border-t-cyan-400 rounded-full animate-spin mb-2" />
             <span>Loading peak pyramid...</span>
           </div>
         )}

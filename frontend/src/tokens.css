@@ -1,5 +1,6 @@
 :root {
   color-scheme: dark;
+  font-feature-settings: "tnum" 1;
 
   /* Studio Dark Glass Palette (Default) */
   --color-bg: oklch(0.12 0.015 250 / 0.82);
@@ -21,21 +22,12 @@
   --color-danger: oklch(0.70 0.20 25);
   --color-info: oklch(0.75 0.16 230);
 
-  /* Workspace Neon Accents */
-  --workspace-voice: #00f0ff;
-  --workspace-multitrack: #6366f1;
-  --workspace-audiobook: #f59e0b;
-  --workspace-dubbing: #ec4899;
-  --workspace-tools: #10b981;
-  --workspace-effects: #8b5cf6;
-  --workspace-settings: #94a3b8;
-
-  /* Active Workspace Accent (Defaults to Voice) */
-  --color-accent: var(--workspace-voice);
-  --color-accent-hover: oklch(0.88 0.16 200);
-  --color-accent-active: oklch(0.82 0.18 200);
-  --color-accent-fg: #050b14;
-
+  /* One signal accent; chrome and surfaces stay neutral ink. */
+  --color-accent: #2fd4c2;
+  --color-accent-hover: #55e0d0;
+  --color-accent-active: #20b8a7;
+  --color-accent-fg: #04201d;
+  --color-record: #f2555a;
   /* Layout Chrome Dimensions */
   --rail-width: 56px;
   --subtab-height: 40px;
@@ -62,6 +54,12 @@
   /* Glass Filter */
   --glass-blur: blur(16px);
   --glass-tint: rgba(11, 15, 25, 0.75);
+
+  /* Motion: one curve, short for feedback, longer for entrances */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-quick: 140ms;
+  --duration-menu: 180ms;
+  --duration-enter: 320ms;
 }
 
 .theme-light {
@@ -86,19 +84,12 @@
   --color-danger: oklch(0.55 0.20 25);
   --color-info: oklch(0.52 0.16 230);
 
-  /* Light Accents (Deepened for contrast >= 4.5:1 against light background) */
-  --workspace-voice: #008899;
-  --workspace-multitrack: #4338ca;
-  --workspace-audiobook: #b45309;
-  --workspace-dubbing: #be185d;
-  --workspace-tools: #047857;
-  --workspace-effects: #6d28d9;
-  --workspace-settings: #475569;
-
-  --color-accent: var(--workspace-voice);
-  --color-accent-hover: oklch(0.48 0.15 200);
-  --color-accent-active: oklch(0.42 0.15 200);
+  /* Deepened signal accent for light surfaces (>= 4.5:1 as text). */
+  --color-accent: #0f766e;
+  --color-accent-hover: #0d625b;
+  --color-accent-active: #0a4f4a;
   --color-accent-fg: #ffffff;
+  --color-record: #dc2626;
 
   --glass-tint: rgba(255, 255, 255, 0.82);
 }

@@ -50,7 +50,7 @@ export const Slider = forwardRef<HTMLInputElement, SliderProps>(
                 {label}
               </label>
             )}
-            <span className="font-mono text-[11px] text-[var(--color-accent)] font-semibold">
+            <span className="font-mono text-[11px] text-[var(--color-accent)] font-medium">
               {displayValue}
             </span>
           </div>
@@ -61,7 +61,7 @@ export const Slider = forwardRef<HTMLInputElement, SliderProps>(
           <div className="w-full h-1.5 bg-[var(--color-surface-3)] rounded-full overflow-hidden border border-[var(--color-border)]">
             {/* Fill track */}
             <div
-              className="h-full bg-[var(--color-accent)] transition-all duration-75"
+              className="h-full bg-[var(--color-accent)] transition-[color,background-color,border-color,opacity,transform] duration-75"
               style={{ width: `${percentage}%` }}
             />
           </div>
@@ -87,7 +87,7 @@ export const Slider = forwardRef<HTMLInputElement, SliderProps>(
 
           {/* Custom draggable thumb indicator */}
           <div
-            className="pointer-events-none absolute w-3.5 h-3.5 rounded-full bg-white shadow-md border border-[var(--color-border)] transition-transform duration-75 transform -translate-x-1/2 group-hover:scale-125"
+            className="pointer-events-none absolute w-4 h-4 rounded-full bg-[var(--color-surface-solid)] shadow-sm border border-[var(--color-border)] transition-transform duration-75 transform -translate-x-1/2"
             style={{ left: `${percentage}%` }}
           />
         </div>

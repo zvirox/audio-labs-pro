@@ -177,11 +177,11 @@ export function SettingsWorkspace({
     <div className="space-y-6 max-w-6xl mx-auto p-2 pb-12 select-none">
       {/* Workspace Header */}
       <div>
-        <h2 className="text-xl font-bold tracking-tight text-slate-100 flex items-center gap-2">
-          <Sliders className="w-5 h-5 text-cyan-400" />
+        <h2 className="text-xl font-medium text-[var(--color-fg)] flex items-center gap-2">
+          <Sliders className="w-4 h-4 text-[var(--color-accent)]" />
           System Settings & Studio Preferences
         </h2>
-        <p className="text-xs text-slate-400 mt-1">
+        <p className="text-xs text-[var(--color-fg-muted)] mt-1">
           Configure real-time audio devices, window compositor effects, autonomous AI security tiers, and mastering presets.
         </p>
       </div>
@@ -190,12 +190,12 @@ export function SettingsWorkspace({
       {pendingApproval && (
         <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-4 animate-in fade-in duration-200">
           <div className="flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+            <AlertCircle className="w-4 h-4 text-[var(--color-fg-muted)] shrink-0" />
             <div>
-              <div className="font-semibold text-amber-200 text-sm">
-                AI Client Connection Request: <span className="font-mono text-cyan-300">"{pendingApproval}"</span>
+              <div className="font-medium text-amber-200 text-sm">
+                AI Client Connection Request: <span className="font-mono text-[var(--color-accent)]">"{pendingApproval}"</span>
               </div>
-              <div className="text-xs text-slate-300">
+              <div className="text-xs text-[var(--color-fg-muted)]">
                 A local agent authenticated with your session token and requests attachment to this workspace.
               </div>
             </div>
@@ -220,11 +220,11 @@ export function SettingsWorkspace({
           <div className="space-y-4 text-xs">
             {/* Output Device */}
             <div>
-              <label className="block text-slate-400 mb-1.5 font-medium">Output Device (Sink)</label>
+              <label className="block text-[var(--color-fg-muted)] mb-1.5 font-medium">Output Device (Sink)</label>
               <select
                 value={selectedOutput}
                 onChange={(e) => setSelectedOutput(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-white/10 text-slate-200 focus:outline-none focus:border-cyan-500 font-mono text-xs"
+                className="w-full px-3 py-2 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-fg)] focus:outline-none focus:border-[var(--color-border-strong)] font-mono text-xs"
               >
                 {outputs.map((dev) => (
                   <option key={dev.name} value={dev.name}>
@@ -236,11 +236,11 @@ export function SettingsWorkspace({
 
             {/* Input Device */}
             <div>
-              <label className="block text-slate-400 mb-1.5 font-medium">Capture Device (Microphone)</label>
+              <label className="block text-[var(--color-fg-muted)] mb-1.5 font-medium">Capture Device (Microphone)</label>
               <select
                 value={selectedInput}
                 onChange={(e) => setSelectedInput(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-white/10 text-slate-200 focus:outline-none focus:border-cyan-500 font-mono text-xs"
+                className="w-full px-3 py-2 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-fg)] focus:outline-none focus:border-[var(--color-border-strong)] font-mono text-xs"
               >
                 {inputs.map((dev) => (
                   <option key={dev.name} value={dev.name}>
@@ -251,13 +251,13 @@ export function SettingsWorkspace({
             </div>
 
             {/* Test Tone Action */}
-            <div className="pt-2 flex items-center justify-between border-t border-white/5">
-              <span className="text-slate-400">Audio Stream Health: 0 buffer underruns</span>
+            <div className="pt-2 flex items-center justify-between border-t border-[var(--color-border)]">
+              <span className="text-[var(--color-fg-muted)]">Audio Stream Health: 0 buffer underruns</span>
               <Button
                 variant={testToneActive ? 'primary' : 'secondary'}
                 size="sm"
                 onClick={handleTestTone}
-                leftIcon={<Volume2 className="w-3.5 h-3.5" />}
+                leftIcon={<Volume2 className="w-4 h-4" />}
               >
                 {testToneActive ? 'Playing 440 Hz...' : 'Play Test Tone'}
               </Button>
@@ -270,33 +270,33 @@ export function SettingsWorkspace({
           <div className="space-y-4 text-xs">
             <div className="flex items-center justify-between py-1">
               <div>
-                <div className="font-semibold text-slate-200">Interface Theme</div>
-                <div className="text-slate-400 text-[11px]">Dark graphite or clean studio light (Ctrl+D)</div>
+                <div className="font-medium text-[var(--color-fg)]">Interface Theme</div>
+                <div className="text-[var(--color-fg-muted)] text-[11px]">Dark graphite or clean studio light (Ctrl+D)</div>
               </div>
               <Button variant="secondary" size="sm" onClick={onToggleTheme}>
                 {theme === 'dark' ? 'Dark (Studio)' : 'Light (Clean)'}
               </Button>
             </div>
 
-            <div className="flex items-center justify-between py-1 border-t border-white/5">
+            <div className="flex items-center justify-between py-1 border-t border-[var(--color-border)]">
               <div>
-                <div className="font-semibold text-slate-200">Reduce Motion</div>
-                <div className="text-slate-400 text-[11px]">Disables decorative transitions (Ctrl+Shift+M)</div>
+                <div className="font-medium text-[var(--color-fg)]">Reduce Motion</div>
+                <div className="text-[var(--color-fg-muted)] text-[11px]">Disables decorative transitions (Ctrl+Shift+M)</div>
               </div>
               <Toggle checked={reduceMotion} onChange={onToggleReduceMotion} label="" />
             </div>
 
             {/* Glass Status */}
-            <div className="p-3 rounded-lg bg-slate-950/80 border border-white/10 space-y-1.5 font-mono text-[11px]">
+            <div className="p-3 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)] space-y-1.5 font-mono text-[11px]">
               <div className="flex items-center justify-between">
-                <span className="text-slate-400">Desktop Session:</span>
-                <span className="text-cyan-400 font-semibold">{glass?.desktop || 'KDE Plasma'} ({glass?.session || 'X11'})</span>
+                <span className="text-[var(--color-fg-muted)]">Desktop Session:</span>
+                <span className="text-[var(--color-accent)] font-medium">{glass?.desktop || 'KDE Plasma'} ({glass?.session || 'X11'})</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-400">Glass Mode:</span>
-                <span className="text-purple-400 font-semibold">{glass?.mode || 'compositor_blur'}</span>
+                <span className="text-[var(--color-fg-muted)]">Glass Mode:</span>
+                <span className="text-[var(--color-fg-muted)] font-medium">{glass?.mode || 'compositor_blur'}</span>
               </div>
-              <div className="text-slate-500 text-[10px] pt-1">
+              <div className="text-[var(--color-fg-muted)] text-[10px] pt-1">
                 {glass?.detail || 'KWin blur property active via safe x11rb atom manipulation.'}
               </div>
             </div>
@@ -307,27 +307,27 @@ export function SettingsWorkspace({
         <Card title="AI Agent Control & Security" subtitle="Model Context Protocol (MCP) live socket host">
           <div className="space-y-4 text-xs">
             {/* Status & Toggle Header */}
-            <div className="flex items-center justify-between p-3 rounded-lg bg-slate-950/80 border border-white/10">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)]">
               <div className="flex items-center gap-2.5">
                 <div
                   className={`w-2.5 h-2.5 rounded-full ${
-                    aiStatus?.enabled ? 'bg-emerald-400 shadow-sm shadow-emerald-400/50 animate-pulse' : 'bg-slate-600'
-                  }`}
+ aiStatus?.enabled ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-surface-3)]'
+ }`}
                 />
                 <div>
-                  <div className="font-semibold text-slate-200 flex items-center gap-2">
+                  <div className="font-medium text-[var(--color-fg)] flex items-center gap-2">
                     <span>MCP Attach Host</span>
                     <span
                       className={`text-[10px] px-2 py-0.5 rounded font-mono font-medium ${
-                        aiStatus?.enabled
-                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                          : 'bg-slate-800 text-slate-400 border border-white/10'
-                      }`}
+ aiStatus?.enabled
+ ? 'bg-emerald-500/20 text-[var(--color-fg-muted)] border border-[var(--color-border-strong)]'
+ : 'bg-[var(--color-surface-2)] text-[var(--color-fg-muted)] border border-[var(--color-border)]'
+ }`}
                     >
                       {aiStatus?.enabled ? 'ACTIVE' : 'STANDBY'}
                     </span>
                   </div>
-                  <div className="text-[11px] text-slate-400 font-mono mt-0.5 truncate max-w-xs">
+                  <div className="text-[11px] text-[var(--color-fg-muted)] font-mono mt-0.5 truncate max-w-xs">
                     {aiStatus?.enabled
                       ? aiStatus.socket_path || '$XDG_RUNTIME_DIR/alp/control.sock'
                       : 'Unix socket standby'}
@@ -347,8 +347,8 @@ export function SettingsWorkspace({
             {/* Permission Tier Selector */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-slate-400 font-medium">Permission Tier</label>
-                <span className="text-slate-500 text-[11px]">Enforced on all tool calls</span>
+                <label className="text-[var(--color-fg-muted)] font-medium">Permission Tier</label>
+                <span className="text-[var(--color-fg-muted)] text-[11px]">Enforced on all tool calls</span>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {(['observe', 'edit', 'export'] as const).map((tier) => (
@@ -356,17 +356,17 @@ export function SettingsWorkspace({
                     key={tier}
                     type="button"
                     onClick={() => handleTierChange(tier)}
-                    className={`py-2 px-3 rounded-lg font-medium text-center capitalize border transition-all ${
-                      aiStatus?.tier === tier
-                        ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 shadow-sm shadow-cyan-500/20'
-                        : 'bg-slate-900 text-slate-400 border-white/10 hover:text-slate-200'
-                    }`}
+                    className={`py-2 px-3 rounded-lg font-medium text-center capitalize border transition-[color,background-color,border-color,opacity,transform] ${
+ aiStatus?.tier === tier
+ ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)] border-[var(--color-border-strong)] shadow-sm'
+ : 'bg-[var(--color-surface)] text-[var(--color-fg-muted)] border-[var(--color-border)] hover:text-[var(--color-fg)]'
+ }`}
                   >
                     {tier}
                   </button>
                 ))}
               </div>
-              <p className="text-[11px] text-slate-400 mt-1.5 italic">
+              <p className="text-[11px] text-[var(--color-fg-muted)] mt-1.5 italic">
                 {aiStatus?.tier === 'observe' && 'Observe: attached AI can read project metadata and tracks (read-only).'}
                 {aiStatus?.tier === 'edit' && 'Edit: full MCP tool catalog edits live project; commits share one undo entry.'}
                 {aiStatus?.tier === 'export' && 'Export: attached AI may also master and render audio into the project sandbox.'}
@@ -375,40 +375,40 @@ export function SettingsWorkspace({
 
             {/* Live Socket Transport Details */}
             {aiStatus?.enabled && (
-              <div className="space-y-2 p-3 rounded-lg bg-slate-950/80 border border-white/10 font-mono text-[11px]">
+              <div className="space-y-2 p-3 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)] font-mono text-[11px]">
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Session Token:</span>
+                  <span className="text-[var(--color-fg-muted)]">Session Token:</span>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-slate-300 truncate max-w-[140px]">
+                    <span className="text-[var(--color-fg-muted)] truncate max-w-[140px]">
                       {aiStatus.token ? `${aiStatus.token.slice(0, 16)}...` : 'None'}
                     </span>
                     <button
                       type="button"
                       onClick={handleCopyToken}
                       aria-label="Copy session token"
-                      className="p-1 rounded hover:bg-white/10 text-cyan-400 transition-colors"
+                      className="p-1 rounded hover:bg-[var(--color-surface-2)] text-[var(--color-accent)] transition-colors"
                       title="Copy full token"
                     >
-                      {copiedToken ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copiedToken ? <Check className="w-4 h-4 text-[var(--color-fg-muted)]" /> : <Copy className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-1 border-t border-white/5">
-                  <span className="text-slate-400">CLI Attach:</span>
+                <div className="flex items-center justify-between pt-1 border-t border-[var(--color-border)]">
+                  <span className="text-[var(--color-fg-muted)]">CLI Attach:</span>
                   <button
                     type="button"
                     onClick={handleCopyCommand}
-                    className="flex items-center gap-1 text-cyan-300 hover:text-cyan-200 text-[10px] underline"
+                    className="flex items-center gap-1 text-[var(--color-accent)] hover:text-cyan-200 text-[10px] underline"
                   >
-                    <Terminal className="w-3 h-3" />
+                    <Terminal className="w-4 h-4" />
                     <span>{copiedCmd ? 'Command Copied!' : 'Copy Shell Command'}</span>
                   </button>
                 </div>
 
-                <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[10px]">
-                  <span className="text-slate-400">Commits / Latency:</span>
-                  <span className="text-slate-300">
+                <div className="flex items-center justify-between pt-1 border-t border-[var(--color-border)] text-[10px]">
+                  <span className="text-[var(--color-fg-muted)]">Commits / Latency:</span>
+                  <span className="text-[var(--color-fg-muted)]">
                     {aiStatus.commits} commits · {aiStatus.last_commit_ms != null ? `${aiStatus.last_commit_ms} ms latest` : 'no edits yet'} (max {aiStatus.max_commit_ms} ms)
                   </span>
                 </div>
@@ -416,29 +416,29 @@ export function SettingsWorkspace({
             )}
 
             {/* Safety & Undo Controls */}
-            <div className="flex items-center justify-between pt-2 border-t border-white/5">
+            <div className="flex items-center justify-between pt-2 border-t border-[var(--color-border)]">
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={handleUndoAi}
-                leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
+                leftIcon={<RotateCcw className="w-4 h-4" />}
               >
                 Undo Last AI Edit
               </Button>
               {undoNotice && (
-                <span className="text-[11px] text-cyan-400 font-mono animate-in fade-in">
+                <span className="text-[11px] text-[var(--color-accent)] font-mono animate-in fade-in">
                   {undoNotice}
                 </span>
               )}
             </div>
 
             {/* Invariant Highlights */}
-            <div className="p-3 rounded-lg bg-slate-950/80 border border-white/10 space-y-1.5">
-              <div className="flex items-center gap-2 text-slate-200 font-medium">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <div className="p-3 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)] space-y-1.5">
+              <div className="flex items-center gap-2 text-[var(--color-fg)] font-medium">
+                <ShieldCheck className="w-4 h-4 text-[var(--color-fg-muted)]" />
                 <span>Active Protection Invariants</span>
               </div>
-              <ul className="text-[11px] text-slate-400 space-y-0.5 list-disc list-inside">
+              <ul className="text-[11px] text-[var(--color-fg-muted)] space-y-0.5 list-disc list-inside">
                 <li>Voice cloning consent gate cannot be bypassed by automated agents.</li>
                 <li>Revision snapshots enforce single-undo checkpoints for batch operations.</li>
                 <li>File writes restricted strictly to project sandbox paths.</li>
@@ -451,20 +451,20 @@ export function SettingsWorkspace({
         <Card title="Storage & Project Autosave" subtitle="Local directories and recovery snapshots">
           <div className="space-y-3 text-xs font-mono">
             <div>
-              <span className="text-slate-500 block text-[10px] uppercase">Active Project</span>
-              <span className="text-slate-200">{summary?.name || 'Voice Studio Demo'} (Revision #{summary?.revision || 1})</span>
+              <span className="text-[var(--color-fg-muted)] block text-[10px]">Active Project</span>
+              <span className="text-[var(--color-fg)]">{summary?.name || 'Voice Studio Demo'} (Revision #{summary?.revision || 1})</span>
             </div>
             <div>
-              <span className="text-slate-500 block text-[10px] uppercase">Media & Waveforms</span>
-              <span className="text-slate-300 break-all">~/.local/share/audio-labs-pro/projects/default/media/</span>
+              <span className="text-[var(--color-fg-muted)] block text-[10px]">Media & Waveforms</span>
+              <span className="text-[var(--color-fg-muted)] break-all">~/.local/share/audio-labs-pro/projects/default/media/</span>
             </div>
             <div>
-              <span className="text-slate-500 block text-[10px] uppercase">Model Cache</span>
-              <span className="text-slate-300 break-all">~/.local/share/alp/models/</span>
+              <span className="text-[var(--color-fg-muted)] block text-[10px]">Model Cache</span>
+              <span className="text-[var(--color-fg-muted)] break-all">~/.local/share/alp/models/</span>
             </div>
-            <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[11px]">
-              <span className="text-slate-400">Autosave Status:</span>
-              <span className="text-emerald-400 font-semibold">Active (debounced 750ms)</span>
+            <div className="pt-2 border-t border-[var(--color-border)] flex items-center justify-between text-[11px]">
+              <span className="text-[var(--color-fg-muted)]">Autosave Status:</span>
+              <span className="text-[var(--color-fg-muted)] font-medium">Active (debounced 750ms)</span>
             </div>
           </div>
         </Card>
@@ -477,32 +477,32 @@ export function SettingsWorkspace({
       >
         <div className="space-y-2 text-xs">
           {activityLogs.length === 0 ? (
-            <div className="p-6 text-center text-slate-500 italic">No agent activity recorded yet.</div>
+            <div className="p-6 text-center text-[var(--color-fg-muted)] italic">No agent activity recorded yet.</div>
           ) : (
             <div className="max-h-48 overflow-y-auto space-y-1 pr-1 font-mono text-[11px]">
               {activityLogs.map((log, idx) => (
                 <div
                   key={`${log.timestamp}-${idx}`}
-                  className="p-2 rounded bg-slate-950/60 border border-white/5 flex items-center justify-between gap-3"
+                  className="p-2 rounded bg-[var(--color-bg)] border border-[var(--color-border)] flex items-center justify-between gap-3"
                 >
                   <div className="flex items-center gap-2 truncate">
-                    <span className="text-slate-500 text-[10px]">{log.timestamp}</span>
-                    <span className="text-cyan-400 font-semibold">{log.client_id}</span>
-                    <span className="text-slate-400">›</span>
-                    <span className="text-slate-200 font-medium">{log.operation}</span>
+                    <span className="text-[var(--color-fg-muted)] text-[10px]">{log.timestamp}</span>
+                    <span className="text-[var(--color-accent)] font-medium">{log.client_id}</span>
+                    <span className="text-[var(--color-fg-muted)]">›</span>
+                    <span className="text-[var(--color-fg)] font-medium">{log.operation}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {log.queue_to_commit_ms != null && (
-                      <span className="text-slate-500 text-[10px]">{log.queue_to_commit_ms} ms</span>
+                      <span className="text-[var(--color-fg-muted)] text-[10px]">{log.queue_to_commit_ms} ms</span>
                     )}
                     <span
                       className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                        log.committed
-                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                          : log.outcome.startsWith('refused')
-                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                          : 'bg-slate-800 text-slate-400'
-                      }`}
+ log.committed
+ ? 'bg-emerald-500/20 text-[var(--color-fg-muted)] border border-[var(--color-border-strong)]'
+ : log.outcome.startsWith('refused')
+ ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+ : 'bg-[var(--color-surface-2)] text-[var(--color-fg-muted)]'
+ }`}
                     >
                       {log.outcome}
                     </span>
@@ -522,7 +522,7 @@ export function SettingsWorkspace({
               variant="secondary"
               size="sm"
               onClick={() => handleExportPreset('Podcast', -16)}
-              leftIcon={<FileCheck className="w-3.5 h-3.5 text-cyan-400" />}
+              leftIcon={<FileCheck className="w-4 h-4 text-[var(--color-accent)]" />}
             >
               Podcast (-16 LUFS)
             </Button>
@@ -530,7 +530,7 @@ export function SettingsWorkspace({
               variant="secondary"
               size="sm"
               onClick={() => handleExportPreset('Audiobook', -20)}
-              leftIcon={<FileCheck className="w-3.5 h-3.5 text-purple-400" />}
+              leftIcon={<FileCheck className="w-4 h-4 text-[var(--color-fg-muted)]" />}
             >
               Audiobook (-20 LUFS)
             </Button>
@@ -538,13 +538,13 @@ export function SettingsWorkspace({
               variant="secondary"
               size="sm"
               onClick={() => handleExportPreset('Voice-over', -24)}
-              leftIcon={<FileCheck className="w-3.5 h-3.5 text-emerald-400" />}
+              leftIcon={<FileCheck className="w-4 h-4 text-[var(--color-fg-muted)]" />}
             >
               Voice-over (-24 LUFS)
             </Button>
           </div>
           {exportNotice && (
-            <div className="p-2.5 rounded-lg bg-cyan-950/40 border border-cyan-500/30 text-cyan-300 font-mono text-[11px] animate-in fade-in">
+            <div className="p-2.5 rounded-lg bg-cyan-950/40 border border-[var(--color-border-strong)] text-[var(--color-accent)] font-mono text-[11px] animate-in fade-in">
               {exportNotice}
             </div>
           )}

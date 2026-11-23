@@ -27,7 +27,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      'relative inline-flex items-center justify-center font-medium rounded-lg transition-all select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] disabled:opacity-40 disabled:pointer-events-none active:scale-[0.98] cursor-pointer';
+      'relative inline-flex items-center justify-center font-medium rounded-lg transition-[color,background-color,border-color,opacity,transform] select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] disabled:opacity-40 disabled:pointer-events-none active:scale-[0.98] cursor-pointer';
 
     const sizeStyles = {
       xs: 'text-[11px] h-6 px-2 gap-1.5',
@@ -38,7 +38,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
     const variantStyles = {
       primary:
-        'bg-[var(--color-accent)] text-[var(--color-accent-fg)] hover:opacity-90 shadow-sm shadow-[var(--color-accent)]/20 font-semibold',
+        'bg-[var(--color-accent)] text-[var(--color-accent-fg)] hover:opacity-90',
       secondary:
         'bg-[var(--color-surface-2)] text-[var(--color-fg)] hover:bg-[var(--color-surface-3)] border border-[var(--color-border)] shadow-xs',
       ghost:
@@ -59,7 +59,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       >
         {isLoading ? (
-          <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
         ) : (
           leftIcon
         )}
@@ -67,7 +67,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {!isLoading && rightIcon}
         {shortcut && (
           <kbd
-            className="ml-auto pl-2 text-[10px] font-mono opacity-60 tracking-wider hidden sm:inline-block"
+            className="ml-auto pl-2 text-[10px] font-mono opacity-60 hidden sm:inline-block"
             aria-hidden="true"
           >
             {shortcut}

@@ -74,7 +74,7 @@ export function SubtabTopBar({
             style={{ backgroundColor: activeColor }}
             aria-hidden="true"
           />
-          <span className="text-xs font-bold tracking-tight uppercase text-[var(--color-fg)] whitespace-nowrap">
+          <span className="text-xs font-medium text-[var(--color-fg)] whitespace-nowrap">
             {activeWorkspaceName}
           </span>
           {isDirty && (
@@ -109,7 +109,7 @@ export function SubtabTopBar({
               <Button
                 variant="secondary"
                 size="xs"
-                leftIcon={<MoreHorizontal className="w-3.5 h-3.5" />}
+                leftIcon={<MoreHorizontal className="w-4 h-4" />}
                 aria-label="Studio actions and panels"
                 title="Studio actions and panels"
               >
@@ -125,7 +125,7 @@ export function SubtabTopBar({
             aria-label={isInspectorOpen ? 'Close inspector' : 'Open inspector'}
             aria-pressed={isInspectorOpen}
             title="Toggle inspector (Ctrl+B)"
-            leftIcon={<PanelRight className="w-3.5 h-3.5" />}
+            leftIcon={<PanelRight className="w-4 h-4" />}
           />
         </div>
       )}

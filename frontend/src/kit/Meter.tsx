@@ -33,11 +33,11 @@ export const Meter = memo(function Meter({
       <div className={`relative flex-1 bg-[var(--color-surface-3)] rounded-[2px] overflow-hidden border border-[var(--color-border)] ${isVertical ? 'w-2 h-full' : 'h-2 w-full'}`}>
         {/* Gradient fill */}
         <div
-          className={`absolute transition-all duration-75 ${
-            isVertical
-              ? 'bottom-0 w-full bg-gradient-to-t from-emerald-500 via-amber-400 to-rose-500'
-              : 'left-0 h-full bg-gradient-to-r from-emerald-500 via-amber-400 to-rose-500'
-          }`}
+          className={`absolute transition-[color,background-color,border-color,opacity,transform] duration-75 ${
+ isVertical
+ ? 'bottom-0 w-full bg-gradient-to-t from-emerald-500 via-amber-400 to-rose-500'
+ : 'left-0 h-full bg-gradient-to-r from-emerald-500 via-amber-400 to-rose-500'
+ }`}
           style={isVertical ? { height: `${percent}%` } : { width: `${percent}%` }}
         />
         {/* Clip LED indicator */}

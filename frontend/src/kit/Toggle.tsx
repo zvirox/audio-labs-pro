@@ -26,7 +26,7 @@ export const Toggle = forwardRef<HTMLButtonElement, ToggleProps>(
     const toggleId = id || (label ? `toggle-${label.toLowerCase().replace(/\s+/g, '-')}` : undefined);
 
     const switchSizes = {
-      sm: { track: 'w-7 h-4', thumb: 'w-3 h-3', translate: 'translate-x-3' },
+      sm: { track: 'w-7 h-4', thumb: 'w-4 h-4', translate: 'translate-x-3' },
       md: { track: 'w-10 h-5.5', thumb: 'w-4 h-4', translate: 'translate-x-4.5' },
     };
 
@@ -54,8 +54,8 @@ export const Toggle = forwardRef<HTMLButtonElement, ToggleProps>(
           disabled={disabled}
           onClick={() => onChange(!checked)}
           className={`relative inline-flex flex-shrink-0 cursor-pointer rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] disabled:opacity-40 disabled:cursor-not-allowed ${
-            currentSize.track
-          } ${checked ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-surface-3)] border border-[var(--color-border)]'}`}
+ currentSize.track
+ } ${checked ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-surface-3)] border border-[var(--color-border)]'}`}
           {...props}
         >
           <span

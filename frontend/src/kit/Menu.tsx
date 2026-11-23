@@ -78,8 +78,8 @@ export function Menu({ trigger, items, align = 'left' }: MenuProps) {
         <div
           role="menu"
           className={`absolute z-50 mt-1 min-w-[180px] rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xl p-1 animate-in fade-in zoom-in-95 duration-100 ${
-            align === 'right' ? 'right-0' : 'left-0'
-          }`}
+ align === 'right' ? 'right-0' : 'left-0'
+ }`}
         >
           {items.map((item) => (
             <React.Fragment key={item.id}>
@@ -95,10 +95,10 @@ export function Menu({ trigger, items, align = 'left' }: MenuProps) {
                   setIsOpen(false);
                 }}
                 className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none ${
-                  item.danger
-                    ? 'text-red-400 hover:bg-red-500/20'
-                    : 'text-[var(--color-fg)] hover:bg-[var(--color-surface-2)]'
-                }`}
+ item.danger
+ ? 'text-red-400 hover:bg-red-500/20'
+ : 'text-[var(--color-fg)] hover:bg-[var(--color-surface-2)]'
+ }`}
               >
                 <div className="flex items-center gap-2">
                   {item.icon}

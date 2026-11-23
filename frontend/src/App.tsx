@@ -155,9 +155,7 @@ export default function App() {
     activeWorkspace === 'dashboard'
       ? DASHBOARD_ITEM
       : WORKSPACE_LIST.find((w) => w.id === activeWorkspace) || WORKSPACE_LIST[0];
-  const activeColor = theme === 'light' ? currentWsObj.lightNeon : currentWsObj.neon;
-
-  // Apply theme & reduce-motion to root
+  // Accent is a single token from tokens.css; no per-workspace hue switching.
   useEffect(() => {
     const root = document.documentElement;
     if (theme === 'light') {
@@ -172,12 +170,7 @@ export default function App() {
     }
   }, [theme, reduceMotion]);
 
-  // Apply active accent token
-  useEffect(() => {
-    document.documentElement.style.setProperty('--color-accent', activeColor);
-  }, [activeColor]);
-
-  // Load project & workspace from backend on startup
+  // Apply theme & reduce-motion to root
   useEffect(() => {
     fetchInitialState();
 
@@ -368,16 +361,16 @@ export default function App() {
       <header className="h-10 border-b border-[var(--color-border)] bg-[var(--color-surface)] flex items-center gap-3 pl-3 pr-1 flex-shrink-0 z-40">
         <div className="flex items-center gap-2 flex-shrink-0">
           <img src={appIcon} alt="" aria-hidden="true" className="h-5 w-5 rounded" />
-          <span className="font-bold tracking-tight text-xs text-[var(--color-fg)]">
-            AUDIO LABS PRO
+          <span className="font-medium text-xs text-[var(--color-fg)]">
+            Audio Labs Pro
           </span>
         </div>
 
         <div
           className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono flex-shrink-0 ${
             isNative
-              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-              : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+              ? 'bg-emerald-500/10 text-[var(--color-fg-muted)] border border-[var(--color-border-strong)]'
+              : 'bg-amber-500/10 text-[var(--color-fg-muted)] border border-amber-500/30'
           }`}
         >
           <span
@@ -393,7 +386,7 @@ export default function App() {
           {projectSummary && (
             <div className="hidden md:flex items-center gap-2 text-[11px] font-mono text-[var(--color-fg-muted)]">
               <span>Rev #{projectSummary.revision}</span>
-              <span className={projectSummary.is_dirty ? 'text-amber-400' : 'text-emerald-400'}>
+              <span className={projectSummary.is_dirty ? 'text-[var(--color-fg-muted)]' : 'text-[var(--color-fg-muted)]'}>
                 {projectSummary.is_dirty ? 'Modified' : 'Saved'}
               </span>
             </div>
@@ -431,7 +424,7 @@ export default function App() {
           {/* Top Subtab Bar (40px) */}
           <SubtabTopBar
             activeWorkspaceName={currentWsObj.name}
-            activeColor={activeColor}
+            activeColor="var(--color-accent)"
             activeSubtab={activeSubtab}
             onSelectSubtab={setActiveSubtab}
             subtabs={WORKSPACE_SUBTABS[activeWorkspace] || []}
@@ -471,12 +464,7 @@ export default function App() {
               </div>
             ) : (
               <div ref={canvasRef} className="h-full w-full relative overflow-hidden p-4">
-                {/* Background Workspace Wallpaper & Watermark */}
-                <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-5 select-none">
-                  <span className="text-8xl font-black tracking-widest uppercase">
-                    {currentWsObj.name}
-                  </span>
-                </div>
+                {/* Canvas is the content; no decorative watermark behind panels. */}
 
                 {/* Render Floating Panels from Persisted Workspace (clamped on-screen) */}
                 {displayPanels.map((panel) => (
@@ -644,14 +632,14 @@ function renderPanelContent(
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] space-y-2">
-              <div className="text-[11px] font-bold text-[var(--color-accent)]">Track 1</div>
+              <div className="text-[11px] font-medium text-[var(--color-accent)]">Track 1</div>
               <Slider label="Fader" value={-2.5} min={-36} max={12} onChange={() => {}} unit="dB" />
               <div className="h-14 flex justify-center">
                 <Meter leftLevel={0.72} rightLevel={0.68} orientation="vertical" showLabels={false} />
               </div>
             </div>
             <div className="p-3 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] space-y-2">
-              <div className="text-[11px] font-bold text-emerald-400">Master</div>
+              <div className="text-[11px] font-medium text-[var(--color-fg-muted)]">Master</div>
               <Slider label="Fader" value={0.0} min={-36} max={12} onChange={() => {}} unit="dB" />
               <div className="h-14 flex justify-center">
                 <Meter leftLevel={0.84} rightLevel={0.82} orientation="vertical" showLabels={false} />
@@ -664,7 +652,7 @@ function renderPanelContent(
     case 'transport':
       return (
         <div className="flex flex-col items-center justify-center gap-3 py-2">
-          <div className="text-xl font-mono font-bold text-[var(--color-accent)]">
+          <div className="text-xl font-mono font-medium text-[var(--color-accent)]">
             00:00:12.45
           </div>
           <div className="flex items-center gap-2">
@@ -680,16 +668,16 @@ function renderPanelContent(
     case 'voice_lab':
       return (
         <div className="space-y-3">
-          <div className="text-xs font-semibold text-[var(--color-fg)]">
+          <div className="text-xs font-medium text-[var(--color-fg)]">
             Zero-Shot Voice Cloning
           </div>
           <div className="p-3 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] space-y-2">
             <div className="flex items-center gap-2 text-xs">
-              <Mic className="w-4 h-4 text-cyan-400" />
+              <Mic className="w-4 h-4 text-[var(--color-fg-muted)]" />
               <span>Reference Sample: <code>host_reference.wav</code></span>
             </div>
             <div className="text-[11px] text-[var(--color-fg-muted)]">
-              Quality Score: <span className="text-emerald-400 font-bold">94/100 (Clean)</span>
+              Quality Score: <span className="text-[var(--color-fg-muted)] font-medium">94/100 (Clean)</span>
             </div>
             <Button variant="primary" size="xs" className="w-full">
               Generate Neural Embedding
@@ -718,10 +706,10 @@ function renderPanelContent(
         <div className="space-y-2">
           <div className="p-2.5 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] flex items-center justify-between text-xs">
             <div>
-              <div className="font-semibold">Matcha-TTS Voice Model</div>
+              <div className="font-medium">Matcha-TTS Voice Model</div>
               <div className="text-[11px] text-[var(--color-fg-subtle)] font-mono">ONNX Runtime &bull; 85 MB</div>
             </div>
-            <span className="text-[10px] text-emerald-400 font-bold">ACTIVE</span>
+            <span className="text-[10px] text-[var(--color-fg-muted)] font-medium">Active</span>
           </div>
         </div>
       );
@@ -744,7 +732,7 @@ function renderPanelContent(
     case 'ai_activity':
       return (
         <div className="space-y-2 font-mono text-[11px]">
-          <div className="p-2 rounded bg-[var(--color-surface-2)] border border-[var(--color-border)] text-emerald-400">
+          <div className="p-2 rounded bg-[var(--color-surface-2)] border border-[var(--color-border)] text-[var(--color-fg-muted)]">
             [MCP Attached]: Edit tier authenticated
           </div>
           <div className="p-2 rounded bg-[var(--color-surface-2)] border border-[var(--color-border)] text-[var(--color-fg-muted)]">

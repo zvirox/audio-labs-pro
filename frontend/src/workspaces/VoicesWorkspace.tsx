@@ -58,11 +58,11 @@ export function VoicesWorkspace() {
       {/* Workspace Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-slate-100 flex items-center gap-2">
-            <Users className="w-5 h-5 text-cyan-400" />
+          <h2 className="text-xl font-medium text-[var(--color-fg)] flex items-center gap-2">
+            <Users className="w-4 h-4 text-[var(--color-accent)]" />
             Voice Profiles & Acoustic Lab
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-[var(--color-fg-muted)] mt-1">
             Browse installed neural voice personas, design pitch and cadence, or clone new voices with verified consent.
           </p>
         </div>
@@ -90,20 +90,20 @@ export function VoicesWorkspace() {
                   <div
                     key={profile.id}
                     onClick={() => setSelectedId(profile.id)}
-                    className={`p-3 rounded-xl border transition-all cursor-pointer space-y-2 text-xs ${
-                      isSelected
-                        ? 'bg-slate-900 border-cyan-500/60 shadow-md shadow-cyan-500/10'
-                        : 'bg-slate-950/60 border-white/5 hover:border-white/15'
-                    }`}
+                    className={`p-3 rounded-xl border transition-[color,background-color,border-color,opacity,transform] cursor-pointer space-y-2 text-xs ${
+ isSelected
+ ? 'bg-[var(--color-surface)] border-[var(--color-border-strong)] shadow-md'
+ : 'bg-[var(--color-bg)] border-[var(--color-border)] hover:border-white/15'
+ }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold text-xs">
+                        <div className="w-7 h-7 rounded-full bg-[var(--color-accent)]/20 text-[var(--color-accent)] flex items-center justify-center font-medium text-xs">
                           {profile.name.charAt(0)}
                         </div>
                         <div>
-                          <div className="font-semibold text-slate-200">{profile.name}</div>
-                          <div className="text-[10px] text-slate-400 font-mono capitalize">
+                          <div className="font-medium text-[var(--color-fg)]">{profile.name}</div>
+                          <div className="text-[10px] text-[var(--color-fg-muted)] font-mono capitalize">
                             {profile.kind} · {profile.language}
                           </div>
                         </div>
@@ -119,9 +119,9 @@ export function VoicesWorkspace() {
                         aria-label="Preview voice"
                       >
                         {isPlaying ? (
-                          <Volume2 className="w-3.5 h-3.5 animate-pulse" />
+                          <Volume2 className="w-4 h-4" />
                         ) : (
-                          <Play className="w-3.5 h-3.5" />
+                          <Play className="w-4 h-4" />
                         )}
                       </Button>
                     </div>
@@ -130,7 +130,7 @@ export function VoicesWorkspace() {
                       {profile.tags.map((tag) => (
                         <span
                           key={tag}
-                          className="px-1.5 py-0.5 rounded bg-white/5 text-[10px] font-mono text-slate-400"
+                          className="px-1.5 py-0.5 rounded bg-[var(--color-surface-2)] text-[10px] font-mono text-[var(--color-fg-muted)]"
                         >
                           #{tag}
                         </span>
@@ -153,11 +153,11 @@ export function VoicesWorkspace() {
               <div className="space-y-6 text-xs">
                 {/* Consent Badge if Cloned */}
                 {activeProfile.consent && (
-                  <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-start gap-3">
-                    <ShieldCheck className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
-                    <div className="space-y-0.5 text-slate-300">
-                      <div className="font-semibold text-emerald-300">Verified Legal Consent Record</div>
-                      <div className="text-[11px] font-mono text-slate-400">
+                  <div className="p-3 rounded-lg bg-emerald-500/10 border border-[var(--color-border-strong)] flex items-start gap-3">
+                    <ShieldCheck className="w-4 h-4 text-[var(--color-fg-muted)] flex-shrink-0 mt-0.5" />
+                    <div className="space-y-0.5 text-[var(--color-fg-muted)]">
+                      <div className="font-medium text-[var(--color-fg-muted)]">Verified Legal Consent Record</div>
+                      <div className="text-[11px] font-mono text-[var(--color-fg-muted)]">
                         Speaker: {activeProfile.consent.speaker_name} · Attested by: {activeProfile.consent.attested_by}
                       </div>
                     </div>
@@ -166,8 +166,8 @@ export function VoicesWorkspace() {
 
                 {/* Acoustic Parameter Faders */}
                 <div className="space-y-4">
-                  <h3 className="font-semibold text-slate-200 flex items-center gap-1.5">
-                    <Sliders className="w-4 h-4 text-cyan-400" />
+                  <h3 className="font-medium text-[var(--color-fg)] flex items-center gap-1.5">
+                    <Sliders className="w-4 h-4 text-[var(--color-accent)]" />
                     Acoustic Voice Tuning
                   </h3>
 
@@ -206,11 +206,11 @@ export function VoicesWorkspace() {
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-400 mb-1 font-medium">Expression Tone</label>
+                      <label className="block text-[var(--color-fg-muted)] mb-1 font-medium">Expression Tone</label>
                       <select
                         value={activeProfile.emotion}
                         onChange={(e) => updateActiveParam('emotion', e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-white/10 text-slate-200 focus:outline-none focus:border-cyan-500 font-mono text-xs"
+                        className="w-full px-3 py-2 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-fg)] focus:outline-none focus:border-[var(--color-border-strong)] font-mono text-xs"
                       >
                         <option value="neutral">Neutral (Balanced)</option>
                         <option value="warm">Warm & Conversational</option>
@@ -222,15 +222,15 @@ export function VoicesWorkspace() {
                 </div>
 
                 {/* Synthesis Test Phrase */}
-                <div className="pt-4 border-t border-white/10 flex items-center justify-between">
-                  <span className="text-slate-400 font-mono text-[11px]">
+                <div className="pt-4 border-t border-[var(--color-border)] flex items-center justify-between">
+                  <span className="text-[var(--color-fg-muted)] font-mono text-[11px]">
                     Model engine: Kokoro-82M / StyleTTS2 Studio
                   </span>
                   <Button
                     variant="primary"
                     size="sm"
                     onClick={() => handlePreviewVoice(activeProfile.id)}
-                    leftIcon={<Play className="w-3.5 h-3.5" />}
+                    leftIcon={<Play className="w-4 h-4" />}
                   >
                     Test Synthesis Phrase
                   </Button>
@@ -238,7 +238,7 @@ export function VoicesWorkspace() {
               </div>
             </Card>
           ) : (
-            <div className="p-8 text-center text-slate-500 bg-slate-900/40 rounded-xl border border-white/5">
+            <div className="p-8 text-center text-[var(--color-fg-muted)] bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)]">
               Select a voice profile to view acoustic parameters.
             </div>
           )}

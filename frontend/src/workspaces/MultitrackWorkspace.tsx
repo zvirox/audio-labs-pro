@@ -326,8 +326,8 @@ export function MultitrackWorkspace({
 
   if (!timeline) {
     return (
-      <div className="h-full flex items-center justify-center text-slate-400">
-        <Layers className="w-6 h-6 animate-spin mr-2 text-cyan-400" />
+      <div className="h-full flex items-center justify-center text-[var(--color-fg-muted)]">
+        <Layers className="w-6 h-6 animate-spin mr-2 text-[var(--color-accent)]" />
         Loading multitrack session...
       </div>
     );
@@ -336,7 +336,7 @@ export function MultitrackWorkspace({
   return (
     <div className="h-full flex flex-col overflow-hidden bg-[#090d16] select-none">
       {/* Arranger Top Toolbar */}
-      <div className="h-10 border-b border-white/10 px-3 flex items-center justify-between bg-slate-900/90 flex-shrink-0 z-10">
+      <div className="h-10 border-b border-[var(--color-border)] px-3 flex items-center justify-between bg-[var(--color-surface)] flex-shrink-0 z-10">
         {/* Left: Edit Operations */}
         <div className="flex items-center gap-1">
           <Button
@@ -344,7 +344,7 @@ export function MultitrackWorkspace({
             size="xs"
             onClick={handleUndo}
             disabled={!timeline.can_undo}
-            leftIcon={<Undo2 className="w-3.5 h-3.5" />}
+            leftIcon={<Undo2 className="w-4 h-4" />}
             title="Undo last edit (Ctrl+Z)"
           >
             Undo
@@ -354,19 +354,19 @@ export function MultitrackWorkspace({
             size="xs"
             onClick={handleRedo}
             disabled={!timeline.can_redo}
-            leftIcon={<Redo2 className="w-3.5 h-3.5" />}
+            leftIcon={<Redo2 className="w-4 h-4" />}
             title="Redo undone edit (Ctrl+Y)"
           >
             Redo
           </Button>
 
-          <div className="h-4 w-[1px] bg-white/10 mx-1" />
+          <div className="h-4 w-[1px] bg-[var(--color-surface-2)] mx-1" />
 
           <Button
             variant="secondary"
             size="xs"
             onClick={handleSplitAtPlayhead}
-            leftIcon={<Scissors className="w-3.5 h-3.5 text-cyan-400" />}
+            leftIcon={<Scissors className="w-4 h-4 text-[var(--color-accent)]" />}
             title="Split clip at playhead position (Ctrl+B)"
           >
             Split
@@ -377,20 +377,20 @@ export function MultitrackWorkspace({
             size="xs"
             onClick={handleDeleteSelected}
             disabled={!timeline.selected_clip_id}
-            leftIcon={<Trash2 className="w-3.5 h-3.5 text-rose-400" />}
+            leftIcon={<Trash2 className="w-4 h-4 text-rose-400" />}
             title="Delete selected clip (Delete)"
           >
             Delete
           </Button>
 
-          <div className="h-4 w-[1px] bg-white/10 mx-1" />
+          <div className="h-4 w-[1px] bg-[var(--color-surface-2)] mx-1" />
 
           {/* Magnetic Snapping Toggle */}
           <Button
             variant={snapEnabled ? 'primary' : 'secondary'}
             size="xs"
             onClick={() => setSnapEnabled(!snapEnabled)}
-            leftIcon={<Magnet className="w-3.5 h-3.5 text-amber-400" />}
+            leftIcon={<Magnet className="w-4 h-4 text-[var(--color-fg-muted)]" />}
             title="Toggle magnetic snapping to markers and clip edges (S)"
           >
             Snap
@@ -401,20 +401,20 @@ export function MultitrackWorkspace({
             variant={rippleEnabled ? 'primary' : 'secondary'}
             size="xs"
             onClick={() => setRippleEnabled(!rippleEnabled)}
-            leftIcon={<Waves className="w-3.5 h-3.5 text-indigo-400" />}
+            leftIcon={<Waves className="w-4 h-4 text-indigo-400" />}
             title="Toggle automatic ripple editing on cuts and deletions (R)"
           >
             Ripple
           </Button>
 
-          <div className="h-4 w-[1px] bg-white/10 mx-1" />
+          <div className="h-4 w-[1px] bg-[var(--color-surface-2)] mx-1" />
 
           {/* Global View Mode Switcher */}
-          <div className="flex items-center bg-slate-950/80 border border-white/10 rounded p-0.5 text-[10px] font-mono">
+          <div className="flex items-center bg-[var(--color-bg)] border border-[var(--color-border)] rounded p-0.5 text-[10px] font-mono">
             <button
               type="button"
               onClick={() => handleSetAllViewModes('waveform')}
-              className="px-2 py-0.5 rounded text-slate-400 hover:text-cyan-300 hover:bg-white/5 transition-colors"
+              className="px-2 py-0.5 rounded text-[var(--color-fg-muted)] hover:text-[var(--color-accent)] hover:bg-[var(--color-surface-2)] transition-colors"
               title="Switch all tracks to Waveform view"
             >
               Wave
@@ -422,7 +422,7 @@ export function MultitrackWorkspace({
             <button
               type="button"
               onClick={() => handleSetAllViewModes('spectrogram')}
-              className="px-2 py-0.5 rounded text-slate-400 hover:text-orange-300 hover:bg-white/5 transition-colors"
+              className="px-2 py-0.5 rounded text-[var(--color-fg-muted)] hover:text-orange-300 hover:bg-[var(--color-surface-2)] transition-colors"
               title="Switch all tracks to Spectrogram heatmap view"
             >
               Spectral
@@ -430,7 +430,7 @@ export function MultitrackWorkspace({
             <button
               type="button"
               onClick={() => handleSetAllViewModes('split')}
-              className="px-2 py-0.5 rounded text-slate-400 hover:text-purple-300 hover:bg-white/5 transition-colors"
+              className="px-2 py-0.5 rounded text-[var(--color-fg-muted)] hover:text-[var(--color-fg-muted)] hover:bg-[var(--color-surface-2)] transition-colors"
               title="Switch all tracks to Split Waveform + Spectrogram dual multi-view"
             >
               Split
@@ -440,10 +440,10 @@ export function MultitrackWorkspace({
 
         {/* Center: Playhead Timecode & Status */}
         <div className="flex items-center gap-3">
-          <div className="font-mono text-xs font-bold text-cyan-400 bg-slate-950 px-2.5 py-1 rounded border border-cyan-500/30">
+          <div className="font-mono text-xs font-medium text-[var(--color-accent)] bg-[var(--color-bg)] px-2.5 py-1 rounded border border-[var(--color-border-strong)]">
             {new Date(currentTimeSecs * 1000).toISOString().substring(14, 22)}
           </div>
-          <span className="text-[11px] text-slate-400 font-sans hidden sm:inline">
+          <span className="text-[11px] text-[var(--color-fg-muted)] font-sans hidden sm:inline">
             {statusMessage}
           </span>
         </div>
@@ -454,7 +454,7 @@ export function MultitrackWorkspace({
             variant="secondary"
             size="xs"
             onClick={() => setZoom((z) => Math.max(10, z * 0.8))}
-            leftIcon={<ZoomOut className="w-3 h-3" />}
+            leftIcon={<ZoomOut className="w-4 h-4" />}
             title="Zoom out (Ctrl+-)"
           />
           <div className="w-20 hidden md:block">
@@ -469,17 +469,17 @@ export function MultitrackWorkspace({
             variant="secondary"
             size="xs"
             onClick={() => setZoom((z) => Math.min(1000, z * 1.25))}
-            leftIcon={<ZoomIn className="w-3 h-3" />}
+            leftIcon={<ZoomIn className="w-4 h-4" />}
             title="Zoom in (Ctrl++)"
           />
 
-          <div className="h-4 w-[1px] bg-white/10 mx-1" />
+          <div className="h-4 w-[1px] bg-[var(--color-surface-2)] mx-1" />
 
           <Button
             variant="secondary"
             size="xs"
             onClick={() => onSeek(0)}
-            leftIcon={<RotateCcw className="w-3 h-3" />}
+            leftIcon={<RotateCcw className="w-4 h-4" />}
             title="Rewind playhead to start (Home)"
           >
             0:00
@@ -492,9 +492,9 @@ export function MultitrackWorkspace({
               onClick={onTogglePlay}
               leftIcon={
                 isPlaying ? (
-                  <Pause className="w-3 h-3 fill-current text-amber-400" />
+                  <Pause className="w-4 h-4 fill-current text-[var(--color-fg-muted)]" />
                 ) : (
-                  <Play className="w-3 h-3 fill-current text-cyan-400" />
+                  <Play className="w-4 h-4 fill-current text-[var(--color-accent)]" />
                 )
               }
               title="Play / Pause timeline (Space)"
@@ -522,7 +522,7 @@ export function MultitrackWorkspace({
       </div>
 
       {/* Footer Track & Clip Status Bar */}
-      <div className="h-6 border-t border-white/5 bg-slate-950 px-3 flex items-center justify-between text-[11px] text-slate-400 font-mono flex-shrink-0">
+      <div className="h-6 border-t border-[var(--color-border)] bg-[var(--color-bg)] px-3 flex items-center justify-between text-[11px] text-[var(--color-fg-muted)] font-mono flex-shrink-0">
         <div className="flex items-center gap-4">
           <span>Tracks: {timeline.tracks.length}</span>
           <span>
@@ -530,7 +530,7 @@ export function MultitrackWorkspace({
             {timeline.tracks.reduce((sum, t) => sum + t.clips.length, 0)}
           </span>
           {timeline.selected_clip_id && (
-            <span className="text-cyan-400 font-bold">
+            <span className="text-[var(--color-accent)] font-medium">
               Selected: {timeline.selected_clip_id}
             </span>
           )}
