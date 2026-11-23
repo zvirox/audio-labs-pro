@@ -4,7 +4,7 @@ Section: sound
 Priority: optional
 Architecture: amd64
 Maintainer: Audio Labs Pro Developers <contact@audiolabspro.internal>
-Depends: libc6 (>= 2.34), libasound2 (>= 1.2.0)
+Depends: libc6 (>= 2.34), libasound2 (>= 1.2.0), libwebkit2gtk-4.1-0 (>= 2.40.0), libgtk-3-0 (>= 3.24.0)
 Recommends: pipewire-audio-client-libraries
 Suggests: alsa-utils
 Description: Professional Voice Audio Workstation

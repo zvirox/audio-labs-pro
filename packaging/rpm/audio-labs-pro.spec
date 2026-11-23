@@ -16,8 +16,8 @@ BuildArch:      x86_64
 
 # The staged binaries are built in CI against glibc/ALSA; runtime libraries
 # resolve through the standard RPM file dependencies, so only the audio stack
-# is pinned here.
-Requires:       alsa-lib
+# is pinned here along with WebKitGTK 4.1 for the Tauri desktop shell.
+Requires:       alsa-lib, webkit2gtk4.1, gtk3
 Recommends:     pipewire-alsa
 
 %description

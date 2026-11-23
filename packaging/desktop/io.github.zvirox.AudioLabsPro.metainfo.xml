@@ -33,6 +33,11 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.0.1-alpha.8" date="2026-11-23">
+      <description>
+        <p>Complete cutover to Tauri 2 and React frontend desktop shell (alp-desktop and alp-session), replacing the legacy Iced UI. High-performance HTML5 canvas multitrack timeline editor, full AI MCP parity with live undo history, WebKitGTK 4.1 packaging updates across deb, rpm, and Flatpak.</p>
+      </description>
+    </release>
     <release version="0.0.1-alpha.5" date="2026-11-22">
       <description>
         <p>Minimal slate/light studio theme with contrast-checked text, larger type, labelled navigation, responsive grids and window fitting, opaque tooltips, waveform label fixes, visible workspace settle motion, and README status, install, FAQ and troubleshooting updates.</p>
