@@ -61,9 +61,7 @@ impl WindowType {
                 const A3: f32 = 0.01168;
                 for i in 0..size {
                     let frac = i as f32 / denom;
-                    let w = A0
-                        - A1 * (2.0 * PI * frac).cos()
-                        + A2 * (4.0 * PI * frac).cos()
+                    let w = A0 - A1 * (2.0 * PI * frac).cos() + A2 * (4.0 * PI * frac).cos()
                         - A3 * (6.0 * PI * frac).cos();
                     window.push(w);
                 }
@@ -133,13 +131,19 @@ impl SpectrogramConfig {
     /// Validates configuration parameters.
     pub fn validate(&self) -> Result<(), CoreError> {
         if self.fft_size < 64 || (self.fft_size & (self.fft_size - 1)) != 0 {
-            return Err(CoreError::validation("fft_size must be a power of two >= 64"));
+            return Err(CoreError::validation(
+                "fft_size must be a power of two >= 64",
+            ));
         }
         if self.hop_size == 0 || self.hop_size > self.fft_size {
-            return Err(CoreError::validation("hop_size must be > 0 and <= fft_size"));
+            return Err(CoreError::validation(
+                "hop_size must be > 0 and <= fft_size",
+            ));
         }
         if self.min_freq_hz < 0.0 || self.min_freq_hz >= self.max_freq_hz {
-            return Err(CoreError::validation("min_freq_hz must be >= 0 and < max_freq_hz"));
+            return Err(CoreError::validation(
+                "min_freq_hz must be >= 0 and < max_freq_hz",
+            ));
         }
         if self.num_freq_bins == 0 {
             return Err(CoreError::validation("num_freq_bins must be > 0"));
@@ -229,7 +233,9 @@ impl SpectrogramEngine {
     /// Computes the spectrogram from raw mono audio samples.
     pub fn compute(&self, samples: &[f32], sample_rate: u32) -> Result<SpectrogramData, CoreError> {
         if samples.is_empty() {
-            return Err(CoreError::validation("audio buffer cannot be empty for spectrogram computation"));
+            return Err(CoreError::validation(
+                "audio buffer cannot be empty for spectrogram computation",
+            ));
         }
         if sample_rate == 0 {
             return Err(CoreError::validation("sample_rate must be > 0"));
@@ -240,7 +246,11 @@ impl SpectrogramEngine {
         let num_raw_bins = fft_size / 2 + 1;
         let nyquist = sample_rate as f32 / 2.0;
 
-        let max_freq = self.config.max_freq_hz.min(nyquist).max(self.config.min_freq_hz + 10.0);
+        let max_freq = self
+            .config
+            .max_freq_hz
+            .min(nyquist)
+            .max(self.config.min_freq_hz + 10.0);
         let min_freq = self.config.min_freq_hz.max(1.0);
 
         // Precompute target frequency bins
@@ -322,7 +332,9 @@ impl SpectrogramEngine {
             }
 
             // Perform Real-to-Complex FFT
-            let _ = self.r2c.process_with_scratch(&mut input_buf, &mut spectrum, &mut scratch);
+            let _ = self
+                .r2c
+                .process_with_scratch(&mut input_buf, &mut spectrum, &mut scratch);
 
             // Extract target bins and convert magnitude to normalized dBFS
             for &raw_idx in &raw_bin_indices {
@@ -445,7 +457,10 @@ mod tests {
             peak_bin,
             target_bin
         );
-        assert!(max_intensity > 0.85, "pure tone intensity should be high near 0 dBFS");
+        assert!(
+            max_intensity > 0.85,
+            "pure tone intensity should be high near 0 dBFS"
+        );
     }
 
     #[test]

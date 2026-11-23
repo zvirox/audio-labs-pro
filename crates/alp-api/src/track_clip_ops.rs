@@ -315,13 +315,25 @@ impl ApiSession {
             .find(|t| t.id.to_string() == track_id_str)
             .ok_or_else(|| ApiError::NotFound(format!("track '{track_id_str}' not found")))?;
 
-        let (t1, t2) = if t_start <= t_end { (t_start, t_end) } else { (t_end, t_start) };
-        let (f1, f2) = if f_low <= f_high { (f_low, f_high) } else { (f_high, f_low) };
+        let (t1, t2) = if t_start <= t_end {
+            (t_start, t_end)
+        } else {
+            (t_end, t_start)
+        };
+        let (f1, f2) = if f_low <= f_high {
+            (f_low, f_high)
+        } else {
+            (f_high, f_low)
+        };
         let f1_clamped = f1.max(1.0);
         let f2_clamped = f2.max(f1_clamped + 1.0);
         let center_freq_hz = (f1_clamped * f2_clamped).sqrt();
         let bandwidth_hz = f2_clamped - f1_clamped;
-        let q_factor = if bandwidth_hz > 1e-3 { center_freq_hz / bandwidth_hz } else { 0.0 };
+        let q_factor = if bandwidth_hz > 1e-3 {
+            center_freq_hz / bandwidth_hz
+        } else {
+            0.0
+        };
 
         Ok(SpectralSelectionReport {
             track_id: track.id.to_string(),

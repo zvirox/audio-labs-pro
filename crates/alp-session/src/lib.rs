@@ -18,16 +18,16 @@ pub mod workspace;
 
 pub use ai::{AiActivityEntry, AiControlManager, AiControlStatus, AiEvent};
 pub use alp_api::PermissionTier;
-pub use alp_api::control::ApprovalDecision;
 pub use alp_api::ProjectSummary;
+pub use alp_api::control::ApprovalDecision;
+pub use alp_dsp::spectral::{FrequencyScale, SpectrogramConfig, SpectrogramData, WindowType};
 pub use jobs::{Job, JobQueue, JobReporter, JobStatus};
 pub use panels::{DockSide, PanelKind, PanelManager, PanelRect, PanelState, Point, Size};
 pub use session::{EditSession, ImportedAudio, NORMALIZE_TARGET};
-pub use alp_dsp::spectral::{FrequencyScale, SpectrogramConfig, SpectrogramData, WindowType};
 pub use timeline::{
     SpectralSelectionDto, SpectrogramRequestDto, TimelineClipDto, TimelineDto,
-    TimelineEnvelopePointDto, TimelineLoopRangeDto, TimelineMarkerDto,
-    TimelinePanPointDto, TimelineSelectionDto, TimelineTrackDto, TrackViewMode,
+    TimelineEnvelopePointDto, TimelineLoopRangeDto, TimelineMarkerDto, TimelinePanPointDto,
+    TimelineSelectionDto, TimelineTrackDto, TrackViewMode,
 };
 pub use transport::{
     MeterFrame, PeakLevelDto, TransportController, TransportState, WaveformPeaksDto,

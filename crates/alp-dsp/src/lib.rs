@@ -23,7 +23,9 @@ pub use dynamics::{Compressor, NoiseGate};
 pub use eq::{EqBand, ParametricEq};
 pub use limiter::Limiter;
 pub use loudness::{KWeighting, calculate_normalization_gain, measure_lufs};
-pub use spectral::{FrequencyScale, SpectrogramConfig, SpectrogramData, SpectrogramEngine, WindowType};
+pub use spectral::{
+    FrequencyScale, SpectrogramConfig, SpectrogramData, SpectrogramEngine, WindowType,
+};
 pub use voice::{DeClick, DeEsser, DeHum};
 
 /// An audio processor that can run live or offline.

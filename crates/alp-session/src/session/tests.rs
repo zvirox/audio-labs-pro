@@ -321,7 +321,10 @@ fn phase13_spectral_and_multitrack_canvas_operations() {
     let clip_id = initial_dto.tracks[0].clips[0].id.clone();
 
     // 1. Test Track View Mode toggles
-    assert_eq!(initial_dto.tracks[0].view_mode, crate::timeline::TrackViewMode::Waveform);
+    assert_eq!(
+        initial_dto.tracks[0].view_mode,
+        crate::timeline::TrackViewMode::Waveform
+    );
     session
         .set_track_view_mode_by_id(&track_id, "spectrogram")
         .expect("set view mode spectrogram");
@@ -336,7 +339,11 @@ fn phase13_spectral_and_multitrack_canvas_operations() {
         session.timeline_dto().tracks[0].view_mode,
         crate::timeline::TrackViewMode::Split
     );
-    assert!(session.set_track_view_mode_by_id(&track_id, "invalid_mode").is_err());
+    assert!(
+        session
+            .set_track_view_mode_by_id(&track_id, "invalid_mode")
+            .is_err()
+    );
 
     // 2. Test 2D Spectral Selection
     let sel = crate::timeline::SpectralSelectionDto::new(1.0, 3.5, 400.0, 1600.0);
@@ -353,14 +360,21 @@ fn phase13_spectral_and_multitrack_canvas_operations() {
         .set_spectral_selection_by_id(&track_id, Some(sel))
         .expect("set spectral selection");
     let dto = session.timeline_dto();
-    let track_sel = dto.tracks[0].spectral_selection.as_ref().expect("has spectral selection");
+    let track_sel = dto.tracks[0]
+        .spectral_selection
+        .as_ref()
+        .expect("has spectral selection");
     assert!((track_sel.center_freq_hz - 800.0).abs() < 1e-3);
 
     // Clear spectral selection
     session
         .set_spectral_selection_by_id(&track_id, None)
         .expect("clear spectral selection");
-    assert!(session.timeline_dto().tracks[0].spectral_selection.is_none());
+    assert!(
+        session.timeline_dto().tracks[0]
+            .spectral_selection
+            .is_none()
+    );
 
     // 3. Test Clip Pan Automation Envelope
     session
@@ -374,7 +388,9 @@ fn phase13_spectral_and_multitrack_canvas_operations() {
 
     // 4. Test Slip Edit
     assert_eq!(dto.tracks[0].clips[0].slip_offset_secs, 0.0);
-    session.slip_clip_by_id(&clip_id, 0.5).expect("slip edit succeeds");
+    session
+        .slip_clip_by_id(&clip_id, 0.5)
+        .expect("slip edit succeeds");
     let dto_slipped = session.timeline_dto();
     assert!((dto_slipped.tracks[0].clips[0].slip_offset_secs - 0.5).abs() < 1e-3);
 

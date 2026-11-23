@@ -104,10 +104,10 @@ impl PersistedWorkspace {
     /// or return a default layout with `size` bounds.
     #[must_use]
     pub fn load_or_default(size: impl Into<crate::panels::Size>) -> Self {
-        if let Ok(path) = Self::default_path() {
-            if let Some(loaded) = Self::load(&path) {
-                return loaded;
-            }
+        if let Ok(path) = Self::default_path()
+            && let Some(loaded) = Self::load(&path)
+        {
+            return loaded;
         }
         let pm = crate::panels::PanelManager::default_for(size);
         Self::new("dark", false, "compositor_blur", pm.panels().to_vec())

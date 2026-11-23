@@ -262,7 +262,10 @@ mod tests {
 
     #[test]
     fn glass_mode_string_roundtrip() {
-        assert_eq!(GlassMode::parse("compositor_blur"), GlassMode::CompositorBlur);
+        assert_eq!(
+            GlassMode::parse("compositor_blur"),
+            GlassMode::CompositorBlur
+        );
         assert_eq!(GlassMode::parse("tint_fallback"), GlassMode::TintFallback);
         assert_eq!(GlassMode::parse("unknown_string"), GlassMode::TintFallback);
         assert_eq!(GlassMode::CompositorBlur.as_str(), "compositor_blur");

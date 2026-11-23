@@ -505,10 +505,10 @@ pub fn timeline_select_clip(
         .session
         .lock()
         .map_err(|e| format!("session lock poisoned: {e}"))?;
-    if let Some(id_str) = clip_id {
-        if let Ok(id) = id_str.parse() {
-            session.select_clip(id);
-        }
+    if let Some(id_str) = clip_id
+        && let Ok(id) = id_str.parse()
+    {
+        session.select_clip(id);
     }
     Ok(session.timeline_dto())
 }
@@ -585,7 +585,12 @@ pub fn timeline_set_track_view_mode(
 
     session.set_track_view_mode_by_id(&track_id, &view_mode)?;
     let dto = session.timeline_dto();
-    emit_revision(&app, dto.revision, session.is_dirty(), "set_track_view_mode");
+    emit_revision(
+        &app,
+        dto.revision,
+        session.is_dirty(),
+        "set_track_view_mode",
+    );
     Ok(dto)
 }
 
@@ -604,7 +609,12 @@ pub fn timeline_set_spectral_selection(
 
     session.set_spectral_selection_by_id(&track_id, selection)?;
     let dto = session.timeline_dto();
-    emit_revision(&app, dto.revision, session.is_dirty(), "set_spectral_selection");
+    emit_revision(
+        &app,
+        dto.revision,
+        session.is_dirty(),
+        "set_spectral_selection",
+    );
     Ok(dto)
 }
 
@@ -621,13 +631,15 @@ pub fn timeline_set_clip_pan_envelope(
         .lock()
         .map_err(|e| format!("session lock poisoned: {e}"))?;
 
-    let raw_points: Vec<(f64, f32)> = points
-        .into_iter()
-        .map(|p| (p.offset_secs, p.pan))
-        .collect();
+    let raw_points: Vec<(f64, f32)> = points.into_iter().map(|p| (p.offset_secs, p.pan)).collect();
     session.set_clip_pan_envelope_by_id(&clip_id, raw_points)?;
     let dto = session.timeline_dto();
-    emit_revision(&app, dto.revision, session.is_dirty(), "set_clip_pan_envelope");
+    emit_revision(
+        &app,
+        dto.revision,
+        session.is_dirty(),
+        "set_clip_pan_envelope",
+    );
     Ok(dto)
 }
 
@@ -662,9 +674,7 @@ pub fn get_ai_status(state: State<'_, AppState>) -> Result<AiControlStatus, Stri
 
 /// Toggle the AI control socket on/off.
 #[tauri::command]
-pub fn toggle_ai_control(
-    state: State<'_, AppState>,
-) -> Result<AiControlStatus, String> {
+pub fn toggle_ai_control(state: State<'_, AppState>) -> Result<AiControlStatus, String> {
     let mut ai = state
         .ai
         .lock()
@@ -722,9 +732,7 @@ pub fn respond_ai_approval(
 
 /// Retrieve the recent AI activity and audit logs.
 #[tauri::command]
-pub fn get_ai_activity_log(
-    state: State<'_, AppState>,
-) -> Result<Vec<AiActivityEntry>, String> {
+pub fn get_ai_activity_log(state: State<'_, AppState>) -> Result<Vec<AiActivityEntry>, String> {
     let ai = state
         .ai
         .lock()
@@ -734,10 +742,7 @@ pub fn get_ai_activity_log(
 
 /// Convenience undo specifically for AI operations.
 #[tauri::command]
-pub fn undo_ai_change(
-    app: AppHandle,
-    state: State<'_, AppState>,
-) -> Result<TimelineDto, String> {
+pub fn undo_ai_change(app: AppHandle, state: State<'_, AppState>) -> Result<TimelineDto, String> {
     timeline_undo(app, state)
 }
 

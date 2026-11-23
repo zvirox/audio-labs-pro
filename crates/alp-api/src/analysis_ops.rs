@@ -11,7 +11,9 @@ use crate::session::ApiSession;
 use crate::types::PermissionTier;
 use alp_core::{ClipId, frames_to_secs};
 use alp_dsp::measure_lufs;
-use alp_dsp::spectral::{FrequencyScale, SpectrogramConfig, SpectrogramData, SpectrogramEngine, WindowType};
+use alp_dsp::spectral::{
+    FrequencyScale, SpectrogramConfig, SpectrogramData, SpectrogramEngine, WindowType,
+};
 
 /// Frame length for level statistics (20 ms).
 const LEVEL_FRAME_MS: u32 = 20;

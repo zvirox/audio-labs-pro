@@ -55,14 +55,19 @@ fn main() {
                     loop {
                         std::thread::sleep(std::time::Duration::from_millis(20));
                         let events = {
-                            let Ok(mut ai) = state_for_tick.ai.lock() else { continue };
-                            let Ok(mut session) = state_for_tick.session.lock() else { continue };
+                            let Ok(mut ai) = state_for_tick.ai.lock() else {
+                                continue;
+                            };
+                            let Ok(mut session) = state_for_tick.session.lock() else {
+                                continue;
+                            };
                             ai.tick(&mut session)
                         };
                         for event in events {
                             match event {
                                 AiEvent::RevisionChanged(rev) => {
-                                    let is_dirty = state_for_tick.session.lock().map_or(false, |s| s.is_dirty());
+                                    let is_dirty =
+                                        state_for_tick.session.lock().is_ok_and(|s| s.is_dirty());
                                     let payload = SessionRevisionPayload {
                                         revision: rev,
                                         is_dirty,
@@ -71,7 +76,10 @@ fn main() {
                                     let _ = handle.emit("session_revision_changed", &payload);
                                 }
                                 AiEvent::ApprovalRequired { client_id } => {
-                                    let _ = handle.emit("ai_client_approval", serde_json::json!({ "clientId": client_id }));
+                                    let _ = handle.emit(
+                                        "ai_client_approval",
+                                        serde_json::json!({ "clientId": client_id }),
+                                    );
                                 }
                                 AiEvent::Activity(entry) => {
                                     let _ = handle.emit("ai_activity_event", &entry);

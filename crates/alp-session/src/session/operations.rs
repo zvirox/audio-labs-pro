@@ -6,8 +6,9 @@ use alp_core::{
     AddMarker, AddTrack, ClipId, CrossfadeClips, DeleteRange, DuplicateClip, EnvelopePoint,
     FrameRange, Marker, MarkerId, MoveClip, NormalizeClip, PasteClips, RemoveClip, RemoveMarker,
     Selection, SetClipEnvelope, SetClipFades, SetClipGain, SetClipInverted, SetClipReversed,
-    SetLoopRange, SetMasterGain, SetTrackArm, SetTrackGain, SetTrackMuted, SetTrackPan, SetTrackSolo,
-    SilenceRange, SplitClip, Track, TrackId, TrimClip, copy_range, frames_to_secs, secs_to_frames,
+    SetLoopRange, SetMasterGain, SetTrackArm, SetTrackGain, SetTrackMuted, SetTrackPan,
+    SetTrackSolo, SilenceRange, SplitClip, Track, TrackId, TrimClip, copy_range, frames_to_secs,
+    secs_to_frames,
 };
 use alp_dsp::{SpectrogramConfig, SpectrogramData, SpectrogramEngine};
 
@@ -757,12 +758,18 @@ impl EditSession {
         let total = fade_in.saturating_add(fade_out);
         let (fi, fo) = if total > max_fades && total > 0 {
             let scale = max_fades as f64 / total as f64;
-            ((fade_in as f64 * scale) as u64, (fade_out as f64 * scale) as u64)
+            (
+                (fade_in as f64 * scale) as u64,
+                (fade_out as f64 * scale) as u64,
+            )
         } else {
             (fade_in, fade_out)
         };
 
-        if self.run(Box::new(SetClipFades::new(clip_id, fi, fo)), "Set clip fades") {
+        if self.run(
+            Box::new(SetClipFades::new(clip_id, fi, fo)),
+            "Set clip fades",
+        ) {
             Ok(())
         } else {
             Err(self.status.clone())
@@ -893,10 +900,13 @@ impl EditSession {
             })
             .collect();
 
-        let loop_range = self.project.loop_range.map(|r| crate::timeline::TimelineLoopRangeDto {
-            start_secs: frames_to_secs(r.start, rate),
-            end_secs: frames_to_secs(r.end, rate),
-        });
+        let loop_range = self
+            .project
+            .loop_range
+            .map(|r| crate::timeline::TimelineLoopRangeDto {
+                start_secs: frames_to_secs(r.start, rate),
+                end_secs: frames_to_secs(r.end, rate),
+            });
 
         let selection = if self.selection.is_empty() {
             None
@@ -925,7 +935,11 @@ impl EditSession {
     }
 
     /// Set visualization mode for a track by ID.
-    pub fn set_track_view_mode_by_id(&mut self, track_id_str: &str, view_mode_str: &str) -> Result<(), String> {
+    pub fn set_track_view_mode_by_id(
+        &mut self,
+        track_id_str: &str,
+        view_mode_str: &str,
+    ) -> Result<(), String> {
         let track_id: TrackId = track_id_str
             .parse()
             .map_err(|e| format!("invalid track id: {e}"))?;
@@ -938,7 +952,11 @@ impl EditSession {
             "waveform" => TrackViewMode::Waveform,
             "spectrogram" => TrackViewMode::Spectrogram,
             "split" => TrackViewMode::Split,
-            other => return Err(format!("unknown view mode '{other}' (expected 'waveform', 'spectrogram', or 'split')")),
+            other => {
+                return Err(format!(
+                    "unknown view mode '{other}' (expected 'waveform', 'spectrogram', or 'split')"
+                ));
+            }
         };
 
         self.track_view_modes.insert(track_id, mode);
@@ -1046,7 +1064,10 @@ impl EditSession {
             .ok_or_else(|| format!("clip '{clip_id_str}' not found"))?;
 
         let source_audio = self.audio.get(&clip.source_id).ok_or_else(|| {
-            format!("audio source {} not found for clip {}", clip.source_id, clip_id_str)
+            format!(
+                "audio source {} not found for clip {}",
+                clip.source_id, clip_id_str
+            )
         })?;
 
         let sample_rate = source_audio.sample_rate();
@@ -1080,6 +1101,8 @@ impl EditSession {
 
         let cfg = config.unwrap_or_default();
         let engine = SpectrogramEngine::new(cfg).map_err(|e| e.to_string())?;
-        engine.compute(&mono_samples, sample_rate).map_err(|e| e.to_string())
+        engine
+            .compute(&mono_samples, sample_rate)
+            .map_err(|e| e.to_string())
     }
 }

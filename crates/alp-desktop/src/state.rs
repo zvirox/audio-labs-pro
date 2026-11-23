@@ -5,9 +5,7 @@
 
 use std::sync::{Arc, Mutex};
 
-use alp_session::{
-    AiControlManager, EditSession, PersistedWorkspace, Size, TransportController,
-};
+use alp_session::{AiControlManager, EditSession, PersistedWorkspace, Size, TransportController};
 
 use crate::glass::GlassReport;
 

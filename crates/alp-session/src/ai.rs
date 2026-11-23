@@ -570,7 +570,11 @@ impl AiControlManager {
     }
 
     /// Start listening on `$XDG_RUNTIME_DIR/alp/control.sock`.
-    pub fn start(&mut self, runtime_dir: &Path, tier: PermissionTier) -> Result<AiControlStatus, String> {
+    pub fn start(
+        &mut self,
+        runtime_dir: &Path,
+        tier: PermissionTier,
+    ) -> Result<AiControlStatus, String> {
         if self.is_enabled() {
             return Ok(self.status());
         }
@@ -632,11 +636,7 @@ impl AiControlManager {
             .iter()
             .cloned()
             .collect();
-        let pending_clients = self
-            .pending
-            .iter()
-            .map(|p| p.client_id.clone())
-            .collect();
+        let pending_clients = self.pending.iter().map(|p| p.client_id.clone()).collect();
         AiControlStatus {
             enabled: self.is_enabled(),
             socket_path: self.socket_path.as_ref().map(|p| p.display().to_string()),
@@ -784,7 +784,9 @@ impl AiControlManager {
                     ControlResponse::error("session_revoked", "the operator stopped AI control")
                 };
                 let outcome = match &result {
-                    ControlResponse::Error { code, message } => format!("refused ({code}: {message})"),
+                    ControlResponse::Error { code, message } => {
+                        format!("refused ({code}: {message})")
+                    }
                     _ => "ok".to_owned(),
                 };
                 let committed = session.revision() != before_revision;
@@ -817,8 +819,7 @@ impl AiControlManager {
         response: SyncSender<ControlResponse>,
         session: &EditSession,
     ) {
-        let live = self.is_enabled()
-            && self.host.as_ref().is_some_and(|host| host.id() == host_id);
+        let live = self.is_enabled() && self.host.as_ref().is_some_and(|host| host.id() == host_id);
         if !live {
             let _ = response.send(ControlResponse::error(
                 "session_revoked",
@@ -960,7 +961,9 @@ impl AiControlManager {
             }
         } else if let Some(transaction) = transaction {
             match transaction {
-                PreparedTransaction::Saved { base_revision: base } => {
+                PreparedTransaction::Saved {
+                    base_revision: base,
+                } => {
                     if base == session.revision() {
                         session.mark_attached_saved();
                     } else {
@@ -1058,9 +1061,10 @@ impl AiControlManager {
 
 fn response_failed(response: &JsonRpcResponse) -> bool {
     response.error.is_some()
-        || response.result.as_ref().is_some_and(|result| {
-            result.get("isError").and_then(Value::as_bool) == Some(true)
-        })
+        || response
+            .result
+            .as_ref()
+            .is_some_and(|result| result.get("isError").and_then(Value::as_bool) == Some(true))
 }
 
 /// Dispatch native typed requests directly into the live `EditSession`.
@@ -1145,10 +1149,10 @@ fn dispatch_control(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alp_api::control::{CONTROL_PROTOCOL_VERSION, read_response, write_request};
     use std::io::BufReader;
     use std::os::unix::net::UnixStream;
     use std::time::Duration;
-    use alp_api::control::{CONTROL_PROTOCOL_VERSION, read_response, write_request};
 
     #[test]
     fn test_ai_control_observe_tier_blocks_edits() {
@@ -1355,25 +1359,40 @@ mod tests {
         }
 
         // 1. Test tools/list
-        let list_resp = call_mcp(&mut stream, &responses_rx, &mut manager, &mut session, JsonRpcRequest {
-            jsonrpc: "2.0".into(),
-            id: Some(serde_json::json!(1)),
-            method: "tools/list".into(),
-            params: serde_json::json!({}),
-        });
-        let tools = list_resp.result.unwrap()["tools"].as_array().unwrap().clone();
+        let list_resp = call_mcp(
+            &mut stream,
+            &responses_rx,
+            &mut manager,
+            &mut session,
+            JsonRpcRequest {
+                jsonrpc: "2.0".into(),
+                id: Some(serde_json::json!(1)),
+                method: "tools/list".into(),
+                params: serde_json::json!({}),
+            },
+        );
+        let tools = list_resp.result.unwrap()["tools"]
+            .as_array()
+            .unwrap()
+            .clone();
         assert!(tools.len() > 4, "expected full MCP tool catalog");
 
         // 2. Test tools/call track_add
-        let call_resp = call_mcp(&mut stream, &responses_rx, &mut manager, &mut session, JsonRpcRequest {
-            jsonrpc: "2.0".into(),
-            id: Some(serde_json::json!(2)),
-            method: "tools/call".into(),
-            params: serde_json::json!({
-                "name": "track_add",
-                "arguments": { "name": "AI MCP Synth Lead" }
-            }),
-        });
+        let call_resp = call_mcp(
+            &mut stream,
+            &responses_rx,
+            &mut manager,
+            &mut session,
+            JsonRpcRequest {
+                jsonrpc: "2.0".into(),
+                id: Some(serde_json::json!(2)),
+                method: "tools/call".into(),
+                params: serde_json::json!({
+                    "name": "track_add",
+                    "arguments": { "name": "AI MCP Synth Lead" }
+                }),
+            },
+        );
         let result = call_resp.result.unwrap();
         assert_eq!(result["_meta"]["committed"], true);
         assert_eq!(session.tracks().len(), initial_tracks + 1);
@@ -1381,15 +1400,21 @@ mod tests {
         assert_eq!(manager.status().commits, 1);
 
         // 3. Test history_undo via MCP
-        let undo_resp = call_mcp(&mut stream, &responses_rx, &mut manager, &mut session, JsonRpcRequest {
-            jsonrpc: "2.0".into(),
-            id: Some(serde_json::json!(3)),
-            method: "tools/call".into(),
-            params: serde_json::json!({
-                "name": "history_undo",
-                "arguments": {}
-            }),
-        });
+        let undo_resp = call_mcp(
+            &mut stream,
+            &responses_rx,
+            &mut manager,
+            &mut session,
+            JsonRpcRequest {
+                jsonrpc: "2.0".into(),
+                id: Some(serde_json::json!(3)),
+                method: "tools/call".into(),
+                params: serde_json::json!({
+                    "name": "history_undo",
+                    "arguments": {}
+                }),
+            },
+        );
         let undo_res = undo_resp.result.unwrap();
         assert_eq!(undo_res["structuredContent"]["undone"], true);
         assert_eq!(session.tracks().len(), initial_tracks);

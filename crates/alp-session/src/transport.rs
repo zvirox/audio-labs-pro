@@ -205,7 +205,11 @@ impl TransportController {
 
         self.duration_secs = session.duration_secs().max(0.001);
         if self.position_secs >= self.duration_secs {
-            self.position_secs = if self.loop_enabled { self.loop_start_secs } else { 0.0 };
+            self.position_secs = if self.loop_enabled {
+                self.loop_start_secs
+            } else {
+                0.0
+            };
         }
 
         let scene = session.scene()?;
@@ -260,7 +264,11 @@ impl TransportController {
         }
         self.virtual_clock = None;
         self.playing = false;
-        self.position_secs = if self.loop_enabled { self.loop_start_secs } else { 0.0 };
+        self.position_secs = if self.loop_enabled {
+            self.loop_start_secs
+        } else {
+            0.0
+        };
         self.peak_l = 0.0;
         self.peak_r = 0.0;
         self.rms_l = 0.0;
@@ -444,7 +452,7 @@ impl TransportController {
             let pos = virtual_clock.start_secs + elapsed;
 
             // Generate lifelike reactive meter activity based on position
-            let phase = pos * 3.14159;
+            let phase = pos * std::f64::consts::PI;
             let dynamic = (phase.sin().abs() * 0.75 + 0.15) as f32;
             self.peak_l = (dynamic * 0.85).clamp(0.0, 1.0);
             self.peak_r = (dynamic * 0.78).clamp(0.0, 1.0);
@@ -480,8 +488,8 @@ impl TransportController {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
     use super::*;
+    use std::time::Duration;
 
     #[test]
     fn test_transport_initial_state() {
