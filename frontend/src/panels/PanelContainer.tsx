@@ -17,9 +17,11 @@ import {
   Info,
 } from 'lucide-react';
 import type { PanelState, PanelKind } from '../ipc/types';
+import type { CanvasBounds } from '../layout/panelLayout';
 
 interface PanelContainerProps {
   panel: PanelState;
+  bounds?: CanvasBounds;
   onUpdate: (updated: PanelState) => void;
   onClose: (kind: PanelKind) => void;
   onFocus: (kind: PanelKind) => void;
@@ -54,6 +56,7 @@ const PANEL_TITLES: Record<PanelKind, string> = {
 
 export function PanelContainer({
   panel,
+  bounds,
   onUpdate,
   onClose,
   onFocus,
@@ -96,8 +99,10 @@ export function PanelContainer({
     const handleMouseMove = (e: MouseEvent) => {
       const deltaX = e.clientX - dragStartRef.current.mouseX;
       const deltaY = e.clientY - dragStartRef.current.mouseY;
-      const newX = Math.max(56, dragStartRef.current.startX + deltaX);
-      const newY = Math.max(40, dragStartRef.current.startY + deltaY);
+      const maxX = bounds ? Math.max(0, bounds.width - panel.rect.width) : Infinity;
+      const maxY = bounds ? Math.max(0, bounds.height - panel.rect.height) : Infinity;
+      const newX = Math.min(Math.max(0, dragStartRef.current.startX + deltaX), maxX);
+      const newY = Math.min(Math.max(0, dragStartRef.current.startY + deltaY), maxY);
 
       onUpdate({
         ...panel,
@@ -119,7 +124,7 @@ export function PanelContainer({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, panel, onUpdate]);
+  }, [isDragging, panel, onUpdate, bounds]);
 
   // Resizing logic
   const handleMouseDownResize = (e: React.MouseEvent) => {
@@ -140,8 +145,10 @@ export function PanelContainer({
     const handleMouseMove = (e: MouseEvent) => {
       const deltaX = e.clientX - resizeStartRef.current.mouseX;
       const deltaY = e.clientY - resizeStartRef.current.mouseY;
-      const newW = Math.max(260, resizeStartRef.current.startW + deltaX);
-      const newH = Math.max(140, resizeStartRef.current.startH + deltaY);
+      const maxW = bounds ? Math.max(260, bounds.width - panel.rect.x) : Infinity;
+      const maxH = bounds ? Math.max(140, bounds.height - panel.rect.y) : Infinity;
+      const newW = Math.min(Math.max(260, resizeStartRef.current.startW + deltaX), maxW);
+      const newH = Math.min(Math.max(140, resizeStartRef.current.startH + deltaY), maxH);
 
       onUpdate({
         ...panel,
@@ -163,7 +170,7 @@ export function PanelContainer({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizing, panel, onUpdate]);
+  }, [isResizing, panel, onUpdate, bounds]);
 
   if (!panel.open) return null;
 

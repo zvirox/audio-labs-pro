@@ -1,15 +1,24 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Mic,
   Play,
-  Radio,
   RefreshCw,
+  Info,
+  DownloadCloud,
 } from 'lucide-react';
 
 import { PrimaryRail, WORKSPACE_LIST, DASHBOARD_ITEM } from './layout/PrimaryRail';
 import { SubtabTopBar } from './layout/SubtabTopBar';
 import { InspectorDrawer } from './layout/InspectorDrawer';
 import { DockedPlayer } from './layout/DockedPlayer';
+import { WindowControls } from './layout/WindowControls';
+import {
+  clampPanels,
+  tidyPanels,
+  hasOverlap,
+  estimateCanvasBounds,
+  type CanvasBounds,
+} from './layout/panelLayout';
 import { PanelContainer } from './panels/PanelContainer';
 import { TimelineWaveformPanel } from './panels/TimelineWaveformPanel';
 import { CommandPalette } from './components/CommandPalette';
@@ -21,6 +30,7 @@ import { Button } from './kit/Button';
 import { Slider } from './kit/Slider';
 import { Toggle } from './kit/Toggle';
 import { Meter } from './kit/Meter';
+import appIcon from './assets/app-icon.png';
 
 import {
   SettingsWorkspace,
@@ -111,8 +121,34 @@ export default function App() {
   const [projectSummary, setProjectSummary] = useState<ProjectSummary | null>(null);
   const [workspaceState, setWorkspaceState] = useState<WorkspaceState | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const canvasRef = useRef<HTMLDivElement | null>(null);
+  const [canvasBounds, setCanvasBounds] = useState<CanvasBounds>({ width: 0, height: 0 });
   const isNative = isTauriEnvironment();
   const transport = useTransport();
+
+  // Measure the floating-panel canvas so panels can be clamped on-screen.
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+    const update = () =>
+      setCanvasBounds({ width: el.clientWidth, height: el.clientHeight });
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [viewMode]);
+
+  // Panels actually rendered: clamped inside the measured canvas. If clamping
+  // (e.g. after a window resize) would stack panels, re-tidy to a clean grid;
+  // deliberate user-created overlap is preserved.
+  const displayPanels = useMemo(() => {
+    const source = workspaceState?.panels ?? [];
+    const clamped = clampPanels(source, canvasBounds);
+    if (canvasBounds.width > 0 && hasOverlap(clamped) && !hasOverlap(source)) {
+      return tidyPanels(clamped, canvasBounds);
+    }
+    return clamped;
+  }, [workspaceState, canvasBounds]);
 
   // Active workspace metadata
   const currentWsObj =
@@ -170,7 +206,11 @@ export default function App() {
         getWorkspaceState(),
       ]);
       setProjectSummary(summary);
-      setWorkspaceState(ws);
+      const bounds = estimateCanvasBounds();
+      const panels = hasOverlap(ws.panels)
+        ? tidyPanels(ws.panels, bounds)
+        : clampPanels(ws.panels, bounds);
+      setWorkspaceState({ ...ws, panels });
       if (ws.theme === 'light' || ws.theme === 'dark') {
         setTheme(ws.theme as 'dark' | 'light');
       }
@@ -267,11 +307,13 @@ export default function App() {
   const handleResetLayout = useCallback(async () => {
     try {
       const reset = await resetWorkspaceLayout();
-      setWorkspaceState(reset);
+      const bounds =
+        canvasBounds.width > 0 ? canvasBounds : estimateCanvasBounds();
+      setWorkspaceState({ ...reset, panels: tidyPanels(reset.panels, bounds) });
     } catch (err) {
       console.error('Failed to reset layout:', err);
     }
-  }, []);
+  }, [canvasBounds]);
 
   // Theme cycle
   const handleToggleTheme = useCallback(() => {
@@ -323,41 +365,34 @@ export default function App() {
   return (
     <div className="h-screen w-screen flex flex-col bg-[var(--color-bg)] text-[var(--color-fg)] font-sans antialiased overflow-hidden select-none">
       {/* Top Application Bar */}
-      <header className="h-10 border-b border-[var(--color-border)] px-4 flex items-center justify-between bg-[var(--color-surface)] flex-shrink-0 z-40">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Radio className="w-4 h-4 text-cyan-400" />
-            <span className="font-bold tracking-tight text-xs text-white">
-              AUDIO LABS PRO
-            </span>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-fg-muted)]">
-              Phase M3 App Shell
-            </span>
-          </div>
-
-          <div
-            className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono ${
-              isNative
-                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-            }`}
-          >
-            <span
-              className={`w-1.5 h-1.5 rounded-full ${
-                isNative ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
-              }`}
-            />
-            {isNative ? 'Tauri 2 Native' : 'Browser Mock'}
-          </div>
+      <header className="h-10 border-b border-[var(--color-border)] bg-[var(--color-surface)] flex items-center gap-3 pl-3 pr-1 flex-shrink-0 z-40">
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <img src={appIcon} alt="" aria-hidden="true" className="h-5 w-5 rounded" />
+          <span className="font-bold tracking-tight text-xs text-[var(--color-fg)]">
+            AUDIO LABS PRO
+          </span>
         </div>
 
-        <div className="flex items-center gap-3 text-xs">
+        <div
+          className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono flex-shrink-0 ${
+            isNative
+              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+              : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+          }`}
+        >
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${isNative ? 'bg-emerald-400' : 'bg-amber-400'}`}
+          />
+          {isNative ? 'Native' : 'Mock'}
+        </div>
+
+        {/* Draggable title-bar region (frameless window) */}
+        <div className="flex-1 h-full" data-tauri-drag-region />
+
+        <div className="flex items-center gap-2 text-xs flex-shrink-0">
           {projectSummary && (
-            <div className="flex items-center gap-2 text-[11px] font-mono text-[var(--color-fg-muted)]">
+            <div className="hidden md:flex items-center gap-2 text-[11px] font-mono text-[var(--color-fg-muted)]">
               <span>Rev #{projectSummary.revision}</span>
-              <span>&bull;</span>
-              <span>{projectSummary.sample_rate / 1000}kHz</span>
-              <span>&bull;</span>
               <span className={projectSummary.is_dirty ? 'text-amber-400' : 'text-emerald-400'}>
                 {projectSummary.is_dirty ? 'Modified' : 'Saved'}
               </span>
@@ -370,10 +405,13 @@ export default function App() {
             onClick={fetchInitialState}
             disabled={isLoading}
             leftIcon={<RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />}
+            aria-label="Sync project state"
           >
             Sync
           </Button>
         </div>
+
+        <WindowControls />
       </header>
 
       {/* Main Dual-Axis Workspace Layout */}
@@ -432,7 +470,7 @@ export default function App() {
                 )}
               </div>
             ) : (
-              <div className="h-full w-full relative overflow-hidden p-4">
+              <div ref={canvasRef} className="h-full w-full relative overflow-hidden p-4">
                 {/* Background Workspace Wallpaper & Watermark */}
                 <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-5 select-none">
                   <span className="text-8xl font-black tracking-widest uppercase">
@@ -440,11 +478,12 @@ export default function App() {
                   </span>
                 </div>
 
-                {/* Render Floating Panels from Persisted Workspace */}
-                {workspaceState?.panels.map((panel) => (
+                {/* Render Floating Panels from Persisted Workspace (clamped on-screen) */}
+                {displayPanels.map((panel) => (
                   <PanelContainer
                     key={panel.kind}
                     panel={panel}
+                    bounds={canvasBounds}
                     onUpdate={handleUpdatePanel}
                     onClose={handleClosePanel}
                     onFocus={handleFocusPanel}
@@ -711,6 +750,28 @@ function renderPanelContent(
           <div className="p-2 rounded bg-[var(--color-surface-2)] border border-[var(--color-border)] text-[var(--color-fg-muted)]">
             Listening for socket commands on /tmp/alp.sock...
           </div>
+        </div>
+      );
+
+    case 'inspector':
+      return (
+        <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
+          <Info className="w-5 h-5 text-[var(--color-fg-subtle)]" aria-hidden="true" />
+          <p className="text-xs font-medium text-[var(--color-fg)]">No clip selected</p>
+          <p className="text-[11px] text-[var(--color-fg-muted)] max-w-[220px]">
+            Select a clip on the timeline to inspect its gain, fades and source here.
+          </p>
+        </div>
+      );
+
+    case 'export_queue':
+      return (
+        <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
+          <DownloadCloud className="w-5 h-5 text-[var(--color-fg-subtle)]" aria-hidden="true" />
+          <p className="text-xs font-medium text-[var(--color-fg)]">No renders queued</p>
+          <p className="text-[11px] text-[var(--color-fg-muted)] max-w-[220px]">
+            Exported masters and stems will appear here with their progress.
+          </p>
         </div>
       );
 

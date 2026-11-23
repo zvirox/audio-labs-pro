@@ -20,6 +20,7 @@ export interface MenuProps {
 export function Menu({ trigger, items, align = 'left' }: MenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const triggerWrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -33,11 +34,45 @@ export function Menu({ trigger, items, align = 'left' }: MenuProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
+  // Keyboard operability: Esc closes and returns focus to the trigger;
+  // Arrow keys move between enabled items.
+  useEffect(() => {
+    if (!isOpen) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      const itemsEls = Array.from(
+        menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not([disabled])') ?? []
+      );
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setIsOpen(false);
+        triggerWrapRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
+        return;
+      }
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (itemsEls.length === 0) return;
+        const idx = itemsEls.indexOf(document.activeElement as HTMLButtonElement);
+        const next =
+          e.key === 'ArrowDown'
+            ? (idx + 1) % itemsEls.length
+            : (idx - 1 + itemsEls.length) % itemsEls.length;
+        itemsEls[next]?.focus();
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    // Move focus into the menu when it opens.
+    const first = menuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]:not([disabled])');
+    first?.focus();
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
   return (
     <div className="relative inline-block text-left" ref={menuRef}>
-      {React.cloneElement(trigger, {
-        onClick: () => setIsOpen((prev) => !prev),
-      })}
+      <div ref={triggerWrapRef} className="inline-block">
+        {React.cloneElement(trigger, {
+          onClick: () => setIsOpen((prev) => !prev),
+        })}
+      </div>
 
       {isOpen && (
         <div

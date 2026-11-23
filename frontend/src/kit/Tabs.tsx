@@ -67,11 +67,12 @@ export function Tabs({
     );
   }
 
-  // Subtab horizontal bar style (standard in 40px top bar)
+  // Subtab horizontal bar style (standard in 40px top bar). Single line, scrolls
+  // horizontally instead of wrapping so tab labels never stack or duplicate.
   return (
     <div
       role="tablist"
-      className={`inline-flex items-center gap-1 select-none overflow-x-auto ${className}`}
+      className={`inline-flex flex-nowrap items-center gap-1 select-none overflow-x-auto [scrollbar-width:none] ${className}`}
     >
       {items.map((tab) => {
         const isActive = tab.id === activeId;
@@ -82,7 +83,7 @@ export function Tabs({
             aria-selected={isActive}
             disabled={tab.disabled}
             onClick={() => onChange(tab.id)}
-            className={`relative inline-flex items-center justify-center font-medium transition-colors cursor-pointer rounded-md ${
+            className={`relative inline-flex shrink-0 items-center justify-center whitespace-nowrap font-medium transition-colors cursor-pointer rounded-md ${
               sizeStyles[size]
             } ${
               isActive

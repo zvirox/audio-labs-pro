@@ -79,7 +79,7 @@ export function TimelineWaveformPanel({
   return (
     <div className="flex flex-col h-full w-full gap-2 text-xs">
       {/* Top Toolbar */}
-      <div className="flex items-center justify-between px-2 py-1.5 bg-slate-900/60 rounded border border-white/5">
+      <div className="flex items-center justify-between px-2 py-1.5 bg-[var(--color-surface-2)] rounded border border-[var(--color-border)]">
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
@@ -104,7 +104,7 @@ export function TimelineWaveformPanel({
           <span className="font-mono text-cyan-400 font-semibold px-2 py-0.5 rounded bg-black/40 border border-cyan-500/20">
             {formatTime(currentTime)}
           </span>
-          <span className="text-slate-500 font-mono">/ {formatTime(activeDuration)}</span>
+          <span className="text-[var(--color-fg-muted)] font-mono">/ {formatTime(activeDuration)}</span>
         </div>
 
         {/* Viewport & Benchmark Controls */}
@@ -126,7 +126,7 @@ export function TimelineWaveformPanel({
             className={`flex items-center gap-1.5 px-2 py-1 rounded transition-colors border ${
               is1HourBenchmark
                 ? 'bg-purple-950/80 text-purple-300 border-purple-500/50 shadow-sm shadow-purple-500/20'
-                : 'bg-white/5 text-slate-400 hover:text-slate-200 border-white/10'
+                : 'bg-[var(--color-surface-2)] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] border-[var(--color-border)]'
             }`}
           >
             <Activity className="w-3.5 h-3.5 text-purple-400" />
@@ -156,7 +156,7 @@ export function TimelineWaveformPanel({
             height={160}
           />
         ) : (
-          <div className="flex flex-col items-center justify-center h-40 bg-slate-950/40 rounded border border-white/5 text-slate-500">
+          <div className="flex flex-col items-center justify-center h-40 bg-[var(--color-surface-2)] rounded border border-[var(--color-border)] text-[var(--color-fg-muted)]">
             <div className="w-5 h-5 border-2 border-cyan-500/30 border-t-cyan-400 rounded-full animate-spin mb-2" />
             <span>Loading peak pyramid...</span>
           </div>
@@ -164,7 +164,7 @@ export function TimelineWaveformPanel({
       </div>
 
       {/* Bottom Status / Selection Readout */}
-      <div className="flex items-center justify-between px-2 text-[11px] text-slate-400 font-mono">
+      <div className="flex items-center justify-between px-2 text-[11px] text-[var(--color-fg-muted)] font-mono">
         <div>
           Selection: {formatTime(selectionRange.start)} – {formatTime(selectionRange.end)} (
           {(selectionRange.end - selectionRange.start).toFixed(2)}s)

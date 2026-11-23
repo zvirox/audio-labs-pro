@@ -24,6 +24,22 @@ versions follow the release milestones in the build plan.
   (`prefers-reduced-motion` and the in-app toggle) now collapses animations/transitions.
   Lighthouse accessibility on the dashboard: 1.0.
 
+### Fixed
+
+- **Frameless window management.** `decorations: false` left no way to minimize/maximize/close;
+  added a `WindowControls` group (native-only) plus a draggable title-bar region.
+- **Header cleanup.** Replaced the placeholder radio glyph with the real app logo, removed the
+  dev-only "Phase M3 App Shell" badge, and compacted the status/sync cluster.
+- **Subtab bar clutter / wrapped tab labels.** Subtabs now render on a single scrolling line
+  (no wrapping or clipped duplicate-looking labels); secondary studio actions (edit, view mode,
+  reset, panel toggles) collapse into one "Studio" overflow menu with an icon-only inspector toggle.
+- **Floating-panel overlap / off-screen panels.** Panel rects are clamped to the measured canvas;
+  load/reset/resize produce a tidy non-overlapping grid; drag and resize are bounded to the canvas.
+- **Menu keyboard support.** Esc closes and returns focus to the trigger; Arrow keys move between
+  items; focus enters the menu on open.
+- **Empty states.** Inspector and Export Queue panels show actionable empty states instead of a
+  generic placeholder; timeline panel toolbar uses theme tokens (readable in light mode).
+
 ## [0.0.1-alpha.8] - 2026-11-23
 
 ### Added

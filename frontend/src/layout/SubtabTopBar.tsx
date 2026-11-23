@@ -1,11 +1,4 @@
-import {
-  RotateCcw,
-  Sliders,
-  PanelRight,
-  Zap,
-  LayoutGrid,
-  AppWindow,
-} from 'lucide-react';
+import { MoreHorizontal, PanelRight } from 'lucide-react';
 import { Tabs } from '../kit/Tabs';
 import { Button } from '../kit/Button';
 import { Menu } from '../kit/Menu';
@@ -28,6 +21,11 @@ interface SubtabTopBarProps {
   hideStudioActions?: boolean;
 }
 
+/**
+ * Contextual sub-navigation bar. Keeps a single scrolling row of subtabs and
+ * collapses the studio's secondary actions into one overflow menu so the bar
+ * stays uncluttered at narrow widths.
+ */
 export function SubtabTopBar({
   activeWorkspaceName,
   activeColor,
@@ -44,124 +42,92 @@ export function SubtabTopBar({
   onToggleViewMode,
   hideStudioActions = false,
 }: SubtabTopBarProps) {
-  const panelMenuItems = [
-    { id: 'timeline', label: 'Timeline / Tracks', onClick: () => onTogglePanel('timeline') },
-    { id: 'mixer', label: 'Mixer', onClick: () => onTogglePanel('mixer') },
-    { id: 'transport', label: 'Transport Controls', onClick: () => onTogglePanel('transport') },
-    { id: 'inspector', label: 'Inspector Drawer', onClick: onToggleInspector, shortcut: 'Ctrl+B' },
-    { id: 'voice_lab', label: 'Voice Lab', onClick: () => onTogglePanel('voice_lab'), dividerBefore: true },
-    { id: 'effects', label: 'DSP Effects Rack', onClick: () => onTogglePanel('effects') },
-    { id: 'models', label: 'Neural Models', onClick: () => onTogglePanel('models') },
-    { id: 'media_bin', label: 'Media Bin', onClick: () => onTogglePanel('media_bin'), dividerBefore: true },
-    { id: 'ai_activity', label: 'MCP Agent Activity', onClick: () => onTogglePanel('ai_activity') },
-    { id: 'export_queue', label: 'Export Queue', onClick: () => onTogglePanel('export_queue') },
+  const studioMenuItems = [
+    { id: 'edit', label: 'Trigger demo timeline edit', onClick: onTriggerEdit },
+    {
+      id: 'viewmode',
+      label: viewMode === 'workspace' ? 'Switch to floating panels' : 'Switch to workspace view',
+      onClick: () => onToggleViewMode?.(),
+    },
+    { id: 'reset', label: 'Reset panel layout', onClick: onResetLayout, dividerBefore: true },
+    { id: 'p_timeline', label: 'Toggle Timeline panel', onClick: () => onTogglePanel('timeline') },
+    { id: 'p_mixer', label: 'Toggle Mixer panel', onClick: () => onTogglePanel('mixer') },
+    { id: 'p_transport', label: 'Toggle Transport panel', onClick: () => onTogglePanel('transport') },
+    { id: 'p_voice', label: 'Toggle Voice Lab panel', onClick: () => onTogglePanel('voice_lab'), dividerBefore: true },
+    { id: 'p_effects', label: 'Toggle DSP Effects panel', onClick: () => onTogglePanel('effects') },
+    { id: 'p_models', label: 'Toggle Neural Models panel', onClick: () => onTogglePanel('models') },
+    { id: 'p_media', label: 'Toggle Media Bin panel', onClick: () => onTogglePanel('media_bin'), dividerBefore: true },
+    { id: 'p_ai', label: 'Toggle MCP Agent Activity panel', onClick: () => onTogglePanel('ai_activity') },
+    { id: 'p_export', label: 'Toggle Export Queue panel', onClick: () => onTogglePanel('export_queue') },
   ];
 
   return (
     <nav
-      className="h-10 border-b border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 flex items-center justify-between flex-shrink-0 select-none z-20"
+      className="h-10 border-b border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 flex items-center gap-3 flex-shrink-0 select-none z-20"
       aria-label="Sub-navigation Bar"
     >
-      {/* Left: Active Workspace Title & Contextual Subtabs */}
-      <div className="flex items-center gap-4 overflow-x-auto">
+      {/* Left: workspace title + single-line scrolling subtabs */}
+      <div className="flex flex-1 min-w-0 items-center gap-3">
         <div className="flex items-center gap-2 flex-shrink-0">
           <span
             className="w-2 h-2 rounded-full"
             style={{ backgroundColor: activeColor }}
+            aria-hidden="true"
           />
-          <span className="text-xs font-bold tracking-tight uppercase text-[var(--color-fg)]">
+          <span className="text-xs font-bold tracking-tight uppercase text-[var(--color-fg)] whitespace-nowrap">
             {activeWorkspaceName}
           </span>
+          {isDirty && (
+            <span
+              className="w-1.5 h-1.5 rounded-full bg-amber-400"
+              title="Unsaved changes"
+              aria-label="Unsaved changes"
+            />
+          )}
         </div>
 
-        <div className="h-3.5 w-[1px] bg-[var(--color-border)] flex-shrink-0" />
-
-        <Tabs
-          variant="subtab"
-          items={subtabs}
-          activeId={activeSubtab}
-          onChange={onSelectSubtab}
-        />
-      </div>
-
-      {/* Right: Actions, Panels Dropdown & Inspector Toggle (hidden on Dashboard) */}
-      {!hideStudioActions && (
-      <div className="flex items-center gap-2 flex-shrink-0 pl-2">
-        {/* Trigger Demo Edit */}
-        <Button
-          variant="secondary"
-          size="xs"
-          onClick={onTriggerEdit}
-          leftIcon={<Zap className="w-3 h-3 text-amber-400 fill-amber-400/20" />}
-          title="Simulate timeline edit and emit revision event"
-        >
-          <span>Edit</span>
-          {isDirty && (
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse ml-0.5" />
-          )}
-        </Button>
-
-        {/* Floating Panels Menu */}
-        <Menu
-          align="right"
-          trigger={
-            <Button
-              variant="secondary"
-              size="xs"
-              leftIcon={<Sliders className="w-3 h-3 text-[var(--color-accent)]" />}
-            >
-              Panels
-            </Button>
-          }
-          items={panelMenuItems}
-        />
-
-        {/* View Mode Switcher (Workspaces vs Panels) */}
-        {onToggleViewMode && (
-          <Button
-            variant={viewMode === 'workspace' ? 'secondary' : 'primary'}
-            size="xs"
-            onClick={onToggleViewMode}
-            leftIcon={
-              viewMode === 'workspace' ? (
-                <AppWindow className="w-3 h-3 text-cyan-400" />
-              ) : (
-                <LayoutGrid className="w-3 h-3 text-amber-400" />
-              )
-            }
-            title={
-              viewMode === 'workspace'
-                ? 'Switch to Floating Panels view'
-                : 'Switch to Studio Workspace view'
-            }
-          >
-            {viewMode === 'workspace' ? 'Panels' : 'Workspace'}
-          </Button>
+        {subtabs.length > 0 && (
+          <div className="h-3.5 w-[1px] bg-[var(--color-border)] flex-shrink-0" aria-hidden="true" />
         )}
 
-        {/* Reset Layout */}
-        <Button
-          variant="secondary"
-          size="xs"
-          onClick={onResetLayout}
-          leftIcon={<RotateCcw className="w-3 h-3" />}
-          title="Reset floating panel layout to default"
-        >
-          Reset
-        </Button>
-
-        {/* Right Inspector Toggle */}
-        <Button
-          variant={isInspectorOpen ? 'primary' : 'secondary'}
-          size="xs"
-          onClick={onToggleInspector}
-          shortcut="Ctrl+B"
-          leftIcon={<PanelRight className="w-3.5 h-3.5" />}
-          title="Toggle right inspector drawer (Ctrl+B)"
-        >
-          Inspector
-        </Button>
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <Tabs
+            variant="subtab"
+            items={subtabs}
+            activeId={activeSubtab}
+            onChange={onSelectSubtab}
+          />
+        </div>
       </div>
+
+      {/* Right: one overflow menu + inspector toggle */}
+      {!hideStudioActions && (
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <Menu
+            align="right"
+            trigger={
+              <Button
+                variant="secondary"
+                size="xs"
+                leftIcon={<MoreHorizontal className="w-3.5 h-3.5" />}
+                aria-label="Studio actions and panels"
+                title="Studio actions and panels"
+              >
+                Studio
+              </Button>
+            }
+            items={studioMenuItems}
+          />
+          <Button
+            variant={isInspectorOpen ? 'primary' : 'secondary'}
+            size="xs"
+            onClick={onToggleInspector}
+            aria-label={isInspectorOpen ? 'Close inspector' : 'Open inspector'}
+            aria-pressed={isInspectorOpen}
+            title="Toggle inspector (Ctrl+B)"
+            leftIcon={<PanelRight className="w-3.5 h-3.5" />}
+          />
+        </div>
       )}
     </nav>
   );
