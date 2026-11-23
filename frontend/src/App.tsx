@@ -149,6 +149,7 @@ export default function App() {
           ? { ...prev, revision: payload.revision, is_dirty: payload.is_dirty }
           : null
       );
+      getProjectSummary().then(setProjectSummary).catch(console.error);
     }).then((cleanup) => {
       unlisten = cleanup;
     });

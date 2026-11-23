@@ -221,4 +221,32 @@ export interface StoryScript {
   lines: StoryLine[];
 }
 
+export type PermissionTier = 'observe' | 'edit' | 'export';
+
+export interface AiControlStatus {
+  enabled: boolean;
+  socket_path: string | null;
+  token: string | null;
+  tier: PermissionTier;
+  trusted_clients: string[];
+  pending_clients: string[];
+  commits: number;
+  last_commit_ms: number | null;
+  max_commit_ms: number;
+  last_status: string;
+}
+
+export interface AiActivityEntry {
+  timestamp: string;
+  client_id: string;
+  operation: string;
+  outcome: string;
+  queue_to_commit_ms: number | null;
+  committed: boolean;
+}
+
+export interface AiApprovalRequest {
+  clientId: string;
+}
+
 export * from '../timeline/types';

@@ -26,6 +26,9 @@ import type {
   StoryScript,
   TimelineDto,
   TimelineClipDto,
+  AiControlStatus,
+  AiActivityEntry,
+  PermissionTier,
 } from './types';
 
 export const isTauriEnvironment = (): boolean => {
@@ -1126,4 +1129,119 @@ export async function timelineSetSelection(startSecs: number, endSecs: number): 
     end_secs: endSecs,
   };
   return JSON.parse(JSON.stringify(mockTimeline));
+}
+
+// ---------------------------------------------------------------------------
+// AI / Model Context Protocol (MCP) Attach Client
+// ---------------------------------------------------------------------------
+
+let mockAiStatus: AiControlStatus = {
+  enabled: false,
+  socket_path: null,
+  token: null,
+  tier: 'edit',
+  trusted_clients: ['claude-desktop', 'alp-local-agent'],
+  pending_clients: [],
+  commits: 0,
+  last_commit_ms: null,
+  max_commit_ms: 0,
+  last_status: 'AI attach standby: socket inactive',
+};
+
+const mockActivityLog: AiActivityEntry[] = [
+  {
+    timestamp: '12:00:00',
+    client_id: 'system',
+    operation: 'init',
+    outcome: 'ready',
+    queue_to_commit_ms: null,
+    committed: false,
+  },
+];
+
+export async function getAiStatus(): Promise<AiControlStatus> {
+  if (isTauriEnvironment()) {
+    return await invoke<AiControlStatus>('get_ai_status');
+  }
+  return { ...mockAiStatus };
+}
+
+export async function toggleAiControl(): Promise<AiControlStatus> {
+  if (isTauriEnvironment()) {
+    return await invoke<AiControlStatus>('toggle_ai_control');
+  }
+  mockAiStatus.enabled = !mockAiStatus.enabled;
+  if (mockAiStatus.enabled) {
+    mockAiStatus.socket_path = '/run/user/1000/alp/control.sock';
+    mockAiStatus.token = 'alp_token_demo_9a8b7c6d5e4f3a2b1c';
+    mockAiStatus.last_status = 'Live control socket active at /run/user/1000/alp/control.sock';
+  } else {
+    mockAiStatus.socket_path = null;
+    mockAiStatus.token = null;
+    mockAiStatus.last_status = 'AI attach standby: socket inactive';
+  }
+  return { ...mockAiStatus };
+}
+
+export async function setAiPermissionTier(tier: PermissionTier): Promise<AiControlStatus> {
+  if (isTauriEnvironment()) {
+    return await invoke<AiControlStatus>('set_ai_permission_tier', { tier });
+  }
+  mockAiStatus.tier = tier;
+  return { ...mockAiStatus };
+}
+
+export async function respondAiApproval(
+  clientId: string,
+  decision: 'session' | 'always' | 'deny',
+  remember: boolean,
+): Promise<boolean> {
+  if (isTauriEnvironment()) {
+    return await invoke<boolean>('respond_ai_approval', {
+      clientId,
+      decision,
+      remember,
+    });
+  }
+  mockAiStatus.pending_clients = mockAiStatus.pending_clients.filter((c) => c !== clientId);
+  if (decision !== 'deny') {
+    mockAiStatus.trusted_clients.push(clientId);
+  }
+  return true;
+}
+
+export async function getAiActivityLog(): Promise<AiActivityEntry[]> {
+  if (isTauriEnvironment()) {
+    return await invoke<AiActivityEntry[]>('get_ai_activity_log');
+  }
+  return [...mockActivityLog];
+}
+
+export async function undoAiChange(): Promise<TimelineDto> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimelineDto>('undo_ai_change');
+  }
+  return timelineUndo();
+}
+
+export async function onAiClientApproval(
+  callback: (payload: { clientId: string }) => void,
+): Promise<UnlistenFn> {
+  if (isTauriEnvironment()) {
+    return await listen<{ clientId: string }>('ai_client_approval', (event) => {
+      callback(event.payload);
+    });
+  }
+  return () => {};
+}
+
+export async function onAiActivityEvent(
+  callback: (entry: AiActivityEntry) => void,
+): Promise<UnlistenFn> {
+  if (isTauriEnvironment()) {
+    return await listen<AiActivityEntry>('ai_activity_event', (event) => {
+      callback(event.payload);
+    });
+  }
+  return () => {};
 }
