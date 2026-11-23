@@ -8,8 +8,8 @@ use tauri::ipc::Channel;
 use tauri::{AppHandle, Emitter, State};
 
 use alp_session::{
-    MeterFrame, PanelManager, PersistedWorkspace, ProjectSummary, Size, TransportController,
-    TransportState, WaveformPeaksDto,
+    MeterFrame, PanelManager, PersistedWorkspace, ProjectSummary, Size, TimelineDto,
+    TransportController, TransportState, WaveformPeaksDto,
 };
 
 use crate::glass::GlassReport;
@@ -232,6 +232,298 @@ pub fn subscribe_meters(
         }
     });
     Ok(())
+}
+
+fn emit_revision(app: &AppHandle, revision: u64, is_dirty: bool, reason: &str) {
+    let payload = SessionRevisionPayload {
+        revision,
+        is_dirty,
+        reason: reason.to_string(),
+    };
+    let _ = app.emit("session_revision_changed", &payload);
+}
+
+/// Retrieve the full multitrack timeline state.
+#[tauri::command]
+pub fn get_timeline_state(state: State<'_, AppState>) -> Result<TimelineDto, String> {
+    let session = state
+        .session
+        .lock()
+        .map_err(|e| format!("session lock poisoned: {e}"))?;
+    Ok(session.timeline_dto())
+}
+
+/// Undo the last edit operation on the session command stack.
+#[tauri::command]
+pub fn timeline_undo(app: AppHandle, state: State<'_, AppState>) -> Result<TimelineDto, String> {
+    let mut session = state
+        .session
+        .lock()
+        .map_err(|e| format!("session lock poisoned: {e}"))?;
+    session.undo();
+    let dto = session.timeline_dto();
+    emit_revision(&app, dto.revision, session.is_dirty(), "undo");
+    Ok(dto)
+}
+
+/// Redo the next undone edit operation on the session command stack.
+#[tauri::command]
+pub fn timeline_redo(app: AppHandle, state: State<'_, AppState>) -> Result<TimelineDto, String> {
+    let mut session = state
+        .session
+        .lock()
+        .map_err(|e| format!("session lock poisoned: {e}"))?;
+    session.redo();
+    let dto = session.timeline_dto();
+    emit_revision(&app, dto.revision, session.is_dirty(), "redo");
+    Ok(dto)
+}
+
+/// Split an identified clip at a timestamp in seconds.
+#[tauri::command]
+pub fn timeline_split_clip(
+    app: AppHandle,
+    clip_id: String,
+    split_secs: f64,
+    state: State<'_, AppState>,
+) -> Result<TimelineDto, String> {
+    let mut session = state
+        .session
+        .lock()
+        .map_err(|e| format!("session lock poisoned: {e}"))?;
+    session.split_clip_at(&clip_id, split_secs)?;
+    let dto = session.timeline_dto();
+    emit_revision(&app, dto.revision, session.is_dirty(), "split_clip");
+    Ok(dto)
+}
+
+/// Delete selected range or clip with optional ripple shift.
+#[tauri::command]
+pub fn timeline_delete_selected(
+    app: AppHandle,
+    ripple: bool,
+    state: State<'_, AppState>,
+) -> Result<TimelineDto, String> {
+    let mut session = state
+        .session
+        .lock()
+        .map_err(|e| format!("session lock poisoned: {e}"))?;
+    session.delete(ripple);
+    let dto = session.timeline_dto();
+    emit_revision(&app, dto.revision, session.is_dirty(), "delete");
+    Ok(dto)
+}
+
+/// Cut selected timeline range to clipboard.
+#[tauri::command]
+pub fn timeline_cut(
+    app: AppHandle,
+    ripple: bool,
+    state: State<'_, AppState>,
+) -> Result<TimelineDto, String> {
+    let mut session = state
+        .session
+        .lock()
+        .map_err(|e| format!("session lock poisoned: {e}"))?;
+    session.cut();
+    if ripple {
+        session.delete(true);
+    }
+    let dto = session.timeline_dto();
+    emit_revision(&app, dto.revision, session.is_dirty(), "cut");
+    Ok(dto)
+}
+
+/// Copy selected timeline range to clipboard.
+#[tauri::command]
+pub fn timeline_copy(state: State<'_, AppState>) -> Result<(), String> {
+    let mut session = state
+        .session
+        .lock()
+        .map_err(|e| format!("session lock poisoned: {e}"))?;
+    session.copy();
+    Ok(())
+}
+
+/// Paste clipboard contents into the active track.
+#[tauri::command]
+pub fn timeline_paste(app: AppHandle, state: State<'_, AppState>) -> Result<TimelineDto, String> {
+    let mut session = state
+        .session
+        .lock()
+        .map_err(|e| format!("session lock poisoned: {e}"))?;
+    session.paste();
+    let dto = session.timeline_dto();
+    emit_revision(&app, dto.revision, session.is_dirty(), "paste");
+    Ok(dto)
+}
+
+/// Move a clip to a target track and timeline position.
+#[tauri::command]
+pub fn timeline_move_clip(
+    app: AppHandle,
+    clip_id: String,
+    target_track_id: String,
+    new_start_secs: f64,
+    state: State<'_, AppState>,
+) -> Result<TimelineDto, String> {
+    let mut session = state
+        .session
+        .lock()
+        .map_err(|e| format!("session lock poisoned: {e}"))?;
+    session.move_clip_by_id(&clip_id, &target_track_id, new_start_secs)?;
+    let dto = session.timeline_dto();
+    emit_revision(&app, dto.revision, session.is_dirty(), "move_clip");
+    Ok(dto)
+}
+
+/// Trim a clip's boundaries non-destructively.
+#[tauri::command]
+pub fn timeline_trim_clip(
+    app: AppHandle,
+    clip_id: String,
+    new_start_secs: f64,
+    new_duration_secs: f64,
+    state: State<'_, AppState>,
+) -> Result<TimelineDto, String> {
+    let mut session = state
+        .session
+        .lock()
+        .map_err(|e| format!("session lock poisoned: {e}"))?;
+    session.trim_clip_by_id(&clip_id, new_start_secs, new_duration_secs)?;
+    let dto = session.timeline_dto();
+    emit_revision(&app, dto.revision, session.is_dirty(), "trim_clip");
+    Ok(dto)
+}
+
+/// Set fade-in and fade-out durations on a clip.
+#[tauri::command]
+pub fn timeline_set_clip_fades(
+    app: AppHandle,
+    clip_id: String,
+    fade_in_secs: f64,
+    fade_out_secs: f64,
+    state: State<'_, AppState>,
+) -> Result<TimelineDto, String> {
+    let mut session = state
+        .session
+        .lock()
+        .map_err(|e| format!("session lock poisoned: {e}"))?;
+    session.set_clip_fades_by_id(&clip_id, fade_in_secs, fade_out_secs)?;
+    let dto = session.timeline_dto();
+    emit_revision(&app, dto.revision, session.is_dirty(), "set_clip_fades");
+    Ok(dto)
+}
+
+/// Set volume envelope points on a clip.
+#[tauri::command]
+pub fn timeline_set_clip_envelope(
+    app: AppHandle,
+    clip_id: String,
+    points: Vec<(f64, f32)>,
+    state: State<'_, AppState>,
+) -> Result<TimelineDto, String> {
+    let mut session = state
+        .session
+        .lock()
+        .map_err(|e| format!("session lock poisoned: {e}"))?;
+    session.set_clip_envelope_by_id(&clip_id, points)?;
+    let dto = session.timeline_dto();
+    emit_revision(&app, dto.revision, session.is_dirty(), "set_clip_envelope");
+    Ok(dto)
+}
+
+/// Configure or clear loop playback boundaries.
+#[tauri::command]
+pub fn timeline_set_loop_range(
+    app: AppHandle,
+    start_secs: f64,
+    end_secs: f64,
+    enabled: bool,
+    state: State<'_, AppState>,
+) -> Result<TimelineDto, String> {
+    let mut session = state
+        .session
+        .lock()
+        .map_err(|e| format!("session lock poisoned: {e}"))?;
+    if enabled {
+        session.set_loop_range(start_secs, end_secs);
+    } else {
+        session.clear_loop_range();
+    }
+    let dto = session.timeline_dto();
+    emit_revision(&app, dto.revision, session.is_dirty(), "set_loop_range");
+    Ok(dto)
+}
+
+/// Add an annotated cue marker to the timeline.
+#[tauri::command]
+pub fn timeline_add_marker(
+    app: AppHandle,
+    time_secs: f64,
+    label: String,
+    state: State<'_, AppState>,
+) -> Result<TimelineDto, String> {
+    let mut session = state
+        .session
+        .lock()
+        .map_err(|e| format!("session lock poisoned: {e}"))?;
+    session.add_marker(time_secs, label);
+    let dto = session.timeline_dto();
+    emit_revision(&app, dto.revision, session.is_dirty(), "add_marker");
+    Ok(dto)
+}
+
+/// Remove a cue marker by its identifier.
+#[tauri::command]
+pub fn timeline_remove_marker(
+    app: AppHandle,
+    marker_id: String,
+    state: State<'_, AppState>,
+) -> Result<TimelineDto, String> {
+    let mut session = state
+        .session
+        .lock()
+        .map_err(|e| format!("session lock poisoned: {e}"))?;
+    if let Ok(id) = marker_id.parse() {
+        session.remove_marker(id);
+    }
+    let dto = session.timeline_dto();
+    emit_revision(&app, dto.revision, session.is_dirty(), "remove_marker");
+    Ok(dto)
+}
+
+/// Select a clip by identifier, or clear clip selection with None.
+#[tauri::command]
+pub fn timeline_select_clip(
+    clip_id: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<TimelineDto, String> {
+    let mut session = state
+        .session
+        .lock()
+        .map_err(|e| format!("session lock poisoned: {e}"))?;
+    if let Some(id_str) = clip_id {
+        if let Ok(id) = id_str.parse() {
+            session.select_clip(id);
+        }
+    }
+    Ok(session.timeline_dto())
+}
+
+/// Set in-out editing selection range in seconds.
+#[tauri::command]
+pub fn timeline_set_selection(
+    start_secs: f64,
+    end_secs: f64,
+    state: State<'_, AppState>,
+) -> Result<TimelineDto, String> {
+    let mut session = state
+        .session
+        .lock()
+        .map_err(|e| format!("session lock poisoned: {e}"))?;
+    session.set_selection(start_secs, end_secs);
+    Ok(session.timeline_dto())
 }
 
 #[cfg(test)]
