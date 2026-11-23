@@ -4,6 +4,7 @@ import {
   Play,
   Radio,
   RefreshCw,
+  Layers,
 } from 'lucide-react';
 
 import { PrimaryRail, WORKSPACE_LIST } from './layout/PrimaryRail';
@@ -21,6 +22,16 @@ import { Button } from './kit/Button';
 import { Slider } from './kit/Slider';
 import { Toggle } from './kit/Toggle';
 import { Meter } from './kit/Meter';
+
+import {
+  SettingsWorkspace,
+  ModelsWorkspace,
+  VoicesWorkspace,
+  GenerateWorkspace,
+  EffectsWorkspace,
+  CapturesWorkspace,
+  StoriesWorkspace,
+} from './workspaces';
 
 import {
   getProjectSummary,
@@ -41,10 +52,11 @@ import type {
 // Workspace contextual subtabs
 const WORKSPACE_SUBTABS: Record<string, { id: string; label: string }[]> = {
   voice: [
-    { id: 'cloning', label: 'Voice Cloning' },
-    { id: 'tts', label: 'TTS Synthesis' },
+    { id: 'cloning', label: 'Voice Profiles & Cloning' },
+    { id: 'tts', label: 'Speech Generation' },
+    { id: 'models', label: 'Neural Models' },
     { id: 'lexicon', label: 'Pronunciation Lexicon' },
-    { id: 'batch', label: 'Batch Generation' },
+    { id: 'batch', label: 'Batch Takes' },
   ],
   multitrack: [
     { id: 'arranger', label: 'Timeline Arranger' },
@@ -53,7 +65,7 @@ const WORKSPACE_SUBTABS: Record<string, { id: string; label: string }[]> = {
     { id: 'automation', label: 'Envelopes' },
   ],
   audiobook: [
-    { id: 'script', label: 'Chapter Script' },
+    { id: 'script', label: 'Chapter Script & Cast' },
     { id: 'characters', label: 'Cast & Voices' },
     { id: 'acx_qa', label: 'ACX Compliance QA' },
     { id: 'm4b_export', label: 'M4B Package' },
@@ -65,19 +77,20 @@ const WORKSPACE_SUBTABS: Record<string, { id: string; label: string }[]> = {
     { id: 'burn_in', label: 'Subtitles & Remux' },
   ],
   tools: [
+    { id: 'captures', label: 'Voice Captures & VAD' },
     { id: 'denoise', label: 'Spectral De-Noise' },
     { id: 'clicks', label: 'Click & Pop Removal' },
     { id: 'loudness', label: 'LUFS Normalizer' },
-    { id: 'batch_proc', label: 'Batch DSP Processor' },
   ],
   effects: [
     { id: 'eq', label: 'Parametric EQ' },
     { id: 'dynamics', label: 'Multiband Compressor' },
     { id: 'spatial', label: 'Acoustics & Reverb' },
-    { id: 'vst', label: 'Hosted VST3/LV2' },
+    { id: 'vst', label: 'Hosted CLAP / LV2' },
   ],
   settings: [
     { id: 'audio_dev', label: 'Audio Hardware & ALSA' },
+    { id: 'models_cat', label: 'Model Catalogue' },
     { id: 'mcp_agents', label: 'MCP Agents & Tiers' },
     { id: 'glass', label: 'KWin Glass & Blur' },
     { id: 'shortcuts', label: 'Shortcuts Parity' },
@@ -87,6 +100,7 @@ const WORKSPACE_SUBTABS: Record<string, { id: string; label: string }[]> = {
 export default function App() {
   const [activeWorkspace, setActiveWorkspace] = useState('voice');
   const [activeSubtab, setActiveSubtab] = useState('cloning');
+  const [viewMode, setViewMode] = useState<'workspace' | 'panels'>('workspace');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [reduceMotion, setReduceMotion] = useState(false);
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
@@ -170,6 +184,11 @@ export default function App() {
     const subtabs = WORKSPACE_SUBTABS[id];
     if (subtabs && subtabs.length > 0) {
       setActiveSubtab(subtabs[0].id);
+    }
+    if (id === 'multitrack') {
+      setViewMode('panels');
+    } else {
+      setViewMode('workspace');
     }
   }, []);
 
@@ -380,29 +399,49 @@ export default function App() {
             onResetLayout={handleResetLayout}
             onTriggerEdit={handleTriggerEdit}
             isDirty={projectSummary?.is_dirty}
+            viewMode={viewMode}
+            onToggleViewMode={() =>
+              setViewMode((v) => (v === 'workspace' ? 'panels' : 'workspace'))
+            }
           />
 
-          {/* Floating Panels Canvas Surface */}
-          <main className="flex-1 relative overflow-hidden p-4">
-            {/* Background Workspace Wallpaper & Watermark */}
-            <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-5 select-none">
-              <span className="text-8xl font-black tracking-widest uppercase">
-                {currentWsObj.name}
-              </span>
-            </div>
+          {/* Main Canvas Surface */}
+          <main className="flex-1 relative overflow-hidden">
+            {viewMode === 'workspace' ? (
+              <div className="h-full w-full overflow-y-auto p-4">
+                {renderActiveWorkspace(
+                  activeWorkspace,
+                  activeSubtab,
+                  theme,
+                  handleToggleTheme,
+                  reduceMotion,
+                  () => setReduceMotion(!reduceMotion),
+                  transport.seek
+                )}
+              </div>
+            ) : (
+              <div className="h-full w-full relative overflow-hidden p-4">
+                {/* Background Workspace Wallpaper & Watermark */}
+                <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-5 select-none">
+                  <span className="text-8xl font-black tracking-widest uppercase">
+                    {currentWsObj.name}
+                  </span>
+                </div>
 
-            {/* Render Floating Panels from Persisted Workspace */}
-            {workspaceState?.panels.map((panel) => (
-              <PanelContainer
-                key={panel.kind}
-                panel={panel}
-                onUpdate={handleUpdatePanel}
-                onClose={handleClosePanel}
-                onFocus={handleFocusPanel}
-              >
-                {renderPanelContent(panel.kind, transport)}
-              </PanelContainer>
-            ))}
+                {/* Render Floating Panels from Persisted Workspace */}
+                {workspaceState?.panels.map((panel) => (
+                  <PanelContainer
+                    key={panel.kind}
+                    panel={panel}
+                    onUpdate={handleUpdatePanel}
+                    onClose={handleClosePanel}
+                    onFocus={handleFocusPanel}
+                  >
+                    {renderPanelContent(panel.kind, transport)}
+                  </PanelContainer>
+                ))}
+              </div>
+            )}
           </main>
         </div>
 
@@ -455,6 +494,69 @@ export default function App() {
       />
     </div>
   );
+}
+
+/** Render active workspace view based on primary rail and subtabs */
+function renderActiveWorkspace(
+  workspace: string,
+  subtab: string,
+  theme: 'dark' | 'light',
+  onToggleTheme: () => void,
+  reduceMotion: boolean,
+  onToggleReduceMotion: () => void,
+  onSeek: (secs: number) => void
+) {
+  switch (workspace) {
+    case 'settings':
+      if (subtab === 'models_cat') {
+        return <ModelsWorkspace />;
+      }
+      return (
+        <SettingsWorkspace
+          theme={theme}
+          onToggleTheme={onToggleTheme}
+          reduceMotion={reduceMotion}
+          onToggleReduceMotion={onToggleReduceMotion}
+        />
+      );
+
+    case 'voice':
+      if (subtab === 'tts' || subtab === 'batch') {
+        return <GenerateWorkspace />;
+      }
+      if (subtab === 'models') {
+        return <ModelsWorkspace />;
+      }
+      return <VoicesWorkspace />;
+
+    case 'effects':
+      return <EffectsWorkspace />;
+
+    case 'audiobook':
+      return <StoriesWorkspace />;
+
+    case 'tools':
+      return <CapturesWorkspace onSeek={onSeek} />;
+
+    case 'dubbing':
+      return <GenerateWorkspace />;
+
+    case 'multitrack':
+    default:
+      return (
+        <div className="h-full flex flex-col items-center justify-center text-center p-8 text-[var(--color-fg-muted)] space-y-3">
+          <div className="p-4 rounded-full bg-[var(--color-surface-2)] border border-[var(--color-border)]">
+            <Layers className="w-8 h-8 text-[var(--color-accent)] animate-pulse" />
+          </div>
+          <div className="text-base font-semibold text-[var(--color-fg)]">
+            Multitrack Timeline & Mixer Canvas
+          </div>
+          <p className="max-w-md text-xs text-[var(--color-fg-subtle)]">
+            Non-linear multitrack arranger, clip envelopes, and zero-latency mixing. Switch to Panels view to arrange floating timeline and mixer windows.
+          </p>
+        </div>
+      );
+  }
 }
 
 /** Render distinct internal content for each studio floating panel using kit primitives */

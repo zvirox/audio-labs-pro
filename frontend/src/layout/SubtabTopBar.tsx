@@ -3,6 +3,8 @@ import {
   Sliders,
   PanelRight,
   Zap,
+  LayoutGrid,
+  AppWindow,
 } from 'lucide-react';
 import { Tabs } from '../kit/Tabs';
 import { Button } from '../kit/Button';
@@ -21,6 +23,8 @@ interface SubtabTopBarProps {
   onResetLayout: () => void;
   onTriggerEdit: () => void;
   isDirty?: boolean;
+  viewMode?: 'workspace' | 'panels';
+  onToggleViewMode?: () => void;
 }
 
 export function SubtabTopBar({
@@ -35,6 +39,8 @@ export function SubtabTopBar({
   onResetLayout,
   onTriggerEdit,
   isDirty = false,
+  viewMode = 'workspace',
+  onToggleViewMode,
 }: SubtabTopBarProps) {
   const panelMenuItems = [
     { id: 'timeline', label: 'Timeline / Tracks', onClick: () => onTogglePanel('timeline') },
@@ -106,6 +112,29 @@ export function SubtabTopBar({
           }
           items={panelMenuItems}
         />
+
+        {/* View Mode Switcher (Workspaces vs Panels) */}
+        {onToggleViewMode && (
+          <Button
+            variant={viewMode === 'workspace' ? 'secondary' : 'primary'}
+            size="xs"
+            onClick={onToggleViewMode}
+            leftIcon={
+              viewMode === 'workspace' ? (
+                <AppWindow className="w-3 h-3 text-cyan-400" />
+              ) : (
+                <LayoutGrid className="w-3 h-3 text-amber-400" />
+              )
+            }
+            title={
+              viewMode === 'workspace'
+                ? 'Switch to Floating Panels view'
+                : 'Switch to Studio Workspace view'
+            }
+          >
+            {viewMode === 'workspace' ? 'Panels' : 'Workspace'}
+          </Button>
+        )}
 
         {/* Reset Layout */}
         <Button
