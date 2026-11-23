@@ -8,8 +8,9 @@ use tauri::ipc::Channel;
 use tauri::{AppHandle, Emitter, State};
 
 use alp_session::{
-    MeterFrame, PanelManager, PersistedWorkspace, ProjectSummary, Size, TimelineDto,
-    TransportController, TransportState, WaveformPeaksDto,
+    AiActivityEntry, AiControlStatus, ApprovalDecision, MeterFrame, PanelManager, PermissionTier,
+    PersistedWorkspace, ProjectSummary, Size, TimelineDto, TransportController, TransportState,
+    WaveformPeaksDto,
 };
 
 use crate::glass::GlassReport;
@@ -524,6 +525,97 @@ pub fn timeline_set_selection(
         .map_err(|e| format!("session lock poisoned: {e}"))?;
     session.set_selection(start_secs, end_secs);
     Ok(session.timeline_dto())
+}
+
+/// Query the current status of the AI control socket and attached agents.
+#[tauri::command]
+pub fn get_ai_status(state: State<'_, AppState>) -> Result<AiControlStatus, String> {
+    let ai = state
+        .ai
+        .lock()
+        .map_err(|e| format!("ai lock poisoned: {e}"))?;
+    Ok(ai.status())
+}
+
+/// Toggle the AI control socket on/off.
+#[tauri::command]
+pub fn toggle_ai_control(
+    state: State<'_, AppState>,
+) -> Result<AiControlStatus, String> {
+    let mut ai = state
+        .ai
+        .lock()
+        .map_err(|e| format!("ai lock poisoned: {e}"))?;
+    if ai.is_enabled() {
+        ai.stop("stopped by operator");
+        Ok(ai.status())
+    } else {
+        let runtime = std::env::var_os("XDG_RUNTIME_DIR")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(std::env::temp_dir);
+        let tier = ai.tier();
+        ai.start(&runtime, tier)
+    }
+}
+
+/// Set the permission tier for attached AI/MCP clients.
+#[tauri::command]
+pub fn set_ai_permission_tier(
+    tier: String,
+    state: State<'_, AppState>,
+) -> Result<AiControlStatus, String> {
+    let mut ai = state
+        .ai
+        .lock()
+        .map_err(|e| format!("ai lock poisoned: {e}"))?;
+    let parsed_tier = match tier.to_lowercase().as_str() {
+        "observe" => PermissionTier::Observe,
+        "export" => PermissionTier::Export,
+        _ => PermissionTier::Edit,
+    };
+    ai.set_tier(parsed_tier);
+    Ok(ai.status())
+}
+
+/// Respond to an incoming client approval request.
+#[tauri::command]
+pub fn respond_ai_approval(
+    client_id: String,
+    decision: String,
+    remember: bool,
+    state: State<'_, AppState>,
+) -> Result<bool, String> {
+    let mut ai = state
+        .ai
+        .lock()
+        .map_err(|e| format!("ai lock poisoned: {e}"))?;
+    let approval_decision = match decision.to_lowercase().as_str() {
+        "session" => ApprovalDecision::Session,
+        "always" => ApprovalDecision::Always,
+        _ => ApprovalDecision::Deny,
+    };
+    Ok(ai.respond_approval(&client_id, approval_decision, remember))
+}
+
+/// Retrieve the recent AI activity and audit logs.
+#[tauri::command]
+pub fn get_ai_activity_log(
+    state: State<'_, AppState>,
+) -> Result<Vec<AiActivityEntry>, String> {
+    let ai = state
+        .ai
+        .lock()
+        .map_err(|e| format!("ai lock poisoned: {e}"))?;
+    Ok(ai.activity_log())
+}
+
+/// Convenience undo specifically for AI operations.
+#[tauri::command]
+pub fn undo_ai_change(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<TimelineDto, String> {
+    timeline_undo(app, state)
 }
 
 #[cfg(test)]

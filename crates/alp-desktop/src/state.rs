@@ -5,7 +5,9 @@
 
 use std::sync::{Arc, Mutex};
 
-use alp_session::{EditSession, PersistedWorkspace, Size, TransportController};
+use alp_session::{
+    AiControlManager, EditSession, PersistedWorkspace, Size, TransportController,
+};
 
 use crate::glass::GlassReport;
 
@@ -16,6 +18,7 @@ pub struct AppState {
     pub workspace: Arc<Mutex<PersistedWorkspace>>,
     pub glass: Arc<Mutex<GlassReport>>,
     pub transport: Arc<Mutex<TransportController>>,
+    pub ai: Arc<Mutex<AiControlManager>>,
 }
 
 impl AppState {
@@ -31,6 +34,7 @@ impl AppState {
             workspace: Arc::new(Mutex::new(workspace)),
             glass: Arc::new(Mutex::new(GlassReport::pending())),
             transport: Arc::new(Mutex::new(TransportController::new(duration, sample_rate))),
+            ai: Arc::new(Mutex::new(AiControlManager::default())),
         }
     }
 }
