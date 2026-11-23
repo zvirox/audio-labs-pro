@@ -1,62 +1,107 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Mic,
-  Layers,
-  BookOpen,
-  Film,
-  Wrench,
-  Sparkles,
-  Settings,
-  RefreshCw,
-  Sun,
-  Moon,
-  Zap,
-  Activity,
-  Layers as LayersIcon,
-  CheckCircle2,
-  Info,
-  Clock,
+  Play,
   Radio,
-  FileAudio,
+  RefreshCw,
 } from 'lucide-react';
+
+import { PrimaryRail, WORKSPACE_LIST } from './layout/PrimaryRail';
+import { SubtabTopBar } from './layout/SubtabTopBar';
+import { InspectorDrawer } from './layout/InspectorDrawer';
+import { DockedPlayer } from './layout/DockedPlayer';
+import { PanelContainer } from './panels/PanelContainer';
+import { CommandPalette } from './components/CommandPalette';
+import { ShortcutsModal } from './components/ShortcutsModal';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+
+import { Button } from './kit/Button';
+import { Slider } from './kit/Slider';
+import { Toggle } from './kit/Toggle';
+import { Meter } from './kit/Meter';
+
 import {
   getProjectSummary,
   getWorkspaceState,
+  saveWorkspaceState,
+  resetWorkspaceLayout,
   triggerDemoEdit,
   listenSessionRevision,
   isTauriEnvironment,
 } from './ipc/client';
-import type { ProjectSummary, WorkspaceState, SessionRevisionPayload } from './ipc/types';
+import type {
+  ProjectSummary,
+  WorkspaceState,
+  PanelState,
+  PanelKind,
+} from './ipc/types';
 
-interface WorkspaceDefinition {
-  id: string;
-  name: string;
-  icon: typeof Mic;
-  neon: string;
-  lightNeon: string;
-  desc: string;
-}
-
-const WORKSPACES: WorkspaceDefinition[] = [
-  { id: 'voice', name: 'Voice Studio', icon: Mic, neon: '#00f0ff', lightNeon: '#008899', desc: 'Cloning, TTS synthesis, neural voice models' },
-  { id: 'multitrack', name: 'Multitrack DAW', icon: Layers, neon: '#6366f1', lightNeon: '#4338ca', desc: 'Non-linear editing, punch-in, zero-latency mixing' },
-  { id: 'audiobook', name: 'Audiobook Lab', icon: BookOpen, neon: '#f59e0b', lightNeon: '#b45309', desc: 'Long-form narrative, chapters, ACX compliance' },
-  { id: 'dubbing', name: 'Video Dubbing', icon: Film, neon: '#ec4899', lightNeon: '#be185d', desc: 'Video playback sync, stem separation, ADR alignment' },
-  { id: 'tools', name: 'Batch & Repair', icon: Wrench, neon: '#10b981', lightNeon: '#047857', desc: 'Spectral de-noise, click removal, loudness matching' },
-  { id: 'effects', name: 'DSP & Effects', icon: Sparkles, neon: '#8b5cf6', lightNeon: '#6d28d9', desc: 'Parametric EQ, multiband comp, spatial acoustics' },
-  { id: 'settings', name: 'Preferences', icon: Settings, neon: '#94a3b8', lightNeon: '#475569', desc: 'Audio devices, MCP servers, KWin glass settings' },
-];
+// Workspace contextual subtabs
+const WORKSPACE_SUBTABS: Record<string, { id: string; label: string }[]> = {
+  voice: [
+    { id: 'cloning', label: 'Voice Cloning' },
+    { id: 'tts', label: 'TTS Synthesis' },
+    { id: 'lexicon', label: 'Pronunciation Lexicon' },
+    { id: 'batch', label: 'Batch Generation' },
+  ],
+  multitrack: [
+    { id: 'arranger', label: 'Timeline Arranger' },
+    { id: 'mixer', label: 'Console Mixer' },
+    { id: 'markers', label: 'Cue Markers' },
+    { id: 'automation', label: 'Envelopes' },
+  ],
+  audiobook: [
+    { id: 'script', label: 'Chapter Script' },
+    { id: 'characters', label: 'Cast & Voices' },
+    { id: 'acx_qa', label: 'ACX Compliance QA' },
+    { id: 'm4b_export', label: 'M4B Package' },
+  ],
+  dubbing: [
+    { id: 'video_sync', label: 'Video Player & Sync' },
+    { id: 'stem_sep', label: 'Stem Isolation' },
+    { id: 'adr', label: 'ADR Dialog Fitting' },
+    { id: 'burn_in', label: 'Subtitles & Remux' },
+  ],
+  tools: [
+    { id: 'denoise', label: 'Spectral De-Noise' },
+    { id: 'clicks', label: 'Click & Pop Removal' },
+    { id: 'loudness', label: 'LUFS Normalizer' },
+    { id: 'batch_proc', label: 'Batch DSP Processor' },
+  ],
+  effects: [
+    { id: 'eq', label: 'Parametric EQ' },
+    { id: 'dynamics', label: 'Multiband Compressor' },
+    { id: 'spatial', label: 'Acoustics & Reverb' },
+    { id: 'vst', label: 'Hosted VST3/LV2' },
+  ],
+  settings: [
+    { id: 'audio_dev', label: 'Audio Hardware & ALSA' },
+    { id: 'mcp_agents', label: 'MCP Agents & Tiers' },
+    { id: 'glass', label: 'KWin Glass & Blur' },
+    { id: 'shortcuts', label: 'Shortcuts Parity' },
+  ],
+};
 
 export default function App() {
   const [activeWorkspace, setActiveWorkspace] = useState('voice');
+  const [activeSubtab, setActiveSubtab] = useState('cloning');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const [isInspectorOpen, setIsInspectorOpen] = useState(false);
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
+
   const [projectSummary, setProjectSummary] = useState<ProjectSummary | null>(null);
   const [workspaceState, setWorkspaceState] = useState<WorkspaceState | null>(null);
-  const [revisionEvents, setRevisionEvents] = useState<SessionRevisionPayload[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const isNative = isTauriEnvironment();
 
-  // Switch dark/light class on body/root
+  // Active workspace metadata
+  const currentWsObj =
+    WORKSPACE_LIST.find((w) => w.id === activeWorkspace) || WORKSPACE_LIST[0];
+  const activeColor = theme === 'light' ? currentWsObj.lightNeon : currentWsObj.neon;
+
+  // Apply theme & reduce-motion to root
   useEffect(() => {
     const root = document.documentElement;
     if (theme === 'light') {
@@ -64,25 +109,29 @@ export default function App() {
     } else {
       root.classList.remove('theme-light');
     }
-  }, [theme]);
-
-  // Set workspace active neon accent CSS variable
-  useEffect(() => {
-    const ws = WORKSPACES.find((w) => w.id === activeWorkspace);
-    if (ws) {
-      const color = theme === 'light' ? ws.lightNeon : ws.neon;
-      document.documentElement.style.setProperty('--color-accent', color);
+    if (reduceMotion) {
+      root.classList.add('reduce-motion');
+    } else {
+      root.classList.remove('reduce-motion');
     }
-  }, [activeWorkspace, theme]);
+  }, [theme, reduceMotion]);
 
-  // Initial fetch and event subscription
+  // Apply active accent token
   useEffect(() => {
-    fetchState();
+    document.documentElement.style.setProperty('--color-accent', activeColor);
+  }, [activeColor]);
+
+  // Load project & workspace from backend on startup
+  useEffect(() => {
+    fetchInitialState();
 
     let unlisten: (() => void) | undefined;
     listenSessionRevision((payload) => {
-      setRevisionEvents((prev) => [payload, ...prev.slice(0, 7)]);
-      setProjectSummary((prev) => (prev ? { ...prev, revision: payload.revision, is_dirty: payload.is_dirty } : null));
+      setProjectSummary((prev) =>
+        prev
+          ? { ...prev, revision: payload.revision, is_dirty: payload.is_dirty }
+          : null
+      );
     }).then((cleanup) => {
       unlisten = cleanup;
     });
@@ -92,375 +141,458 @@ export default function App() {
     };
   }, []);
 
-  async function fetchState() {
+  async function fetchInitialState() {
     setIsLoading(true);
     try {
-      const [summary, state] = await Promise.all([
+      const [summary, ws] = await Promise.all([
         getProjectSummary(),
         getWorkspaceState(),
       ]);
       setProjectSummary(summary);
-      setWorkspaceState(state);
+      setWorkspaceState(ws);
+      if (ws.theme === 'light' || ws.theme === 'dark') {
+        setTheme(ws.theme as 'dark' | 'light');
+      }
+      setReduceMotion(ws.reduce_motion);
     } catch (err) {
-      console.error('Failed to fetch IPC state:', err);
+      console.error('Failed to load initial state:', err);
     } finally {
       setIsLoading(false);
     }
   }
 
-  async function handleDemoEdit() {
+  // Handle workspace change
+  const handleSelectWorkspace = useCallback((id: string) => {
+    setActiveWorkspace(id);
+    const subtabs = WORKSPACE_SUBTABS[id];
+    if (subtabs && subtabs.length > 0) {
+      setActiveSubtab(subtabs[0].id);
+    }
+  }, []);
+
+  // Update a single panel's geometry/state and persist
+  const handleUpdatePanel = useCallback(
+    (updated: PanelState) => {
+      setWorkspaceState((prev) => {
+        if (!prev) return null;
+        const nextPanels = prev.panels.map((p) =>
+          p.kind === updated.kind ? updated : p
+        );
+        const nextState = { ...prev, panels: nextPanels };
+        saveWorkspaceState(nextState).catch(console.error);
+        return nextState;
+      });
+    },
+    []
+  );
+
+  // Close panel
+  const handleClosePanel = useCallback((kind: PanelKind) => {
+    setWorkspaceState((prev) => {
+      if (!prev) return null;
+      const nextPanels = prev.panels.map((p) =>
+        p.kind === kind ? { ...p, open: false } : p
+      );
+      const nextState = { ...prev, panels: nextPanels };
+      saveWorkspaceState(nextState).catch(console.error);
+      return nextState;
+    });
+  }, []);
+
+  // Focus panel (brings to front by incrementing max Z)
+  const handleFocusPanel = useCallback((kind: PanelKind) => {
+    setWorkspaceState((prev) => {
+      if (!prev) return null;
+      const maxZ = Math.max(...prev.panels.map((p) => p.z), 1);
+      const nextPanels = prev.panels.map((p) =>
+        p.kind === kind ? { ...p, z: maxZ + 1 } : p
+      );
+      return { ...prev, panels: nextPanels };
+    });
+  }, []);
+
+  // Toggle panel visibility
+  const handleTogglePanel = useCallback((kind: PanelKind) => {
+    setWorkspaceState((prev) => {
+      if (!prev) return null;
+      const target = prev.panels.find((p) => p.kind === kind);
+      const nextPanels = target
+        ? prev.panels.map((p) =>
+            p.kind === kind ? { ...p, open: !p.open } : p
+          )
+        : [
+            ...prev.panels,
+            {
+              kind,
+              rect: { x: 120, y: 100, width: 440, height: 320 },
+              z: 10,
+              collapsed: false,
+              docked: null,
+              open: true,
+            },
+          ];
+      const nextState = { ...prev, panels: nextPanels };
+      saveWorkspaceState(nextState).catch(console.error);
+      return nextState;
+    });
+  }, []);
+
+  // Reset panels to default arrangement
+  const handleResetLayout = useCallback(async () => {
     try {
-      await triggerDemoEdit(`Split Clip @ ${new Date().toLocaleTimeString()}`);
+      const reset = await resetWorkspaceLayout();
+      setWorkspaceState(reset);
+    } catch (err) {
+      console.error('Failed to reset layout:', err);
+    }
+  }, []);
+
+  // Theme cycle
+  const handleToggleTheme = useCallback(() => {
+    setTheme((t) => {
+      const next = t === 'dark' ? 'light' : 'dark';
+      setWorkspaceState((prev) => {
+        if (!prev) return null;
+        const nextState = { ...prev, theme: next };
+        saveWorkspaceState(nextState).catch(console.error);
+        return nextState;
+      });
+      return next;
+    });
+  }, []);
+
+  // Toggle reduce motion
+  const handleToggleReduceMotion = useCallback(() => {
+    setReduceMotion((m) => {
+      const next = !m;
+      setWorkspaceState((prev) => {
+        if (!prev) return null;
+        const nextState = { ...prev, reduce_motion: next };
+        saveWorkspaceState(nextState).catch(console.error);
+        return nextState;
+      });
+      return next;
+    });
+  }, []);
+
+  // Trigger demo edit
+  const handleTriggerEdit = useCallback(async () => {
+    try {
+      await triggerDemoEdit(`Timeline split take @ ${new Date().toLocaleTimeString()}`);
     } catch (err) {
       console.error('Failed to trigger edit:', err);
     }
-  }
+  }, []);
 
-  const activeWsObj = WORKSPACES.find((w) => w.id === activeWorkspace) || WORKSPACES[0];
-  const activeColor = theme === 'light' ? activeWsObj.lightNeon : activeWsObj.neon;
+  // Register global keyboard shortcuts
+  useKeyboardShortcuts({
+    onSelectWorkspace: handleSelectWorkspace,
+    onToggleCommandPalette: () => setIsPaletteOpen((prev) => !prev),
+    onToggleShortcuts: () => setIsShortcutsOpen((prev) => !prev),
+    onToggleTheme: handleToggleTheme,
+    onToggleReduceMotion: handleToggleReduceMotion,
+    onToggleInspector: () => setIsInspectorOpen((prev) => !prev),
+  });
 
   return (
-    <div className="min-h-screen flex flex-col bg-[var(--color-bg)] text-[var(--color-fg)] font-sans antialiased selection:bg-[var(--color-accent)] selection:text-black">
-      {/* Top Header / App Shell Bar */}
-      <header className="h-12 border-b border-[var(--color-border)] px-4 flex items-center justify-between bg-[var(--color-surface)] backdrop-blur-md sticky top-0 z-50">
+    <div className="h-screen w-screen flex flex-col bg-[var(--color-bg)] text-[var(--color-fg)] font-sans antialiased overflow-hidden select-none">
+      {/* Top Application Bar */}
+      <header className="h-10 border-b border-[var(--color-border)] px-4 flex items-center justify-between bg-[var(--color-surface)] flex-shrink-0 z-40">
         <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-md bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-            <Radio className="w-4 h-4 text-white" />
+          <div className="flex items-center gap-2">
+            <Radio className="w-4 h-4 text-cyan-400" />
+            <span className="font-bold tracking-tight text-xs text-white">
+              AUDIO LABS PRO
+            </span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-fg-muted)]">
+              Phase M3 App Shell
+            </span>
           </div>
-          <span className="font-bold tracking-tight text-sm">AUDIO LABS PRO</span>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-fg-muted)]">
-            Phase M2 Desktop Shell
-          </span>
-          <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono ${
-            isNative ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-          }`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${isNative ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-            {isNative ? 'Tauri 2 Native Bridge' : 'Vite Dev Mock Fallback'}
+
+          <div
+            className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono ${
+              isNative
+                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+            }`}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                isNative ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
+              }`}
+            />
+            {isNative ? 'Tauri 2 Native' : 'Browser Mock'}
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="p-1.5 rounded-md hover:bg-[var(--color-surface-2)] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] transition-colors border border-[var(--color-border)]"
-            title="Toggle theme"
-          >
-            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </button>
-          <button
-            onClick={fetchState}
+        <div className="flex items-center gap-3 text-xs">
+          {projectSummary && (
+            <div className="flex items-center gap-2 text-[11px] font-mono text-[var(--color-fg-muted)]">
+              <span>Rev #{projectSummary.revision}</span>
+              <span>&bull;</span>
+              <span>{projectSummary.sample_rate / 1000}kHz</span>
+              <span>&bull;</span>
+              <span className={projectSummary.is_dirty ? 'text-amber-400' : 'text-emerald-400'}>
+                {projectSummary.is_dirty ? 'Modified' : 'Saved'}
+              </span>
+            </div>
+          )}
+
+          <Button
+            variant="ghost"
+            size="xs"
+            onClick={fetchInitialState}
             disabled={isLoading}
-            className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-md bg-[var(--color-surface-2)] hover:bg-[var(--color-surface-3)] border border-[var(--color-border)] text-[var(--color-fg)] transition-colors disabled:opacity-50"
+            leftIcon={<RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />}
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            <span>Sync</span>
-          </button>
+            Sync
+          </Button>
         </div>
       </header>
 
-      {/* Main Dual-Axis Shell Layout Container */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Vertical Primary Rail (56px) */}
-        <aside className="w-14 border-r border-[var(--color-border)] bg-[var(--color-surface)] flex flex-col items-center py-3 gap-2 flex-shrink-0">
-          {WORKSPACES.map((ws) => {
-            const Icon = ws.icon;
-            const isActive = activeWorkspace === ws.id;
-            return (
-              <button
-                key={ws.id}
-                onClick={() => setActiveWorkspace(ws.id)}
-                className={`relative group w-10 h-10 rounded-lg flex items-center justify-center transition-all ${
-                  isActive
-                    ? 'bg-[var(--color-surface-2)] shadow-md text-white'
-                    : 'text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] hover:bg-[var(--color-surface-2)]'
-                }`}
-                style={isActive ? { borderColor: activeColor, borderLeftWidth: 3 } : undefined}
-                title={ws.name}
-              >
-                <Icon
-                  className="w-5 h-5 transition-transform group-hover:scale-110"
-                  style={{ color: isActive ? activeColor : undefined }}
-                />
-                {/* Active Indicator Pip */}
-                {isActive && (
-                  <span
-                    className="absolute -left-1 w-1.5 h-4 rounded-r-full"
-                    style={{ backgroundColor: activeColor }}
-                  />
-                )}
-              </button>
-            );
-          })}
-        </aside>
+      {/* Main Dual-Axis Workspace Layout */}
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Left Primary Rail (56px) */}
+        <PrimaryRail
+          activeWorkspace={activeWorkspace}
+          onSelectWorkspace={handleSelectWorkspace}
+          onOpenCommandPalette={() => setIsPaletteOpen(true)}
+          onOpenShortcuts={() => setIsShortcutsOpen(true)}
+          onToggleTheme={handleToggleTheme}
+          theme={theme}
+        />
 
-        {/* Workspace Content Area */}
-        <div className="flex-1 flex flex-col overflow-y-auto">
-          {/* Top Horizontal Subtab Bar (40px) */}
-          <nav className="h-10 border-b border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 flex items-center justify-between flex-shrink-0">
-            <div className="flex items-center gap-4">
-              <span className="text-xs font-semibold uppercase tracking-wider text-[var(--color-accent)]">
-                {activeWsObj.name}
+        {/* Center Canvas Area: Subtab Top Bar + Floating Workspace Canvas */}
+        <div className="flex-1 flex flex-col overflow-hidden relative bg-[var(--color-bg)]">
+          {/* Top Subtab Bar (40px) */}
+          <SubtabTopBar
+            activeWorkspaceName={currentWsObj.name}
+            activeColor={activeColor}
+            activeSubtab={activeSubtab}
+            onSelectSubtab={setActiveSubtab}
+            subtabs={WORKSPACE_SUBTABS[activeWorkspace] || []}
+            isInspectorOpen={isInspectorOpen}
+            onToggleInspector={() => setIsInspectorOpen(!isInspectorOpen)}
+            onTogglePanel={handleTogglePanel}
+            onResetLayout={handleResetLayout}
+            onTriggerEdit={handleTriggerEdit}
+            isDirty={projectSummary?.is_dirty}
+          />
+
+          {/* Floating Panels Canvas Surface */}
+          <main className="flex-1 relative overflow-hidden p-4">
+            {/* Background Workspace Wallpaper & Watermark */}
+            <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-5 select-none">
+              <span className="text-8xl font-black tracking-widest uppercase">
+                {currentWsObj.name}
               </span>
-              <div className="h-3 w-[1px] bg-[var(--color-border)]" />
-              <div className="flex items-center gap-1 text-xs">
-                {['Overview & Tokens', 'IPC Testbed', 'Glass & Scrim', 'Diagnostics'].map((tab, idx) => (
-                  <button
-                    key={tab}
-                    className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
-                      idx === 0
-                        ? 'bg-[var(--color-surface)] text-[var(--color-fg)] border border-[var(--color-border)]'
-                        : 'text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]'
-                    }`}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="text-[11px] text-[var(--color-fg-subtle)] font-mono">
-              Hue: <span style={{ color: activeColor }}>{activeColor}</span>
-            </div>
-          </nav>
-
-          {/* Body Dashboard */}
-          <main className="p-6 space-y-6 max-w-7xl w-full mx-auto">
-            {/* Header Banner */}
-            <div className="p-5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] backdrop-blur-lg relative overflow-hidden">
-              <div
-                className="absolute top-0 right-0 w-96 h-96 rounded-full blur-3xl opacity-15 pointer-events-none -mr-20 -mt-20"
-                style={{ backgroundColor: activeColor }}
-              />
-              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <h1 className="text-xl font-bold tracking-tight text-[var(--color-fg)] flex items-center gap-2">
-                    <span>Phase M2: Desktop Shell & Design System</span>
-                    <span
-                      className="text-xs font-mono px-2 py-0.5 rounded border uppercase"
-                      style={{ borderColor: activeColor, color: activeColor }}
-                    >
-                      Active Token: {activeWsObj.name}
-                    </span>
-                  </h1>
-                  <p className="text-xs text-[var(--color-fg-muted)] mt-1 max-w-2xl">
-                    Tauri 2 native desktop shell scaffolding, typed IPC bridge to <code className="text-[var(--color-fg)] font-mono">alp-session</code>, safe <code className="text-[var(--color-fg)] font-mono">x11rb</code> KWin blur, and dual-axis workspace navigation.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleDemoEdit}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-black transition-transform active:scale-95 shadow-md"
-                    style={{ backgroundColor: activeColor }}
-                  >
-                    <Zap className="w-3.5 h-3.5 fill-current" />
-                    <span>Trigger Timeline Edit</span>
-                  </button>
-                </div>
-              </div>
             </div>
 
-            {/* Grid: Live IPC State & Events */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* IPC Project State Card */}
-              <div className="p-5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-semibold flex items-center gap-2">
-                    <FileAudio className="w-4 h-4 text-[var(--color-accent)]" />
-                    <span>Live alp-session Project Summary</span>
-                  </h2>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[var(--color-surface-2)] text-[var(--color-fg-muted)]">
-                    get_project_summary
-                  </span>
-                </div>
-
-                {projectSummary ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs font-mono">
-                    <div className="p-2.5 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)]">
-                      <div className="text-[10px] text-[var(--color-fg-subtle)]">PROJECT ID</div>
-                      <div className="font-semibold truncate text-[var(--color-fg)]">{projectSummary.id}</div>
-                    </div>
-                    <div className="p-2.5 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)]">
-                      <div className="text-[10px] text-[var(--color-fg-subtle)]">REVISION</div>
-                      <div className="font-bold text-[var(--color-accent)]">#{projectSummary.revision}</div>
-                    </div>
-                    <div className="p-2.5 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)]">
-                      <div className="text-[10px] text-[var(--color-fg-subtle)]">SAMPLE RATE</div>
-                      <div className="font-semibold text-[var(--color-fg)]">{projectSummary.sample_rate} Hz</div>
-                    </div>
-                    <div className="p-2.5 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)]">
-                      <div className="text-[10px] text-[var(--color-fg-subtle)]">DURATION</div>
-                      <div className="font-semibold text-[var(--color-fg)]">{projectSummary.duration_secs.toFixed(1)}s</div>
-                    </div>
-                    <div className="p-2.5 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)]">
-                      <div className="text-[10px] text-[var(--color-fg-subtle)]">TRACKS / CLIPS</div>
-                      <div className="font-semibold text-[var(--color-fg)]">{projectSummary.track_count} / {projectSummary.clip_count}</div>
-                    </div>
-                    <div className="p-2.5 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)]">
-                      <div className="text-[10px] text-[var(--color-fg-subtle)]">DIRTY STATE</div>
-                      <div className="font-semibold flex items-center gap-1">
-                        <span className={`w-2 h-2 rounded-full ${projectSummary.is_dirty ? 'bg-amber-400' : 'bg-emerald-400'}`} />
-                        <span>{projectSummary.is_dirty ? 'Modified' : 'Clean'}</span>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-6 text-center text-xs text-[var(--color-fg-muted)]">
-                    Connecting to alp-session...
-                  </div>
-                )}
-
-                {workspaceState && (
-                  <div className="pt-2 border-t border-[var(--color-border)] flex items-center justify-between text-xs text-[var(--color-fg-muted)]">
-                    <span>Glass mode: <code className="text-[var(--color-fg)]">{workspaceState.glass}</code></span>
-                    <span>Panels: <code className="text-[var(--color-fg)]">{workspaceState.panels.length} registered</code></span>
-                  </div>
-                )}
-              </div>
-
-              {/* Real-time Event Feed */}
-              <div className="p-5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-semibold flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-emerald-400" />
-                    <span>Real-Time IPC Events</span>
-                  </h2>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[var(--color-surface-2)] text-[var(--color-fg-muted)]">
-                    session_revision_changed
-                  </span>
-                </div>
-
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                  {revisionEvents.length === 0 ? (
-                    <div className="p-6 text-center text-xs text-[var(--color-fg-muted)]">
-                      Waiting for session events. Click &ldquo;Trigger Timeline Edit&rdquo; above.
-                    </div>
-                  ) : (
-                    revisionEvents.map((ev, i) => (
-                      <div
-                        key={i}
-                        className="p-2.5 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] flex items-center justify-between text-xs font-mono"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-3.5 h-3.5 text-[var(--color-accent)]" />
-                          <span className="font-bold text-[var(--color-fg)]">Rev #{ev.revision}</span>
-                          <span className="text-[var(--color-fg-muted)] text-[11px]">{ev.reason}</span>
-                        </div>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${ev.is_dirty ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-300'}`}>
-                          {ev.is_dirty ? 'DIRTY' : 'CLEAN'}
-                        </span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Design Tokens Inspector */}
-            <div className="p-5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-sm font-semibold flex items-center gap-2">
-                    <LayersIcon className="w-4 h-4 text-[var(--color-accent)]" />
-                    <span>Design Token Palettes & WCAG Contrast Matrix</span>
-                  </h2>
-                  <p className="text-xs text-[var(--color-fg-muted)] mt-0.5">
-                    Neon workspace identifiers and contrast conformance (&ge; 7:1 for headings, &ge; 4.5:1 for body).
-                  </p>
-                </div>
-              </div>
-
-              {/* Workspace Neon Color Swatches */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-                {WORKSPACES.map((ws) => {
-                  const isCurrent = activeWorkspace === ws.id;
-                  const color = theme === 'light' ? ws.lightNeon : ws.neon;
-                  return (
-                    <div
-                      key={ws.id}
-                      onClick={() => setActiveWorkspace(ws.id)}
-                      className={`p-3 rounded-xl border cursor-pointer transition-all ${
-                        isCurrent
-                          ? 'border-[var(--color-fg)] shadow-lg'
-                          : 'border-[var(--color-border)] hover:border-[var(--color-fg-subtle)] bg-[var(--color-surface-2)]'
-                      }`}
-                    >
-                      <div
-                        className="w-full h-8 rounded-md mb-2 shadow-inner"
-                        style={{ backgroundColor: color }}
-                      />
-                      <div className="text-xs font-bold truncate text-[var(--color-fg)]">{ws.name}</div>
-                      <div className="text-[10px] font-mono text-[var(--color-fg-muted)] uppercase mt-0.5">{color}</div>
-                      <div className="mt-2 flex items-center gap-1 text-[9px] text-emerald-400 font-mono">
-                        <CheckCircle2 className="w-3 h-3" />
-                        <span>WCAG AAA</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Spacing & Radii Scales */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-[var(--color-border)]">
-                <div>
-                  <h3 className="text-xs font-semibold uppercase text-[var(--color-fg-muted)] tracking-wider mb-2">
-                    Spacing Scale (2px to 32px)
-                  </h3>
-                  <div className="flex items-end gap-2 h-16 p-2 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)]">
-                    {[
-                      { name: 'xxs', px: '2px', h: 8 },
-                      { name: 'xs', px: '4px', h: 12 },
-                      { name: 'sm', px: '8px', h: 18 },
-                      { name: 'md', px: '12px', h: 26 },
-                      { name: 'lg', px: '16px', h: 36 },
-                      { name: 'xl', px: '24px', h: 48 },
-                      { name: '2xl', px: '32px', h: 56 },
-                    ].map((s) => (
-                      <div key={s.name} className="flex-1 flex flex-col items-center gap-1">
-                        <div
-                          className="w-full rounded-sm bg-[var(--color-accent)] opacity-80"
-                          style={{ height: `${s.h}px` }}
-                        />
-                        <span className="text-[9px] font-mono text-[var(--color-fg-subtle)]">{s.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-xs font-semibold uppercase text-[var(--color-fg-muted)] tracking-wider mb-2">
-                    Corner Radii Scale (3px to 12px)
-                  </h3>
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)]">
-                    {[
-                      { name: 'xs', r: '3px' },
-                      { name: 'sm', r: '4px' },
-                      { name: 'md', r: '6px' },
-                      { name: 'lg', r: '8px' },
-                      { name: 'xl', r: '12px' },
-                    ].map((item) => (
-                      <div
-                        key={item.name}
-                        className="w-10 h-10 border-2 border-[var(--color-accent)] bg-[var(--color-surface)] flex items-center justify-center text-[10px] font-mono text-[var(--color-fg)]"
-                        style={{ borderRadius: item.r }}
-                      >
-                        {item.name}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Architecture Invariants Info */}
-            <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] flex items-start gap-3 text-xs text-[var(--color-fg-muted)]">
-              <Info className="w-4 h-4 text-[var(--color-accent)] mt-0.5 flex-shrink-0" />
-              <div>
-                <span className="font-semibold text-[var(--color-fg)]">Phase M2 Invariant Compliance:</span>
-                Hand-written desktop shell code contains 0 instances of <code className="font-mono text-[var(--color-fg)]">unsafe</code>. Safe <code className="font-mono text-[var(--color-fg)]">x11rb</code> KWin blur applies <code className="font-mono text-[var(--color-fg)]">_KDE_NET_WM_BLUR_BEHIND_REGION</code> safely. Translucent tint fallback (alpha &ge; 0.70) remains active for Wayland and non-KDE window managers.
-              </div>
-            </div>
+            {/* Render Floating Panels from Persisted Workspace */}
+            {workspaceState?.panels.map((panel) => (
+              <PanelContainer
+                key={panel.kind}
+                panel={panel}
+                onUpdate={handleUpdatePanel}
+                onClose={handleClosePanel}
+                onFocus={handleFocusPanel}
+              >
+                {renderPanelContent(panel.kind)}
+              </PanelContainer>
+            ))}
           </main>
         </div>
+
+        {/* Right Collapsible Inspector Drawer (280px, toggled via Ctrl+B) */}
+        <InspectorDrawer
+          open={isInspectorOpen}
+          onClose={() => setIsInspectorOpen(false)}
+          activeWorkspaceName={currentWsObj.name}
+        />
       </div>
+
+      {/* Bottom Docked Transport & Playback Player Bar (64px) */}
+      <DockedPlayer
+        durationSecs={projectSummary?.duration_secs || 20.0}
+        sampleRate={projectSummary?.sample_rate || 48000}
+      />
+
+      {/* Command Palette Modal (Ctrl+K) */}
+      <CommandPalette
+        open={isPaletteOpen}
+        onClose={() => setIsPaletteOpen(false)}
+        onSelectWorkspace={handleSelectWorkspace}
+        onTogglePanel={handleTogglePanel}
+        onResetLayout={handleResetLayout}
+        onToggleTheme={handleToggleTheme}
+        onOpenShortcuts={() => {
+          setIsPaletteOpen(false);
+          setIsShortcutsOpen(true);
+        }}
+        onTriggerEdit={handleTriggerEdit}
+        theme={theme}
+      />
+
+      {/* Keyboard Shortcuts Cheatsheet Modal (F1) */}
+      <ShortcutsModal
+        open={isShortcutsOpen}
+        onClose={() => setIsShortcutsOpen(false)}
+      />
     </div>
   );
+}
+
+/** Render distinct internal content for each studio floating panel using kit primitives */
+function renderPanelContent(kind: PanelKind) {
+  switch (kind) {
+    case 'timeline':
+      return (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between text-xs font-mono text-[var(--color-fg-muted)]">
+            <span>TRACK 01: Lead Vocal</span>
+            <span className="text-[var(--color-accent)]">0:00 - 0:20</span>
+          </div>
+          <div className="h-28 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] flex items-center justify-center p-3 relative overflow-hidden">
+            {/* Simulated waveform canvas visualization */}
+            <div className="w-full flex items-center justify-center gap-1 h-full">
+              {Array.from({ length: 48 }).map((_, i) => {
+                const height = Math.sin(i * 0.3) * 40 + 45;
+                return (
+                  <div
+                    key={i}
+                    className="flex-1 bg-[var(--color-accent)] opacity-80 rounded-full"
+                    style={{ height: `${height}%` }}
+                  />
+                );
+              })}
+            </div>
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-[var(--color-fg-subtle)] font-mono">
+            <span>Snapping: 1/16 Beat</span>
+            <span>Zoom: 100% (Normal)</span>
+          </div>
+        </div>
+      );
+
+    case 'mixer':
+      return (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-3 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] space-y-2">
+              <div className="text-[11px] font-bold text-[var(--color-accent)]">Track 1</div>
+              <Slider label="Fader" value={-2.5} min={-36} max={12} onChange={() => {}} unit="dB" />
+              <div className="h-14 flex justify-center">
+                <Meter leftLevel={0.72} rightLevel={0.68} orientation="vertical" showLabels={false} />
+              </div>
+            </div>
+            <div className="p-3 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] space-y-2">
+              <div className="text-[11px] font-bold text-emerald-400">Master</div>
+              <Slider label="Fader" value={0.0} min={-36} max={12} onChange={() => {}} unit="dB" />
+              <div className="h-14 flex justify-center">
+                <Meter leftLevel={0.84} rightLevel={0.82} orientation="vertical" showLabels={false} />
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+
+    case 'transport':
+      return (
+        <div className="flex flex-col items-center justify-center gap-3 py-2">
+          <div className="text-xl font-mono font-bold text-[var(--color-accent)]">
+            00:00:12.45
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="xs">0:00</Button>
+            <Button variant="primary" size="sm" leftIcon={<Play className="w-3.5 h-3.5 fill-current" />}>
+              Play
+            </Button>
+            <Button variant="secondary" size="xs">Loop</Button>
+          </div>
+        </div>
+      );
+
+    case 'voice_lab':
+      return (
+        <div className="space-y-3">
+          <div className="text-xs font-semibold text-[var(--color-fg)]">
+            Zero-Shot Voice Cloning
+          </div>
+          <div className="p-3 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] space-y-2">
+            <div className="flex items-center gap-2 text-xs">
+              <Mic className="w-4 h-4 text-cyan-400" />
+              <span>Reference Sample: <code>host_reference.wav</code></span>
+            </div>
+            <div className="text-[11px] text-[var(--color-fg-muted)]">
+              Quality Score: <span className="text-emerald-400 font-bold">94/100 (Clean)</span>
+            </div>
+            <Button variant="primary" size="xs" className="w-full">
+              Generate Neural Embedding
+            </Button>
+          </div>
+        </div>
+      );
+
+    case 'effects':
+      return (
+        <div className="space-y-2">
+          {['Parametric 8-Band EQ', 'Multiband Dynamics', 'Convolution Reverb'].map((fx) => (
+            <div
+              key={fx}
+              className="p-2.5 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] flex items-center justify-between"
+            >
+              <span className="font-medium text-xs">{fx}</span>
+              <Toggle checked={true} onChange={() => {}} size="sm" />
+            </div>
+          ))}
+        </div>
+      );
+
+    case 'models':
+      return (
+        <div className="space-y-2">
+          <div className="p-2.5 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] flex items-center justify-between text-xs">
+            <div>
+              <div className="font-semibold">Matcha-TTS Voice Model</div>
+              <div className="text-[11px] text-[var(--color-fg-subtle)] font-mono">ONNX Runtime &bull; 85 MB</div>
+            </div>
+            <span className="text-[10px] text-emerald-400 font-bold">ACTIVE</span>
+          </div>
+        </div>
+      );
+
+    case 'media_bin':
+      return (
+        <div className="space-y-1.5 font-mono text-[11px]">
+          {['take-01-lead.wav', 'intro-acoustic.wav', 'voice-cloned-take.wav'].map((f) => (
+            <div
+              key={f}
+              className="p-2 rounded bg-[var(--color-surface-2)] border border-[var(--color-border)] flex items-center justify-between"
+            >
+              <span>{f}</span>
+              <span className="text-[var(--color-fg-subtle)]">48kHz &bull; 32f</span>
+            </div>
+          ))}
+        </div>
+      );
+
+    case 'ai_activity':
+      return (
+        <div className="space-y-2 font-mono text-[11px]">
+          <div className="p-2 rounded bg-[var(--color-surface-2)] border border-[var(--color-border)] text-emerald-400">
+            [MCP Attached]: Edit tier authenticated
+          </div>
+          <div className="p-2 rounded bg-[var(--color-surface-2)] border border-[var(--color-border)] text-[var(--color-fg-muted)]">
+            Listening for socket commands on /tmp/alp.sock...
+          </div>
+        </div>
+      );
+
+    default:
+      return (
+        <div className="p-4 text-center text-[var(--color-fg-muted)]">
+          Panel content active.
+        </div>
+      );
+  }
 }

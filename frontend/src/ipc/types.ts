@@ -1,7 +1,7 @@
 /**
  * Audio Labs Pro - Tauri IPC Type Contract
  *
- * Generated/synchronized with alp_session and alp_api models.
+ * Generated and synchronized with alp_session and alp_api models.
  * Used for typed communication between React frontend and alp-desktop.
  */
 
@@ -30,16 +30,34 @@ export interface TrackSummary {
   clip_count: number;
 }
 
-export interface PanelState {
-  id: string;
-  kind: string;
-  dock_side: string;
-  visible: boolean;
-  floating: boolean;
+export interface PanelRect {
   x: number;
   y: number;
   width: number;
   height: number;
+}
+
+export type DockSide = 'left' | 'right';
+
+export type PanelKind =
+  | 'mixer'
+  | 'transport'
+  | 'timeline'
+  | 'inspector'
+  | 'media_bin'
+  | 'voice_lab'
+  | 'effects'
+  | 'models'
+  | 'export_queue'
+  | 'ai_activity';
+
+export interface PanelState {
+  kind: PanelKind;
+  rect: PanelRect;
+  z: number;
+  collapsed: boolean;
+  docked: DockSide | null;
+  open: boolean;
 }
 
 export interface WorkspaceState {
@@ -48,7 +66,17 @@ export interface WorkspaceState {
   reduce_motion: boolean;
   glass: string;
   panels: PanelState[];
+  approved_ai_clients?: string[];
   first_run_completed: boolean;
+}
+
+export interface GlassReport {
+  session: string;
+  desktop: string;
+  handle: string;
+  mode: 'compositor_blur' | 'tint_fallback';
+  blur_available: boolean;
+  detail: string;
 }
 
 export interface SessionRevisionPayload {
