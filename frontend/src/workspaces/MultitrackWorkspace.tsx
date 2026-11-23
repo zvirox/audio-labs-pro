@@ -25,6 +25,10 @@ import {
   timelineSetLoopRange,
   timelineSetSelection,
   timelineSelectClip,
+  timelineSetTrackViewMode,
+  timelineSetSpectralSelection,
+  timelineSetClipPanEnvelope,
+  timelineSlipClip,
   listenSessionRevision,
 } from '../ipc/client';
 import {
@@ -183,6 +187,18 @@ export function MultitrackWorkspace({
     setStatusMessage('Selected all');
   }, [timeline]);
 
+  const handleSetAllViewModes = useCallback(
+    async (mode: 'waveform' | 'spectrogram' | 'split') => {
+      if (!timeline) return;
+      for (const track of timeline.tracks) {
+        await timelineSetTrackViewMode(track.id, mode);
+      }
+      fetchTimeline();
+      setStatusMessage(`Switched all tracks to ${mode} view`);
+    },
+    [timeline, fetchTimeline]
+  );
+
   // Handle command from canvas dragging
   const handleDispatchCommand = useCallback(
     async (cmd: TimelineCommandPayload) => {
@@ -209,6 +225,22 @@ export function MultitrackWorkspace({
             break;
           case 'select_clip':
             next = await timelineSelectClip(cmd.clipId);
+            break;
+          case 'set_track_view_mode':
+            next = await timelineSetTrackViewMode(cmd.trackId, cmd.viewMode);
+            setStatusMessage(`Track view: ${cmd.viewMode}`);
+            break;
+          case 'set_spectral_selection':
+            next = await timelineSetSpectralSelection(cmd.trackId, cmd.selection);
+            setStatusMessage('Spectral selection updated');
+            break;
+          case 'set_clip_pan_envelope':
+            next = await timelineSetClipPanEnvelope(cmd.clipId, cmd.points);
+            setStatusMessage('Pan envelope updated');
+            break;
+          case 'slip_clip':
+            next = await timelineSlipClip(cmd.clipId, cmd.deltaSecs);
+            setStatusMessage(`Slipped clip by ${cmd.deltaSecs >= 0 ? '+' : ''}${cmd.deltaSecs.toFixed(3)}s`);
             break;
         }
         if (next) setTimeline(next);
@@ -374,6 +406,36 @@ export function MultitrackWorkspace({
           >
             Ripple
           </Button>
+
+          <div className="h-4 w-[1px] bg-white/10 mx-1" />
+
+          {/* Global View Mode Switcher */}
+          <div className="flex items-center bg-slate-950/80 border border-white/10 rounded p-0.5 text-[10px] font-mono">
+            <button
+              type="button"
+              onClick={() => handleSetAllViewModes('waveform')}
+              className="px-2 py-0.5 rounded text-slate-400 hover:text-cyan-300 hover:bg-white/5 transition-colors"
+              title="Switch all tracks to Waveform view"
+            >
+              Wave
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSetAllViewModes('spectrogram')}
+              className="px-2 py-0.5 rounded text-slate-400 hover:text-orange-300 hover:bg-white/5 transition-colors"
+              title="Switch all tracks to Spectrogram heatmap view"
+            >
+              Spectral
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSetAllViewModes('split')}
+              className="px-2 py-0.5 rounded text-slate-400 hover:text-purple-300 hover:bg-white/5 transition-colors"
+              title="Switch all tracks to Split Waveform + Spectrogram dual multi-view"
+            >
+              Split
+            </button>
+          </div>
         </div>
 
         {/* Center: Playhead Timecode & Status */}

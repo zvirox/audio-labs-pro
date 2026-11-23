@@ -21,7 +21,7 @@ ALLOWED = {
     "alp-infer": {"alp-core", "alp-media", "alp-voice"},
     "alp-api": {"alp-core", "alp-dsp", "alp-engine", "alp-media", "alp-plugin", "alp-voice"},
     "alp-mcp": {"alp-api", "alp-core"},
-    "alp-session": {"alp-api", "alp-core", "alp-engine", "alp-mcp", "alp-media", "alp-voice"},
+    "alp-session": {"alp-api", "alp-core", "alp-dsp", "alp-engine", "alp-mcp", "alp-media", "alp-voice"},
     "alp-desktop": {"alp-session"},
     "alp-cli": {"alp-core", "alp-dsp", "alp-engine", "alp-media", "alp-plugin", "alp-voice"},
 }

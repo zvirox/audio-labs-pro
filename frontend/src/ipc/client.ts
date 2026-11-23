@@ -26,6 +26,10 @@ import type {
   StoryScript,
   TimelineDto,
   TimelineClipDto,
+  TrackViewMode,
+  SpectralSelectionDto,
+  TimelinePanPointDto,
+  SpectrogramData,
   AiControlStatus,
   AiActivityEntry,
   PermissionTier,
@@ -779,6 +783,8 @@ let mockTimeline: TimelineDto = {
       muted: false,
       solo: false,
       armed: true,
+      view_mode: 'waveform',
+      spectral_selection: null,
       clips: [
         {
           id: 'clip-01',
@@ -795,6 +801,12 @@ let mockTimeline: TimelineDto = {
             { offset_secs: 4.2, gain: 0.8 },
             { offset_secs: 8.5, gain: 1.0 },
           ],
+          pan_envelope: [
+            { offset_secs: 0.0, pan: 0.0 },
+            { offset_secs: 4.2, pan: 0.3 },
+            { offset_secs: 8.5, pan: -0.2 },
+          ],
+          slip_offset_secs: 0.0,
         },
         {
           id: 'clip-02',
@@ -807,6 +819,8 @@ let mockTimeline: TimelineDto = {
           fade_in_secs: 0.1,
           fade_out_secs: 0.3,
           envelope: [],
+          pan_envelope: [],
+          slip_offset_secs: 0.0,
         },
       ],
     },
@@ -818,6 +832,17 @@ let mockTimeline: TimelineDto = {
       muted: false,
       solo: false,
       armed: false,
+      view_mode: 'split',
+      spectral_selection: {
+        track_id: 'track-02',
+        start_secs: 3.5,
+        end_secs: 7.0,
+        f_min_hz: 400.0,
+        f_max_hz: 2400.0,
+        center_freq_hz: 979.8,
+        bandwidth_hz: 2000.0,
+        q_factor: 0.49,
+      },
       clips: [
         {
           id: 'clip-03',
@@ -830,6 +855,8 @@ let mockTimeline: TimelineDto = {
           fade_in_secs: 0.5,
           fade_out_secs: 0.5,
           envelope: [],
+          pan_envelope: [],
+          slip_offset_secs: 0.0,
         },
       ],
     },
@@ -841,6 +868,8 @@ let mockTimeline: TimelineDto = {
       muted: false,
       solo: false,
       armed: false,
+      view_mode: 'spectrogram',
+      spectral_selection: null,
       clips: [],
     },
   ],
@@ -1128,6 +1157,129 @@ export async function timelineSetSelection(startSecs: number, endSecs: number): 
     start_secs: startSecs,
     end_secs: endSecs,
   };
+  return JSON.parse(JSON.stringify(mockTimeline));
+}
+
+export async function getClipSpectrogram(
+  clipId: string,
+  fftSize?: number,
+  windowType?: string,
+  freqScale?: string,
+  numFreqBins?: number
+): Promise<SpectrogramData> {
+  if (isTauriEnvironment()) {
+    return await invoke<SpectrogramData>('get_clip_spectrogram', {
+      clipId,
+      fftSize,
+      windowType,
+      freqScale,
+      numFreqBins,
+    });
+  }
+
+  // Synthesize realistic mock spectrogram for preview/browser mode
+  const numFrames = 120;
+  const numBins = numFreqBins || 128;
+  const durationSec = 8.5;
+  const sampleRate = 48000;
+  const freqBinsHz: number[] = [];
+  const timeStampsSec: number[] = [];
+  const matrix: number[] = new Array(numFrames * numBins);
+
+  for (let b = 0; b < numBins; b++) {
+    const fraction = b / (numBins - 1);
+    const f = 20.0 * Math.pow(20000.0 / 20.0, fraction);
+    freqBinsHz.push(Math.round(f * 10) / 10);
+  }
+
+  for (let f = 0; f < numFrames; f++) {
+    const t = (f / (numFrames - 1)) * durationSec;
+    timeStampsSec.push(Math.round(t * 1000) / 1000);
+    for (let b = 0; b < numBins; b++) {
+      const freq = freqBinsHz[b];
+      // Energy pattern: fundamentals around 220Hz, harmonics at 440, 880, 1760Hz
+      const fund = Math.exp(-Math.pow((freq - 220) / 40, 2));
+      const h1 = 0.8 * Math.exp(-Math.pow((freq - 440) / 60, 2));
+      const h2 = 0.6 * Math.exp(-Math.pow((freq - 880) / 90, 2));
+      const h3 = 0.4 * Math.exp(-Math.pow((freq - 1760) / 150, 2));
+      const noise = 0.05 * Math.random();
+      const intensity = Math.min(1.0, Math.max(0.0, (fund + h1 + h2 + h3 + noise) * (0.6 + 0.4 * Math.sin(t * 2))));
+      matrix[f * numBins + b] = intensity;
+    }
+  }
+
+  return {
+    sample_rate: sampleRate,
+    duration_sec: durationSec,
+    num_frames: numFrames,
+    num_bins: numBins,
+    freq_bins_hz: freqBinsHz,
+    time_stamps_sec: timeStampsSec,
+    matrix,
+    min_db: -100.0,
+    max_db: 0.0,
+  };
+}
+
+export async function timelineSetTrackViewMode(
+  trackId: string,
+  viewMode: TrackViewMode
+): Promise<TimelineDto> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimelineDto>('timeline_set_track_view_mode', { trackId, viewMode });
+  }
+  const track = mockTimeline.tracks.find((t) => t.id === trackId);
+  if (track) {
+    track.view_mode = viewMode;
+  }
+  return JSON.parse(JSON.stringify(mockTimeline));
+}
+
+export async function timelineSetSpectralSelection(
+  trackId: string,
+  selection: SpectralSelectionDto | null
+): Promise<TimelineDto> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimelineDto>('timeline_set_spectral_selection', { trackId, selection });
+  }
+  const track = mockTimeline.tracks.find((t) => t.id === trackId);
+  if (track) {
+    track.spectral_selection = selection;
+  }
+  return JSON.parse(JSON.stringify(mockTimeline));
+}
+
+export async function timelineSetClipPanEnvelope(
+  clipId: string,
+  points: TimelinePanPointDto[]
+): Promise<TimelineDto> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimelineDto>('timeline_set_clip_pan_envelope', { clipId, points });
+  }
+  for (const track of mockTimeline.tracks) {
+    const clip = track.clips.find((c) => c.id === clipId);
+    if (clip) {
+      clip.pan_envelope = points;
+      break;
+    }
+  }
+  return JSON.parse(JSON.stringify(mockTimeline));
+}
+
+export async function timelineSlipClip(
+  clipId: string,
+  deltaSecs: number
+): Promise<TimelineDto> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimelineDto>('timeline_slip_clip', { clipId, deltaSecs });
+  }
+  for (const track of mockTimeline.tracks) {
+    const clip = track.clips.find((c) => c.id === clipId);
+    if (clip) {
+      clip.slip_offset_secs = Math.max(0, (clip.slip_offset_secs || 0) + deltaSecs);
+      break;
+    }
+  }
   return JSON.parse(JSON.stringify(mockTimeline));
 }
 

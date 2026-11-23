@@ -9,6 +9,9 @@ use alp_core::{
     SetLoopRange, SetMasterGain, SetTrackArm, SetTrackGain, SetTrackMuted, SetTrackPan, SetTrackSolo,
     SilenceRange, SplitClip, Track, TrackId, TrimClip, copy_range, frames_to_secs, secs_to_frames,
 };
+use alp_dsp::{SpectrogramConfig, SpectrogramData, SpectrogramEngine};
+
+use crate::timeline::{SpectralSelectionDto, TimelinePanPointDto, TrackViewMode};
 
 use super::{EditSession, NORMALIZE_TARGET, clear_attached_context, short_id};
 
@@ -825,6 +828,14 @@ impl EditSession {
                                 format!("clip-{}", &id_str[..id_str.len().min(8)])
                             });
 
+                        let pan_envelope = self
+                            .clip_pan_envelopes
+                            .get(&clip.id)
+                            .cloned()
+                            .unwrap_or_default();
+                        let slip_offset_secs =
+                            self.clip_slip_offsets.get(&clip.id).copied().unwrap_or(0.0);
+
                         crate::timeline::TimelineClipDto {
                             id: clip.id.to_string(),
                             source_id: clip.source_id.to_string(),
@@ -835,6 +846,7 @@ impl EditSession {
                             gain: clip.gain,
                             fade_in_secs: frames_to_secs(clip.fade_in_frames, rate),
                             fade_out_secs: frames_to_secs(clip.fade_out_frames, rate),
+                            slip_offset_secs,
                             envelope: clip
                                 .envelope
                                 .iter()
@@ -843,9 +855,17 @@ impl EditSession {
                                     gain: p.gain,
                                 })
                                 .collect(),
+                            pan_envelope,
                         }
                     })
                     .collect();
+
+                let view_mode = self
+                    .track_view_modes
+                    .get(&track.id)
+                    .copied()
+                    .unwrap_or_default();
+                let spectral_selection = self.track_spectral_selections.get(&track.id).cloned();
 
                 crate::timeline::TimelineTrackDto {
                     id: track.id.to_string(),
@@ -855,6 +875,8 @@ impl EditSession {
                     muted: track.muted,
                     solo: track.solo,
                     armed: track.armed,
+                    view_mode,
+                    spectral_selection,
                     clips,
                 }
             })
@@ -900,5 +922,164 @@ impl EditSession {
             redo_steps: self.redo_steps(),
             revision: self.revision(),
         }
+    }
+
+    /// Set visualization mode for a track by ID.
+    pub fn set_track_view_mode_by_id(&mut self, track_id_str: &str, view_mode_str: &str) -> Result<(), String> {
+        let track_id: TrackId = track_id_str
+            .parse()
+            .map_err(|e| format!("invalid track id: {e}"))?;
+
+        if !self.project.tracks.iter().any(|t| t.id == track_id) {
+            return Err(format!("track '{track_id_str}' not found"));
+        }
+
+        let mode = match view_mode_str.to_lowercase().as_str() {
+            "waveform" => TrackViewMode::Waveform,
+            "spectrogram" => TrackViewMode::Spectrogram,
+            "split" => TrackViewMode::Split,
+            other => return Err(format!("unknown view mode '{other}' (expected 'waveform', 'spectrogram', or 'split')")),
+        };
+
+        self.track_view_modes.insert(track_id, mode);
+        self.bump_revision();
+        Ok(())
+    }
+
+    /// Set 2D time-frequency spectral selection for a track by ID.
+    pub fn set_spectral_selection_by_id(
+        &mut self,
+        track_id_str: &str,
+        selection: Option<SpectralSelectionDto>,
+    ) -> Result<(), String> {
+        let track_id: TrackId = track_id_str
+            .parse()
+            .map_err(|e| format!("invalid track id: {e}"))?;
+
+        if !self.project.tracks.iter().any(|t| t.id == track_id) {
+            return Err(format!("track '{track_id_str}' not found"));
+        }
+
+        if let Some(sel) = selection {
+            self.track_spectral_selections.insert(track_id, sel);
+        } else {
+            self.track_spectral_selections.remove(&track_id);
+        }
+        self.bump_revision();
+        Ok(())
+    }
+
+    /// Set pan automation envelope for a clip by ID.
+    pub fn set_clip_pan_envelope_by_id(
+        &mut self,
+        clip_id_str: &str,
+        points: Vec<(f64, f32)>,
+    ) -> Result<(), String> {
+        let clip_id: ClipId = clip_id_str
+            .parse()
+            .map_err(|e| format!("invalid clip id: {e}"))?;
+
+        let (_, clip) = self
+            .project
+            .clip(clip_id)
+            .ok_or_else(|| format!("clip '{clip_id_str}' not found"))?;
+
+        let max_duration = frames_to_secs(clip.len(), self.project.sample_rate);
+        let mut pan_points = Vec::new();
+        for (offset_secs, pan) in points {
+            let offset = offset_secs.clamp(0.0, max_duration);
+            let clamped_pan = pan.clamp(-1.0, 1.0);
+            pan_points.push(TimelinePanPointDto {
+                offset_secs: offset,
+                pan: clamped_pan,
+            });
+        }
+        pan_points.sort_by(|a, b| a.offset_secs.total_cmp(&b.offset_secs));
+        pan_points.dedup_by(|a, b| (a.offset_secs - b.offset_secs).abs() < 1e-5);
+
+        self.clip_pan_envelopes.insert(clip_id, pan_points);
+        self.bump_revision();
+        Ok(())
+    }
+
+    /// Slip edit a clip: adjusts source audio offset by delta_secs while keeping timeline position fixed.
+    pub fn slip_clip_by_id(&mut self, clip_id_str: &str, delta_secs: f64) -> Result<(), String> {
+        let clip_id: ClipId = clip_id_str
+            .parse()
+            .map_err(|e| format!("invalid clip id: {e}"))?;
+
+        let (_, clip) = self
+            .project
+            .clip(clip_id)
+            .ok_or_else(|| format!("clip '{clip_id_str}' not found"))?;
+
+        let source = self
+            .project
+            .source(clip.source_id)
+            .ok_or_else(|| format!("source '{}' not found", clip.source_id))?;
+
+        let max_source_secs = frames_to_secs(source.frames, self.project.sample_rate);
+        let clip_len_secs = frames_to_secs(clip.len(), self.project.sample_rate);
+        let max_slip = (max_source_secs - clip_len_secs).max(0.0);
+
+        let current_offset = self.clip_slip_offsets.get(&clip_id).copied().unwrap_or(0.0);
+        let new_offset = (current_offset + delta_secs).clamp(0.0, max_slip);
+
+        self.clip_slip_offsets.insert(clip_id, new_offset);
+        self.bump_revision();
+        Ok(())
+    }
+
+    /// Compute high-resolution Short-Time Fourier Transform (STFT) spectrogram for a clip.
+    pub fn compute_clip_spectrogram_by_id(
+        &self,
+        clip_id_str: &str,
+        config: Option<SpectrogramConfig>,
+    ) -> Result<SpectrogramData, String> {
+        let clip_id: ClipId = clip_id_str
+            .parse()
+            .map_err(|e| format!("invalid clip id: {e}"))?;
+
+        let (_, clip) = self
+            .project
+            .clip(clip_id)
+            .ok_or_else(|| format!("clip '{clip_id_str}' not found"))?;
+
+        let source_audio = self.audio.get(&clip.source_id).ok_or_else(|| {
+            format!("audio source {} not found for clip {}", clip.source_id, clip_id_str)
+        })?;
+
+        let sample_rate = source_audio.sample_rate();
+        let channels = source_audio.channels() as usize;
+        let all_samples = source_audio.samples();
+
+        let slip_offset = self.clip_slip_offsets.get(&clip_id).copied().unwrap_or(0.0);
+        let slip_frames = (slip_offset * sample_rate as f64).round() as i64;
+        let start_frame = ((clip.source_range.start as i64 + slip_frames).max(0)) as usize;
+        let duration_frames = clip.len() as usize;
+        let end_frame = (start_frame + duration_frames).min(source_audio.frames() as usize);
+
+        if start_frame >= end_frame {
+            return Err("clip has empty or out-of-bounds source range".into());
+        }
+
+        let actual_frames = end_frame - start_frame;
+        let mut mono_samples = Vec::with_capacity(actual_frames);
+
+        if channels <= 1 {
+            mono_samples.extend_from_slice(&all_samples[start_frame..end_frame]);
+        } else {
+            for f in start_frame..end_frame {
+                let mut sum = 0.0f32;
+                for ch in 0..channels {
+                    sum += all_samples[f * channels + ch];
+                }
+                mono_samples.push(sum / channels as f32);
+            }
+        }
+
+        let cfg = config.unwrap_or_default();
+        let engine = SpectrogramEngine::new(cfg).map_err(|e| e.to_string())?;
+        engine.compute(&mono_samples, sample_rate).map_err(|e| e.to_string())
     }
 }

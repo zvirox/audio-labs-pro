@@ -40,7 +40,10 @@ pub use project_ops::{HistoryEntry, ProjectListItem};
 pub use sandbox::WorkspaceSandbox;
 pub use script_voice_ops::{ScriptGenerateReport, ScriptLine, ScriptRegenerateReport};
 pub use session::{ApiSession, AttachedProjectState};
-pub use track_clip_ops::{BatchOp, EditBatchReport};
+pub use track_clip_ops::{
+    BatchOp, ClipSlipReport, EditBatchReport, PanEnvelopeReport, SpectralSelectionReport,
+    ViewModeReport,
+};
 pub use types::{
     AnalysisReport, ApprovalMode, ClipSummary, PermissionTier, ProjectSummary, TrackSummary,
     format_timestamp,

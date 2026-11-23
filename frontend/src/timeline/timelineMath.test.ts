@@ -38,6 +38,7 @@ const mockTimeline: TimelineDto = {
       muted: false,
       solo: false,
       armed: false,
+      view_mode: 'waveform',
       clips: [
         {
           id: 'clip-01',
@@ -61,6 +62,7 @@ const mockTimeline: TimelineDto = {
       muted: false,
       solo: false,
       armed: false,
+      view_mode: 'waveform',
       clips: [],
     },
   ],

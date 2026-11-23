@@ -23,9 +23,11 @@ pub use alp_api::ProjectSummary;
 pub use jobs::{Job, JobQueue, JobReporter, JobStatus};
 pub use panels::{DockSide, PanelKind, PanelManager, PanelRect, PanelState, Point, Size};
 pub use session::{EditSession, ImportedAudio, NORMALIZE_TARGET};
+pub use alp_dsp::spectral::{FrequencyScale, SpectrogramConfig, SpectrogramData, WindowType};
 pub use timeline::{
-    TimelineClipDto, TimelineDto, TimelineEnvelopePointDto, TimelineLoopRangeDto,
-    TimelineMarkerDto, TimelineSelectionDto, TimelineTrackDto,
+    SpectralSelectionDto, SpectrogramRequestDto, TimelineClipDto, TimelineDto,
+    TimelineEnvelopePointDto, TimelineLoopRangeDto, TimelineMarkerDto,
+    TimelinePanPointDto, TimelineSelectionDto, TimelineTrackDto, TrackViewMode,
 };
 pub use transport::{
     MeterFrame, PeakLevelDto, TransportController, TransportState, WaveformPeaksDto,

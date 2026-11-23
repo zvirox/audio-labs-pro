@@ -482,6 +482,48 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
                     "required": ["clip_id", "new_text", "voice_id"]
                 }),
             },
+            McpTool {
+                name: "timeline_spectral_analyze".into(),
+                description: "Compute high-resolution STFT spectrogram for an audio clip (FFT sizes 512-8192, dBFS power spectral density, linear/log/mel scales)".into(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "clip_id": { "type": "string", "description": "Clip ID" },
+                        "fft_size": { "type": "integer", "description": "FFT size (512, 1024, 2048, 4096, 8192)" },
+                        "window_type": { "type": "string", "enum": ["hanning", "hamming", "blackman_harris", "rectangular"], "description": "Window function" },
+                        "freq_scale": { "type": "string", "enum": ["linear", "logarithmic", "mel"], "description": "Frequency scale" },
+                        "num_freq_bins": { "type": "integer", "description": "Target number of frequency display bins" }
+                    },
+                    "required": ["clip_id"]
+                }),
+            },
+            McpTool {
+                name: "timeline_spectral_select".into(),
+                description: "Define 2D time-frequency spectral selection box on a track, calculating geometric center frequency and filter Q factor".into(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "track_id": { "type": "string", "description": "Track ID" },
+                        "t_start": { "type": "number", "description": "Start time in seconds" },
+                        "t_end": { "type": "number", "description": "End time in seconds" },
+                        "f_low": { "type": "number", "description": "Lower frequency boundary in Hz" },
+                        "f_high": { "type": "number", "description": "Upper frequency boundary in Hz" }
+                    },
+                    "required": ["track_id", "t_start", "t_end", "f_low", "f_high"]
+                }),
+            },
+            McpTool {
+                name: "timeline_set_view_mode".into(),
+                description: "Set visualization mode for a track: waveform, spectrogram, or split multi-view".into(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "track_id": { "type": "string", "description": "Track ID" },
+                        "view_mode": { "type": "string", "enum": ["waveform", "spectrogram", "split"], "description": "View mode" }
+                    },
+                    "required": ["track_id", "view_mode"]
+                }),
+            },
         ];
 
     if tier >= PermissionTier::Edit {
@@ -510,6 +552,41 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
                             "value": { "type": "number", "description": "Parameter numeric value" }
                         },
                         "required": ["track_id", "effect_id", "param_name", "value"]
+                    }),
+                },
+                McpTool {
+                    name: "clip_set_pan_envelope".into(),
+                    description: "Set stereo pan automation envelope points for a clip".into(),
+                    input_schema: json!({
+                        "type": "object",
+                        "properties": {
+                            "clip_id": { "type": "string", "description": "Clip ID" },
+                            "points": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "offset_secs": { "type": "number", "description": "Time offset in seconds from clip start" },
+                                        "pan": { "type": "number", "description": "Stereo pan value (-1.0 to 1.0)" }
+                                    },
+                                    "required": ["offset_secs", "pan"]
+                                },
+                                "description": "Pan automation points"
+                            }
+                        },
+                        "required": ["clip_id", "points"]
+                    }),
+                },
+                McpTool {
+                    name: "clip_slip".into(),
+                    description: "Slip audio content within fixed clip boundaries by adjusting source audio offset".into(),
+                    input_schema: json!({
+                        "type": "object",
+                        "properties": {
+                            "clip_id": { "type": "string", "description": "Clip ID" },
+                            "delta_secs": { "type": "number", "description": "Time delta in seconds to slip audio source" }
+                        },
+                        "required": ["clip_id", "delta_secs"]
                     }),
                 },
                 McpTool {
@@ -948,6 +1025,11 @@ pub fn metadata_for(name: &str) -> ToolMetadata {
         }
         "render_waveform" => ("Render Waveform", read),
         "render_spectrogram" => ("Render Spectrogram", read),
+        "timeline_spectral_analyze" => ("Analyze Spectrogram", read),
+        "timeline_spectral_select" => ("Select Spectral Region", read),
+        "timeline_set_view_mode" => ("Set Track View Mode", read),
+        "clip_set_pan_envelope" => ("Set Clip Pan Envelope", add),
+        "clip_slip" => ("Slip Clip", add),
         "compare_renders" => ("Compare Renders", read),
         // --- Export ---
         "export_presets" => ("List Export Presets", read),

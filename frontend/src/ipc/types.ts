@@ -249,4 +249,16 @@ export interface AiApprovalRequest {
   clientId: string;
 }
 
+export interface SpectrogramData {
+  sample_rate: number;
+  duration_sec: number;
+  num_frames: number;
+  num_bins: number;
+  freq_bins_hz: number[];
+  time_stamps_sec: number[];
+  matrix: number[];
+  min_db: number;
+  max_db: number;
+}
+
 export * from '../timeline/types';

@@ -980,6 +980,90 @@ pub fn dispatch(session: &mut ApiSession, tool_name: &str, arguments: &Value) ->
                 Err(e) => ToolCallResult::failure(format!("Spectrogram render failed: {e}")),
             }
         }
+        "timeline_spectral_analyze" => {
+            let clip_id = arguments.get("clip_id").and_then(Value::as_str).unwrap_or("");
+            let fft_size = arguments.get("fft_size").and_then(Value::as_u64).map(|v| v as usize);
+            let window_type = arguments.get("window_type").and_then(Value::as_str).map(String::from);
+            let freq_scale = arguments.get("freq_scale").and_then(Value::as_str).map(String::from);
+            let num_freq_bins = arguments.get("num_freq_bins").and_then(Value::as_u64).map(|v| v as usize);
+            match session.spectral_analyze_clip(clip_id, fft_size, window_type, freq_scale, num_freq_bins) {
+                Ok(data) => ToolCallResult::success(
+                    format!(
+                        "Spectrogram computed: {} time frames x {} frequency bins ({:.1} Hz to {:.1} Hz, duration {:.2}s)",
+                        data.num_frames,
+                        data.num_bins,
+                        data.freq_bins_hz.first().copied().unwrap_or(0.0),
+                        data.freq_bins_hz.last().copied().unwrap_or(0.0),
+                        data.duration_sec
+                    ),
+                    serde_json::to_value(data).unwrap(),
+                ),
+                Err(e) => ToolCallResult::failure(format!("Spectral analysis failed: {e}")),
+            }
+        }
+        "timeline_spectral_select" => {
+            let track_id = arguments.get("track_id").and_then(Value::as_str).unwrap_or("");
+            let t_start = arguments.get("t_start").and_then(Value::as_f64).unwrap_or(0.0);
+            let t_end = arguments.get("t_end").and_then(Value::as_f64).unwrap_or(1.0);
+            let f_low = arguments.get("f_low").and_then(Value::as_f64).unwrap_or(20.0) as f32;
+            let f_high = arguments.get("f_high").and_then(Value::as_f64).unwrap_or(20000.0) as f32;
+            match session.spectral_select(track_id, t_start, t_end, f_low, f_high) {
+                Ok(report) => ToolCallResult::success(
+                    format!(
+                        "Spectral selection on track {}: [{:.2}s - {:.2}s] x [{:.1} Hz - {:.1} Hz] (fc={:.1} Hz, BW={:.1} Hz, Q={:.2})",
+                        report.track_id, report.t_start, report.t_end, report.f_low, report.f_high,
+                        report.center_freq_hz, report.bandwidth_hz, report.q_factor
+                    ),
+                    serde_json::to_value(report).unwrap(),
+                ),
+                Err(e) => ToolCallResult::failure(format!("Spectral select failed: {e}")),
+            }
+        }
+        "timeline_set_view_mode" => {
+            let track_id = arguments.get("track_id").and_then(Value::as_str).unwrap_or("");
+            let view_mode = arguments.get("view_mode").and_then(Value::as_str).unwrap_or("waveform");
+            match session.set_track_view_mode(track_id, view_mode) {
+                Ok(report) => ToolCallResult::success(
+                    format!("Set track {} view mode to '{}'", report.track_id, report.view_mode),
+                    serde_json::to_value(report).unwrap(),
+                ),
+                Err(e) => ToolCallResult::failure(format!("Set view mode failed: {e}")),
+            }
+        }
+        "clip_set_pan_envelope" => {
+            let clip_id = arguments.get("clip_id").and_then(Value::as_str).unwrap_or("");
+            let points: Vec<(f64, f32)> = arguments
+                .get("points")
+                .and_then(Value::as_array)
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|p| {
+                            let offset = p.get("offset_secs")?.as_f64()?;
+                            let pan = p.get("pan")?.as_f64()? as f32;
+                            Some((offset, pan))
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+            match session.set_clip_pan_envelope(clip_id, &points) {
+                Ok(report) => ToolCallResult::success(
+                    format!("Configured {} pan envelope points on clip {}", report.points_count, report.clip_id),
+                    serde_json::to_value(report).unwrap(),
+                ),
+                Err(e) => ToolCallResult::failure(format!("Set pan envelope failed: {e}")),
+            }
+        }
+        "clip_slip" => {
+            let clip_id = arguments.get("clip_id").and_then(Value::as_str).unwrap_or("");
+            let delta_secs = arguments.get("delta_secs").and_then(Value::as_f64).unwrap_or(0.0);
+            match session.slip_clip(clip_id, delta_secs) {
+                Ok(report) => ToolCallResult::success(
+                    format!("Slipped clip {} source offset by {:+.3}s", report.clip_id, report.delta_secs),
+                    serde_json::to_value(report).unwrap(),
+                ),
+                Err(e) => ToolCallResult::failure(format!("Clip slip failed: {e}")),
+            }
+        }
         "compare_renders" => {
             let path_a = arguments
                 .get("path_a")

@@ -42,7 +42,7 @@ pub struct ApiSession {
     checkpoints: CheckpointManager,
     pub(crate) jobs: JobManager,
     client_id: String,
-    dirty: bool,
+    pub(crate) dirty: bool,
     /// Voice profile store override directory; `None` keeps the default XDG
     /// user store (`alp-api/src/voice.rs`).
     pub(crate) voice_store_dir: Option<PathBuf>,

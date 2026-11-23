@@ -20,6 +20,24 @@ export interface TimelineDto {
   revision: number;
 }
 
+export type TrackViewMode = 'waveform' | 'spectrogram' | 'split';
+
+export interface SpectralSelectionDto {
+  track_id: string;
+  start_secs: number;
+  end_secs: number;
+  f_min_hz: number;
+  f_max_hz: number;
+  center_freq_hz: number;
+  bandwidth_hz: number;
+  q_factor: number;
+}
+
+export interface TimelinePanPointDto {
+  offset_secs: number;
+  pan: number;
+}
+
 export interface TimelineTrackDto {
   id: string;
   name: string;
@@ -28,6 +46,8 @@ export interface TimelineTrackDto {
   muted: boolean;
   solo: boolean;
   armed: boolean;
+  view_mode: TrackViewMode;
+  spectral_selection?: SpectralSelectionDto | null;
   clips: TimelineClipDto[];
 }
 
@@ -42,6 +62,8 @@ export interface TimelineClipDto {
   fade_in_secs: number;
   fade_out_secs: number;
   envelope: TimelineEnvelopePointDto[];
+  pan_envelope?: TimelinePanPointDto[];
+  slip_offset_secs?: number;
 }
 
 export interface TimelineEnvelopePointDto {
@@ -89,6 +111,8 @@ export type HitTargetKind =
   | 'clip_trim_right'
   | 'clip_fade_in'
   | 'clip_fade_out'
+  | 'clip_pan_point'
+  | 'spectral_selection'
   | 'track_empty';
 
 export interface HitTarget {
@@ -110,7 +134,10 @@ export type DragMode =
   | 'fade_out'
   | 'drag_loop_start'
   | 'drag_loop_end'
-  | 'range_select';
+  | 'range_select'
+  | 'drag_spectral_selection'
+  | 'drag_pan_point'
+  | 'slip_clip';
 
 export interface DragState {
   mode: DragMode;
@@ -131,4 +158,8 @@ export type TimelineCommandPayload =
   | { type: 'set_clip_fades'; clipId: string; fadeInSecs: number; fadeOutSecs: number }
   | { type: 'set_loop_range'; startSecs: number; endSecs: number; enabled: boolean }
   | { type: 'set_selection'; startSecs: number; endSecs: number }
-  | { type: 'select_clip'; clipId: string | null };
+  | { type: 'select_clip'; clipId: string | null }
+  | { type: 'set_track_view_mode'; trackId: string; viewMode: TrackViewMode }
+  | { type: 'set_spectral_selection'; trackId: string; selection: SpectralSelectionDto | null }
+  | { type: 'set_clip_pan_envelope'; clipId: string; points: TimelinePanPointDto[] }
+  | { type: 'slip_clip'; clipId: string; deltaSecs: number };

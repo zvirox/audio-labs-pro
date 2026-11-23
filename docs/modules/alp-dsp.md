@@ -17,6 +17,7 @@ Defines the digital signal processing effect boundaries and real-time audio proc
 - `DeHum`: multi-harmonic mains hum notch filter (50/60 Hz)
 - `DeClick`: transient derivative spike detector and polynomial interpolator
 - `KWeighting`, `measure_lufs`, `calculate_normalization_gain`: BS.1770 loudness measurement and normalization
+- `spectral`: `SpectrogramEngine`, `SpectrogramConfig`, `SpectrogramData`, `WindowType`, `FrequencyScale` for high-resolution STFT spectrogram analysis
 - `EffectChain`, `VoiceCleanup`: composite effect execution and one-click vocal cleanup chain
 
 ## Data flow
