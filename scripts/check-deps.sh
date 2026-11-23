@@ -21,7 +21,8 @@ ALLOWED = {
     "alp-ui-kit": set(),
     "alp-api": {"alp-core", "alp-dsp", "alp-engine", "alp-media", "alp-plugin", "alp-voice"},
     "alp-mcp": {"alp-api", "alp-core"},
-    "alp-ui": {"alp-api", "alp-core", "alp-engine", "alp-mcp", "alp-media", "alp-plugin", "alp-ui-kit", "alp-voice"},
+    "alp-session": {"alp-api", "alp-core", "alp-engine", "alp-media", "alp-voice"},
+    "alp-ui": {"alp-api", "alp-core", "alp-engine", "alp-mcp", "alp-media", "alp-plugin", "alp-session", "alp-ui-kit", "alp-voice"},
     "alp-cli": {"alp-core", "alp-dsp", "alp-engine", "alp-media", "alp-plugin", "alp-voice"},
 }
 
@@ -69,6 +70,11 @@ for name, package in packages.items():
             errors.append(f"{name} has forbidden ALP dependencies: {', '.join(extra)}")
     if name != "alp-infer" and "alp-infer" in actual:
         errors.append(f"{name} must not depend on alp-infer (separate process)")
+    if name == "alp-session":
+        all_deps = {dep["name"].replace("_", "-") for dep in package["dependencies"]}
+        forbidden = {"iced", "tauri", "alp-ui", "alp-ui-kit"} & all_deps
+        if forbidden:
+            errors.append(f"alp-session has forbidden dependencies: {', '.join(sorted(forbidden))}")
 
 if errors:
     for error in errors:
