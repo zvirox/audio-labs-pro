@@ -79,6 +79,7 @@ pub fn design_voice(request: &VoiceDesignRequest) -> VoiceProfile {
         default_params,
         created_at: timestamp,
         consent: None,
+        locked: false,
     }
 }
 

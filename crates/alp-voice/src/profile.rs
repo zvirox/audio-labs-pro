@@ -151,6 +151,12 @@ pub struct VoiceProfile {
     pub created_at: u64,
     /// Mandatory consent record for cloned voices.
     pub consent: Option<ConsentRecord>,
+    /// Whether the profile is locked against mutation by automation surfaces.
+    ///
+    /// The human GUI owns enforcement of a lock; MCP exposes lock/unlock tools
+    /// so agents can read or change the flag.
+    #[serde(default)]
+    pub locked: bool,
 }
 
 impl VoiceProfile {
@@ -169,6 +175,7 @@ impl VoiceProfile {
             default_params: VoiceParams::default(),
             created_at: 0,
             consent: None,
+            locked: false,
         }
     }
 }
@@ -450,6 +457,7 @@ mod tests {
             default_params: VoiceParams::default(),
             created_at: 100,
             consent: None,
+            locked: false,
         };
 
         // Attempting to save a cloned profile without consent must fail

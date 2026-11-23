@@ -205,6 +205,7 @@ impl CloneBackend for Qwen3Engine {
             created_at: timestamp,
             // Safety rule: human consent must be attested before saving.
             consent: None,
+            locked: false,
         })
     }
 

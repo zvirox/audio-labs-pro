@@ -334,6 +334,7 @@ impl CloneBackend for AcousticCloneBackend {
             // The consent gate is human-only: a clone profile is never
             // persisted without an attested record (see `ProfileStore`).
             consent: None,
+            locked: false,
         })
     }
 
