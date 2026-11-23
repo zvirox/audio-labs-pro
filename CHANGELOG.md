@@ -5,7 +5,8 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
-- Docs: UI migration plan and ADR 0013 (proposed)
+- Spike: Phase M0 Tauri 2 + WebKitGTK feasibility spike and live benchmarks (GO gate passed; see `docs/spikes/PHASE-M0-RESULTS.md`)
+- Docs: UI migration plan and ADR 0013 accepted
 
 ### Planned (Phase 13–19 Adoption Roadmap)
 

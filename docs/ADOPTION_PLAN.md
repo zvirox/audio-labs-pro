@@ -100,10 +100,10 @@ To resolve the primary ergonomic bottleneck of dual-vertical-sidebar layouts (wh
 4. Establish a strict IPC contract and complete parity across all 7 workspaces before cutover.
 
 #### Migration Milestones & Exit Criteria
-- [ ] **M0 — Feasibility Spike (Size: S, Gate):**
+- [x] **M0 — Feasibility Spike (Size: S, Gate — PASSED):**
   - Throwaway Tauri 2 transparent undecorated window; probe KWin blur via `x11rb` and WebKitGTK `backdrop-filter`.
   - Canvas 2D waveform autoscroll of 1-hour file.
-  - *Exit Criteria:* Waveform autoscroll $\ge 55$ fps, idle CPU $< 1\%$, compositor blur verified or tint fallback confirmed legible.
+  - *Exit Criteria:* Waveform autoscroll $\ge 55$ fps (achieved **60.02 fps**), idle CPU $< 1\%$ (achieved **0.00%**), compositor blur verified (`x11rb` active on X11, legible tint fallback on Wayland). Gate **PASSED** (2026-11-23; see [`docs/spikes/PHASE-M0-RESULTS.md`](spikes/PHASE-M0-RESULTS.md)).
 - [ ] **M1 — Extract `alp-session` (Size: M):**
   - Extract non-rendering session state, command stack, worker queue, autosave, and `alp-api::control` socket host into `alp-session` (no iced, no tauri).
   - Split `app.rs` before hitting the 1,500-line ceiling.

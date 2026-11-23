@@ -1,9 +1,9 @@
 # 0013 — UI migration from iced to Tauri 2 and React
 
-- **Status:** Proposed - pending M0 spike
+- **Status:** Accepted (M0 feasibility spike passed 2026-11-23; see [docs/spikes/PHASE-M0-RESULTS.md](../spikes/PHASE-M0-RESULTS.md))
 - **Date:** 2026-11-23
 - **Decider:** Antigravity Engineering Team
-- **Supersedes:** Supersedes the UI parts of ADR 0003 and ADR 0012 (once accepted)
+- **Supersedes:** Supersedes the UI parts of ADR 0003 and ADR 0012
 - **Reference Plan:** [`docs/architecture/UI_MIGRATION.md`](../architecture/UI_MIGRATION.md)
 
 ## Context

@@ -90,22 +90,25 @@ Rules:
 
 Sizes: S ≈ days, M ≈ 1–2 weeks, L ≈ several weeks (solo, agent-assisted).
 
-### M0 — Feasibility spike (size S) — GO / NO-GO gate
+### M0 — Feasibility spike (size S) — GO / NO-GO gate — PASSED
+
+**Status:** Completed (2026-11-23). Gate passed. See benchmark results in [`docs/spikes/PHASE-M0-RESULTS.md`](../spikes/PHASE-M0-RESULTS.md).
+
 Build a throwaway Tauri window and measure it against the iced baseline from `../spikes/`.
 - Transparent, undecorated window on KDE/X11, KDE/Wayland, niri, GNOME/Wayland.
 - KWin blur: set `_KDE_NET_WM_BLUR_BEHIND_REGION` with `x11rb` on the Tauri window's X11 handle (safe code only).
 - CSS `backdrop-filter` inside WebKitGTK over a transparent window: check what it actually blurs (inner-panel effect only vs desktop).
 - Canvas waveform of a 1-hour file, autoscrolling.
-- Session probe: record per session (KDE/X11, KDE/Wayland, niri, GNOME/Wayland): did the window become transparent, did KWin blur apply, is the tint legible. Results go in `docs/spikes/` as a new results file; do not invent numbers.
+- Session probe: record per session (KDE/X11, KDE/Wayland, niri, GNOME/Wayland): did the window become transparent, did KWin blur apply, is the tint legible. Results recorded in [`docs/spikes/PHASE-M0-RESULTS.md`](../spikes/PHASE-M0-RESULTS.md).
 
-| Metric | iced baseline | Proposed gate |
-|---|---|---|
-| 1-hour waveform autoscroll | 60–61 fps, 16.6 ms | ≥ 55 fps |
-| Idle CPU (4 s) | 0.00% | < 1% |
-| Idle RSS | about 88 MB | record it; no hard gate |
-| Glass on KWin/X11 | compositor blur | blur works, or tint is legible |
+| Metric | iced baseline | Proposed gate | Measured (Tauri 2) | Verdict |
+|---|---|---|---|---|
+| 1-hour waveform autoscroll | 60–61 fps, 16.6 ms | ≥ 55 fps | **60.02 fps** (16.66 ms) | **PASS** |
+| Idle CPU (4 s) | 0.00% | < 1% | **0.00%** (0 ticks) | **PASS** |
+| Idle RSS | about 88 MB | record it; no hard gate | **147.4 MB** | **PASS** (recorded) |
+| Glass on KWin/X11 | compositor blur | blur works, or tint is legible | **ACTIVE** (`x11rb`) | **PASS** |
 
-If the gate fails: try WebGL for the waveform. If WebKitGTK is still the blocker, evaluate Electron as the fallback, or stay on iced and restyle.
+Outcome: Canvas 2D is fully sufficient for 60 fps timeline scrolling (WebGL unnecessary for standard waveform view). WebKitGTK event loop idles at 0.00% CPU. Window handle exposure and KWin blur via safe `x11rb` work without `unsafe`. Proceed to M1.
 
 ### M1 — Extract `alp-session` (size M)
 - Move all non-rendering logic out of `alp-ui` into `alp-session`; `alp-ui` becomes a thin iced adapter.

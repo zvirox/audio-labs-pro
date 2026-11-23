@@ -25,6 +25,7 @@ profiles. Licensed Apache-2.0.
 | [spikes/PHASE9-RESULTS.md](spikes/PHASE9-RESULTS.md) | Phase 9 polish, packaging, and first-run wizard results |
 | [spikes/PHASE10-RESULTS.md](spikes/PHASE10-RESULTS.md) | Phase 10 MCP server, automation layer, session rollback, and AI attach results |
 | [spikes/PHASE11-RESULTS.md](spikes/PHASE11-RESULTS.md) | Phase 11 CLAP and LV2 audio plugin hosting engine, CLI, UI, and MCP results |
+| [spikes/PHASE-M0-RESULTS.md](spikes/PHASE-M0-RESULTS.md) | Phase M0 Tauri 2 & WebKitGTK feasibility spike measurements and gate pass |
 | [mcp/TOOLS.md](mcp/TOOLS.md) | Model Context Protocol tool catalog, schemas, and permission tiers |
 | [mcp/CLIENT_SETUP.md](mcp/CLIENT_SETUP.md) | Client connection guides for Claude Desktop, Cursor, and VS Code |
 | [mcp/AGENT_GUIDE.md](mcp/AGENT_GUIDE.md) | Operational guidelines and principles for LLM agents interacting with ALP |
