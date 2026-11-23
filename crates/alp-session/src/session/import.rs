@@ -29,7 +29,7 @@ impl EditSession {
             .unwrap_or_else(|| "Imported audio".into());
         let (sender, receiver) = mpsc::channel();
         std::thread::Builder::new()
-            .name("alp-ui-import".into())
+            .name("alp-session-import".into())
             .spawn(move || {
                 let result = decode(&path)
                     .map(|buffer| ImportedAudio {

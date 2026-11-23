@@ -11,8 +11,8 @@ bash scripts/check-deps.sh
 bash scripts/check-docs.sh
 bash scripts/check-ui.sh
 
-echo "== [2/6] Building release binaries (alp-cli, alp-mcp, alp-ui) =="
-cargo build --release --bin alp-cli --bin alp-mcp --bin alp-ui
+echo "== [2/6] Building release binaries (alp-cli, alp-mcp, alp-desktop) =="
+cargo build --release --bin alp-cli --bin alp-mcp --bin alp-desktop
 
 ALP_CLI="${ROOT}/target/release/alp-cli"
 ALP_MCP="${ROOT}/target/release/alp-mcp"
@@ -136,4 +136,4 @@ print("[MCP] Server shutdown cleanly.")
 PY
 
 echo "== [6/6] Phase 11 CLAP & LV2 Hosting Verification Complete =="
-echo "All components (alp-plugin engine, alp-engine mixer, alp-api, alp-mcp, alp-cli, alp-ui) verified successfully!"
+echo "All components (alp-plugin engine, alp-engine mixer, alp-api, alp-mcp, alp-cli, alp-desktop) verified successfully!"
