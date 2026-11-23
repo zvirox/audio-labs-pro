@@ -5,6 +5,8 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+- Docs: UI migration plan and ADR 0013 (proposed)
+
 ### Planned (Phase 13–19 Adoption Roadmap)
 
 - **Phase 13 (`v0.0.1-alpha.8`):** Interactive Multitrack timeline canvas, clip splitting/slip/ripple, simultaneous Waveform + STFT Spectrogram, and 2D time-frequency spectral selection tool.
