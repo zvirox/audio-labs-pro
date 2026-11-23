@@ -39,14 +39,35 @@ impl App {
         .height(Length::Fill)
         .padding([f32::from(Spacing::XL), page_padding]);
 
+        let center_canvas: Element<'_, Message> = if self.inspector_open {
+            row![
+                workspace,
+                container(self.inspector_view(colors))
+                    .width(Length::Fixed(280.0))
+                    .height(Length::Fill)
+                    .padding(Spacing::MD)
+                    .style(move |_theme| colors.card_style()),
+            ]
+            .spacing(0.0)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into()
+        } else {
+            workspace.into()
+        };
+
         let frame = container(
             column![
                 self.chrome_view(colors),
                 row![
                     self.sidebar_view(colors),
-                    column![workspace, self.dock_view(colors)]
-                        .width(Length::Fill)
-                        .height(Length::Fill),
+                    column![
+                        self.subtab_top_bar_view(colors),
+                        center_canvas,
+                        self.dock_view(colors),
+                    ]
+                    .width(Length::Fill)
+                    .height(Length::Fill),
                 ]
                 .spacing(0.0)
                 .width(Length::Fill)

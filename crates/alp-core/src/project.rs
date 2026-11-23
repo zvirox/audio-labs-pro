@@ -382,6 +382,19 @@ impl Source {
     }
 }
 
+/// The specialization of a track in the multitrack timeline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum TrackKind {
+    /// Audio track containing waveform clips.
+    #[default]
+    Audio,
+    /// Synchronization and annotation track containing text markers, cues, or subtitle regions.
+    Label,
+    /// Automation curve track controlling tempo, speed, or master parameters.
+    Time,
+}
+
 /// One timeline track.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Track {
@@ -389,6 +402,9 @@ pub struct Track {
     pub id: TrackId,
     /// Display name.
     pub name: String,
+    /// Track specialization (Audio, Label, or Time).
+    #[serde(default)]
+    pub kind: TrackKind,
     /// Linear track gain (`1.0` is unity).
     pub gain: f32,
     /// Stereo pan, `-1.0` left to `1.0` right.
@@ -413,9 +429,16 @@ impl Track {
     /// Create a track with default settings.
     #[must_use]
     pub fn new(id: TrackId, name: impl Into<String>) -> Self {
+        Self::new_with_kind(id, name, TrackKind::Audio)
+    }
+
+    /// Create a track with an explicit track kind.
+    #[must_use]
+    pub fn new_with_kind(id: TrackId, name: impl Into<String>, kind: TrackKind) -> Self {
         Self {
             id,
             name: name.into(),
+            kind,
             gain: 1.0,
             pan: 0.0,
             muted: false,
@@ -540,6 +563,45 @@ impl Clip {
             start: self.timeline_start,
             end: self.timeline_end(),
         }
+    }
+
+    /// Calculate the effective gain multiplier at a relative frame offset within the clip,
+    /// taking into account clip gain, fade-in, fade-out, and envelope automation.
+    #[must_use]
+    pub fn evaluate_gain_at(&self, rel_frame: u64) -> f32 {
+        let clip_len = self.len();
+        if clip_len == 0 {
+            return 0.0;
+        }
+
+        let mut mult = self.gain;
+
+        // Apply fade-in
+        if self.fade_in_frames > 0 && rel_frame < self.fade_in_frames {
+            let t = (rel_frame as f32 / self.fade_in_frames as f32).clamp(0.0, 1.0);
+            mult *= t;
+        }
+
+        // Apply fade-out
+        if self.fade_out_frames > 0 {
+            let fade_start = clip_len.saturating_sub(self.fade_out_frames);
+            if rel_frame >= fade_start {
+                let remaining = clip_len.saturating_sub(rel_frame);
+                let t = (remaining as f32 / self.fade_out_frames as f32).clamp(0.0, 1.0);
+                mult *= t;
+            }
+        }
+
+        // Apply envelope points if present
+        if !self.envelope.is_empty() {
+            let env = crate::envelope::EnvelopeCurve::with_points(
+                self.envelope.clone(),
+                crate::envelope::InterpolationMode::Linear,
+            );
+            mult *= env.evaluate_at(rel_frame, clip_len);
+        }
+
+        mult
     }
 
     fn validate(

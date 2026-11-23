@@ -593,6 +593,104 @@ impl App {
         .align_y(Alignment::Center)
         .into()
     }
+
+    /// Horizontal subtab top bar situated directly above the workspace canvas.
+    pub(super) fn subtab_top_bar_view(&self, colors: ThemeColors) -> Element<'_, Message> {
+        let tab_idx = self.workflow_tab as usize;
+        let active_subtab = self.selected_subtabs.get(tab_idx).copied().unwrap_or(0);
+        let items = subtabs_for(self.workflow_tab);
+
+        let subtab_strip = components::subtab_bar(
+            items,
+            active_subtab.min(items.len().saturating_sub(1)),
+            colors,
+            Message::SelectSubtab,
+        );
+
+        let inspector_toggle = components::button_icon(
+            if self.inspector_open { "Hide Inspector" } else { "Inspector" },
+            icons::SETTINGS,
+            if self.inspector_open {
+                ButtonKind::Secondary
+            } else {
+                ButtonKind::Ghost
+            },
+            Some(Message::ToggleInspector),
+        );
+
+        container(
+            row![
+                subtab_strip,
+                Space::new().width(Length::Fill),
+                inspector_toggle,
+            ]
+            .spacing(f32::from(Spacing::SM))
+            .align_y(Alignment::Center),
+        )
+        .width(Length::Fill)
+        .padding([Spacing::XS, Spacing::MD])
+        .style(move |_theme| container::Style {
+            background: Some(Background::Color(colors.surface_raised)),
+            border: Border {
+                width: 1.0,
+                color: colors.border,
+                radius: 0.0.into(),
+            },
+            shadow: iced::Shadow::default(),
+            text_color: Some(colors.text),
+            snap: true,
+        })
+        .into()
+    }
+}
+
+/// Subtab items for the active workflow workspace.
+#[must_use]
+pub fn subtabs_for(tab: WorkflowTab) -> &'static [(&'static str, Option<icons::Glyph>)] {
+    match tab {
+        WorkflowTab::Generate => &[
+            ("Single Take", Some(icons::GENERATE)),
+            ("Batch Queue", Some(icons::STORIES)),
+            ("Prompt Design", Some(icons::WAND)),
+            ("A/B Compare", Some(icons::WAVEFORM)),
+        ],
+        WorkflowTab::Stories => &[
+            ("Manuscript", Some(icons::STORIES)),
+            ("Chapter Cast", Some(icons::VOICES)),
+            ("Cadence Rules", Some(icons::EFFECTS)),
+            ("M4B Export", Some(icons::CAPTURES)),
+        ],
+        WorkflowTab::Captures => &[
+            ("Live Recording", Some(icons::CAPTURES)),
+            ("VAD Slices", Some(icons::WAVEFORM)),
+            ("Transcripts", Some(icons::STORIES)),
+            ("Audio Prober", Some(icons::SETTINGS)),
+        ],
+        WorkflowTab::Voices => &[
+            ("Instant Clone", Some(icons::VOICES)),
+            ("Voice Design", Some(icons::WAND)),
+            ("Persona Library", Some(icons::LIBRARY)),
+            ("Archetypes", Some(icons::GRID)),
+        ],
+        WorkflowTab::Effects => &[
+            ("Voice Cleanup", Some(icons::EFFECTS)),
+            ("Parametric EQ", Some(icons::WAVEFORM)),
+            ("Spectral Repair", Some(icons::ACTIVITY)),
+            ("Hosted Plugins", Some(icons::MODELS)),
+        ],
+        WorkflowTab::Models => &[
+            ("Installed", Some(icons::MODELS)),
+            ("Catalog", Some(icons::DOWNLOAD)),
+            ("Licenses", Some(icons::FILE_TEXT)),
+            ("Hardware & GPU", Some(icons::STORAGE)),
+        ],
+        WorkflowTab::Settings => &[
+            ("Engine & Audio", Some(icons::SETTINGS)),
+            ("AI & MCP", Some(icons::AI)),
+            ("Appearance & Glass", Some(icons::THEME)),
+            ("Pronunciation", Some(icons::KEYBOARD)),
+        ],
+    }
 }
 
 #[cfg(test)]

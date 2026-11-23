@@ -9,6 +9,8 @@ profiles. Licensed Apache-2.0.
 |---|---|
 | [architecture/ARCHITECTURE.md](architecture/ARCHITECTURE.md) | Crates, processes, threading and enforced dependency directions |
 | [architecture/STACK.md](architecture/STACK.md) | Chosen crates, versions and licenses |
+| [ADOPTION_PLAN.md](ADOPTION_PLAN.md) | Comprehensive adoption plan, phase breakdown (Phases 12–19), and release timeline |
+| [../REAVSA.md](../REAVSA.md) | Comparative architecture analysis of reference voice synthesis & multitrack audio applications |
 | [modules/](modules/) | One page per crate and module, with the same required sections |
 | [spikes/PHASE0-RESULTS.md](spikes/PHASE0-RESULTS.md) | Phase 0 measurements, evidence and limitations |
 | [spikes/PHASE1-RESULTS.md](spikes/PHASE1-RESULTS.md) | Phase 1 acceptance measurements and soak results |
@@ -52,7 +54,14 @@ profiles. Licensed Apache-2.0.
 | 9 — polish, packaging, and docs | complete: Decision D12 (io.github.zvirox.AudioLabsPro), AppImage/Flatpak/Debian packaging, desktop/MIME integration, fuzzing/stress benchmarks, first-run wizard, keyboard shortcuts modal, and the user guide |
 | 10 — MCP: AI-driven editing, creation, and export | complete: alp-api automation layer, alp-mcp server (spec revision 2026-07-28), 14 core tools, 8 prompt workflows, sandboxing, session rollback, and UI live attach control panel |
 | 11 — CLAP & LV2 Audio Plugin Hosting | complete: alp-plugin engine, C ABI loaders for CLAP and LV2, real-time safety, scanner/cache, CLI scan/list/inspect, MCP tools, and the hosted-plugin browser in the Effects workspace |
-| Unreleased — seven-workspace studio shell | in progress: Generate, Stories, Captures, Voices, Effects, Models and Settings workspaces on the studio palette, plus the Create Voice dialog and Stories track editor; see `modules/alp-ui/app/` |
+| 12 — Dual-Axis Navigation Shell & Multitrack Core Model (v0.0.1-alpha.7) | in progress: Dual-Axis Navigation (Rail + Subtabs), multitrack clip data model, volume/pan envelope automation, and SQLite WAL block-based sample store |
+| 13 — Interactive Multitrack Canvas & Spectral Multi-View (v0.0.1-alpha.8) | planned: Interactive DAW canvas, clip split/slip/ripple, simultaneous Waveform + STFT Spectrogram, and 2D time-frequency spectral selection |
+| 14 — Advanced Spectral DSP & Realtime FX Insert Racks (v0.0.1-alpha.9) | planned: Subtractive spectral denoiser with noise profiling, 2D spectral notch/repair, realtime insert FX racks, and high-fidelity WSOLA time stretch |
+| 15 — Voice Lab Expansion & Voice Design by Prompt (v0.0.1-alpha.10) | planned: Zero-shot voice cloning embeddings, natural language voice design, persona library & avatars, and custom pronunciation lexicon with IPA/SSML |
+| 16 — Audiobook Studio & Long-Form Engine (v0.1.0-beta.1) | planned: EPUB/Markdown manuscript ingestion, multi-character cast tagging, cadence pacing rules, and M4B container packaging with QuickTime chapter markers |
+| 17 — Video Dubbing, Stem Separation & Sync-Lock Labels (v0.1.0-beta.2) | planned: Local Demucs v4 4-stem separation, sync-locked label tracks (SRT/VTT), speech-to-speech dubbing with rate fitting, and FFmpeg video remux |
+| 18 — VST3 Plugin Hosting & Batch Macro Automation (v0.1.0-beta.3) | planned: VST3 component hosting engine, native X11/Wayland plugin window embedding, and scriptable DSP macro batch processing |
+| 19 — Full MCP Autonomous Agent Automation & Hardening (v1.0.0-rc.1 / v1.0.0) | planned: Full MCP tool coverage across all studio features, multi-step eval benchmarks, 24-hour stability soaks, and release distribution packaging |
 
 ## Phase 11 acceptance
 

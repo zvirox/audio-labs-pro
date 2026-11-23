@@ -663,6 +663,76 @@ fn container_track<'a, Message: 'a>(
         .into()
 }
 
+/// A horizontal subtab top bar that renders contextual pill buttons for workspace navigation.
+pub fn subtab_bar<'a, Message: Clone + 'a>(
+    items: &[(&'static str, Option<crate::icons::Glyph>)],
+    active: usize,
+    colors: ThemeColors,
+    on_select: impl Fn(usize) -> Message + 'a,
+) -> Element<'a, Message> {
+    let mut strip = row![].spacing(f32::from(Spacing::XS)).align_y(iced::Alignment::Center);
+    for (index, (label, icon)) in items.iter().enumerate() {
+        let selected = index == active;
+        let mut content = row![].spacing(f32::from(Spacing::XS)).align_y(iced::Alignment::Center);
+        if let Some(glyph) = icon {
+            let icon_color = if selected { colors.accent_text } else { colors.muted };
+            content = content.push(crate::icons::tinted(*glyph, 12.0, Some(icon_color)));
+        }
+        content = content.push(
+            text(*label)
+                .size(f32::from(TypeScale::BODY_STRONG))
+                .font(if selected { fonts::semibold() } else { fonts::medium() })
+                .color(if selected { colors.accent_text } else { colors.muted }),
+        );
+
+        strip = strip.push(
+            raw_button(
+                iced::widget::container(content)
+                    .padding([6.0, 12.0])
+                    .style(move |_theme| iced::widget::container::Style {
+                        background: Some(Background::Color(if selected {
+                            colors.accent
+                        } else {
+                            iced::Color::TRANSPARENT
+                        })),
+                        border: Border {
+                            radius: f32::from(Radius::SM).into(),
+                            width: 1.0,
+                            color: if selected { colors.accent } else { colors.border },
+                        },
+                        shadow: Shadow::default(),
+                        text_color: Some(if selected { colors.accent_text } else { colors.text }),
+                        snap: true,
+                    }),
+            )
+            .style(move |_theme, _status| iced::widget::button::Style {
+                background: None,
+                text_color: if selected { colors.accent_text } else { colors.text },
+                border: Border::default(),
+                shadow: Shadow::default(),
+                snap: true,
+            })
+            .on_press(on_select(index)),
+        );
+    }
+
+    iced::widget::container(strip)
+        .padding([Spacing::XS as f32, Spacing::MD as f32])
+        .width(Length::Fill)
+        .style(move |_theme| iced::widget::container::Style {
+            background: Some(Background::Color(colors.surface_raised)),
+            border: Border {
+                width: 0.0,
+                color: colors.border,
+                radius: 0.0.into(),
+            },
+            shadow: Shadow::default(),
+            text_color: Some(colors.text),
+            snap: true,
+        })
+        .into()
+}
+
 /// A small rounded language or status chip.
 pub fn chip<'a, Message: 'a>(
     label: impl Into<String>,

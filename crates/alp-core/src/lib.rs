@@ -20,12 +20,14 @@
 //! assert_eq!(project.tracks.len(), 1);
 //! ```
 
+mod block;
 mod clipboard;
 mod command;
 mod commands;
 mod composite;
 mod config;
 mod edit_commands;
+mod envelope;
 mod error;
 mod files;
 mod ids;
@@ -37,6 +39,10 @@ mod schema;
 mod selection;
 mod time;
 
+pub use block::{
+    BlockCompression, BlockHeader, BlockId, BlockStoreSchema, DEFAULT_BLOCK_FRAMES,
+    MemoryBlockStore, SampleBlock, SampleFormat,
+};
 pub use clipboard::{ClipFragment, Clipboard, copy_range};
 pub use command::{Command, CommandError, CommandStack};
 pub use commands::{
@@ -52,6 +58,7 @@ pub use edit_commands::{
     CrossfadeClips, DeleteRange, DuplicateClip, NormalizeClip, PasteClips, PunchIn,
     SetClipInverted, SetClipReversed, SetMasterGain, SilenceRange,
 };
+pub use envelope::{EnvelopeCurve, InterpolationMode};
 pub use error::CoreError;
 pub use files::{commit_temp, create_temp_sibling, write_atomic};
 pub use ids::{ClipId, MarkerId, ProjectId, RegionId, SourceId, TrackId};
@@ -59,7 +66,7 @@ pub use logging::{DEFAULT_FILTER, init as init_logging};
 pub use markers::{Marker, Region};
 pub use project::{
     Clip, DEFAULT_SAMPLE_RATE, EffectRef, EnvelopePoint, MAX_SAMPLE_RATE, MIN_SAMPLE_RATE, Project,
-    Source, Track, now_ms,
+    Source, Track, TrackKind, now_ms,
 };
 pub use project_dir::ProjectPaths;
 pub use schema::{CURRENT_SCHEMA_VERSION, from_json, schema_version, to_json};

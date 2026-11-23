@@ -292,6 +292,10 @@ pub enum Message {
     UndoAiChanges,
     /// Switch active workflow workspace tab.
     SelectWorkflowTab(WorkflowTab),
+    /// Switch active horizontal subtab within the current workspace.
+    SelectSubtab(usize),
+    /// Toggle the right-hand collapsible inspector panel.
+    ToggleInspector,
     /// Edit the Generate tab prompt in the multi-line editor.
     GenerateEditor(text_editor::Action),
     /// Open the Create Voice dialog.
@@ -545,6 +549,8 @@ pub struct App {
     shortcuts_help_open: bool,
 
     workflow_tab: WorkflowTab,
+    selected_subtabs: [usize; 7],
+    inspector_open: bool,
 
     ai_enabled: bool,
     ai_tier: alp_api::PermissionTier,
@@ -668,7 +674,7 @@ impl App {
         let mut stories = load_stories(&story_dir);
         if stories.is_empty() {
             let mut script = Script::new("First Story", &selected_profile);
-            script.add_line("Welcome to Audio Labs Pro, a local voice studio.");
+            script.add_line("Welcome to Audio Labs Pro, a local voice and multitrack workstation.");
             script.add_line("Every take is rendered on this machine.");
             stories.push(script);
         }
@@ -844,6 +850,8 @@ impl App {
             first_run_open,
             shortcuts_help_open: false,
             workflow_tab: start_tab,
+            selected_subtabs: [0; 7],
+            inspector_open: false,
             ai_enabled: false,
             ai_tier: alp_api::PermissionTier::Edit,
             ai_status: "AI attach off: enable to create an owner-only control socket".into(),

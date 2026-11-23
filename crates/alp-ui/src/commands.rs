@@ -39,6 +39,8 @@ pub enum CommandId {
     OpenShortcutsHelp,
     /// Open first-run configuration wizard.
     OpenFirstRunWizard,
+    /// Toggle the right-hand inspector panel.
+    ToggleInspector,
 }
 
 /// A palette entry plus its shortcut hint.
@@ -128,6 +130,12 @@ pub fn registry() -> Vec<CommandEntry> {
             "Setup wizard (First run)",
             "Help",
             "",
+        ),
+        CommandEntry::new(
+            CommandId::ToggleInspector,
+            "Toggle inspector panel",
+            "View",
+            "Ctrl+B",
         ),
     ];
     for (kind, title) in PANELS {
@@ -259,6 +267,7 @@ pub fn shortcut(id: CommandId) -> Option<Shortcut> {
         CommandId::ImportMedia => Shortcut::new("o", true, false, false),
         CommandId::PlayPause => Shortcut::new("space", false, false, false),
         CommandId::OpenShortcutsHelp => Shortcut::new("f1", false, false, false),
+        CommandId::ToggleInspector => Shortcut::new("b", true, false, false),
         _ => return None,
     })
 }

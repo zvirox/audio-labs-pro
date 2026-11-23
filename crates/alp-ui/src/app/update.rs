@@ -865,6 +865,17 @@ impl App {
                 };
                 Task::none()
             }
+            Message::SelectSubtab(idx) => {
+                let tab_idx = self.workflow_tab as usize;
+                if tab_idx < self.selected_subtabs.len() {
+                    self.selected_subtabs[tab_idx] = idx;
+                }
+                Task::none()
+            }
+            Message::ToggleInspector => {
+                self.inspector_open = !self.inspector_open;
+                Task::none()
+            }
             Message::Noop => Task::none(),
         }
     }
@@ -1007,6 +1018,7 @@ impl App {
             CommandId::QueueExport => self.update(Message::QueueExport),
             CommandId::OpenShortcutsHelp => self.update(Message::OpenShortcutsHelp),
             CommandId::OpenFirstRunWizard => self.update(Message::OpenFirstRunWizard),
+            CommandId::ToggleInspector => self.update(Message::ToggleInspector),
         }
     }
 

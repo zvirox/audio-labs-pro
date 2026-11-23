@@ -5,20 +5,41 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+### Planned (Phase 13–19 Adoption Roadmap)
+
+- **Phase 13 (`v0.0.1-alpha.8`):** Interactive Multitrack timeline canvas, clip splitting/slip/ripple, simultaneous Waveform + STFT Spectrogram, and 2D time-frequency spectral selection tool.
+- **Phase 14 (`v0.0.1-alpha.9`):** Subtractive spectral denoiser with noise profiling, 2D spectral notch/repair, realtime insert FX racks, and high-fidelity WSOLA time-stretching.
+- **Phase 15 (`v0.0.1-alpha.10`):** Zero-shot voice cloning embeddings, prompt-driven voice design, persona cards & avatars, and custom pronunciation lexicon with IPA/SSML.
+- **Phase 16 (`v0.1.0-beta.1`):** Audiobook Studio with EPUB/Markdown ingestion, multi-character cast tagging, cadence pacing rules, and M4B container packaging with QuickTime chapter markers.
+- **Phase 17 (`v0.1.0-beta.2`):** Video Dubbing with Demucs v4 4-stem separation, sync-locked label tracks (SRT/VTT), speech-to-speech dubbing with rate fitting, and FFmpeg video remux.
+- **Phase 18 (`v0.1.0-beta.3`):** VST3 plugin hosting engine, native X11/Wayland plugin window embedding, and scriptable DSP macro batch processing.
+- **Phase 19 (`v1.0.0-rc.1` / `v1.0.0`):** Full MCP autonomous agent tool coverage across all studio features, multi-step eval benchmarks, 24-hour stability soaks, and multi-distro release packaging.
+- Complete roadmap and execution checklists: see [`docs/ADOPTION_PLAN.md`](docs/ADOPTION_PLAN.md) and [`REAVSA.md`](REAVSA.md).
+
+## [0.0.1-alpha.7] - 2026-11-23
+
+### Added
+
+- **Dual-Axis Navigation System:** 56px Vertical Primary Rail for top-level studio switching (`Voice Lab`, `Multitrack Studio`, `Audiobook Studio`, `Dubbing Studio`, `Audio Tools`, `Effects & Plugins`, `Settings`) paired with a 40px Horizontal Subtab Top Bar for contextual sub-navigation, liberating full horizontal width for multitrack timelines, waveforms, and scripts.
+- **Collapsible Right Inspector Panel:** 280px drawer toggled via `Ctrl+B` or header button for fine-grained property inspection without permanent width penalty.
+- **`EnvelopeCurve` and `InterpolationMode` (`alp-core::envelope`):** Linear, Smooth cosine S-curve, and Exponential decibel curves with multi-point volume/pan evaluation.
+- **`Clip::evaluate_gain_at` (`alp-core::project`):** Real-time compound gain calculation factoring clip gain, fade-in, fade-out, and envelope curves.
+- **`TrackKind` (`alp-core::project`):** Specialization across `AudioTrack`, `LabelTrack` (synchronization and cue annotations), and `TimeTrack` (tempo and dynamic speed curves).
+- **`SampleBlock` and `BlockStoreSchema` (`alp-core::block`):** 64KB block-based audio chunking and SQLite WAL schema for instantaneous zero-copy clip splitting and crash-safe undo transactions.
+- **Comparative Architecture & Adoption Documentation:** Added `REAVSA.md` and `docs/ADOPTION_PLAN.md` with complete Phase 12–19 master release timeline.
+
+## [0.0.1-alpha.6] - 2026-11-23
+
 ### Added
 
 - **Voice-profile parity (alpha.6, phase 1).** New MCP tools:
-  `voice_profile_update`, `voice_profile_lock`, `voice_profile_unlock`
-  (target-A `voices update/lock/unlock` parity). `VoiceProfileDetail` now
-  carries the new `locked` flag.
-- **`tts_batch`** (target-A batch parity): synthesize a list of
-  `{voice_id, text, speed?}` requests — one `JobManager` job per request, run
-  sequentially, cancellable via `job_cancel`. This is the first submitter into
-  the automation API's job manager.
-- **`audiobook_encode`** (target-A `audiobook render` parity): synthesize a
-  script of `{text, voice_id, speed?, gap_secs?}` segments with their voices,
-  place the clips on a dedicated `Audiobook` track, and export the master with
-  the audiobook delivery preset.
+  `voice_profile_update`, `voice_profile_lock`, `voice_profile_unlock`.
+  `VoiceProfileDetail` now carries the new `locked` flag.
+- **`tts_batch`**: synthesize a list of `{voice_id, text, speed?}` requests — one
+  `JobManager` job per request, run sequentially, cancellable via `job_cancel`.
+- **`audiobook_encode`**: synthesize a script of `{text, voice_id, speed?, gap_secs?}`
+  segments with their voices, place the clips on a dedicated `Audiobook` track,
+  and export the master with the audiobook delivery preset.
 
 ### Changed
 
