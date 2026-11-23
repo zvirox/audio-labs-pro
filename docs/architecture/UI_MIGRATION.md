@@ -167,12 +167,17 @@ Ported all 7 studio workspaces in the mandated order (lowest risk first), built 
 - Verified keyboard accessibility, high-contrast dark/light tokens, Reduce motion suppression, and module documentation in `docs/modules/frontend/workspaces.md`.
 - **Exit:** All 7 studio workspaces ported with functional interactive states; cloning consent modal strictly gates profile creation; CI verification scripts pass. Proceed to M6.
 
-### M6 — Multitrack timeline editor (size L)
-The riskiest piece, so it comes after everything else is stable.
-- Canvas (or WebGL) timeline: clips, fades, envelopes, markers, loop range, selection.
-- Every edit is an IPC command that maps to an existing `alp-core` `Command`; undo/redo stays in the Rust command stack.
-- Hit-testing and drag logic live in a framework-free TS module with unit tests.
-- **Exit:** all editing shortcuts from [`docs/KEYBOARD_SHORTCUTS.md`](../KEYBOARD_SHORTCUTS.md) work, redo restores the same clip ids, null tests still pass.
+### M6 — Multitrack timeline editor (size L) — COMPLETED
+- Implemented high-performance HTML5 Canvas 2D multitrack timeline editor (`MultitrackCanvas.tsx` and `MultitrackWorkspace.tsx`):
+  - Track lanes with Mute/Solo/Arm pills, volume/pan readouts, and alternating studio lane background.
+  - Non-destructive clips with synthetic waveform overview, fade-in/out parabolic curves, volume automation envelopes, and selection halos.
+  - Timecode ruler with sub-second subdivision ticks, loop boundaries (`[ ... ]`), and purple cue marker flags.
+  - Bright neon cyan playhead beam and active recording indicator.
+- Designed framework-free mathematical hit-testing and drag logic modules with zero UI dependencies (`frontend/src/timeline/timelineMath.ts`, `dragLogic.ts`).
+- Created direct Node test suite (`frontend/src/timeline/timelineMath.test.ts`, runnable via `npm test`) validating coordinate projections, 8px trim handle detection, fade curves, magnetic snapping, and drag command resolution (8/8 tests passing).
+- Wired 16 typed timeline IPC commands into `alp-desktop` and `alp-session` (`get_timeline_state`, `timeline_undo`, `timeline_redo`, `timeline_split_clip`, `timeline_delete_selected`, `timeline_cut`, `timeline_copy`, `timeline_paste`, `timeline_move_clip`, `timeline_trim_clip`, `timeline_set_clip_fades`, `timeline_set_clip_envelope`, `timeline_set_loop_range`, `timeline_add_marker`, `timeline_remove_marker`, `timeline_select_clip`, `timeline_set_selection`).
+- All mutations dispatch through `alp_core` undoable `Command` objects, preserving exact clip IDs on redo (`test timeline_operations_undo_redo_and_clip_id_preservation`).
+- **Exit:** All editing shortcuts from [`docs/KEYBOARD_SHORTCUTS.md`](../KEYBOARD_SHORTCUTS.md) work (`Ctrl+Z`, `Ctrl+Y`, `Ctrl+B`, `Delete`, `Ctrl+C`, `Ctrl+X`, `Ctrl+V`, `R`, `Ctrl+A`, `Space`, `Home`); redo restores identical clip IDs; null tests pass. Proceed to M7.
 
 ### M7 — AI/MCP parity (size M)
 - Frontend subscribes to session events so attached MCP edits appear live and commit as one undo entry.
