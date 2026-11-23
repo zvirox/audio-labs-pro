@@ -1,6 +1,6 @@
 # 0003 — Compositor blur for the glass look
 
-- Status: superseded by ADR 0012 (2026-10-22)
+- Status: superseded by ADR 0012 (2026-10-22); Superseded in part by ADR 0013
 - Date: 2026-10-22
 - Decider: project owner (option 1)
 - Spike: `spikes/wayland-probe`, `spikes/ui-iced`
@@ -8,6 +8,7 @@
 > **Superseded.** iced 0.14 now exposes safe raw window/display handles through
 > `window::run`, so the vendored-patch decision below is cancelled. KWin/X11 blur
 > and the Wayland tint fallback are implemented in `alp-ui::glass`; see ADR 0012.
+> Superseded in part by ADR 0013 (UI migration to Tauri 2 + React; proposed).
 
 ## Context
 

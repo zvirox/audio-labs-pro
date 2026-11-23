@@ -8,8 +8,9 @@ profiles. Licensed Apache-2.0.
 | Document | Purpose |
 |---|---|
 | [architecture/ARCHITECTURE.md](architecture/ARCHITECTURE.md) | Crates, processes, threading and enforced dependency directions |
+| [architecture/UI_MIGRATION.md](architecture/UI_MIGRATION.md) | UI migration plan: iced → Tauri 2 + React (phases M0–M8) |
 | [architecture/STACK.md](architecture/STACK.md) | Chosen crates, versions and licenses |
-| [ADOPTION_PLAN.md](ADOPTION_PLAN.md) | Comprehensive adoption plan, phase breakdown (Phases 12–19), and release timeline |
+| [ADOPTION_PLAN.md](ADOPTION_PLAN.md) | Comprehensive adoption plan, phase breakdown (Phases 12–19, M0–M8), and release timeline |
 | [../REAVSA.md](../REAVSA.md) | Comparative architecture analysis of reference voice synthesis & multitrack audio applications |
 | [modules/](modules/) | One page per crate and module, with the same required sections |
 | [spikes/PHASE0-RESULTS.md](spikes/PHASE0-RESULTS.md) | Phase 0 measurements, evidence and limitations |
@@ -24,6 +25,7 @@ profiles. Licensed Apache-2.0.
 | [spikes/PHASE9-RESULTS.md](spikes/PHASE9-RESULTS.md) | Phase 9 polish, packaging, and first-run wizard results |
 | [spikes/PHASE10-RESULTS.md](spikes/PHASE10-RESULTS.md) | Phase 10 MCP server, automation layer, session rollback, and AI attach results |
 | [spikes/PHASE11-RESULTS.md](spikes/PHASE11-RESULTS.md) | Phase 11 CLAP and LV2 audio plugin hosting engine, CLI, UI, and MCP results |
+| [spikes/PHASE-M0-RESULTS.md](spikes/PHASE-M0-RESULTS.md) | Phase M0 Tauri 2 & WebKitGTK feasibility spike measurements and gate pass |
 | [mcp/TOOLS.md](mcp/TOOLS.md) | Model Context Protocol tool catalog, schemas, and permission tiers |
 | [mcp/CLIENT_SETUP.md](mcp/CLIENT_SETUP.md) | Client connection guides for Claude Desktop, Cursor, and VS Code |
 | [mcp/AGENT_GUIDE.md](mcp/AGENT_GUIDE.md) | Operational guidelines and principles for LLM agents interacting with ALP |
@@ -34,7 +36,7 @@ profiles. Licensed Apache-2.0.
 | [KEYBOARD_SHORTCUTS.md](KEYBOARD_SHORTCUTS.md) | Full hotkey cheat sheet |
 | [ETHICS.md](ETHICS.md) | Voice cloning ethics, human consent gate, and acceptable-use policies |
 | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Platform setup guide for Wayland, NVIDIA, PipeWire, and ALSA |
-| [adr/](adr/) | Architecture Decision Records |
+| [adr/](adr/) | Architecture Decision Records (including [ADR 0013](adr/0013-ui-migration-tauri.md)) |
 | [../THIRD_PARTY.md](../THIRD_PARTY.md) | Every crate, model and asset with its license |
 | [../CHANGELOG.md](../CHANGELOG.md) | Release history |
 
@@ -55,12 +57,13 @@ profiles. Licensed Apache-2.0.
 | 10 — MCP: AI-driven editing, creation, and export | complete: alp-api automation layer, alp-mcp server (spec revision 2026-07-28), 14 core tools, 8 prompt workflows, sandboxing, session rollback, and UI live attach control panel |
 | 11 — CLAP & LV2 Audio Plugin Hosting | complete: alp-plugin engine, C ABI loaders for CLAP and LV2, real-time safety, scanner/cache, CLI scan/list/inspect, MCP tools, and the hosted-plugin browser in the Effects workspace |
 | 12 — Dual-Axis Navigation Shell & Multitrack Core Model (v0.0.1-alpha.7) | in progress: Dual-Axis Navigation (Rail + Subtabs), multitrack clip data model, volume/pan envelope automation, and SQLite WAL block-based sample store |
-| 13 — Interactive Multitrack Canvas & Spectral Multi-View (v0.0.1-alpha.8) | planned: Interactive DAW canvas, clip split/slip/ripple, simultaneous Waveform + STFT Spectrogram, and 2D time-frequency spectral selection |
+| M0–M8 — UI Migration to Tauri 2 & React (v0.0.1-alpha.8–10) | proposed: Phased migration from iced to Tauri 2 + React (M0 feasibility gate, M1 alp-session extraction, M2 Tauri scaffold, M3 kit/shell, M4 transport/waveform, M5 workspace ports, M6 multitrack timeline editor, M7 AI/MCP parity, M8 cutover & packaging) |
+| 13 — Interactive Multitrack Canvas & Spectral Multi-View (v0.0.1-alpha.8) | planned: Interactive DAW canvas (Canvas 2D / WebGL in React), clip split/slip/ripple, simultaneous Waveform + STFT Spectrogram, and 2D time-frequency spectral selection |
 | 14 — Advanced Spectral DSP & Realtime FX Insert Racks (v0.0.1-alpha.9) | planned: Subtractive spectral denoiser with noise profiling, 2D spectral notch/repair, realtime insert FX racks, and high-fidelity WSOLA time stretch |
-| 15 — Voice Lab Expansion & Voice Design by Prompt (v0.0.1-alpha.10) | planned: Zero-shot voice cloning embeddings, natural language voice design, persona library & avatars, and custom pronunciation lexicon with IPA/SSML |
+| 15 — Voice Lab Expansion & Voice Design by Prompt (v0.0.1-alpha.10) | planned: Zero-shot voice cloning embeddings, natural language voice design, persona cards & avatars, and custom pronunciation lexicon with IPA/SSML |
 | 16 — Audiobook Studio & Long-Form Engine (v0.1.0-beta.1) | planned: EPUB/Markdown manuscript ingestion, multi-character cast tagging, cadence pacing rules, and M4B container packaging with QuickTime chapter markers |
 | 17 — Video Dubbing, Stem Separation & Sync-Lock Labels (v0.1.0-beta.2) | planned: Local Demucs v4 4-stem separation, sync-locked label tracks (SRT/VTT), speech-to-speech dubbing with rate fitting, and FFmpeg video remux |
-| 18 — VST3 Plugin Hosting & Batch Macro Automation (v0.1.0-beta.3) | planned: VST3 component hosting engine, native X11/Wayland plugin window embedding, and scriptable DSP macro batch processing |
+| 18 — VST3 Plugin Hosting & Batch Macro Automation (v0.1.0-beta.3) | planned: VST3 component hosting engine, native X11/Wayland plugin window embedding anchored to desktop window handle, and scriptable DSP macro batch processing |
 | 19 — Full MCP Autonomous Agent Automation & Hardening (v1.0.0-rc.1 / v1.0.0) | planned: Full MCP tool coverage across all studio features, multi-step eval benchmarks, 24-hour stability soaks, and release distribution packaging |
 
 ## Phase 11 acceptance

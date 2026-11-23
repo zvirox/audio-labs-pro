@@ -5,6 +5,27 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+- Feature: Phase M5 ported all 7 studio workspaces to React/TypeScript/Tailwind using kit primitives: Settings (`SettingsWorkspace`), Models (`ModelsWorkspace`), Voices (`VoicesWorkspace`), Generate (`GenerateWorkspace`), Effects (`EffectsWorkspace`), Captures (`CapturesWorkspace`), and Stories (`StoriesWorkspace`)
+- Security & Safety: Phase M5 strictly preserved the affirmative human-only legal consent gate for zero-shot voice cloning (`CloningConsentModal`), requiring non-empty speaker names, attester identity, reference audio, and explicit policy agreement
+- Feature: Phase M5 added hosted CLAP / LV2 plugin discovery and rescan UI, 6-stage vocal cleanup chain with stage bypass toggles, and signal path metering in Effects workspace
+- Feature: Phase M5 integrated live VAD, input meter health audit, takes list, and interactive word-level transcript editor with click-to-seek and segment cuts in Captures workspace
+- Feature: Phase M5 built multi-character chapter dialogue script editor, cast assignment, line status tracking, and batch synthesis in Stories workspace
+- UX: Phase M5 unified workspace switching and floating panel overlay in `SubtabTopBar` with one-click view toggling and full keyboard accessibility
+- Feature: Phase M4 implemented `alp_session::TransportController` and wired live audio playback to `alp-desktop` IPC (`play_transport`, `pause_transport`, `stop_transport`, `seek_transport`, `set_transport_volume`, `set_transport_loop`, `get_transport_state`)
+- Feature: Phase M4 established real-time calibrated stereo meter streaming over Tauri 2 `Channel` at ~30 Hz (`subscribe_meters`), paired with client-side playhead interpolation at 60–120 fps (`useTransport`) via monotonic timestamp anchors
+- Feature: Phase M4 built high-performance `WaveformCanvas` in HTML5 Canvas 2D with dynamic decimation, level-of-detail pyramid selection (256, 1024, 4096 spl), interactive scrubber seeking, and zero-idle-draw optimization
+- Feature: Phase M4 built `TimelineWaveformPanel` integrated into floating panels with real-time 1-hour benchmark testing mode (675,000 min/max buckets @ 48 kHz)
+- Verification: Phase M4 verified 1-hour waveform autoscroll gate (60.0 FPS sustained) and 10-minute playback soak with 0 dropped callbacks (`test_10_minute_playback_soak_no_dropped_callbacks`)
+- Feature: Phase M3 built studio component kit (`frontend/src/kit/`: Button, Toggle, Slider, Input, Tabs, Dialog, Tooltip, Menu, Meter, Card) and dual-axis layout shell (56px PrimaryRail, 40px SubtabTopBar, 280px InspectorDrawer, 64px DockedPlayer)
+- Feature: Phase M3 implemented floating panel container system (`PanelContainer`) supporting drag, resize, z-order focus, collapse, and docking, synchronized with `workspace.json` through `save_workspace_state` and `reset_workspace_layout`
+- Feature: Phase M3 integrated `cmdk` Command Palette (`Ctrl+K`), Shortcuts modal (`F1`), Theme cycling (`Ctrl+D`), and Reduce motion (`Ctrl+Shift+M`) with complete keyboard parity
+- Feature: Phase M2 created `alp-desktop` native desktop shell (Tauri 2) with safe KWin blur via `x11rb`, translucent tint fallback (alpha >= 0.70), and zero `unsafe` hand-written code under `#![deny(unsafe_code)]`
+- Feature: Phase M2 scaffolded `frontend/` (Vite, React 19, TypeScript strict mode, Tailwind CSS v4, Lucide icons) with full studio design token palette and live IPC bridge to `alp-session`
+- Packaging: Phase M2 verified early Flatpak de-risk manifest (`packaging/flatpak/throwaway-tauri-derisk.yaml`) on GNOME Platform 48 with WebKitGTK 4.1 and test tone playback
+- Refactor: Phase M1 extracted headless `alp-session` crate (`EditSession`, `JobQueue`, `PersistedWorkspace`, `PanelManager`) with zero GUI dependencies, split `app.rs` from 1,054 down to 669 lines, and verified all 144+ workspace tests and MCP live attach parity
+- Spike: Phase M0 Tauri 2 + WebKitGTK feasibility spike and live benchmarks (GO gate passed; see `docs/spikes/PHASE-M0-RESULTS.md`)
+- Docs: UI migration plan and ADR 0013 accepted
+
 ### Planned (Phase 13–19 Adoption Roadmap)
 
 - **Phase 13 (`v0.0.1-alpha.8`):** Interactive Multitrack timeline canvas, clip splitting/slip/ripple, simultaneous Waveform + STFT Spectrogram, and 2D time-frequency spectral selection tool.

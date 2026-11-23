@@ -1078,10 +1078,17 @@ impl App {
                 if let Some(drag) = self.drag {
                     match drag {
                         Drag::Panel { kind, grab } => {
-                            self.panels.drag_to(kind, position, grab);
+                            self.panels.drag_to(
+                                kind,
+                                alp_session::panels::Point::new(position.x, position.y),
+                                alp_session::panels::Point::new(grab.x, grab.y),
+                            );
                         }
                         Drag::Resize { kind } => {
-                            self.panels.resize_to(kind, position);
+                            self.panels.resize_to(
+                                kind,
+                                alp_session::panels::Point::new(position.x, position.y),
+                            );
                         }
                     }
                 }
@@ -1118,11 +1125,12 @@ impl App {
 
     fn apply_window_size(&mut self, size: Size) {
         self.window_size = size;
+        let bounds = alp_session::panels::Size::new(size.width, size.height);
         if !self.layout_restored && !self.bounds_initialized {
-            self.panels = PanelManager::default_for(size);
+            self.panels = PanelManager::default_for(bounds);
             self.bounds_initialized = true;
         } else {
-            self.panels.set_bounds(size);
+            self.panels.set_bounds(bounds);
         }
     }
 

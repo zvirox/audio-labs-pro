@@ -1,0 +1,25 @@
+[package]
+name = "alp-session"
+description = "Headless project session, command coordination, worker queue, and workspace persistence for Audio Labs Pro"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+alp-api.workspace = true
+alp-core.workspace = true
+alp-engine.workspace = true
+alp-media.workspace = true
+alp-voice.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

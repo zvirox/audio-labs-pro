@@ -1,0 +1,104 @@
+:root {
+  color-scheme: dark;
+
+  /* Studio Dark Glass Palette (Default) */
+  --color-bg: oklch(0.12 0.015 250 / 0.82);
+  --color-bg-solid: oklch(0.12 0.015 250);
+  --color-surface: oklch(0.16 0.018 250 / 0.85);
+  --color-surface-2: oklch(0.20 0.020 250 / 0.90);
+  --color-surface-3: oklch(0.24 0.022 250 / 0.95);
+  --color-surface-solid: oklch(0.16 0.018 250);
+  --color-fg: oklch(0.97 0.005 250);
+  --color-fg-muted: oklch(0.72 0.015 250);
+  --color-fg-subtle: oklch(0.55 0.015 250);
+  --color-border: oklch(0.28 0.02 250 / 0.70);
+  --color-border-strong: oklch(0.40 0.025 250);
+  --color-focus: oklch(0.75 0.18 200);
+
+  /* Status Colors */
+  --color-success: oklch(0.75 0.17 155);
+  --color-warning: oklch(0.80 0.16 75);
+  --color-danger: oklch(0.70 0.20 25);
+  --color-info: oklch(0.75 0.16 230);
+
+  /* Workspace Neon Accents */
+  --workspace-voice: #00f0ff;
+  --workspace-multitrack: #6366f1;
+  --workspace-audiobook: #f59e0b;
+  --workspace-dubbing: #ec4899;
+  --workspace-tools: #10b981;
+  --workspace-effects: #8b5cf6;
+  --workspace-settings: #94a3b8;
+
+  /* Active Workspace Accent (Defaults to Voice) */
+  --color-accent: var(--workspace-voice);
+  --color-accent-hover: oklch(0.88 0.16 200);
+  --color-accent-active: oklch(0.82 0.18 200);
+  --color-accent-fg: #050b14;
+
+  /* Layout Chrome Dimensions */
+  --rail-width: 56px;
+  --subtab-height: 40px;
+  --inspector-width: 280px;
+  --player-height: 64px;
+
+  /* Spacing Scale */
+  --space-xxs: 2px;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-2xl: 32px;
+
+  /* Corner Radii */
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-full: 9999px;
+
+  /* Glass Filter */
+  --glass-blur: blur(16px);
+  --glass-tint: rgba(11, 15, 25, 0.75);
+}
+
+.theme-light {
+  color-scheme: light;
+
+  --color-bg: oklch(0.985 0.003 250 / 0.88);
+  --color-bg-solid: oklch(0.985 0.003 250);
+  --color-surface: oklch(1.0 0 0 / 0.88);
+  --color-surface-2: oklch(0.955 0.006 250 / 0.92);
+  --color-surface-3: oklch(0.92 0.008 250 / 0.95);
+  --color-surface-solid: oklch(1.0 0 0);
+  --color-fg: oklch(0.18 0.02 250);
+  --color-fg-muted: oklch(0.45 0.02 250);
+  --color-fg-subtle: oklch(0.60 0.015 250);
+  --color-border: oklch(0.88 0.008 250 / 0.80);
+  --color-border-strong: oklch(0.65 0.02 250);
+  --color-focus: oklch(0.55 0.20 200);
+
+  /* Light Status */
+  --color-success: oklch(0.52 0.16 155);
+  --color-warning: oklch(0.58 0.16 75);
+  --color-danger: oklch(0.55 0.20 25);
+  --color-info: oklch(0.52 0.16 230);
+
+  /* Light Accents (Deepened for contrast >= 4.5:1 against light background) */
+  --workspace-voice: #008899;
+  --workspace-multitrack: #4338ca;
+  --workspace-audiobook: #b45309;
+  --workspace-dubbing: #be185d;
+  --workspace-tools: #047857;
+  --workspace-effects: #6d28d9;
+  --workspace-settings: #475569;
+
+  --color-accent: var(--workspace-voice);
+  --color-accent-hover: oklch(0.48 0.15 200);
+  --color-accent-active: oklch(0.42 0.15 200);
+  --color-accent-fg: #ffffff;
+
+  --glass-tint: rgba(255, 255, 255, 0.82);
+}

@@ -8,6 +8,8 @@ use alp_ui_kit::{ButtonKind, ThemeColors, fonts};
 use iced::widget::{Space, column, container, row, text};
 use iced::{Alignment, Element, Length};
 
+use crate::panels::PanelKindGlyph;
+
 use super::workspace_layout::{card, card_auto, header, metric_badge};
 use super::{App, Message};
 

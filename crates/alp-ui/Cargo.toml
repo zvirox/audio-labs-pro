@@ -15,6 +15,7 @@ alp-engine.workspace = true
 alp-media.workspace = true
 alp-mcp.workspace = true
 alp-plugin.workspace = true
+alp-session.workspace = true
 alp-ui-kit.workspace = true
 alp-voice.workspace = true
 iced.workspace = true
