@@ -7,6 +7,8 @@ export interface SliderProps {
   step?: number;
   onChange: (value: number) => void;
   label?: string;
+  /** Accessible name when no visible label is rendered (e.g. transport scrubbers). */
+  ariaLabel?: string;
   unit?: string;
   formatValue?: (val: number) => string;
   disabled?: boolean;
@@ -23,6 +25,7 @@ export const Slider = forwardRef<HTMLInputElement, SliderProps>(
       step = 1,
       onChange,
       label,
+      ariaLabel,
       unit = '',
       formatValue,
       disabled = false,
@@ -79,6 +82,7 @@ export const Slider = forwardRef<HTMLInputElement, SliderProps>(
             aria-valuemax={max}
             aria-valuenow={value}
             aria-valuetext={displayValue}
+            aria-label={ariaLabel ?? label}
           />
 
           {/* Custom draggable thumb indicator */}

@@ -25,6 +25,7 @@ interface SubtabTopBarProps {
   isDirty?: boolean;
   viewMode?: 'workspace' | 'panels';
   onToggleViewMode?: () => void;
+  hideStudioActions?: boolean;
 }
 
 export function SubtabTopBar({
@@ -41,6 +42,7 @@ export function SubtabTopBar({
   isDirty = false,
   viewMode = 'workspace',
   onToggleViewMode,
+  hideStudioActions = false,
 }: SubtabTopBarProps) {
   const panelMenuItems = [
     { id: 'timeline', label: 'Timeline / Tracks', onClick: () => onTogglePanel('timeline') },
@@ -82,7 +84,8 @@ export function SubtabTopBar({
         />
       </div>
 
-      {/* Right: Actions, Panels Dropdown & Inspector Toggle */}
+      {/* Right: Actions, Panels Dropdown & Inspector Toggle (hidden on Dashboard) */}
+      {!hideStudioActions && (
       <div className="flex items-center gap-2 flex-shrink-0 pl-2">
         {/* Trigger Demo Edit */}
         <Button
@@ -159,6 +162,7 @@ export function SubtabTopBar({
           Inspector
         </Button>
       </div>
+      )}
     </nav>
   );
 }

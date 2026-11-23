@@ -194,11 +194,12 @@ export function DockedPlayer({
             step={0.01}
             value={activeTime}
             onChange={handleSeek}
+            ariaLabel="Seek position"
             formatValue={(v) => `${formatTimecode(v)} / ${formatTimecode(durationSecs)}`}
           />
         </div>
 
-        <div className="text-[11px] font-mono text-[var(--color-fg-subtle)] whitespace-nowrap hidden sm:block">
+        <div className="text-[11px] font-mono text-[var(--color-fg-muted)] whitespace-nowrap hidden sm:block">
           {formatTimecode(durationSecs)} &bull; {sampleRate / 1000}kHz
         </div>
       </div>
@@ -215,8 +216,10 @@ export function DockedPlayer({
           <button
             type="button"
             onClick={() => setIsMuted(!isMuted)}
-            className="text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] p-1 rounded-md"
+            className="text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] p-1 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]"
             title={isMuted ? 'Unmute master' : 'Mute master'}
+            aria-label={isMuted ? 'Unmute master' : 'Mute master'}
+            aria-pressed={isMuted}
           >
             {isMuted || activeVolume === 0 ? (
               <VolumeX className="w-4 h-4 text-red-400" />
@@ -231,6 +234,7 @@ export function DockedPlayer({
               step={0.01}
               value={isMuted ? 0 : activeVolume}
               onChange={handleVolumeChange}
+              ariaLabel="Master volume"
               formatValue={(v) => `${(v * 100).toFixed(0)}%`}
             />
           </div>

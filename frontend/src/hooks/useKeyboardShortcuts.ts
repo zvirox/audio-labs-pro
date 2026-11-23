@@ -10,6 +10,7 @@ interface KeyboardShortcutHandlers {
 }
 
 const WORKSPACE_KEYS: Record<string, string> = {
+  '0': 'dashboard',
   '1': 'voice',
   '2': 'multitrack',
   '3': 'audiobook',

@@ -5,6 +5,25 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+### Added
+
+- **Dashboard (Home) landing view.** The app now boots into a Dashboard that presents the
+  studio's workspaces and most-used actions as floating shortcut panels (icon + name + short
+  description + keyboard shortcut); selecting a panel opens that workspace. Includes a hero
+  header with the app logo, tagline and a decorative waveform motif.
+- **Logo dashboard button on the primary rail.** The blue "ALP" square is replaced by the app
+  logo (microphone + waveform) above the workspace tabs; it returns to the Dashboard
+  (`Ctrl+0`, also listed in the command palette).
+
+### Changed
+
+- **Accessibility.** Dashboard shortcut panels derive their accessible name from their visible
+  text; section heading and kbd hint contrast raised to `--color-fg-muted`; transport scrubber
+  and master-volume sliders gain accessible names via a new `Slider.ariaLabel` prop and the
+  mute toggle gains `aria-label`/`aria-pressed`. Global reduced-motion support
+  (`prefers-reduced-motion` and the in-app toggle) now collapses animations/transitions.
+  Lighthouse accessibility on the dashboard: 1.0.
+
 ## [0.0.1-alpha.8] - 2026-11-23
 
 ### Added

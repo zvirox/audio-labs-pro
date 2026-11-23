@@ -16,6 +16,7 @@ import {
   Zap,
   HelpCircle,
   Eye,
+  Home,
 } from 'lucide-react';
 import type { PanelKind } from '../ipc/types';
 
@@ -83,6 +84,20 @@ export function CommandPalette({
 
             {/* Workspaces Group */}
             <Command.Group heading="Studio Workspaces" className="text-[11px] font-bold text-[var(--color-fg-subtle)] uppercase px-2 py-1">
+              <Command.Item
+                onSelect={() => {
+                  onSelectWorkspace('dashboard');
+                  onClose();
+                }}
+                className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-[var(--color-fg)] hover:bg-[var(--color-surface-2)] aria-selected:bg-[var(--color-surface-2)]"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Home className="w-4 h-4 text-cyan-400" />
+                  <span>Dashboard (Home)</span>
+                </div>
+                <kbd className="text-[10px] font-mono text-[var(--color-fg-subtle)]">Ctrl+0</kbd>
+              </Command.Item>
+
               <Command.Item
                 onSelect={() => {
                   onSelectWorkspace('voice');

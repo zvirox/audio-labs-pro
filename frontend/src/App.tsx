@@ -6,7 +6,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 
-import { PrimaryRail, WORKSPACE_LIST } from './layout/PrimaryRail';
+import { PrimaryRail, WORKSPACE_LIST, DASHBOARD_ITEM } from './layout/PrimaryRail';
 import { SubtabTopBar } from './layout/SubtabTopBar';
 import { InspectorDrawer } from './layout/InspectorDrawer';
 import { DockedPlayer } from './layout/DockedPlayer';
@@ -31,6 +31,7 @@ import {
   CapturesWorkspace,
   StoriesWorkspace,
   MultitrackWorkspace,
+  DashboardWorkspace,
 } from './workspaces';
 
 import {
@@ -98,7 +99,7 @@ const WORKSPACE_SUBTABS: Record<string, { id: string; label: string }[]> = {
 };
 
 export default function App() {
-  const [activeWorkspace, setActiveWorkspace] = useState('voice');
+  const [activeWorkspace, setActiveWorkspace] = useState('dashboard');
   const [activeSubtab, setActiveSubtab] = useState('cloning');
   const [viewMode, setViewMode] = useState<'workspace' | 'panels'>('workspace');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
@@ -115,7 +116,9 @@ export default function App() {
 
   // Active workspace metadata
   const currentWsObj =
-    WORKSPACE_LIST.find((w) => w.id === activeWorkspace) || WORKSPACE_LIST[0];
+    activeWorkspace === 'dashboard'
+      ? DASHBOARD_ITEM
+      : WORKSPACE_LIST.find((w) => w.id === activeWorkspace) || WORKSPACE_LIST[0];
   const activeColor = theme === 'light' ? currentWsObj.lightNeon : currentWsObj.neon;
 
   // Apply theme & reduce-motion to root
@@ -404,6 +407,7 @@ export default function App() {
             onToggleViewMode={() =>
               setViewMode((v) => (v === 'workspace' ? 'panels' : 'workspace'))
             }
+            hideStudioActions={activeWorkspace === 'dashboard'}
           />
 
           {/* Main Canvas Surface */}
@@ -421,7 +425,10 @@ export default function App() {
                   handleToggleTheme,
                   reduceMotion,
                   () => setReduceMotion(!reduceMotion),
-                  transport
+                  transport,
+                  handleSelectWorkspace,
+                  () => setIsPaletteOpen(true),
+                  () => setIsShortcutsOpen(true)
                 )}
               </div>
             ) : (
@@ -509,9 +516,22 @@ function renderActiveWorkspace(
   onToggleTheme: () => void,
   reduceMotion: boolean,
   onToggleReduceMotion: () => void,
-  transport: ReturnType<typeof useTransport>
+  transport: ReturnType<typeof useTransport>,
+  onOpenWorkspace: (id: string) => void,
+  onOpenPalette: () => void,
+  onOpenShortcuts: () => void
 ) {
   switch (workspace) {
+    case 'dashboard':
+      return (
+        <DashboardWorkspace
+          theme={theme}
+          onOpenWorkspace={onOpenWorkspace}
+          onOpenPalette={onOpenPalette}
+          onOpenShortcuts={onOpenShortcuts}
+        />
+      );
+
     case 'settings':
       if (subtab === 'models_cat') {
         return <ModelsWorkspace />;

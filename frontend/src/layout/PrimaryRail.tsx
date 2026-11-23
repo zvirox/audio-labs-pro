@@ -11,8 +11,10 @@ import {
   Command as CommandIcon,
   Sun,
   Moon,
+  Home,
 } from 'lucide-react';
 import { Tooltip } from '../kit/Tooltip';
+import appIcon from '../assets/app-icon.png';
 
 export interface WorkspaceItem {
   id: string;
@@ -23,6 +25,16 @@ export interface WorkspaceItem {
   shortcut: string;
   desc: string;
 }
+
+export const DASHBOARD_ITEM: WorkspaceItem = {
+  id: 'dashboard',
+  name: 'Dashboard',
+  icon: Home,
+  neon: '#22d3ee',
+  lightNeon: '#0e7490',
+  shortcut: 'Ctrl+0',
+  desc: 'Home overview with one-tap workspace and action shortcuts',
+};
 
 export const WORKSPACE_LIST: WorkspaceItem[] = [
   {
@@ -112,12 +124,43 @@ export function PrimaryRail({
       className="w-14 border-r border-[var(--color-border)] bg-[var(--color-surface)] flex flex-col items-center py-3 justify-between flex-shrink-0 z-30 select-none"
       aria-label="Workspace Navigation"
     >
-      {/* Top Section: App Logo & 7 Workspaces */}
+      {/* Top Section: App Logo (Dashboard) & 7 Workspaces */}
       <div className="flex flex-col items-center gap-2 w-full">
-        {/* App Mini Logo */}
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 mb-2 cursor-pointer">
-          <span className="font-mono font-black text-xs text-white">ALP</span>
-        </div>
+        {/* App Logo = Dashboard / Home button */}
+        <Tooltip
+          position="right"
+          content={
+            <div className="flex items-center gap-2">
+              <span>Dashboard</span>
+              <kbd className="opacity-60 text-[10px] font-mono">Ctrl+0</kbd>
+            </div>
+          }
+        >
+          <button
+            type="button"
+            onClick={() => onSelectWorkspace('dashboard')}
+            aria-label="Dashboard (Home)"
+            aria-current={activeWorkspace === 'dashboard' ? 'page' : undefined}
+            className={`relative group w-10 h-10 rounded-xl flex items-center justify-center mb-2 transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] ${
+              activeWorkspace === 'dashboard'
+                ? 'bg-[var(--color-surface-2)] shadow-md'
+                : 'hover:bg-[var(--color-surface-2)]'
+            }`}
+          >
+            <img
+              src={appIcon}
+              alt=""
+              aria-hidden="true"
+              className="w-7 h-7 rounded-lg transition-transform group-hover:scale-110 motion-reduce:transition-none"
+            />
+            {activeWorkspace === 'dashboard' && (
+              <span
+                className="absolute -left-1.5 w-1 h-5 rounded-r-full"
+                style={{ backgroundColor: theme === 'light' ? DASHBOARD_ITEM.lightNeon : DASHBOARD_ITEM.neon }}
+              />
+            )}
+          </button>
+        </Tooltip>
 
         {/* 7 Workspaces */}
         {WORKSPACE_LIST.map((ws) => {
