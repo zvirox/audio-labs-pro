@@ -13,74 +13,36 @@ devices remain untested. Phase 1 and Phase 2 remain the base.
 
 | Process | Responsibility |
 |---|---|
-| `alp-ui` | One transparent OS window, floating panels, input, rendering and the live project owner. Hosts the owner-only native AI control socket through `alp-api::control`; attached edits use the same `EditSession` as human edits. Never touches cpal or ONNX. |
+| `alp-desktop` | Native desktop application host built on Tauri 2 and WebKitGTK. Owns window lifecycle, glass blur, and typed IPC bridge. Zero `unsafe`. |
+| `alp-session` | In-process headless session owner. Owns `EditSession`, undo/redo command stack, project state, background workers, and AI control socket (`alp-api::control`). |
 | `alp-engine` (in-process audio thread) | cpal callbacks, mixer, transport, recorder. Real-time safe: no allocation, no locks, no logging. |
 | `alp-infer` (separate process) | TTS/STT/clone models over ONNX Runtime and Candle/Safetensors. Isolated so an OOM or model crash never kills the editor. Talks over a versioned Unix-socket protocol owned by `alp-voice`. |
 | Worker threads | Decode, peak building, effect rendering, export. Cancellable jobs with progress channels; the shell uses this for real background mix export. |
 
-## Crate graph (current: iced 0.14)
+## Crate graph (Tauri 2 + React architecture)
 
 Solid arrows are compile-time dependencies. The dotted arrow is the runtime
 socket connection and must never become a Cargo dependency.
 
 ```mermaid
 flowchart TD
-  subgraph APP["Applications"]
-    UI["alp-ui<br/>shell, panels, glass"]
-    CLI["alp-cli<br/>headless tools"]
-    KIT["alp-ui-kit<br/>tokens, Inter, components, motion, waveform"]
-  end
-  subgraph DOMAIN["Domain crates"]
-    ENG["alp-engine<br/>cpal I/O, mixer, transport"]
-    VOICE["alp-voice<br/>traits, model manager, protocol"]
-    DSP["alp-dsp<br/>effects"]
-    MEDIA["alp-media<br/>decode, encode, peaks"]
-    CORE["alp-core<br/>project model, commands, types"]
-  end
-  INFER["alp-infer (separate process)<br/>ONNX / Candle backends"]
-
-  UI --> KIT
-  UI --> ENG
-  UI --> VOICE
-  UI --> MEDIA
-  UI --> CORE
-  CLI --> ENG
-  CLI --> VOICE
-  CLI --> DSP
-  CLI --> MEDIA
-  CLI --> CORE
-  ENG --> MEDIA
-  ENG --> CORE
-  VOICE --> MEDIA
-  VOICE --> CORE
-  DSP --> CORE
-  MEDIA --> CORE
-  INFER --> VOICE
-  VOICE -. "Unix socket (runtime)" .-> INFER
-```
-
-## Planned: UI migration (Tauri 2 + React)
-
-> **Status:** Planned (phases M0–M8, see [`UI_MIGRATION.md`](UI_MIGRATION.md) and [ADR 0013](../adr/0013-ui-migration-tauri.md)).  
-> The new crates and frontend directory do not exist in the current codebase and will be created during phases M1–M2. The current iced architecture remains in place until cutover at M8.
-
-```mermaid
-flowchart TD
-  subgraph FE["frontend/ (webview, planned)"]
+  subgraph FE["frontend/ (React 19 + TypeScript + Tailwind CSS)"]
     REACT["React app + kit<br/>views only, no project mutation"]
   end
-  subgraph DESK["alp-desktop (Tauri, planned)"]
+  subgraph DESK["alp-desktop (Tauri 2 host)"]
     IPC["commands / events / channels"]
-    GLASS["glass (x11rb blur, tint fallback)"]
+    GLASS["glass (safe x11rb blur, tint fallback)"]
   end
-  SESSION["alp-session (planned, UI-agnostic)<br/>EditSession, worker queue, control socket host,<br/>workspace persistence"]
-  ENG["alp-engine"]
-  CORE["alp-core"]
-  MEDIA["alp-media"]
-  VOICE["alp-voice"]
-  API["alp-api"]
-  MCP["alp-mcp"]
-  INFER["alp-infer (separate process)"]
+  SESSION["alp-session (Headless session manager)<br/>EditSession, worker queue, control socket host,<br/>workspace persistence"]
+  ENG["alp-engine<br/>cpal I/O, mixer, transport"]
+  CORE["alp-core<br/>project model, commands, types"]
+  MEDIA["alp-media<br/>decode, encode, peaks"]
+  VOICE["alp-voice<br/>traits, model manager, protocol"]
+  API["alp-api<br/>control protocol, models, commands"]
+  MCP["alp-mcp<br/>MCP tool protocol"]
+  DSP["alp-dsp<br/>cleanup effects"]
+  INFER["alp-infer (separate process)<br/>ONNX / Candle backends"]
+  CLI["alp-cli<br/>headless tools"]
 
   REACT <-->|invoke / events / Channel| IPC
   IPC --> SESSION
@@ -91,26 +53,42 @@ flowchart TD
   SESSION --> VOICE
   SESSION --> API
   SESSION --> MCP
+  CLI --> ENG
+  CLI --> VOICE
+  CLI --> DSP
+  CLI --> MEDIA
+  CLI --> CORE
+  CLI --> API
+  ENG --> MEDIA
+  ENG --> CORE
+  VOICE --> MEDIA
+  VOICE --> CORE
+  DSP --> CORE
+  MEDIA --> CORE
+  API --> CORE
+  MCP --> API
+  MCP --> CORE
+  INFER --> VOICE
   VOICE -. "Unix socket (runtime)" .-> INFER
 ```
 
-### Planned crate changes and dependency rules
-- **`alp-session` (planned):** Headless session manager extracted from `alp-ui`. Owns the live `EditSession`, undoable `Command` stack, background worker pool, `alp-api::control` native socket host, and workspace persistence. Allowed dependencies: `alp-core`, `alp-engine`, `alp-media`, `alp-voice`, `alp-api`, `alp-mcp`. **Must not depend on iced or tauri.**
-- **`alp-desktop` (planned):** Tauri 2 native desktop application wrapper. Owns the window lifecycle, system tray/menus, IPC command/event dispatch, and `x11rb` compositor blur. Depends only on `alp-session` and the Tauri framework. Maintains workspace `unsafe_code = "deny"`: hand-written code contains zero `unsafe` (glass and window use safe `x11rb` and `raw-window-handle`); if Tauri macros trip the lint, exceptions are scoped strictly to the macro-generated item, cataloged in ADR 0013, and enforced by planned guard checks.
-- **`frontend/` (planned):** Webview presentation application (Vite + React + TypeScript + Tailwind CSS). Not a Rust crate. Dispatches IPC commands and renders state reported by Rust.
-- **Removed after cutover (M8):** `alp-ui`, `alp-ui-kit`, and workspace dependencies `iced`, `iced-cube`, `lilt`.
+### Crate architecture and dependency rules
+- **`alp-session`:** Headless session manager. Owns the live `EditSession`, undoable `Command` stack, background worker pool, `alp-api::control` native socket host, and workspace persistence. Allowed dependencies: `alp-core`, `alp-engine`, `alp-media`, `alp-voice`, `alp-api`, `alp-mcp`. **Must not depend on iced or tauri.**
+- **`alp-desktop`:** Tauri 2 native desktop application wrapper. Owns the window lifecycle, system tray/menus, IPC command/event dispatch, and `x11rb` compositor blur. Depends only on `alp-session` and the Tauri framework. Maintains workspace `unsafe_code = "deny"`: hand-written code contains zero `unsafe` (glass and window use safe `x11rb` and `raw-window-handle`); verified by automated guard checks.
+- **`frontend/`:** Webview presentation application (Vite + React 19 + TypeScript + Tailwind CSS). Not a Rust crate. Dispatches IPC commands and renders state reported by Rust.
+- **Legacy cutover (completed in M8):** `alp-ui`, `alp-ui-kit`, and workspace dependencies `iced`, `iced-cube`, `lilt` removed.
 
-### Planned glass architecture (`alp-desktop`)
+### Glass architecture (`alp-desktop`)
 
-The glass module moves from `alp-ui` to `alp-desktop::glass`. ADR 0013 supersedes ADR 0012 strictly for the rendering layer; all other glass invariants are preserved:
-- The session/desktop matrix remains unchanged: KWin/X11 blur via `_KDE_NET_WM_BLUR_BEHIND_REGION` using safe `x11rb`, translucent tint fallback (alpha $\ge$ 0.70) everywhere else (GNOME/Wayland, niri, etc.).
+The glass module lives in `alp-desktop::glass` (ADR 0013 superseding ADR 0012 for the rendering layer):
+- The session/desktop matrix: KWin/X11 blur via `_KDE_NET_WM_BLUR_BEHIND_REGION` using safe `x11rb`, translucent tint fallback (alpha $\ge$ 0.70) everywhere else (GNOME/Wayland, niri, etc.).
 - `ALP_FORCE_TINT=1` continues to force the tint fallback.
 - Wayland `ext_background_effect_v1` remains out of scope (requires unsafe foreign display binding, violating workspace policy).
 - Motion remains decorative and never encodes audio state.
-- **CSS `backdrop-filter`:** Documented as an inner-panel effect only (blurring webview DOM elements behind floating menus and drawers), not desktop blur behind the OS window.
+- **CSS `backdrop-filter`:** Inner-panel effect only (blurring webview DOM elements behind floating menus and drawers), not desktop blur behind the OS window.
 
 ```text
-alp-desktop::glass (planned)
+alp-desktop::glass
   ├─ probe()       read Tauri window's raw window handle safely
   ├─ resolve()     identify session/desktop and report mode honestly
   └─ x11 blur      set _KDE_NET_WM_BLUR_BEHIND_REGION for KWin via x11rb
@@ -291,18 +269,18 @@ is recorded in ADR 0012, which supersedes the vendor-patch assumption in ADR
 ### Glass module boundary
 
 ```text
-alp-ui::glass
-  ├─ probe()       read iced's raw window/display handles once
+alp-desktop::glass
+  ├─ probe()       read Tauri window's raw window handle safely
   ├─ resolve()     identify session/desktop and choose a mode for the report
-  └─ x11 blur      set _KDE_NET_WM_BLUR_BEHIND_REGION for KWin
+  └─ x11 blur      set _KDE_NET_WM_BLUR_BEHIND_REGION for KWin via x11rb
 ```
 
-It is the only place that touches platform windowing beyond iced, and it must
+It is the only place that touches platform windowing, and it must
 never block the audio thread or the UI frame.
 
-## UI migration architecture (Tauri 2 + React)
+## UI architecture (Tauri 2 + React)
 
-In accordance with ADR 0013 and [`docs/architecture/UI_MIGRATION.md`](UI_MIGRATION.md), the user interface is migrating from iced 0.14 to Tauri 2 + React/TypeScript/Tailwind:
+In accordance with ADR 0013 and [`docs/architecture/UI_MIGRATION.md`](UI_MIGRATION.md), the user interface is built on Tauri 2 + React 19 / TypeScript / Tailwind CSS:
 
 ```text
 frontend/ (React 19 + TypeScript + Tailwind CSS)
@@ -313,12 +291,13 @@ alp-desktop (Tauri 2 native host, safe x11rb KWin blur, zero unsafe)
     │
     │ Direct Rust dependency (only allowed ALP dependency)
     ▼
-alp-session (Headless EditSession, JobQueue, PersistedWorkspace, PanelManager)
+alp-session (Headless EditSession, JobQueue, PersistedWorkspace, PanelManager, AiControlManager)
     │
     ├── alp-api
     ├── alp-core
     ├── alp-engine
     ├── alp-media
+    ├── alp-mcp
     └── alp-voice
 ```
 
@@ -346,5 +325,21 @@ alp-session (Headless EditSession, JobQueue, PersistedWorkspace, PanelManager)
   - High-performance `WaveformCanvas` in HTML5 Canvas 2D with dynamic decimation, level-of-detail pyramid selection (Level 0: 256, Level 1: 1024, Level 2: 4096 frames/bucket), interactive scrubber seeking, and zero-idle-draw optimization.
   - `TimelineWaveformPanel` integrated into floating panels with real-time 1-hour benchmark testing mode.
   - Verified 1-hour waveform autoscroll gate (60.0 FPS sustained over 675,000 buckets) and 10-minute playback soak with 0 dropped callbacks.
+- **Phase M5 — Seven Workspaces Parity:** COMPLETE.
+  - Implemented 7 full-fidelity studio workspaces (`GenerateWorkspace`, `StoriesWorkspace`, `CapturesWorkspace`, `VoicesWorkspace`, `EffectsWorkspace`, `ModelsWorkspace`, `SettingsWorkspace`).
+  - Real-time project and session state binding, persistence across restarts, theme and reduce-motion settings.
+- **Phase M6 — HTML5 Canvas Multitrack Timeline Editor:** COMPLETE.
+  - Full multitrack timeline arranger implemented in `MultitrackWorkspace` and `TimelineArrangerCanvas`.
+  - Non-destructive clip editing, clip splitting (`Ctrl+B`), fades, crossfades, clip movement, volume envelopes, ripple editing (`R`), snapping (`S`), zoom (`Ctrl+=` / `Ctrl+-`), and multi-track audio playback.
+  - Zero per-clip DOM node overhead; 60 fps canvas rendering.
+- **Phase M7 — AI / MCP Parity:** COMPLETE.
+  - Headless `AiControlManager` in `crates/alp-session/src/ai.rs`.
+  - 6 typed AI IPC commands in `crates/alp-desktop/src/commands.rs` (`get_ai_status`, `set_ai_permission`, `approve_ai_client`, `deny_ai_client`, `disconnect_ai_client`, `clear_ai_audit_log`).
+  - Continuous event streaming pump in `main.rs`, live AI audit log viewer in `SettingsWorkspace`, and real-time state synchronization in `App.tsx`.
+- **Phase M8 — Packaging and Cutover:** COMPLETE.
+  - Packaging manifests updated with WebKitGTK 4.1 runtime dependencies (`.deb`, `.rpm`, and Flatpak on GNOME 48 runtime).
+  - Cutover complete: `alp-ui`, `alp-ui-kit`, and legacy iced dependencies removed from workspace.
+  - `scripts/check-deps.sh` updated for 12 ALP crates; `scripts/check-ui.sh` updated for frontend kit compliance and zero legacy iced references.
+  - Documentation debt resolved across troubleshooting, user guide, keyboard shortcuts, and third-party inventory.
 
 

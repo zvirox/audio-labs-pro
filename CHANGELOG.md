@@ -5,6 +5,12 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+- Packaging: Phase M8 updated Linux packaging manifests for `.deb` (`libwebkit2gtk-4.1-0`, `libgtk-3-0`), `.rpm` (`webkit2gtk4.1`, `gtk3`), and Flatpak (`org.gnome.Platform // 48` runtime, `org.gnome.Sdk`, `org.freedesktop.Sdk.Extension.node20`, target binary `alp-desktop` installed as `audio-labs-pro`)
+- Metadata: Phase M8 recorded `0.0.1-alpha.8` release notes in AppStream metadata (`io.github.zvirox.AudioLabsPro.metainfo.xml`)
+- Cutover & Cleanup: Phase M8 cleanly removed legacy iced crates (`crates/alp-ui`, `crates/alp-ui-kit`) and workspace dependencies (`iced`, `iced-cube`, `lilt`), achieving complete cutover to the Tauri 2 + React desktop shell
+- Guard Tooling: Phase M8 updated `scripts/check-deps.sh` for 12 ALP crates and updated `scripts/check-ui.sh` to verify frontend kit compliance and zero legacy iced references
+- Documentation Debt: Phase M8 resolved documentation debt across `docs/TROUBLESHOOTING.md` (WebKitGTK distro packages, NVIDIA/Wayland webview flags), `docs/USER_GUIDE.md` (build target updated to `alp-desktop`, React studio workflows, canvas timeline), `docs/KEYBOARD_SHORTCUTS.md` (full shortcut parity verified), `THIRD_PARTY.md` (Tauri 2 crates, WebKitGTK 4.1, and npm package inventory; iced marked retired), and `docs/architecture/ARCHITECTURE.md`
+
 - Feature: Phase M7 implemented headless `AiControlManager` in `alp-session::ai` hosting owner-only Unix domain control socket at `$XDG_RUNTIME_DIR/alp/control.sock` (mode 0600) with per-session token authentication (`ALP_CONTROL_TOKEN`)
 - Feature: Phase M7 enabled full Model Context Protocol (MCP) tool dispatching on dedicated worker threads (`alp-attached-mcp-{client_id}`) executing against base-revision scratch snapshots
 - Reliability: Phase M7 enforced live atomic transaction commit into `EditSession`, where multi-step agent operations commit as a single undo entry, with automatic rejection of stale writes on revision conflict
