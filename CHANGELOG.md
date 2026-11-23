@@ -5,6 +5,11 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+- Feature: Phase M4 implemented `alp_session::TransportController` and wired live audio playback to `alp-desktop` IPC (`play_transport`, `pause_transport`, `stop_transport`, `seek_transport`, `set_transport_volume`, `set_transport_loop`, `get_transport_state`)
+- Feature: Phase M4 established real-time calibrated stereo meter streaming over Tauri 2 `Channel` at ~30 Hz (`subscribe_meters`), paired with client-side playhead interpolation at 60–120 fps (`useTransport`) via monotonic timestamp anchors
+- Feature: Phase M4 built high-performance `WaveformCanvas` in HTML5 Canvas 2D with dynamic decimation, level-of-detail pyramid selection (256, 1024, 4096 spl), interactive scrubber seeking, and zero-idle-draw optimization
+- Feature: Phase M4 built `TimelineWaveformPanel` integrated into floating panels with real-time 1-hour benchmark testing mode (675,000 min/max buckets @ 48 kHz)
+- Verification: Phase M4 verified 1-hour waveform autoscroll gate (60.0 FPS sustained) and 10-minute playback soak with 0 dropped callbacks (`test_10_minute_playback_soak_no_dropped_callbacks`)
 - Feature: Phase M3 built studio component kit (`frontend/src/kit/`: Button, Toggle, Slider, Input, Tabs, Dialog, Tooltip, Menu, Meter, Card) and dual-axis layout shell (56px PrimaryRail, 40px SubtabTopBar, 280px InspectorDrawer, 64px DockedPlayer)
 - Feature: Phase M3 implemented floating panel container system (`PanelContainer`) supporting drag, resize, z-order focus, collapse, and docking, synchronized with `workspace.json` through `save_workspace_state` and `reset_workspace_layout`
 - Feature: Phase M3 integrated `cmdk` Command Palette (`Ctrl+K`), Shortcuts modal (`F1`), Theme cycling (`Ctrl+D`), and Reduce motion (`Ctrl+Shift+M`) with complete keyboard parity

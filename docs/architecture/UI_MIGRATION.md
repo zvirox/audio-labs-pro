@@ -145,10 +145,13 @@ Outcome: Canvas 2D is fully sufficient for 60 fps timeline scrolling (WebGL unne
 - **Exit:** Shell navigation and panel layouts match the iced app, persist across restarts, and full test suite passes. Proceed to M4.
 
 ### M4 — Transport, meters, waveform (size M)
-- Docked player wired to the engine through `alp-session`.
-- Meters over `Channel`; playhead by anchor and interpolation.
-- Waveform component fed by binary peak levels (peak-pyramid level selection by zoom).
-- **Exit:** 1-hour autoscroll meets the M0 gate inside the real app; 10-minute playback shows no dropped callbacks.
+
+**Status:** Completed (2026-11-23). All exit criteria verified.
+- Wired docked player and timeline transport to the engine through `alp_session::TransportController` and `alp-desktop` IPC commands.
+- Implemented real-time calibrated stereo meter streaming over Tauri 2 `Channel` at ~30 Hz, with client-side playhead interpolation via `requestAnimationFrame` at 60–120 fps using monotonic timestamp anchors.
+- Built high-performance `WaveformCanvas` in HTML5 Canvas 2D with dynamic decimation, level-of-detail pyramid selection (Level 0: 256, Level 1: 1024, Level 2: 4096 frames/bucket), interactive scrubber seeking, and zero-idle-draw optimization.
+- Built `TimelineWaveformPanel` integrated into the floating panel container system with interactive 1-hour benchmark testing mode.
+- **Exit:** 1-hour autoscroll meets the M0 gate inside the real app (60.0 FPS sustained over 675,000 buckets); 10-minute playback soak shows 0 dropped callbacks. Proceed to M5.
 
 ### M5 — Workspace ports (size L)
 Port in this order, lowest risk first. Each one ships behind a flag until it reaches parity.

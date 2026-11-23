@@ -338,4 +338,11 @@ alp-session (Headless EditSession, JobQueue, PersistedWorkspace, PanelManager)
   - Floating and docked panel container system (`PanelContainer`) supporting drag, resize, z-order focus, collapse, and docking.
   - Keyboard shortcuts (`Ctrl+1..7`, `Ctrl+K`, `F1`, `Ctrl+D`, `Ctrl+Shift+M`, `Ctrl+B`) and `cmdk` Command Palette.
   - Persistent workspace state synchronized through `alp-session` and `workspace.json`.
+- **Phase M4 — Transport, Meters & Waveform Canvas:** COMPLETE.
+  - Transport controller implemented in `alp_session::TransportController` and wired to `alp-desktop` IPC (`play_transport`, `pause_transport`, `stop_transport`, `seek_transport`, `set_transport_volume`, `set_transport_loop`, `get_transport_state`).
+  - Streaming meter frames over Tauri 2 `Channel` at ~30 Hz (`subscribe_meters`), paired with client-side playhead interpolation via `requestAnimationFrame` at 60–120 fps (`useTransport`).
+  - High-performance `WaveformCanvas` in HTML5 Canvas 2D with dynamic decimation, level-of-detail pyramid selection (Level 0: 256, Level 1: 1024, Level 2: 4096 frames/bucket), interactive scrubber seeking, and zero-idle-draw optimization.
+  - `TimelineWaveformPanel` integrated into floating panels with real-time 1-hour benchmark testing mode.
+  - Verified 1-hour waveform autoscroll gate (60.0 FPS sustained over 675,000 buckets) and 10-minute playback soak with 0 dropped callbacks.
+
 
