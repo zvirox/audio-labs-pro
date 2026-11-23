@@ -94,8 +94,9 @@ Sizes: S ≈ days, M ≈ 1–2 weeks, L ≈ several weeks (solo, agent-assisted)
 Build a throwaway Tauri window and measure it against the iced baseline from `../spikes/`.
 - Transparent, undecorated window on KDE/X11, KDE/Wayland, niri, GNOME/Wayland.
 - KWin blur: set `_KDE_NET_WM_BLUR_BEHIND_REGION` with `x11rb` on the Tauri window's X11 handle (safe code only).
-- CSS `backdrop-filter` inside WebKitGTK over a transparent window: check what it actually blurs.
+- CSS `backdrop-filter` inside WebKitGTK over a transparent window: check what it actually blurs (inner-panel effect only vs desktop).
 - Canvas waveform of a 1-hour file, autoscrolling.
+- Session probe: record per session (KDE/X11, KDE/Wayland, niri, GNOME/Wayland): did the window become transparent, did KWin blur apply, is the tint legible. Results go in `docs/spikes/` as a new results file; do not invent numbers.
 
 | Metric | iced baseline | Proposed gate |
 |---|---|---|
@@ -161,11 +162,13 @@ The riskiest piece, so it comes after everything else is stable.
 
 ## 7. Glass strategy under Tauri
 
+ADR 0013 supersedes ADR 0012 only for the rendering layer. All core glass invariants remain unchanged:
 1. Transparent undecorated Tauri window; panels are DOM elements.
-2. KWin/X11: set the blur property from Rust (`x11rb`, safe code) using the window's X11 handle.
-3. Everywhere else: translucent tint (alpha ≥ 0.70) plus a darker root scrim, as today. `ALP_FORCE_TINT=1` keeps working.
-4. CSS `backdrop-filter` only blurs content inside the webview, so treat it as an inner-panel effect, not as desktop blur. Verify in M0.
-5. Wayland `ext_background_effect_v1` stays out of scope, as in ADR 0012.
+2. The glass module moves from `alp-ui` to `alp-desktop::glass` (safe `x11rb` and `raw-window-handle` only).
+3. KWin/X11: set the blur property `_KDE_NET_WM_BLUR_BEHIND_REGION` from Rust (`x11rb`, safe code) using the window's X11 handle.
+4. Everywhere else: translucent tint (alpha ≥ 0.70) plus a darker root scrim, as today. `ALP_FORCE_TINT=1` keeps working.
+5. CSS `backdrop-filter` only blurs content inside the webview (inner-panel effect), not desktop behind the window.
+6. Wayland `ext_background_effect_v1` stays out of scope, as in ADR 0012. Motion remains decorative and never encodes audio state.
 
 ## 8. Guards and CI changes
 

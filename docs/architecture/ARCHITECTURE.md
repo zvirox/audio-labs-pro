@@ -98,6 +98,22 @@ flowchart TD
 - **`frontend/` (planned):** Webview presentation application (Vite + React + TypeScript + Tailwind CSS). Not a Rust crate. Dispatches IPC commands and renders state reported by Rust.
 - **Removed after cutover (M8):** `alp-ui`, `alp-ui-kit`, and workspace dependencies `iced`, `iced-cube`, `lilt`.
 
+### Planned glass architecture (`alp-desktop`)
+
+The glass module moves from `alp-ui` to `alp-desktop::glass`. ADR 0013 supersedes ADR 0012 strictly for the rendering layer; all other glass invariants are preserved:
+- The session/desktop matrix remains unchanged: KWin/X11 blur via `_KDE_NET_WM_BLUR_BEHIND_REGION` using safe `x11rb`, translucent tint fallback (alpha $\ge$ 0.70) everywhere else (GNOME/Wayland, niri, etc.).
+- `ALP_FORCE_TINT=1` continues to force the tint fallback.
+- Wayland `ext_background_effect_v1` remains out of scope (requires unsafe foreign display binding, violating workspace policy).
+- Motion remains decorative and never encodes audio state.
+- **CSS `backdrop-filter`:** Documented as an inner-panel effect only (blurring webview DOM elements behind floating menus and drawers), not desktop blur behind the OS window.
+
+```text
+alp-desktop::glass (planned)
+  ├─ probe()       read Tauri window's raw window handle safely
+  ├─ resolve()     identify session/desktop and report mode honestly
+  └─ x11 blur      set _KDE_NET_WM_BLUR_BEHIND_REGION for KWin via x11rb
+```
+
 ### Target IPC contract
 | Direction | Mechanism | Used for |
 |---|---|---|
@@ -243,7 +259,7 @@ atomically. It stores schema version 1, theme, Reduce motion, last glass mode an
 the eight panel geometries. A missing, corrupt or newer file is ignored in favour
 of defaults.
 
-## Glass strategy
+## Glass strategy (current: iced 0.14)
 
 1. Transparent undecorated window with in-window floating panels (one OS
    window). iced 0.14 exposes `window::run(id, |&dyn Window| …)`, so the app can

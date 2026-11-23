@@ -47,11 +47,17 @@ Migrate the desktop UI presentation layer from iced 0.14 to **Tauri 2** with a *
    - Playhead position interpolated in the frontend via `requestAnimationFrame` anchored on transport state changes rather than per-frame IPC.
    - Types generated deterministically using a Rust-to-TypeScript type generator (`tauri-specta` or `ts-rs`).
 
-5. **Superseding Prior ADRs:**
-   - Once accepted upon successful completion of the M0 feasibility spike, this decision supersedes the UI-specific decisions of:
-     - **ADR 0003:** Window blur handling and iced winit handle exposure.
-     - **ADR 0012:** Phase 2 iced shell architecture, `alp-ui-kit`, and iced widget constraints.
-   - The platform blur strategy from ADR 0012 (KWin/X11 blur property via `x11rb`, safe tint fallback on Wayland/GNOME) is ported directly to `alp-desktop`.
+5. **Superseding Prior ADRs (Rendering Layer Only):**
+   - Once accepted upon completion of the M0 feasibility spike, this decision supersedes the UI-specific parts of **ADR 0003** (window blur and iced winit handle exposure) and **ADR 0012** (Phase 2 iced shell architecture and widget constraints) strictly for the rendering layer.
+   - All other glass invariants from ADR 0012 are preserved unchanged:
+     - The session/desktop matrix remains identical.
+     - KWin/X11 blur through `_KDE_NET_WM_BLUR_BEHIND_REGION` via safe `x11rb`.
+     - Translucent tint fallback (alpha $\ge$ 0.70) on Wayland (GNOME, niri, KDE/Wayland).
+     - `ALP_FORCE_TINT=1` overrides compositor blur for testing and accessibility.
+     - Wayland `ext_background_effect_v1` remains out of scope due to unsafe foreign display requirements.
+     - Motion is decorative and never encodes audio state.
+   - The glass module moves from `alp-ui::glass` to `alp-desktop::glass`.
+   - CSS `backdrop-filter` is documented as an inner-panel effect only, since WebKitGTK blurs webview DOM content rather than desktop windows.
 
 ## Considered Alternatives
 
