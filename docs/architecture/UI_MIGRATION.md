@@ -179,10 +179,25 @@ Ported all 7 studio workspaces in the mandated order (lowest risk first), built 
 - All mutations dispatch through `alp_core` undoable `Command` objects, preserving exact clip IDs on redo (`test timeline_operations_undo_redo_and_clip_id_preservation`).
 - **Exit:** All editing shortcuts from [`docs/KEYBOARD_SHORTCUTS.md`](../KEYBOARD_SHORTCUTS.md) work (`Ctrl+Z`, `Ctrl+Y`, `Ctrl+B`, `Delete`, `Ctrl+C`, `Ctrl+X`, `Ctrl+V`, `R`, `Ctrl+A`, `Space`, `Home`); redo restores identical clip IDs; null tests pass. Proceed to M7.
 
-### M7 — AI/MCP parity (size M)
-- Frontend subscribes to session events so attached MCP edits appear live and commit as one undo entry.
-- Keep revision-tagged scratch snapshots and authenticated subscriptions as they are.
-- **Exit:** the `alp-mcp --attach` workflows in [`docs/mcp/`](../mcp/) pass unchanged.
+### M7 — AI/MCP parity (size M) — COMPLETED
+- Implemented headless `AiControlManager` in `alp-session::ai`:
+  - Unix domain socket listener at `$XDG_RUNTIME_DIR/alp/control.sock` with permission 0600 and peer UID checking.
+  - Ephemeral random session authentication token (`ALP_CONTROL_TOKEN`) generated per session and never persisted.
+  - Granular permission tier enforcement (`Observe`, `Edit`, `Export`) gating native and MCP tool calls.
+  - Off-thread worker execution on `alp-attached-mcp-{client_id}` against base-revision scratch snapshots.
+  - Live atomic commit into `EditSession`: multi-step operations commit as a single undo entry, with automatic rejection of stale writes on revision conflict.
+  - Real-time `ProjectChange` event broadcasting over socket subscriptions and `AiEvent` emission.
+- Wired 6 typed AI IPC commands in `alp-desktop` (`get_ai_status`, `toggle_ai_control`, `set_ai_permission_tier`, `respond_ai_approval`, `get_ai_activity_log`, `undo_ai_change`) with background event pump emitting `session_revision_changed`, `ai_client_approval`, and `ai_activity_event`.
+- Upgraded `SettingsWorkspace.tsx`:
+  - Active/standby MCP host indicator and toggle switch.
+  - Live socket path display and 1-click token copy with clipboard feedback.
+  - One-click copyable CLI attach snippet: `ALP_CONTROL_TOKEN='...' alp-mcp --attach`.
+  - Segmented permission tier selector (`Observe`, `Edit`, `Export`).
+  - Real-time commit counters and measured latency metrics (`last_commit_ms`, `max_commit_ms`).
+  - Interactive client approval banner for incoming unknown connections.
+  - Live AI Activity Audit Log streaming events and committed/refused outcomes.
+- Real-time frontend synchronization in `App.tsx`: live project summary, track counts, and timeline re-render when MCP edits commit.
+- **Exit:** the `alp-mcp --attach` workflows in [`docs/mcp/`](../mcp/) pass unchanged; all null tests pass. Proceed to M8.
 
 ### M8 — Packaging and cutover (size M)
 - `.deb` / `.rpm`: add WebKitGTK runtime dependencies (verify the exact package names per distro).

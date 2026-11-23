@@ -5,6 +5,13 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+- Feature: Phase M7 implemented headless `AiControlManager` in `alp-session::ai` hosting owner-only Unix domain control socket at `$XDG_RUNTIME_DIR/alp/control.sock` (mode 0600) with per-session token authentication (`ALP_CONTROL_TOKEN`)
+- Feature: Phase M7 enabled full Model Context Protocol (MCP) tool dispatching on dedicated worker threads (`alp-attached-mcp-{client_id}`) executing against base-revision scratch snapshots
+- Reliability: Phase M7 enforced live atomic transaction commit into `EditSession`, where multi-step agent operations commit as a single undo entry, with automatic rejection of stale writes on revision conflict
+- Feature: Phase M7 exposed 6 typed AI IPC commands in `alp-desktop` (`get_ai_status`, `toggle_ai_control`, `set_ai_permission_tier`, `respond_ai_approval`, `get_ai_activity_log`, `undo_ai_change`) and continuous background event pump emitting `session_revision_changed`, `ai_client_approval`, and `ai_activity_event`
+- UX & Frontend: Phase M7 upgraded `SettingsWorkspace` with active/standby MCP host indicator, 1-click token copy, shell attach command snippet generator, permission tier selector (`Observe`, `Edit`, `Export`), latency metrics, interactive client approval prompt banner, and live AI audit log stream
+- Verification: Phase M7 verified full MCP catalog parity (`tools/list`), live undoable edits (`tools/call track_add`), and MCP rollback (`tools/call history_undo`) with `test_attached_mcp_full_catalog_and_tool_commit` passing in `alp-session`
+
 - Feature: Phase M6 implemented high-performance HTML5 Canvas 2D multitrack timeline editor (`MultitrackCanvas.tsx` and `MultitrackWorkspace.tsx`) with track lanes, non-destructive clips, waveform overviews, fade curves, volume automation envelopes, timecode ruler, loop boundaries, cue markers, and playhead beam
 - Feature: Phase M6 developed framework-free mathematical hit-testing and drag interaction state machine (`frontend/src/timeline/timelineMath.ts`, `dragLogic.ts`) with magnetic snapping to markers, playhead, and adjacent clip boundaries
 - Verification: Phase M6 created direct Node test suite (`frontend/src/timeline/timelineMath.test.ts`, `npm test`) validating coordinate projections, 8px handle detection, fade geometry, and IPC command payloads (8/8 tests passing)
