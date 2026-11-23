@@ -9,8 +9,9 @@ use serde::{Deserialize, Serialize};
 use crate::error::ApiError;
 use crate::session::ApiSession;
 use crate::types::PermissionTier;
-use alp_core::frames_to_secs;
+use alp_core::{ClipId, frames_to_secs};
 use alp_dsp::measure_lufs;
+use alp_dsp::spectral::{FrequencyScale, SpectrogramConfig, SpectrogramData, SpectrogramEngine, WindowType};
 
 /// Frame length for level statistics (20 ms).
 const LEVEL_FRAME_MS: u32 = 20;
@@ -534,6 +535,92 @@ impl ApiSession {
             differences: diff_summary,
             recommendation,
         })
+    }
+
+    /// Compute high-resolution STFT spectrogram for an audio clip.
+    pub fn spectral_analyze_clip(
+        &self,
+        clip_id_str: &str,
+        fft_size: Option<usize>,
+        window_type: Option<String>,
+        freq_scale: Option<String>,
+        num_freq_bins: Option<usize>,
+    ) -> Result<SpectrogramData, ApiError> {
+        self.check_permission(PermissionTier::Observe)?;
+        let clip_id = clip_id_str
+            .parse::<ClipId>()
+            .map_err(|e| ApiError::Validation(format!("Invalid clip id: {e}")))?;
+
+        let (_, clip) = self
+            .project
+            .clip(clip_id)
+            .ok_or_else(|| ApiError::NotFound(format!("Clip '{clip_id_str}' not found")))?;
+
+        let source = self
+            .project
+            .source(clip.source_id)
+            .ok_or_else(|| ApiError::NotFound(format!("Source '{}' not found", clip.source_id)))?;
+
+        let source_path = self.paths.media_dir().join(&source.relative_path);
+        if !source_path.exists() {
+            return Err(ApiError::NotFound(format!(
+                "Source file not found at {}",
+                source_path.display()
+            )));
+        }
+
+        let audio_buf = alp_media::decode(&source_path)?;
+
+        let mut config = SpectrogramConfig::default();
+        if let Some(sz) = fft_size {
+            config.fft_size = sz;
+            config.hop_size = sz / 4;
+        }
+        if let Some(w) = window_type {
+            config.window_type = match w.to_lowercase().as_str() {
+                "hamming" => WindowType::Hamming,
+                "blackmanharris" | "blackman_harris" => WindowType::BlackmanHarris,
+                "rectangular" => WindowType::Rectangular,
+                _ => WindowType::Hanning,
+            };
+        }
+        if let Some(s) = freq_scale {
+            config.freq_scale = match s.to_lowercase().as_str() {
+                "linear" => FrequencyScale::Linear,
+                "mel" => FrequencyScale::Mel,
+                _ => FrequencyScale::Logarithmic,
+            };
+        }
+        if let Some(bins) = num_freq_bins {
+            config.num_freq_bins = bins;
+        }
+
+        let sample_rate = self.project.sample_rate;
+        let channels = usize::from(audio_buf.channels().max(1));
+        let all_samples = audio_buf.samples();
+        let clip_start_frame = clip.source_range.start as usize;
+        let clip_len_frames = clip.source_range.len() as usize;
+        let total_frames = all_samples.len() / channels;
+        let start_frame = clip_start_frame.min(total_frames);
+        let end_frame = (start_frame + clip_len_frames).min(total_frames);
+
+        let mut mono_samples = Vec::with_capacity(end_frame.saturating_sub(start_frame));
+        for f in start_frame..end_frame {
+            let mut sum = 0.0f32;
+            for c in 0..channels {
+                sum += all_samples[f * channels + c];
+            }
+            mono_samples.push(sum / channels as f32);
+        }
+
+        let engine = SpectrogramEngine::new(config)
+            .map_err(|e| ApiError::Validation(format!("Spectrogram engine error: {e}")))?;
+
+        let data = engine
+            .compute(&mono_samples, sample_rate)
+            .map_err(|e| ApiError::Validation(format!("Spectrogram computation error: {e}")))?;
+
+        Ok(data)
     }
 }
 

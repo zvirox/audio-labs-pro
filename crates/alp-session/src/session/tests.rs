@@ -312,3 +312,90 @@ fn timeline_operations_undo_redo_and_clip_id_preservation() {
     // Project validation invariant (null test)
     session.project().validate().expect("project is valid");
 }
+
+#[test]
+fn phase13_spectral_and_multitrack_canvas_operations() {
+    let mut session = EditSession::demo();
+    let initial_dto = session.timeline_dto();
+    let track_id = initial_dto.tracks[0].id.clone();
+    let clip_id = initial_dto.tracks[0].clips[0].id.clone();
+
+    // 1. Test Track View Mode toggles
+    assert_eq!(initial_dto.tracks[0].view_mode, crate::timeline::TrackViewMode::Waveform);
+    session
+        .set_track_view_mode_by_id(&track_id, "spectrogram")
+        .expect("set view mode spectrogram");
+    assert_eq!(
+        session.timeline_dto().tracks[0].view_mode,
+        crate::timeline::TrackViewMode::Spectrogram
+    );
+    session
+        .set_track_view_mode_by_id(&track_id, "split")
+        .expect("set view mode split");
+    assert_eq!(
+        session.timeline_dto().tracks[0].view_mode,
+        crate::timeline::TrackViewMode::Split
+    );
+    assert!(session.set_track_view_mode_by_id(&track_id, "invalid_mode").is_err());
+
+    // 2. Test 2D Spectral Selection
+    let sel = crate::timeline::SpectralSelectionDto::new(1.0, 3.5, 400.0, 1600.0);
+    assert!((sel.t_start_secs - 1.0).abs() < 1e-4);
+    assert!((sel.t_end_secs - 3.5).abs() < 1e-4);
+    assert!((sel.f_low_hz - 400.0).abs() < 1e-4);
+    assert!((sel.f_high_hz - 1600.0).abs() < 1e-4);
+    // Center freq = sqrt(400 * 1600) = 800 Hz
+    assert!((sel.center_freq_hz - 800.0).abs() < 1e-3);
+    // Bandwidth = 1200 Hz; Q = 800 / 1200 = 0.6667
+    assert!((sel.bandwidth_q - (800.0 / 1200.0)).abs() < 1e-3);
+
+    session
+        .set_spectral_selection_by_id(&track_id, Some(sel))
+        .expect("set spectral selection");
+    let dto = session.timeline_dto();
+    let track_sel = dto.tracks[0].spectral_selection.as_ref().expect("has spectral selection");
+    assert!((track_sel.center_freq_hz - 800.0).abs() < 1e-3);
+
+    // Clear spectral selection
+    session
+        .set_spectral_selection_by_id(&track_id, None)
+        .expect("clear spectral selection");
+    assert!(session.timeline_dto().tracks[0].spectral_selection.is_none());
+
+    // 3. Test Clip Pan Automation Envelope
+    session
+        .set_clip_pan_envelope_by_id(&clip_id, vec![(0.0, -0.8), (1.5, 0.0), (3.0, 0.8)])
+        .expect("set pan envelope");
+    let dto = session.timeline_dto();
+    let pan_env = &dto.tracks[0].clips[0].pan_envelope;
+    assert_eq!(pan_env.len(), 3);
+    assert!((pan_env[0].pan - (-0.8)).abs() < 1e-4);
+    assert!((pan_env[2].pan - 0.8).abs() < 1e-4);
+
+    // 4. Test Slip Edit
+    assert_eq!(dto.tracks[0].clips[0].slip_offset_secs, 0.0);
+    session.slip_clip_by_id(&clip_id, 0.5).expect("slip edit succeeds");
+    let dto_slipped = session.timeline_dto();
+    assert!((dto_slipped.tracks[0].clips[0].slip_offset_secs - 0.5).abs() < 1e-3);
+
+    // 5. Test Spectrogram Computation on Live Demo Audio
+    let spec_config = alp_dsp::SpectrogramConfig {
+        fft_size: 1024,
+        hop_size: 256,
+        window_type: alp_dsp::WindowType::Hanning,
+        freq_scale: alp_dsp::FrequencyScale::Logarithmic,
+        min_freq_hz: 20.0,
+        max_freq_hz: 12000.0,
+        num_freq_bins: 64,
+        min_db: -90.0,
+        max_db: 0.0,
+    };
+    let spec_data = session
+        .compute_clip_spectrogram_by_id(&clip_id, Some(spec_config))
+        .expect("compute spectrogram");
+    assert!(spec_data.num_frames > 0);
+    assert_eq!(spec_data.num_bins, 64);
+    assert_eq!(spec_data.matrix.len(), spec_data.num_frames * 64);
+    assert_eq!(spec_data.freq_bins_hz.len(), 64);
+    assert_eq!(spec_data.time_stamps_sec.len(), spec_data.num_frames);
+}

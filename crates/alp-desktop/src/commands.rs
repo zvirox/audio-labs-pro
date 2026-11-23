@@ -8,9 +8,10 @@ use tauri::ipc::Channel;
 use tauri::{AppHandle, Emitter, State};
 
 use alp_session::{
-    AiActivityEntry, AiControlStatus, ApprovalDecision, MeterFrame, PanelManager, PermissionTier,
-    PersistedWorkspace, ProjectSummary, Size, TimelineDto, TransportController, TransportState,
-    WaveformPeaksDto,
+    AiActivityEntry, AiControlStatus, ApprovalDecision, FrequencyScale, MeterFrame, PanelManager,
+    PermissionTier, PersistedWorkspace, ProjectSummary, Size, SpectralSelectionDto,
+    SpectrogramConfig, SpectrogramData, TimelineDto, TimelinePanPointDto, TransportController,
+    TransportState, WaveformPeaksDto, WindowType,
 };
 
 use crate::glass::GlassReport;
@@ -525,6 +526,128 @@ pub fn timeline_set_selection(
         .map_err(|e| format!("session lock poisoned: {e}"))?;
     session.set_selection(start_secs, end_secs);
     Ok(session.timeline_dto())
+}
+
+/// Compute high-resolution spectrogram for an audio clip.
+#[tauri::command]
+pub fn get_clip_spectrogram(
+    clip_id: String,
+    fft_size: Option<usize>,
+    window_type: Option<String>,
+    freq_scale: Option<String>,
+    num_freq_bins: Option<usize>,
+    state: State<'_, AppState>,
+) -> Result<SpectrogramData, String> {
+    let session = state
+        .session
+        .lock()
+        .map_err(|e| format!("session lock poisoned: {e}"))?;
+
+    let mut config = SpectrogramConfig::default();
+    if let Some(sz) = fft_size {
+        config.fft_size = sz;
+        config.hop_size = sz / 4;
+    }
+    if let Some(w) = window_type {
+        config.window_type = match w.to_lowercase().as_str() {
+            "hamming" => WindowType::Hamming,
+            "blackmanharris" | "blackman_harris" => WindowType::BlackmanHarris,
+            "rectangular" => WindowType::Rectangular,
+            _ => WindowType::Hanning,
+        };
+    }
+    if let Some(s) = freq_scale {
+        config.freq_scale = match s.to_lowercase().as_str() {
+            "linear" => FrequencyScale::Linear,
+            "mel" => FrequencyScale::Mel,
+            _ => FrequencyScale::Logarithmic,
+        };
+    }
+    if let Some(bins) = num_freq_bins {
+        config.num_freq_bins = bins;
+    }
+
+    session.compute_clip_spectrogram_by_id(&clip_id, Some(config))
+}
+
+/// Set view mode (waveform, spectrogram, or split) for a track.
+#[tauri::command]
+pub fn timeline_set_track_view_mode(
+    app: AppHandle,
+    track_id: String,
+    view_mode: String,
+    state: State<'_, AppState>,
+) -> Result<TimelineDto, String> {
+    let mut session = state
+        .session
+        .lock()
+        .map_err(|e| format!("session lock poisoned: {e}"))?;
+
+    session.set_track_view_mode_by_id(&track_id, &view_mode)?;
+    let dto = session.timeline_dto();
+    emit_revision(&app, dto.revision, session.is_dirty(), "set_track_view_mode");
+    Ok(dto)
+}
+
+/// Set or clear 2D spectral selection bounding box for a track.
+#[tauri::command]
+pub fn timeline_set_spectral_selection(
+    app: AppHandle,
+    track_id: String,
+    selection: Option<SpectralSelectionDto>,
+    state: State<'_, AppState>,
+) -> Result<TimelineDto, String> {
+    let mut session = state
+        .session
+        .lock()
+        .map_err(|e| format!("session lock poisoned: {e}"))?;
+
+    session.set_spectral_selection_by_id(&track_id, selection)?;
+    let dto = session.timeline_dto();
+    emit_revision(&app, dto.revision, session.is_dirty(), "set_spectral_selection");
+    Ok(dto)
+}
+
+/// Set stereo pan automation envelope points for a clip.
+#[tauri::command]
+pub fn timeline_set_clip_pan_envelope(
+    app: AppHandle,
+    clip_id: String,
+    points: Vec<TimelinePanPointDto>,
+    state: State<'_, AppState>,
+) -> Result<TimelineDto, String> {
+    let mut session = state
+        .session
+        .lock()
+        .map_err(|e| format!("session lock poisoned: {e}"))?;
+
+    let raw_points: Vec<(f64, f32)> = points
+        .into_iter()
+        .map(|p| (p.offset_secs, p.pan))
+        .collect();
+    session.set_clip_pan_envelope_by_id(&clip_id, raw_points)?;
+    let dto = session.timeline_dto();
+    emit_revision(&app, dto.revision, session.is_dirty(), "set_clip_pan_envelope");
+    Ok(dto)
+}
+
+/// Slip audio content within fixed clip boundaries.
+#[tauri::command]
+pub fn timeline_slip_clip(
+    app: AppHandle,
+    clip_id: String,
+    delta_secs: f64,
+    state: State<'_, AppState>,
+) -> Result<TimelineDto, String> {
+    let mut session = state
+        .session
+        .lock()
+        .map_err(|e| format!("session lock poisoned: {e}"))?;
+
+    session.slip_clip_by_id(&clip_id, delta_secs)?;
+    let dto = session.timeline_dto();
+    emit_revision(&app, dto.revision, session.is_dirty(), "slip_clip");
+    Ok(dto)
 }
 
 /// Query the current status of the AI control socket and attached agents.

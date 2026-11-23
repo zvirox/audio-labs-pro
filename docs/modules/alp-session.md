@@ -33,6 +33,7 @@ By decoupling session state from presentation, `alp-session` enables pure headle
 ## Allowed dependencies
 
 - `alp-core` — Project structures, commands, clip models, and undo types.
+- `alp-dsp` — Short-Time Fourier Transform (STFT) engine and spectrogram computation.
 - `alp-engine` — Real-time audio engine, mixer, and transport control.
 - `alp-media` — Peak pyramid generation, audio decoding, and file export.
 - `alp-voice` — Profile store and TTS/STT synthesis coordination.

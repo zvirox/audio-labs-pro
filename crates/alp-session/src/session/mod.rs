@@ -19,6 +19,8 @@ use alp_core::{
 use alp_engine::SourceAudio;
 use alp_media::{PcmBuffer, WavBitDepth, decode, write_wav};
 
+use crate::timeline::{SpectralSelectionDto, TimelinePanPointDto, TrackViewMode};
+
 mod export;
 mod import;
 mod operations;
@@ -50,6 +52,10 @@ pub struct EditSession {
     dirty: bool,
     revision: u64,
     last_autosave: Instant,
+    track_view_modes: HashMap<TrackId, TrackViewMode>,
+    track_spectral_selections: HashMap<TrackId, SpectralSelectionDto>,
+    clip_pan_envelopes: HashMap<ClipId, Vec<TimelinePanPointDto>>,
+    clip_slip_offsets: HashMap<ClipId, f64>,
 }
 
 impl EditSession {
@@ -165,6 +171,10 @@ impl EditSession {
             dirty: false,
             revision: 1,
             last_autosave: Instant::now(),
+            track_view_modes: HashMap::new(),
+            track_spectral_selections: HashMap::new(),
+            clip_pan_envelopes: HashMap::new(),
+            clip_slip_offsets: HashMap::new(),
         }
     }
 
@@ -220,6 +230,10 @@ impl EditSession {
             dirty: false,
             revision: 1,
             last_autosave: Instant::now(),
+            track_view_modes: HashMap::new(),
+            track_spectral_selections: HashMap::new(),
+            clip_pan_envelopes: HashMap::new(),
+            clip_slip_offsets: HashMap::new(),
         })
     }
 
@@ -314,6 +328,11 @@ impl EditSession {
     #[must_use]
     pub fn revision(&self) -> u64 {
         self.revision
+    }
+
+    /// Increment the monotonic session revision.
+    pub fn bump_revision(&mut self) {
+        self.revision = self.revision.saturating_add(1);
     }
 
     /// Summary of the authoritative live state for native and MCP clients.

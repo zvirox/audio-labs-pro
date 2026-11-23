@@ -11,6 +11,7 @@ pub mod dynamics;
 pub mod eq;
 pub mod limiter;
 pub mod loudness;
+pub mod spectral;
 pub mod voice;
 
 use alp_core::CoreError;
@@ -22,6 +23,7 @@ pub use dynamics::{Compressor, NoiseGate};
 pub use eq::{EqBand, ParametricEq};
 pub use limiter::Limiter;
 pub use loudness::{KWeighting, calculate_normalization_gain, measure_lufs};
+pub use spectral::{FrequencyScale, SpectrogramConfig, SpectrogramData, SpectrogramEngine, WindowType};
 pub use voice::{DeClick, DeEsser, DeHum};
 
 /// An audio processor that can run live or offline.

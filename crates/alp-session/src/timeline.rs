@@ -1,9 +1,71 @@
 //! Multitrack timeline DTOs and data representations.
 //!
 //! Exposes typed serialized structures consumed by the Tauri IPC bridge and React
-//! frontend for rendering and interacting with the canvas timeline.
+//! frontend for rendering and interacting with the canvas timeline, multi-view modes,
+//! spectral selection, and pan/volume automation envelopes.
 
+use alp_dsp::{FrequencyScale, WindowType};
 use serde::{Deserialize, Serialize};
+
+/// Display mode for a multitrack timeline track.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum TrackViewMode {
+    /// Standard amplitude waveform overview.
+    #[default]
+    Waveform,
+    /// High-resolution STFT spectrogram heatmap.
+    Spectrogram,
+    /// Dual multi-view: waveform top half (50%) and spectrogram bottom half (50%).
+    Split,
+}
+
+/// 2D time-frequency bounding box spectral selection on a track.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SpectralSelectionDto {
+    /// Start time in seconds.
+    pub t_start_secs: f64,
+    /// End time in seconds.
+    pub t_end_secs: f64,
+    /// Lower frequency boundary in Hz.
+    pub f_low_hz: f32,
+    /// Upper frequency boundary in Hz.
+    pub f_high_hz: f32,
+    /// Center frequency in Hz: f_c = sqrt(f_low * f_high) or (f_low + f_high)/2.
+    pub center_freq_hz: f32,
+    /// Bandwidth Q factor: Q = center_freq / (f_high - f_low).
+    pub bandwidth_q: f32,
+}
+
+impl SpectralSelectionDto {
+    /// Creates a calibrated spectral selection with calculated center frequency and Q factor.
+    #[must_use]
+    pub fn new(t_start_secs: f64, t_end_secs: f64, f_low_hz: f32, f_high_hz: f32) -> Self {
+        let (t1, t2) = if t_start_secs <= t_end_secs {
+            (t_start_secs, t_end_secs)
+        } else {
+            (t_end_secs, t_start_secs)
+        };
+        let (f1, f2) = if f_low_hz <= f_high_hz {
+            (f_low_hz.max(1.0), f_high_hz.max(2.0))
+        } else {
+            (f_high_hz.max(1.0), f_low_hz.max(2.0))
+        };
+
+        let bw = (f2 - f1).max(1.0);
+        let center_freq_hz = (f1 * f2).sqrt();
+        let bandwidth_q = center_freq_hz / bw;
+
+        Self {
+            t_start_secs: t1,
+            t_end_secs: t2,
+            f_low_hz: f1,
+            f_high_hz: f2,
+            center_freq_hz,
+            bandwidth_q,
+        }
+    }
+}
 
 /// Full multitrack timeline presentation state.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,6 +113,10 @@ pub struct TimelineTrackDto {
     pub solo: bool,
     /// Record armed status.
     pub armed: bool,
+    /// Track visualization mode (Waveform, Spectrogram, or Split).
+    pub view_mode: TrackViewMode,
+    /// Active 2D time-frequency spectral selection box if present.
+    pub spectral_selection: Option<SpectralSelectionDto>,
     /// Non-destructive audio clips placed on this track.
     pub clips: Vec<TimelineClipDto>,
 }
@@ -76,17 +142,30 @@ pub struct TimelineClipDto {
     pub fade_in_secs: f64,
     /// Fade-out length in seconds.
     pub fade_out_secs: f64,
+    /// Slip offset in seconds (shifts the source audio window within the fixed clip bounds).
+    pub slip_offset_secs: f64,
     /// Volume automation envelope control points.
     pub envelope: Vec<TimelineEnvelopePointDto>,
+    /// Pan automation envelope control points.
+    pub pan_envelope: Vec<TimelinePanPointDto>,
 }
 
 /// Single control point on a clip's volume envelope.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TimelineEnvelopePointDto {
     /// Offset in seconds from the clip start.
     pub offset_secs: f64,
     /// Linear gain value at this point.
     pub gain: f32,
+}
+
+/// Single control point on a clip's pan automation envelope.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TimelinePanPointDto {
+    /// Offset in seconds from clip start.
+    pub offset_secs: f64,
+    /// Stereo panning value (-1.0 to 1.0).
+    pub pan: f32,
 }
 
 /// Timeline cue marker or bookmark.
@@ -118,4 +197,19 @@ pub struct TimelineSelectionDto {
     pub start_secs: f64,
     /// Selection end time in seconds.
     pub end_secs: f64,
+}
+
+/// Parameters for requesting spectrogram calculation from session.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SpectrogramRequestDto {
+    /// Target clip identifier.
+    pub clip_id: String,
+    /// Optional FFT size override (default: 2048).
+    pub fft_size: Option<usize>,
+    /// Optional window function (default: hanning).
+    pub window_type: Option<WindowType>,
+    /// Optional frequency scaling mode (default: logarithmic).
+    pub freq_scale: Option<FrequencyScale>,
+    /// Optional target frequency bins (default: 256).
+    pub num_freq_bins: Option<usize>,
 }

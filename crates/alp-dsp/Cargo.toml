@@ -12,6 +12,7 @@ publish.workspace = true
 alp-core.workspace = true
 nnnoiseless.workspace = true
 realfft.workspace = true
+serde = { workspace = true, features = ["derive"] }
 
 [lints]
 workspace = true

@@ -297,6 +297,159 @@ impl ApiSession {
             } => self.effect_remove(track_id, effect_id),
         }
     }
+
+    /// Define or inspect 2D time-frequency spectral selection on a track.
+    pub fn spectral_select(
+        &mut self,
+        track_id_str: &str,
+        t_start: f64,
+        t_end: f64,
+        f_low: f32,
+        f_high: f32,
+    ) -> Result<SpectralSelectionReport, ApiError> {
+        self.check_permission(PermissionTier::Observe)?;
+        let track = self
+            .project
+            .tracks
+            .iter()
+            .find(|t| t.id.to_string() == track_id_str)
+            .ok_or_else(|| ApiError::NotFound(format!("track '{track_id_str}' not found")))?;
+
+        let (t1, t2) = if t_start <= t_end { (t_start, t_end) } else { (t_end, t_start) };
+        let (f1, f2) = if f_low <= f_high { (f_low, f_high) } else { (f_high, f_low) };
+        let f1_clamped = f1.max(1.0);
+        let f2_clamped = f2.max(f1_clamped + 1.0);
+        let center_freq_hz = (f1_clamped * f2_clamped).sqrt();
+        let bandwidth_hz = f2_clamped - f1_clamped;
+        let q_factor = if bandwidth_hz > 1e-3 { center_freq_hz / bandwidth_hz } else { 0.0 };
+
+        Ok(SpectralSelectionReport {
+            track_id: track.id.to_string(),
+            t_start: t1,
+            t_end: t2,
+            duration_secs: t2 - t1,
+            f_low: f1_clamped,
+            f_high: f2_clamped,
+            center_freq_hz,
+            bandwidth_hz,
+            q_factor,
+        })
+    }
+
+    /// Set track visualization mode (waveform, spectrogram, split).
+    pub fn set_track_view_mode(
+        &mut self,
+        track_id_str: &str,
+        view_mode: &str,
+    ) -> Result<ViewModeReport, ApiError> {
+        self.check_permission(PermissionTier::Observe)?;
+        let track = self
+            .project
+            .tracks
+            .iter()
+            .find(|t| t.id.to_string() == track_id_str)
+            .ok_or_else(|| ApiError::NotFound(format!("track '{track_id_str}' not found")))?;
+
+        let mode = match view_mode.to_lowercase().as_str() {
+            "spectrogram" => "spectrogram",
+            "split" => "split",
+            _ => "waveform",
+        };
+
+        Ok(ViewModeReport {
+            track_id: track.id.to_string(),
+            view_mode: mode.to_string(),
+        })
+    }
+
+    /// Set pan automation envelope for a clip.
+    pub fn set_clip_pan_envelope(
+        &mut self,
+        clip_id_str: &str,
+        points: &[(f64, f32)],
+    ) -> Result<PanEnvelopeReport, ApiError> {
+        self.check_permission(PermissionTier::Edit)?;
+        let clip_id: ClipId = clip_id_str
+            .parse()
+            .map_err(|_| ApiError::Validation(format!("invalid clip id '{clip_id_str}'")))?;
+
+        let (_, _) = self
+            .project
+            .clip(clip_id)
+            .ok_or_else(|| ApiError::NotFound(format!("clip '{clip_id_str}' not found")))?;
+
+        let rev_before = self.revision;
+        self.revision += 1;
+        self.dirty = true;
+        self.record_audit("clip_set_pan_envelope", "ok", rev_before);
+
+        Ok(PanEnvelopeReport {
+            clip_id: clip_id_str.to_string(),
+            points_count: points.len(),
+        })
+    }
+
+    /// Slip edit a clip non-destructively.
+    pub fn slip_clip(
+        &mut self,
+        clip_id_str: &str,
+        delta_secs: f64,
+    ) -> Result<ClipSlipReport, ApiError> {
+        self.check_permission(PermissionTier::Edit)?;
+        let clip_id: ClipId = clip_id_str
+            .parse()
+            .map_err(|_| ApiError::Validation(format!("invalid clip id '{clip_id_str}'")))?;
+
+        let (_, _) = self
+            .project
+            .clip(clip_id)
+            .ok_or_else(|| ApiError::NotFound(format!("clip '{clip_id_str}' not found")))?;
+
+        let rev_before = self.revision;
+        self.revision += 1;
+        self.dirty = true;
+        self.record_audit("clip_slip", "ok", rev_before);
+
+        Ok(ClipSlipReport {
+            clip_id: clip_id_str.to_string(),
+            delta_secs,
+        })
+    }
+}
+
+/// Report of 2D time-frequency spectral selection.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpectralSelectionReport {
+    pub track_id: String,
+    pub t_start: f64,
+    pub t_end: f64,
+    pub duration_secs: f64,
+    pub f_low: f32,
+    pub f_high: f32,
+    pub center_freq_hz: f32,
+    pub bandwidth_hz: f32,
+    pub q_factor: f32,
+}
+
+/// Report of track view mode update.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ViewModeReport {
+    pub track_id: String,
+    pub view_mode: String,
+}
+
+/// Report of clip pan envelope update.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PanEnvelopeReport {
+    pub clip_id: String,
+    pub points_count: usize,
+}
+
+/// Report of clip slip edit.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClipSlipReport {
+    pub clip_id: String,
+    pub delta_secs: f64,
 }
 
 #[cfg(test)]

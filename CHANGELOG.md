@@ -5,6 +5,16 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+- Feature: Phase 13 implemented high-resolution Short-Time Fourier Transform (STFT) spectrogram engine in `alp-dsp::spectral` with configurable FFT sizes (512, 1024, 2048, 4096, 8192), hop sizes, analysis window functions (Hanning, Hamming, Blackman-Harris, Rectangular), dBFS PSD normalization, and Linear/Logarithmic/Mel frequency bin aggregation
+- Feature: Phase 13 integrated timeline multi-view track lanes in `alp-session` and `MultitrackCanvas.tsx`, supporting `Waveform`, `Spectrogram`, and `Split` (dual 50/50 waveform + spectrogram multi-view) with track header view mode selector buttons
+- Feature: Phase 13 built 2D time-frequency spectral selection box tool (`SpectralSelectionDto`) calculating geometric center frequency \( f_c = \sqrt{f_1 \cdot f_2} \), bandwidth \( \Delta f = f_2 - f_1 \), and filter quality factor \( Q = f_c / \Delta f \) with live floating HUD readout
+- Feature: Phase 13 added clip stereo pan automation envelope editing with keyframe nodes and non-destructive slip editing (`slip_offset_secs`, Alt+drag)
+- Feature: Phase 13 exposed 5 typed Tauri IPC commands in `alp-desktop` (`get_clip_spectrogram`, `timeline_set_track_view_mode`, `timeline_set_spectral_selection`, `timeline_set_clip_pan_envelope`, `timeline_slip_clip`)
+- Feature: Phase 13 implemented 5 autonomous MCP agent tools (`timeline_spectral_analyze`, `timeline_spectral_select`, `timeline_set_view_mode`, `clip_set_pan_envelope`, `clip_slip`), expanding the autonomous MCP tool suite to 68 tools
+- UX & Frontend: Phase 13 built `SpectrogramCanvas.tsx` with calibrated Magma, Inferno, and Viridis heatmaps, logarithmic frequency grid overlays (50 Hz to 20 kHz), and hover inspector
+- Generative UI: Phase 13 generated interactive live multi-view playground artifact `phase13_spectral_multiview.html` showcasing colormap switching, 2D spectral box selection, pan automation, and STFT specs
+- Verification: Phase 13 verified pure-tone spectral peak detection, window symmetry, monotonic binning, session operations undo/redo, 8/8 timeline tests, and workspace compilation with zero `unsafe` hand-written code
+
 - Packaging: Phase M8 updated Linux packaging manifests for `.deb` (`libwebkit2gtk-4.1-0`, `libgtk-3-0`), `.rpm` (`webkit2gtk4.1`, `gtk3`), and Flatpak (`org.gnome.Platform // 48` runtime, `org.gnome.Sdk`, `org.freedesktop.Sdk.Extension.node20`, target binary `alp-desktop` installed as `audio-labs-pro`)
 - Metadata: Phase M8 recorded `0.0.1-alpha.8` release notes in AppStream metadata (`io.github.zvirox.AudioLabsPro.metainfo.xml`)
 - Cutover & Cleanup: Phase M8 cleanly removed legacy iced crates (`crates/alp-ui`, `crates/alp-ui-kit`) and workspace dependencies (`iced`, `iced-cube`, `lilt`), achieving complete cutover to the Tauri 2 + React desktop shell

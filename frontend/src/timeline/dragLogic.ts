@@ -25,7 +25,8 @@ export function createDragSession(
   target: HitTarget,
   zoom: number,
   scrollX: number,
-  headerWidth: number
+  headerWidth: number,
+  altKey: boolean = false
 ): DragState {
   const initialTime = pixelsToTime(downX, zoom, scrollX, headerWidth);
   let mode: DragMode = 'idle';
@@ -35,7 +36,7 @@ export function createDragSession(
       mode = 'scrub_playhead';
       break;
     case 'clip_body':
-      mode = 'move_clip';
+      mode = altKey ? 'slip_clip' : 'move_clip';
       break;
     case 'clip_trim_left':
       mode = 'trim_clip_left';
@@ -120,6 +121,15 @@ export function resolveDragCommand(session: DragState): TimelineCommandPayload |
         clipId: target.clip.id,
         targetTrackId: target.trackId,
         newStartSecs: newStart,
+      };
+    }
+
+    case 'slip_clip': {
+      if (!target.clip) return null;
+      return {
+        type: 'slip_clip',
+        clipId: target.clip.id,
+        deltaSecs: timeDelta,
       };
     }
 
