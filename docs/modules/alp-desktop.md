@@ -1,7 +1,5 @@
 # `alp-desktop`
 
-Status: planned
-
 ## Purpose
 
 The native desktop shell application built on Tauri 2. Replacing the legacy iced desktop binary (`alp-ui`), `alp-desktop` acts as the native platform host that:

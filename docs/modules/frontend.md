@@ -1,7 +1,5 @@
 # `frontend`
 
-Status: planned
-
 ## Purpose
 
 The modern web-based graphical user interface for Audio Labs Pro. Implemented with Vite, React, TypeScript (strict mode), and Tailwind CSS, `frontend/` replaces both the iced rendering engine in `alp-ui` and the component library in `alp-ui-kit`.

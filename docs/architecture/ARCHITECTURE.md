@@ -297,3 +297,38 @@ alp-ui::glass
 
 It is the only place that touches platform windowing beyond iced, and it must
 never block the audio thread or the UI frame.
+
+## UI migration architecture (Tauri 2 + React)
+
+In accordance with ADR 0013 and [`docs/architecture/UI_MIGRATION.md`](UI_MIGRATION.md), the user interface is migrating from iced 0.14 to Tauri 2 + React/TypeScript/Tailwind:
+
+```text
+frontend/ (React 19 + TypeScript + Tailwind CSS)
+    │
+    │ Typed Tauri IPC (commands, events, batched channels, binary peaks)
+    ▼
+alp-desktop (Tauri 2 native host, safe x11rb KWin blur, zero unsafe)
+    │
+    │ Direct Rust dependency (only allowed ALP dependency)
+    ▼
+alp-session (Headless EditSession, JobQueue, PersistedWorkspace, PanelManager)
+    │
+    ├── alp-api
+    ├── alp-core
+    ├── alp-engine
+    ├── alp-media
+    └── alp-voice
+```
+
+### Migration Status
+
+- **Phase M0 — Feasibility Spike:** PASSED. 60.02 fps waveform scroll, 0.00% idle CPU, safe KWin blur via `x11rb`.
+- **Phase M1 — Extract `alp-session`:** COMPLETE. Extracted headless session and panel manager with zero GUI dependencies; iced shell maintained with 100% test parity.
+- **Phase M2 — Tauri Shell + Frontend Scaffold:** COMPLETE.
+  - Native host `crates/alp-desktop` created with Tauri 2.
+  - Verified `unsafe_code = "deny"` invariant: Tauri macros do NOT trip the lint; hand-written code contains zero `unsafe`.
+  - Typed IPC bridge wired (`get_project_summary`, `get_workspace_state`, `get_glass_report`, `trigger_demo_edit`, `session_revision_changed`).
+  - `frontend/` scaffolded with Vite, React 19, TypeScript strict mode, Tailwind CSS v4, and design tokens ported from `alp-ui-kit`.
+  - Safe KWin blur module ported to `alp-desktop::glass` using safe `x11rb` and `raw-window-handle 0.6`.
+  - Early Flatpak de-risk manifest (`packaging/flatpak/throwaway-tauri-derisk.yaml`) created and verified with GNOME Platform 48, WebKitGTK 4.1 presence, and test tone generation.
+

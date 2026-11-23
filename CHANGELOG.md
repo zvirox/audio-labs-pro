@@ -5,6 +5,9 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+- Feature: Phase M2 created `alp-desktop` native desktop shell (Tauri 2) with safe KWin blur via `x11rb`, translucent tint fallback (alpha >= 0.70), and zero `unsafe` hand-written code under `#![deny(unsafe_code)]`
+- Feature: Phase M2 scaffolded `frontend/` (Vite, React 19, TypeScript strict mode, Tailwind CSS v4, Lucide icons) with full studio design token palette and live IPC bridge to `alp-session`
+- Packaging: Phase M2 verified early Flatpak de-risk manifest (`packaging/flatpak/throwaway-tauri-derisk.yaml`) on GNOME Platform 48 with WebKitGTK 4.1 and test tone playback
 - Refactor: Phase M1 extracted headless `alp-session` crate (`EditSession`, `JobQueue`, `PersistedWorkspace`, `PanelManager`) with zero GUI dependencies, split `app.rs` from 1,054 down to 669 lines, and verified all 144+ workspace tests and MCP live attach parity
 - Spike: Phase M0 Tauri 2 + WebKitGTK feasibility spike and live benchmarks (GO gate passed; see `docs/spikes/PHASE-M0-RESULTS.md`)
 - Docs: UI migration plan and ADR 0013 accepted
