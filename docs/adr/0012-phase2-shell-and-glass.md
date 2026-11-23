@@ -4,6 +4,7 @@
 - Date: 2026-10-22
 - Phase: 2 (UI shell and glass system)
 - Supersedes: ADR 0003 (compositor blur for the glass look)
+- Superseded in part by ADR 0013 (UI migration to Tauri 2 + React; proposed)
 
 ## Context
 
