@@ -27,7 +27,8 @@ To resolve the primary ergonomic bottleneck of dual-vertical-sidebar layouts (wh
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **`v0.0.1-alpha.6`** | Phase 11b | Parity Baseline | Initial voice profile lock/update, batch TTS queue, audiobook encode parity | **Nov 23, 2026** | **Shipped** |
 | **`v0.0.1-alpha.7`** | **Phase 12** | Dual-Axis Shell & Multitrack Core | Dual-Axis Navigation shell (Rail + Subtabs), multitrack clip model, envelope curves, SQLite block storage schema | **Dec 07, 2026** | **In Progress** |
-| **`v0.0.1-alpha.8`** | **Phase 13** | Multitrack Canvas & Spectral Multi-View | Interactive DAW canvas, clip splitting/slip/ripple, simultaneous Waveform + STFT Spectrogram, 2D spectral selection | **Dec 14, 2026** | **Planned** |
+| **`v0.0.1-alpha.8-m`** | **Phase M0–M8** | **UI Migration (iced → Tauri 2 + React)** | M0 feasibility gate, M1 alp-session extraction, M2 Tauri scaffold, M3 kit/shell, M4 transport/waveform, M5 workspace ports, M6 multitrack canvas, M7 AI/MCP parity, M8 packaging cutover | **Dec 2026 – Jan 2027** | **Proposed** |
+| **`v0.0.1-alpha.8`** | **Phase 13** | Multitrack Canvas & Spectral Multi-View | Interactive DAW canvas (Canvas 2D/WebGL in React), clip split/slip/ripple, simultaneous Waveform + STFT Spectrogram, 2D spectral selection | **Dec 14, 2026** | **Planned** |
 | **`v0.0.1-alpha.9`** | **Phase 14** | Advanced Spectral DSP & FX Racks | Subtractive spectral denoiser with profile sampling, spectral notch/repair, realtime insert FX racks, WSOLA time stretch | **Dec 21, 2026** | **Planned** |
 | **`v0.0.1-alpha.10`** | **Phase 15** | Voice Lab Expansion & Voice Design | Zero-shot cloning embeddings, prompt-driven voice design, persona cards & avatars, pronunciation lexicon with IPA/SSML | **Dec 28, 2026** | **Planned** |
 | **`v0.1.0-beta.1`** | **Phase 16** | Audiobook Studio & Long-Form Engine | Manuscript ingestion (EPUB/MD), multi-character cast tagging, cadence pacing rules, M4B containerization with chapters | **Jan 08, 2027** | **Planned** |
@@ -43,14 +44,15 @@ To resolve the primary ergonomic bottleneck of dual-vertical-sidebar layouts (wh
 ┌──────────────────────────────────────────────────────────────────────────────────┐
 │                             Phased Adoption Flow                                 │
 ├─────────────────────┬─────────────────────┬──────────────────────────────────────┤
-│ Phase 12 (alpha.7)  │ Phase 13 (alpha.8)  │ Phase 14 (alpha.9)                   │
-│ Dual-Axis Shell &   │ Multitrack Canvas & │ Spectral DSP &                       │
-│ Core Clip Model     │ Spectrogram View    │ Realtime FX Racks                    │
+│ Phase 12 (alpha.7)  │ Phase M0–M8 (Prop.) │ Phase 13 (alpha.8)                   │
+│ Dual-Axis Shell &   │ UI Migration to     │ Multitrack Canvas &                  │
+│ Core Clip Model     │ Tauri 2 + React     │ Spectrogram View (React)             │
 ├─────────────────────┼─────────────────────┼──────────────────────────────────────┤
-│ Phase 15 (alpha.10) │ Phase 16 (beta.1)   │ Phase 17 (beta.2)                    │
-│ Voice Cloning &     │ Audiobook Studio &  │ Video Dubbing &                      │
-│ Prompt Voice Design │ M4B Packaging       │ Stem Separation                      │
+│ Phase 14 (alpha.9)  │ Phase 15 (alpha.10) │ Phase 16 (beta.1)                    │
+│ Spectral DSP &      │ Voice Cloning &     │ Audiobook Studio &                   │
+│ Realtime FX Racks   │ Prompt Voice Design │ M4B Packaging                        │
 ├─────────────────────┴─────────────────────┴──────────────────────────────────────┤
+│ Phase 17 (beta.2) ➔ Video Dubbing, Stem Separation & Sync-Lock Labels            │
 │ Phase 18 (beta.3) ➔ VST3 Plugin Hosting & Batch Macro Chains                     │
 │ Phase 19 (v1.0.0) ➔ MCP Agent Full Coverage, Hardening & Multi-Distro Packaging  │
 └──────────────────────────────────────────────────────────────────────────────────┘
@@ -86,38 +88,89 @@ To resolve the primary ergonomic bottleneck of dual-vertical-sidebar layouts (wh
 
 ---
 
-### Phase 13: Interactive Multitrack Canvas & Spectral Multi-View (`v0.0.1-alpha.8`)
-**Target Release Date:** December 14, 2026  
-**Primary Crates:** `alp-ui`, `alp-ui-kit`, `alp-dsp`, `alp-engine`
+### Phase M0–M8: UI Migration from iced to Tauri 2 + React (`Proposed`)
+**Target Release Window:** December 2026 – January 2027  
+**Primary Crates / Directories:** `alp-session` (planned), `alp-desktop` (planned), `frontend/` (planned)  
+**Reference Architecture:** [`docs/architecture/UI_MIGRATION.md`](architecture/UI_MIGRATION.md), [`docs/adr/0013-ui-migration-tauri.md`](adr/0013-ui-migration-tauri.md)
 
 #### Objectives
-1. Build an interactive, hardware-accelerated multitrack timeline canvas supporting clip manipulation (split, slip, ripple edit).
+1. Replace the iced 0.14 desktop shell with a Tauri 2 shell and a React + TypeScript + Tailwind CSS frontend to attain commercial-grade visual polish (Voicebox/VoiceStudio class).
+2. Decouple non-rendering session state, commands, worker queues, and socket hosting into headless `alp-session`.
+3. Preserve all engine, core, DSP, media, voice, inference, plugin, and MCP behaviors without breakage.
+4. Establish a strict IPC contract and complete parity across all 7 workspaces before cutover.
+
+#### Migration Milestones & Exit Criteria
+- [ ] **M0 — Feasibility Spike (Size: S, Gate):**
+  - Throwaway Tauri 2 transparent undecorated window; probe KWin blur via `x11rb` and WebKitGTK `backdrop-filter`.
+  - Canvas 2D waveform autoscroll of 1-hour file.
+  - *Exit Criteria:* Waveform autoscroll $\ge 55$ fps, idle CPU $< 1\%$, compositor blur verified or tint fallback confirmed legible.
+- [ ] **M1 — Extract `alp-session` (Size: M):**
+  - Extract non-rendering session state, command stack, worker queue, autosave, and `alp-api::control` socket host into `alp-session` (no iced, no tauri).
+  - Split `app.rs` before hitting the 1,500-line ceiling.
+  - *Exit Criteria:* All 144+ workspace tests pass; existing iced app behaves identically; MCP attach works.
+- [ ] **M2 — Tauri Shell & Frontend Scaffold (Size: M):**
+  - Create `alp-desktop` and `frontend/` (Vite, React, TypeScript strict, Tailwind CSS).
+  - Port design tokens (neon hues, dark/light glass palettes, contrast rules). Generate Rust $\leftrightarrow$ TS types.
+  - Audit `unsafe_code = "deny"` against Tauri macros; document any narrowly scoped exception.
+  - *Exit Criteria:* Window opens with iced-equivalent background; design token page renders; CI builds both apps.
+- [ ] **M3 — Component Kit & App Shell (Size: M):**
+  - Implement `frontend/src/kit/` (buttons, toggles, sliders, inputs, tabs, dialogs, tooltips, menus, meters, cards).
+  - Implement primary navigation rail with 7 workspaces (`Ctrl+1`..`8`), floating panels, command palette (`Ctrl+K`), shortcuts (`F1`), theme cycle (`Ctrl+D`), Reduce motion (`Ctrl+Shift+M`).
+  - *Exit Criteria:* Shell navigation, panel layouts, and `workspace.json` persistence match existing app.
+- [ ] **M4 — Transport, Meters & Waveform (Size: M):**
+  - Docked player connected to audio engine through `alp-session`.
+  - Meters over batched `Channel` (~30 Hz); playhead interpolated in `requestAnimationFrame`.
+  - Canvas 2D waveform component fed by binary peak pyramid IPC responses.
+  - *Exit Criteria:* 1-hour waveform autoscroll meets M0 gate in app; 10-minute playback with 0 dropped audio callbacks.
+- [ ] **M5 — Workspace Ports (Size: L):**
+  - Sequentially port workspaces behind feature flags: Settings $\to$ Models $\to$ Voices (with cloning consent gate) $\to$ Generate $\to$ Effects (hosted CLAP/LV2) $\to$ Captures $\to$ Stories.
+  - *Exit Criteria:* Screenshot parity review, keyboard navigation parity, and docs page per workspace.
+- [ ] **M6 — Multitrack Timeline Editor (Size: L):**
+  - Canvas/WebGL timeline in `frontend/src/views/Multitrack/`: clips, fades, automation envelopes, markers, selection.
+  - Every edit dispatches an IPC command mapping to an undoable `alp-core::Command`.
+  - *Exit Criteria:* All editing shortcuts from `docs/KEYBOARD_SHORTCUTS.md` pass; undo/redo restores identical clip IDs; null tests pass.
+- [ ] **M7 — AI & MCP Parity (Size: M):**
+  - Frontend subscribes to session events; attached MCP edits appear live and commit as single undo entries.
+  - *Exit Criteria:* All `alp-mcp --attach` workflows pass without regression.
+- [ ] **M8 — Packaging, Cutover & iced Deletion (Size: M):**
+  - Update packaging: `.deb` and `.rpm` runtime dependencies (WebKitGTK); update Flatpak manifest to GNOME runtime platform.
+  - Remove `alp-ui`, `alp-ui-kit`, and iced/lilt dependencies; replace `check-ui.sh` with ESLint kit rule.
+  - *Exit Criteria:* Full CI test suite passes; tagged alpha release passes 30-min soak, recovery, and null tests.
+
+---
+
+### Phase 13: Interactive Multitrack Canvas & Spectral Multi-View (`v0.0.1-alpha.8`)
+**Target Release Date:** December 14, 2026  
+**Primary Crates / Modules:** `frontend/` (Canvas 2D / WebGL), `alp-session`, `alp-dsp`, `alp-engine`
+
+#### Objectives
+1. Build an interactive, hardware-accelerated multitrack timeline canvas supporting clip manipulation (split, slip, ripple edit) in the React frontend.
 2. Render draggable volume and pan automation envelopes overlaid on audio clips.
 3. Implement simultaneous Waveform and STFT Spectrogram multi-view with linear and logarithmic frequency scaling.
 4. Introduce the 2D time-frequency spectral selection tool.
 
 #### Achievement Checklist
-- [ ] **Interactive Multitrack Canvas (`alp-ui`):**
-  - [ ] Implement `crates/alp-ui/src/app/multitrack_canvas.rs` using `iced::widget::canvas`.
-  - [ ] Implement timeline ruler with dynamic timecode ticks (`00:00:00.000`) and playhead scrubbing.
-  - [ ] Add clip drag-and-drop, boundary trimming handles, and clip split at playhead (`S` key).
-  - [ ] Implement ripple editing toggle: cutting or moving a clip automatically shifts subsequent clips.
-- [ ] **Interactive Clip Envelopes (`alp-ui`):**
-  - [ ] Render volume (dB) and pan ($[-1.0, 1.0]$) curves directly over clip waveforms.
+- [ ] **Interactive Multitrack Canvas (`frontend/` & `alp-session`):**
+  - [ ] Implement multitrack canvas component in `frontend/src/views/Multitrack/Canvas.tsx` using HTML5 Canvas 2D / WebGL.
+  - [ ] Implement timeline ruler with dynamic timecode ticks (`00:00:00.000`) and playhead scrubbing with `requestAnimationFrame` interpolation.
+  - [ ] Add clip drag-and-drop, boundary trimming handles, and clip split at playhead (`S` key) dispatching IPC commands to `alp-session`.
+  - [ ] Implement ripple editing toggle: cutting or moving a clip automatically shifts subsequent clips in `alp-session`.
+- [ ] **Interactive Clip Envelopes (`frontend/`):**
+  - [ ] Render volume (dB) and pan ($[-1.0, 1.0]$) curves directly over clip waveforms on canvas.
   - [ ] Add interactive control point creation (double-click), dragging, and curve tension adjustment.
 - [ ] **High-Resolution Spectrogram Computation (`alp-dsp`):**
   - [ ] Implement `SpectrogramEngine` in `crates/alp-dsp/src/spectral/spectrogram.rs` using `realfft`.
   - [ ] Support FFT window sizes: 512, 1024, 2048, 4096, 8192 samples with Hanning and Blackman-Harris windowing.
   - [ ] Implement power spectral density normalization and log/linear frequency bin mapping.
-- [ ] **Spectrogram Canvas & Spectral Selection (`alp-ui`):**
-  - [ ] Implement GPU/CPU heatmap rendering in `crates/alp-ui/src/app/spectrogram_canvas.rs` (Magma, Inferno, and Viridis palettes).
+- [ ] **Spectrogram Canvas & Spectral Selection (`frontend/` & `alp-dsp`):**
+  - [ ] Implement heatmap rendering in `frontend/src/views/Multitrack/SpectrogramCanvas.tsx` (Magma, Inferno, and Viridis palettes).
   - [ ] Implement 2D bounding-box selection tool: select both time span $[t_1, t_2]$ and frequency band $[f_1, f_2]$ with center frequency $f_c$ and bandwidth $Q$ readouts.
 
 ---
 
 ### Phase 14: Advanced Spectral DSP & Realtime FX Insert Racks (`v0.0.1-alpha.9`)
 **Target Release Date:** December 21, 2026  
-**Primary Crates:** `alp-dsp`, `alp-engine`, `alp-ui`
+**Primary Crates / Modules:** `alp-dsp`, `alp-engine`, `alp-session`, `frontend/`
 
 #### Objectives
 1. Implement classical spectral subtraction noise reduction with ambient noise profile capture.
@@ -132,10 +185,10 @@ To resolve the primary ergonomic bottleneck of dual-vertical-sidebar layouts (wh
 - [ ] **2D Spectral Repair Tools (`alp-dsp`):**
   - [ ] Implement `SpectralNotchFilter`: Attenuate isolated narrow-band tones (mains hum, whistling) within the selected frequency box.
   - [ ] Implement `HarmonicSuppressor`: Automatically calculate and attenuate harmonic overtones ($2f_c, 3f_c, \dots, nf_c$).
-- [ ] **Real-Time Track Insert FX Racks (`alp-engine`):**
+- [ ] **Real-Time Track Insert FX Racks (`alp-engine` & `frontend/`):**
   - [ ] Implement `InsertRack` in `crates/alp-engine/src/insert_rack.rs` supporting up to 8 non-destructive effects per track.
-  - [ ] Integrate lock-free ring-buffer parameter updates from the UI thread to the audio thread.
-  - [ ] Implement dedicated master bus strip with true-peak brickwall limiter and real-time LUFS meter.
+  - [ ] Integrate lock-free ring-buffer parameter updates from UI IPC to the audio thread via `alp-session`.
+  - [ ] Implement insert rack UI controls in `frontend/src/kit/` and master bus strip with true-peak brickwall limiter and LUFS meter.
 - [ ] **High-Fidelity WSOLA Engine (`alp-dsp`):**
   - [ ] Implement Waveform Similarity Overlap-Add (WSOLA) algorithm in `crates/alp-dsp/src/time_stretch.rs` for tempo adjustment (-50% to +100%) without pitch distortion.
   - [ ] Add independent pitch shifting without tempo alteration.
@@ -144,7 +197,7 @@ To resolve the primary ergonomic bottleneck of dual-vertical-sidebar layouts (wh
 
 ### Phase 15: Voice Lab Expansion & Natural Language Voice Design (`v0.0.1-alpha.10`)
 **Target Release Date:** December 28, 2026  
-**Primary Crates:** `alp-voice`, `alp-infer`, `alp-ui`
+**Primary Crates / Modules:** `alp-voice`, `alp-infer`, `alp-session`, `frontend/`
 
 #### Objectives
 1. Implement zero-shot voice cloning with speaker embedding extraction and acoustic similarity verification.
@@ -157,11 +210,11 @@ To resolve the primary ergonomic bottleneck of dual-vertical-sidebar layouts (wh
   - [ ] Integrate ECAPA-TDNN / CAMPPlus speaker embedding extraction in `crates/alp-infer/src/models/speaker_encoder.rs`.
   - [ ] Implement `VoiceCloneEnrollment`: Ingest 3–15 second clean reference WAV, extract 512-dim embedding, and generate `.alpvoice` profile.
   - [ ] Implement `AcousticSimilarityMatrix`: Calculate cosine similarity score ($0.0 \to 1.0$) between reference audio and synthesized takes.
-- [ ] **Natural Language Voice Design Engine (`alp-voice`):**
+- [ ] **Natural Language Voice Design Engine (`alp-voice` & `frontend/`):**
   - [ ] Implement `VoiceDesignParser` in `crates/alp-voice/src/voice_design.rs`: Map descriptive text prompts to pitch baseline, pitch variance, speech rate, spectral tilt, and breathiness.
-  - [ ] Provide interactive acoustic radar chart in the Voice Lab UI showing extracted acoustic traits.
-- [ ] **Persona Library & Archetypes (`alp-ui` & `alp-voice`):**
-  - [ ] Implement `PersonaCard` component in `crates/alp-ui/src/app/voice_views.rs` with avatar image display, tag badges, and quick-audition button.
+  - [ ] Provide interactive acoustic radar chart component in `frontend/src/views/VoiceLab/` showing extracted acoustic traits.
+- [ ] **Persona Library & Archetypes (`frontend/` & `alp-voice`):**
+  - [ ] Implement `PersonaCard` component in `frontend/src/views/VoiceLab/PersonaCard.tsx` with avatar image display, tag badges, and quick-audition button.
   - [ ] Bundle default voice archetypes across commercial, narration, gaming, and character acting domains.
 - [ ] **Pronunciation Lexicon & SSML (`alp-voice`):**
   - [ ] Implement `LexiconManager` in `crates/alp-voice/src/lexicon.rs` supporting user-defined pronunciation overrides (word -> IPA/CMUDict).
@@ -171,7 +224,7 @@ To resolve the primary ergonomic bottleneck of dual-vertical-sidebar layouts (wh
 
 ### Phase 16: Audiobook Studio & Long-Form Production (`v0.1.0-beta.1`)
 **Target Release Date:** January 08, 2027  
-**Primary Crates:** `alp-core`, `alp-voice`, `alp-media`, `alp-ui`
+**Primary Crates / Modules:** `alp-core`, `alp-voice`, `alp-media`, `alp-session`, `frontend/`
 
 #### Objectives
 1. Implement manuscript ingestion supporting EPUB, Markdown, and plain text with automatic chapter and paragraph hierarchy parsing.
@@ -192,14 +245,14 @@ To resolve the primary ergonomic bottleneck of dual-vertical-sidebar layouts (wh
   - [ ] Implement `AudiobookPacker` in `crates/alp-media/src/audiobook_packer.rs`: Concatenate chapter audio into seamless AAC/M4A streams.
   - [ ] Generate QuickTime chapter marker atoms (`chpl`) with chapter titles and exact millisecond timecodes.
   - [ ] Embed high-resolution cover art (JPEG/PNG) and ID3 tags (Narrator, Series, Release Year).
-- [ ] **Audiobook Studio Workspace (`alp-ui`):**
-  - [ ] Build Audiobook Studio UI with horizontal subtabs: `[ Manuscript ]`, `[ Chapters ]`, `[ Character Cast ]`, `[ Cadence Rules ]`, `[ M4B Export ]`.
+- [ ] **Audiobook Studio Workspace (`frontend/`):**
+  - [ ] Build Audiobook Studio UI in `frontend/src/views/AudiobookStudio/` with horizontal subtabs: `[ Manuscript ]`, `[ Chapters ]`, `[ Character Cast ]`, `[ Cadence Rules ]`, `[ M4B Export ]`.
 
 ---
 
 ### Phase 17: Video Dubbing, Stem Separation & Sync-Lock Labels (`v0.1.0-beta.2`)
 **Target Release Date:** January 18, 2027  
-**Primary Crates:** `alp-infer`, `alp-core`, `alp-media`, `alp-dsp`, `alp-ui`
+**Primary Crates / Modules:** `alp-infer`, `alp-core`, `alp-media`, `alp-dsp`, `alp-session`, `frontend/`
 
 #### Objectives
 1. Integrate local neural stem separation (Demucs v4 4-stem model via ONNX).
@@ -212,36 +265,36 @@ To resolve the primary ergonomic bottleneck of dual-vertical-sidebar layouts (wh
   - [ ] Implement `DemucsRunner` in `crates/alp-infer/src/models/demucs.rs` executing quantized ONNX Demucs v4.
   - [ ] Split input audio files into 4 isolated stems: `vocals.wav`, `drums.wav`, `bass.wav`, `other.wav`.
   - [ ] Auto-populate isolated stems into separate tracks in the Multitrack timeline.
-- [ ] **Sync-Locked Label Tracks (`alp-core` & `alp-ui`):**
+- [ ] **Sync-Locked Label Tracks (`alp-core` & `frontend/`):**
   - [ ] Implement `LabelTrack` in `crates/alp-core/src/project/track.rs` supporting point labels and region labels.
-  - [ ] Implement sync-lock logic: When sync-lock is enabled, time edits (insert, delete, cut, ripple) on audio tracks propagate to label tracks.
+  - [ ] Implement sync-lock logic: When sync-lock is enabled, time edits (insert, delete, cut, ripple) propagate to label tracks.
   - [ ] Add bidirectional SRT, WebVTT, and TSV import and export.
 - [ ] **Speech-to-Speech Dubbing & Speech-Rate Fitting (`alp-voice` & `alp-dsp`):**
   - [ ] Implement automated pipeline: Vocal separation ➔ Whisper transcription ➔ Translation ➔ Speaker-matched synthesis.
   - [ ] Implement `FitPlanner` in `crates/alp-voice/src/rate_fitting.rs`: Calculate time-stretch ratio $\rho = T_{\text{target}} / T_{\text{synth}}$ and apply WSOLA to lock speech takes to video timecodes.
 - [ ] **Video Demux / Remux Pipeline (`alp-media`):**
   - [ ] Implement `VideoRemuxer` in `crates/alp-media/src/video_sync.rs`: Extract audio from MP4/MKV and remux newly dubbed master track with `-c:v copy`.
-- [ ] **Dubbing Studio Workspace (`alp-ui`):**
-  - [ ] Build Dubbing Studio UI with horizontal subtabs: `[ Video Timeline ]`, `[ Stem Separation ]`, `[ Transcript & Translate ]`, `[ Rate Fitting ]`, `[ Remux & Export ]`.
+- [ ] **Dubbing Studio Workspace (`frontend/`):**
+  - [ ] Build Dubbing Studio UI in `frontend/src/views/DubbingStudio/` with horizontal subtabs: `[ Video Timeline ]`, `[ Stem Separation ]`, `[ Transcript & Translate ]`, `[ Rate Fitting ]`, `[ Remux & Export ]`.
 
 ---
 
 ### Phase 18: VST3 Plugin Hosting & Batch Macro Automation (`v0.1.0-beta.3`)
 **Target Release Date:** January 28, 2027  
-**Primary Crates:** `alp-plugin`, `alp-engine`, `alp-ui`, `alp-mcp`
+**Primary Crates / Modules:** `alp-plugin`, `alp-engine`, `alp-desktop`, `frontend/`, `alp-mcp`
 
 #### Objectives
 1. Implement full VST3 plugin hosting architecture alongside existing CLAP and LV2 loaders.
-2. Build native X11/Wayland plugin GUI window embedding.
+2. Build native X11/Wayland plugin GUI window embedding anchored to the desktop window handle.
 3. Implement scriptable and UI-driven DSP macro chaining across batch processing queues.
 
 #### Achievement Checklist
 - [ ] **VST3 Plugin Host Engine (`alp-plugin`):**
   - [ ] Implement `Vst3Host` in `crates/alp-plugin/src/vst3/mod.rs` with module discovery in `/usr/lib/vst3` and `~/.vst3`.
   - [ ] Instantiate VST3 component processors, query parameter buses, and process 32-bit float audio blocks in realtime audio callback.
-- [ ] **Plugin GUI Window Embedding (`alp-plugin` & `alp-ui`):**
-  - [ ] Implement native window parenting bridge in `crates/alp-plugin/src/gui.rs` for X11 and Wayland (via XWayland).
-  - [ ] Provide floating plugin window controls with parameter preset save/load.
+- [ ] **Plugin GUI Window Embedding (`alp-plugin` & `alp-desktop`):**
+  - [ ] Implement native window parenting bridge in `alp-plugin` / `alp-desktop` for X11 and Wayland (via XWayland) anchored to the Tauri window handle.
+  - [ ] Provide floating plugin window controls with parameter preset save/load in the React UI.
 - [ ] **DSP Macro Sequencing Engine (`alp-engine` & `alp-mcp`):**
   - [ ] Implement `MacroChain` in `crates/alp-engine/src/macro_chain.rs`: Chainable sequence of DSP processors (e.g., Denoise ➔ EQ ➔ Compressor ➔ Normalize ➔ Export).
   - [ ] Support batch execution over directory queues with multi-threaded worker pools.
@@ -251,12 +304,12 @@ To resolve the primary ergonomic bottleneck of dual-vertical-sidebar layouts (wh
 
 ### Phase 19: Full MCP Autonomous Agent Automation & Hardening (`v1.0.0-rc.1` / `v1.0.0`)
 **Target Release Date:** February 15, 2027  
-**Primary Crates:** `alp-mcp`, `alp-api`, Workspace Crates
+**Primary Crates / Modules:** `alp-mcp`, `alp-api`, `alp-desktop`, `frontend/`, Workspace Crates
 
 #### Objectives
 1. Achieve 100% MCP tool coverage across all newly adopted capabilities (voice design, multitrack editing, spectral cleanup, audiobook packaging, video dubbing).
 2. Execute comprehensive stress tests, long-running audio dropout soaks, and memory leak audits.
-3. Validate and produce multi-distribution release packages (AppImage, Flatpak, `.deb`, `.rpm`).
+3. Validate and produce multi-distribution release packages (AppImage, Flatpak, `.deb`, `.rpm`) using Tauri 2.
 
 #### Achievement Checklist
 - [ ] **Full MCP Tool Coverage (`alp-mcp`):**
@@ -271,9 +324,9 @@ To resolve the primary ergonomic bottleneck of dual-vertical-sidebar layouts (wh
   - [ ] Execute 24-hour continuous multitrack audio playback soak test (0 dropped frames, constant RSS memory).
   - [ ] Fuzzing of project file parser, block store deserializer, and media container decoders.
 - [ ] **Packaging & Release Deployment:**
-  - [ ] Update and verify `scripts/build-appimage.sh`.
-  - [ ] Generate and validate Flatpak manifest (`io.github.zvirox.AudioLabsPro.yml`).
-  - [ ] Build Debian (`.deb`) and Red Hat (`.rpm`) packages and verify desktop MIME integration.
+  - [ ] Update and verify `scripts/build-appimage.sh` for `alp-desktop` + `frontend/`.
+  - [ ] Generate and validate Flatpak manifest (`io.github.zvirox.AudioLabsPro.yml`) on GNOME runtime platform.
+  - [ ] Build Debian (`.deb`) and Red Hat (`.rpm`) packages with WebKitGTK runtime dependencies and desktop MIME integration.
 
 ---
 
