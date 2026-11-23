@@ -112,7 +112,8 @@ To resolve the primary ergonomic bottleneck of dual-vertical-sidebar layouts (wh
   - Create `alp-desktop` and `frontend/` (Vite, React, TypeScript strict, Tailwind CSS).
   - Port design tokens (neon hues, dark/light glass palettes, contrast rules). Generate Rust $\leftrightarrow$ TS types.
   - Audit `unsafe_code = "deny"` against Tauri macros; document any narrowly scoped exception.
-  - *Exit Criteria:* Window opens with iced-equivalent background; design token page renders; CI builds both apps.
+  - Early Flatpak de-risk: build throwaway Flatpak manifest with Tauri skeleton and confirm audio (PipeWire/ALSA), file access, and model-directory access; exit criterion: "manifest builds and plays a test tone".
+  - *Exit Criteria:* Window opens with iced-equivalent background; design token page renders; CI builds both apps; early Flatpak test tone passes.
 - [ ] **M3 — Component Kit & App Shell (Size: M):**
   - Implement `frontend/src/kit/` (buttons, toggles, sliders, inputs, tabs, dialogs, tooltips, menus, meters, cards).
   - Implement primary navigation rail with 7 workspaces (`Ctrl+1`..`8`), floating panels, command palette (`Ctrl+K`), shortcuts (`F1`), theme cycle (`Ctrl+D`), Reduce motion (`Ctrl+Shift+M`).
@@ -133,7 +134,7 @@ To resolve the primary ergonomic bottleneck of dual-vertical-sidebar layouts (wh
   - Frontend subscribes to session events; attached MCP edits appear live and commit as single undo entries.
   - *Exit Criteria:* All `alp-mcp --attach` workflows pass without regression.
 - [ ] **M8 — Packaging, Cutover & iced Deletion (Size: M):**
-  - Update packaging: `.deb` and `.rpm` runtime dependencies (WebKitGTK); update Flatpak manifest to GNOME runtime platform.
+  - Update packaging: `.deb` and `.rpm` runtime dependencies (WebKitGTK); at M8 move Flatpak manifest to GNOME runtime family (runtime version: verify the currently supported GNOME runtime and that it provides webkit2gtk-4.1 at M8 time; current Freedesktop 24.08 stays until M8).
   - Remove `alp-ui`, `alp-ui-kit`, and iced/lilt dependencies; replace `check-ui.sh` with ESLint kit rule.
   - *Exit Criteria:* Full CI test suite passes; tagged alpha release passes 30-min soak, recovery, and null tests.
 

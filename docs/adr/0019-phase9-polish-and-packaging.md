@@ -24,7 +24,8 @@ Phase 9 transitions Audio Labs Pro from feature-complete releases into a product
 
 ### 3. Packaging Pipelines
 - **AppImage:** Authored standalone assembly script `scripts/build-appimage.sh` producing self-contained `AppDir` with `AppRun` dynamic launcher script and bundled metadata.
-- **Flatpak:** Authored modern Flatpak manifest `packaging/flatpak/io.github.zvirox.AudioLabsPro.yaml` targeting `org.freedesktop.Platform` 24.08 runtime with permissions for Wayland, fallback X11, PipeWire, ALSA devices, and DRI GPU acceleration.
+- **Flatpak:** Authored modern Flatpak manifest `packaging/flatpak/io.github.zvirox.AudioLabsPro.yaml` targeting `org.freedesktop.Platform` 24.08 runtime with permissions for Wayland, fallback X11, PipeWire, ALSA devices, and DRI GPU acceleration.  
+  *(UI migration note: The current Freedesktop 24.08 runtime stays for the iced build until Phase M8 cutover; see ADR 0013 and `docs/architecture/UI_MIGRATION.md`.)*
 - **Debian:** Authored Debian package control specification in `packaging/deb/control`.
 
 ### 4. Reliability, Fuzzing, and Crash Recovery

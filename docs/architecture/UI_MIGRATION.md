@@ -117,7 +117,8 @@ If the gate fails: try WebGL for the waveform. If WebKitGTK is still the blocker
 - Wire one end-to-end command and one event; generate TS types from Rust.
 - Check `unsafe_code = "deny"` against Tauri's macro output. If it trips, scope an `allow` to `alp-desktop` only and record it in the ADR.
 - Port the design tokens: neon hues per workspace, dark and light glass palettes, contrast rules, spacing, radii, elevation.
-- **Exit:** the window opens with the iced-equivalent background, token page renders, CI builds both apps.
+- Early Flatpak de-risk: build a throwaway Flatpak manifest with the Tauri skeleton and confirm audio (PipeWire/ALSA), file access, and model-directory access work.
+- **Exit:** the window opens with the iced-equivalent background, token page renders, CI builds both apps, and throwaway Flatpak manifest builds and plays a test tone.
 
 ### M3 — Kit + app shell (size M)
 - Build `frontend/src/kit/`: buttons, toggles, sliders, inputs, tabs, dialogs, tooltips, menus, meters, cards. Everything goes through the kit.
@@ -153,7 +154,7 @@ The riskiest piece, so it comes after everything else is stable.
 
 ### M8 — Packaging and cutover (size M)
 - `.deb` / `.rpm`: add WebKitGTK runtime dependencies (verify the exact package names per distro).
-- **Flatpak**: the current manifest uses the Freedesktop 24.08 runtime, which does not ship WebKitGTK. Plan a switch to a runtime that includes it (for example GNOME) and re-verify size and audio access.
+- **Flatpak**: the current manifest uses the Freedesktop 24.08 runtime, which does not ship WebKitGTK. The current Freedesktop 24.08 runtime stays for the iced build until M8. At M8, move the manifest to a runtime that ships WebKitGTK (GNOME runtime family). Runtime version: verify the currently supported GNOME runtime and that it provides webkit2gtk-4.1 at M8 time (do not hardcode a specific version). Re-verify size and audio access.
 - Update AppStream metadata, [`docs/TROUBLESHOOTING.md`](../TROUBLESHOOTING.md) (WebKitGTK, NVIDIA, Wayland), and [`THIRD_PARTY.md`](../../THIRD_PARTY.md) for the npm dependency tree (license check).
 - Remove `alp-ui`, `alp-ui-kit` and iced dependencies; replace `check-ui.sh`.
 - **Exit:** a tagged alpha release passes the full CI gate plus the manual acceptance list below.
@@ -184,7 +185,7 @@ The riskiest piece, so it comes after everything else is stable.
 | Timeline performance in the DOM | Canvas/WebGL only for the timeline; no per-clip DOM nodes |
 | IPC overhead for meters and peaks | Batched `Channel`, binary responses, interpolated playhead |
 | Dual UI maintenance during migration | Time-box: iced stays frozen (bug fixes only) from M2 |
-| Flatpak runtime change | Handle in M8; prototype the manifest during M2 |
+| Flatpak runtime change | Handle in M8 (runtime version: verify the currently supported GNOME runtime and that it provides webkit2gtk-4.1 at M8 time; Freedesktop 24.08 stays until M8); early de-risk in M2 builds throwaway manifest and verifies audio playback |
 | npm supply-chain and license surface | Lockfile, `npm audit` in CI, license check feeds `THIRD_PARTY.md` |
 | `unsafe_code = "deny"` vs Tauri macros | Scope the exception to `alp-desktop`, document it |
 
@@ -210,3 +211,11 @@ Keep the iced crates in the workspace until M8 passes. If a gate fails, `main` s
 - Update [`docs/architecture/ARCHITECTURE.md`](ARCHITECTURE.md) in the same commit as any crate or IPC change.
 - Every new module gets its [`docs/modules/`](../modules/) page; every decision that supersedes an ADR gets a new ADR.
 - Do not add dependencies without listing them in [`THIRD_PARTY.md`](../../THIRD_PARTY.md).
+
+## 13. M8 documentation debt
+
+Checklist of documentation updates deferred until M8 cutover (do not edit these files before M8):
+- [ ] `docs/TROUBLESHOOTING.md`: WebKitGTK runtime dependencies per distro (verify package names), hardware acceleration, NVIDIA/Wayland webview issues (verify exact flags and env vars before writing; do not guess them).
+- [ ] `docs/USER_GUIDE.md`: build/run target changes from `-p alp-ui` to `-p alp-desktop`; the installed binary name `audio-labs-pro` stays the same; document the React UI workflows.
+- [ ] `docs/KEYBOARD_SHORTCUTS.md`: shortcut PARITY only. The cmdk palette keeps Ctrl+K, and F1, Ctrl+1..8, Ctrl+D, Ctrl+Shift+M stay as they are. Any intentional change needs its own ADR note.
+- [ ] `THIRD_PARTY.md`: npm dependency licences, Tauri 2 crates, WebKitGTK packages; produced from a lockfile-based licence report, not by hand.

@@ -75,6 +75,6 @@ Migrate the desktop UI presentation layer from iced 0.14 to **Tauri 2** with a *
 
 ### Neutral / Trade-offs
 - **Linux Distro Dependencies:** WebKitGTK (`webkit2gtk-4.1` / `javascriptcoregtk-4.1`) becomes a required shared system library on target distributions.
-- **Packaging:** Flatpak runtime must switch in Phase M8 from Freedesktop 24.08 (which lacks WebKitGTK) to the GNOME runtime (e.g. `org.gnome.Platform//47`).
+- **Packaging:** Flatpak runtime moves at Phase M8 to a runtime that ships WebKitGTK (GNOME runtime family). Runtime version: verify the currently supported GNOME runtime and that it provides `webkit2gtk-4.1` at M8 time (do not hardcode a specific GNOME runtime version ahead of time). An early de-risk spike in Phase M2 will build a throwaway Flatpak manifest with the Tauri skeleton to confirm audio (PipeWire/ALSA), file access, and model-directory access with exit criterion "manifest builds and plays a test tone". The current Freedesktop 24.08 runtime remains active for the iced application until M8.
 - **Compiler Invariants:** Tauri macro expansions must be audited against `#![deny(unsafe_code)]`. If macro expansions trip the workspace deny rule, a narrowly scoped `allow` attribute must be documented solely for `alp-desktop`.
 - **Dual Maintenance:** The existing iced application remains the stable shipping product throughout phases M0–M7. `alp-ui` and `alp-ui-kit` are removed only at Phase M8 after achieving full functional parity.
