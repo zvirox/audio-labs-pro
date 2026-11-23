@@ -1,6 +1,8 @@
 # Audio Labs Pro — MCP Tool Reference
 
-All 58 tools exposed by `alp-mcp`. Tools are filtered by the session's
+All 63 tools exposed by `alp-mcp` (58 at `v0.0.1-alpha.5`; alpha.6 adds
+`voice_profile_update`, `voice_profile_lock`, `voice_profile_unlock`, `tts_batch`,
+`audiobook_encode`). Tools are filtered by the session's
 permission tier (`Observe` < `Edit` < `Export`), and every call is audited.
 
 Conventions used below:
@@ -194,6 +196,9 @@ Engines run daemon-first and results always name what actually ran:
 | `tts_script_generate` | Edit | `script_json` | `{ track_id, clip_ids, engines, total_duration_secs, end_secs, single_undo_step, job_id }` |
 | `tts_regenerate` | Edit | `clip_id`, `new_text`, `voice_id`, `speed?` | `{ clip_id, new_clip_id, new_text, engine, duration_secs, start_secs, single_undo_step }` |
 | `voice_design` | Edit | `name`, `prompt`, `tags?` | a profile detail; `kind` is always `designed` |
+| `voice_profile_update` (alpha.6) | Edit | `voice_id`, optional `name`, `tags`, `default_params{speed,pitch,energy,emotion}` | `VoiceProfileDetail` (includes the `locked` flag) |
+| `voice_profile_lock` / `voice_profile_unlock` (alpha.6) | Edit | `voice_id` | `VoiceProfileDetail` (locked flag) |
+| `tts_batch` (alpha.6) | Edit | `requests[{voice_id, text, speed?}]` | `{ results: [TtsGenerationReport] }` — one job per item |
 | `transcribe` | Observe | `path`, `format?`, `out?` | `{ engine, duration_secs, text, segments, transcript_path, job_id }` |
 
 - `tts_generate` writes a 16-bit WAV into the project `media/` directory and
@@ -203,6 +208,14 @@ Engines run daemon-first and results always name what actually ran:
   `{ text, voice_id, speed?, gap_secs? }`. It synthesizes each line, imports it,
   and lays clips out on the `Script` track with `gap_secs` (default 0.35)
   between them.
+- `voice_profile_update` mutates a stored profile's name, tags and default
+  parameters; kind, backend and consent records are never mutable, so cloning
+  is never creatable through MCP. A locked profile refuses updates until
+  `voice_profile_unlock` (the human GUI remains the enforcement surface for
+  "locked" against other agents).
+- `tts_batch` synthesizes a list of requests: one background job per item,
+  sequential, cancellable via `job_cancel` (the batch stops at the next
+  segment boundary); the first error fails that job and returns an error.
 - `tts_regenerate` replaces the clip's audio at its existing timeline position
   and keeps the surrounding clips where they are.
 - `voice_design` can only produce designed profiles. **Clone creation is
@@ -218,12 +231,19 @@ Engines run daemon-first and results always name what actually ran:
 |------|------|--------|--------|
 | `export_presets` | Observe | — | `{ presets: [{ id, label, description, sample_rate, bit_depth }] }` |
 | `export_audio` | Export | `preset`, `output_path` | `{ exported_path, … }` |
+| `audiobook_encode` (alpha.6) | Export | `script_json`, `output_path?` | `{ track_id, master_path, segment_count, total_duration_secs, job_id }` |
 | `export_stems` | Export | `output_dir`, `preset?` | `[StemExportReport]` |
 | `export_transcript` | Export | `format`, `path` | `{ format, path, duration_secs, engine, segments, text }` |
 | `preview_render` | Observe | `start_secs`, `duration_secs` | `{ start_secs, duration_secs, sample_rate, channels, peak, preview_path }` |
 
 - Presets: `podcast`, `audiobook`, `voice_over`. An unknown preset is rejected,
   not silently mapped to a delivery default.
+- `audiobook_encode` accepts `{"segments":[{text, voice_id, speed?, gap_secs?}]}`
+  (the same contract as `tts_script_generate`): it synthesizes every segment
+  with its voice, places one clip per segment on a dedicated `Audiobook`
+  track, and exports the master with the `audiobook` preset. A cancelled encode
+  stops between segments and leaves the placed clips on the timeline; re-running
+  adds a new `Audiobook` track.
 - `export_stems` renders each track **in isolation** and writes
   `stem_NN_<track>.wav`; the report carries that stem's own `peak_dbfs`, so you
   can verify a quiet track stayed quiet.
@@ -241,10 +261,12 @@ Engines run daemon-first and results always name what actually ran:
 | `job_status` | Same as job | `job_id` | `{ id, label, state, progress, detail }` |
 | `job_cancel` | Same as job | `job_id` | `{ cancelled: true }` |
 
-Jobs are created by `tts_generate`, `tts_script_generate` and `transcribe`.
-Their report carries `job_id`; the work has already completed by the time the
-call returns, so polling shows `completed` with the produced artefact in
-`detail`. Cancelling a completed or unknown job is an error.
+Jobs are created by `tts_generate`, `tts_script_generate`, `tts_batch`
+(alpha.6), `audiobook_encode` (alpha.6) and `transcribe`. Their report carries
+`job_id`; the work has already completed by the time the call returns, so
+polling shows `completed` with the produced artefact in `detail`. Cancelling a
+completed or unknown job is an error. `tts_batch` and `audiobook_encode` check
+cancellation between segments, so `job_cancel` stops them promptly.
 
 ## 10. Plugins
 

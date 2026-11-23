@@ -5,6 +5,26 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+### Added
+
+- **Voice-profile parity (alpha.6, phase 1).** New MCP tools:
+  `voice_profile_update`, `voice_profile_lock`, `voice_profile_unlock`
+  (target-A `voices update/lock/unlock` parity). `VoiceProfileDetail` now
+  carries the new `locked` flag.
+- **`tts_batch`** (target-A batch parity): synthesize a list of
+  `{voice_id, text, speed?}` requests — one `JobManager` job per request, run
+  sequentially, cancellable via `job_cancel`. This is the first submitter into
+  the automation API's job manager.
+- **`audiobook_encode`** (target-A `audiobook render` parity): synthesize a
+  script of `{text, voice_id, speed?, gap_secs?}` segments with their voices,
+  place the clips on a dedicated `Audiobook` track, and export the master with
+  the audiobook delivery preset.
+
+### Changed
+
+- `VoiceProfile` (alp-voice) gains a `locked: bool` field (serde-defaulted so
+  stored profiles load without it); set to `false` in all constructors.
+
 ## [0.0.1-alpha.5] - 2026-11-22
 
 ### Changed
