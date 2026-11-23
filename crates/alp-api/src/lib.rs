@@ -5,6 +5,7 @@
 //! voice synthesis, transcription, and mastering export.
 
 pub mod analysis_ops;
+pub mod audiobook;
 pub mod audit;
 pub mod checkpoint;
 #[cfg(target_os = "linux")]
@@ -26,6 +27,7 @@ pub mod types;
 pub mod voice;
 
 pub use alp_media::ExportPreset;
+pub use audiobook::AudiobookEncodeReport;
 pub use audit::{AuditEntry, AuditLogger};
 pub use checkpoint::{Checkpoint, CheckpointManager};
 pub use error::ApiError;
@@ -44,6 +46,7 @@ pub use types::{
     format_timestamp,
 };
 pub use voice::{
-    TranscriptionReport, TranscriptionSegmentReport, TtsGenerationReport, TtsVoicesReport,
-    VoiceParamsDetail, VoiceProfileDetail, VoiceSummary,
+    BatchTtsReport, BatchTtsRequest, TranscriptionReport, TranscriptionSegmentReport,
+    TtsGenerationReport, TtsVoicesReport, VoiceParamsDetail, VoiceParamsUpdate, VoiceProfileDetail,
+    VoiceProfileUpdate, VoiceSummary,
 };

@@ -18,7 +18,7 @@ use alp_media::{
 use alp_voice::{
     AcousticCloneBackend, BuiltinAcousticBackend, BuiltinSttBackend, CloneBackend, InferClient,
     ProfileStore, SttBackend, Transcript, TranscriptSegment, TtsBackend, TtsRequest,
-    VoiceDesignRequest, VoiceKind, VoiceProfile, design_voice,
+    VoiceDesignRequest, VoiceKind, VoiceParams, VoiceProfile, design_voice,
 };
 use serde::{Deserialize, Serialize};
 
@@ -94,6 +94,82 @@ pub struct VoiceProfileDetail {
     pub has_reference_audio: bool,
     /// Whether a consent record exists (contents stay private).
     pub consent_recorded: bool,
+    /// Whether the profile is locked against agent-visible mutation.
+    pub locked: bool,
+}
+
+/// One field-level mutation of a stored voice profile's default parameters.
+/// `None` fields are left unchanged by `voice_profile_update`.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct VoiceParamsUpdate {
+    /// New speed multiplier (`1.0` is neutral).
+    pub speed: Option<f32>,
+    /// New pitch adjustment in semitones (`0.0` is neutral).
+    pub pitch: Option<f32>,
+    /// New energy / vocal effort (`1.0` is neutral).
+    pub energy: Option<f32>,
+    /// New expressive emotion / style tag.
+    pub emotion: Option<String>,
+}
+
+/// Optional mutation of a stored voice profile's editable fields (target-A
+/// parity: `PUT /profiles/{id}` / `voices update`).
+///
+/// Profile kind, backend and consent records are deliberately not mutable
+/// here: this path can never create or alter a clone, and never touches the
+/// human-only consent gate. A locked profile refuses mutation until it is
+/// unlocked.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct VoiceProfileUpdate {
+    /// New friendly display name (non-empty when given).
+    pub name: Option<String>,
+    /// New descriptive tags.
+    pub tags: Option<Vec<String>>,
+    /// New default generation parameters (partial updates merge over the
+    /// stored values).
+    pub default_params: Option<VoiceParamsUpdate>,
+}
+
+impl VoiceProfileUpdate {
+    fn has_changes(&self) -> bool {
+        self.name.is_some() || self.tags.is_some() || self.default_params.is_some()
+    }
+}
+
+/// One item of a `tts_batch` call.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BatchTtsRequest {
+    /// Voice profile handle (see `tts_voices`).
+    pub voice_id: String,
+    /// Text to speak.
+    pub text: String,
+    /// Optional speed multiplier.
+    #[serde(default)]
+    pub speed: Option<f32>,
+}
+
+/// Result of `tts_batch`: one report per submitted job, in request order.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BatchTtsReport {
+    /// One report per synthesized clip.
+    pub results: Vec<TtsGenerationReport>,
+}
+
+/// Build the not-found error shared by the voice store lookups.
+fn not_found_voice(voice_id: &str) -> ApiError {
+    ApiError::NotFound(format!(
+        "voice '{voice_id}' not found; call tts_voices for the known ids"
+    ))
+}
+
+/// Merge a `VoiceParamsUpdate` over the stored parameters.
+fn merge_params(current: &VoiceParams, update: VoiceParamsUpdate) -> VoiceParams {
+    VoiceParams {
+        speed: update.speed.unwrap_or(current.speed),
+        pitch: update.pitch.unwrap_or(current.pitch),
+        energy: update.energy.unwrap_or(current.energy),
+        emotion: update.emotion.unwrap_or_else(|| current.emotion.clone()),
+    }
 }
 
 /// Result of the `tts_generate` tool.
@@ -183,6 +259,7 @@ fn voice_detail(profile: VoiceProfile) -> VoiceProfileDetail {
         created_at: profile.created_at,
         has_reference_audio: profile.reference_audio.is_some(),
         consent_recorded: profile.consent.is_some(),
+        locked: profile.locked,
     }
 }
 
@@ -343,7 +420,7 @@ impl ApiSession {
 
     /// Open the voice profile store: the session override directory when set,
     /// the default XDG user store otherwise.
-    fn voice_store(&self) -> Result<ProfileStore, ApiError> {
+    pub(crate) fn voice_store(&self) -> Result<ProfileStore, ApiError> {
         match &self.voice_store_dir {
             Some(dir) => ProfileStore::new(dir),
             None => ProfileStore::default_store(),
@@ -412,7 +489,7 @@ impl ApiSession {
     }
 
     /// Synthesis body; `tts_generate` wraps it in a background job record.
-    fn tts_generate_inner(
+    pub(crate) fn tts_generate_inner(
         &mut self,
         text: &str,
         voice_id: &str,
@@ -511,6 +588,129 @@ impl ApiSession {
         let saved = voice_detail(profile);
         self.record_audit("voice_design", "ok", self.revision());
         Ok(saved)
+    }
+
+    /// Update a stored voice profile's editable fields (target-A parity:
+    /// `PUT /profiles/{id}` / `voices update`).
+    ///
+    /// Profile kind, backend and consent records are deliberately not
+    /// mutable here: this path can never create or alter a clone, and never
+    /// touches the human-only consent gate. A locked profile refuses
+    /// mutation until it is unlocked.
+    pub fn voice_profile_update(
+        &mut self,
+        voice_id: &str,
+        update: VoiceProfileUpdate,
+    ) -> Result<VoiceProfileDetail, ApiError> {
+        self.check_permission(PermissionTier::Edit)?;
+        let store = self.voice_store()?;
+        let mut profile = store
+            .get_profile(voice_id)
+            .ok_or_else(|| not_found_voice(voice_id))?;
+        if profile.locked && update.has_changes() {
+            return Err(ApiError::Validation(format!(
+                "voice '{voice_id}' is locked; unlock it before changing it"
+            )));
+        }
+        let mut changed = false;
+        if let Some(name) = update.name {
+            let name = name.trim().to_owned();
+            if name.is_empty() {
+                return Err(ApiError::Validation("voice name is empty".into()));
+            }
+            profile.name = name;
+            changed = true;
+        }
+        if let Some(tags) = update.tags {
+            profile.tags = tags;
+            changed = true;
+        }
+        if let Some(params) = update.default_params {
+            profile.default_params = merge_params(&profile.default_params, params);
+            changed = true;
+        }
+        if changed {
+            store.save_profile(&profile)?;
+            self.record_audit("voice_profile_update", "ok", self.revision());
+        }
+        Ok(voice_detail(profile))
+    }
+
+    /// Lock a stored voice profile (target-A parity: `POST /profiles/{id}/lock`,
+    /// `voices lock`). Locked profiles refuse agent-visible mutation until
+    /// they are unlocked.
+    pub fn voice_profile_lock(&mut self, voice_id: &str) -> Result<VoiceProfileDetail, ApiError> {
+        self.set_profile_locked(voice_id, true)
+    }
+
+    /// Unlock a stored voice profile (target-A parity:
+    /// `POST /profiles/{id}/unlock`, `voices unlock`).
+    pub fn voice_profile_unlock(&mut self, voice_id: &str) -> Result<VoiceProfileDetail, ApiError> {
+        self.set_profile_locked(voice_id, false)
+    }
+
+    fn set_profile_locked(
+        &mut self,
+        voice_id: &str,
+        locked: bool,
+    ) -> Result<VoiceProfileDetail, ApiError> {
+        self.check_permission(PermissionTier::Edit)?;
+        let store = self.voice_store()?;
+        let mut profile = store
+            .get_profile(voice_id)
+            .ok_or_else(|| not_found_voice(voice_id))?;
+        if profile.locked != locked {
+            profile.locked = locked;
+            store.save_profile(&profile)?;
+            self.record_audit(
+                if locked {
+                    "voice_profile_lock"
+                } else {
+                    "voice_profile_unlock"
+                },
+                "ok",
+                self.revision(),
+            );
+        }
+        Ok(voice_detail(profile))
+    }
+
+    /// Synthesize a batch of speech requests (target-A parity:
+    /// `POST /batch/enqueue`).
+    ///
+    /// One background job per request; jobs run sequentially and
+    /// `job_cancel` stops the batch at the next segment boundary. On the
+    /// first request error the call fails, the failing job is marked failed,
+    /// and the earlier jobs stay queryable via `job_status`.
+    pub fn tts_batch(&mut self, requests: &[BatchTtsRequest]) -> Result<BatchTtsReport, ApiError> {
+        self.check_permission(PermissionTier::Edit)?;
+        if requests.is_empty() {
+            return Err(ApiError::Validation(
+                "requests is empty; provide at least one {voice_id, text} item".into(),
+            ));
+        }
+        let mut results = Vec::with_capacity(requests.len());
+        for request in requests {
+            let job_id = self
+                .jobs
+                .submit(format!("tts {} (batch)", request.voice_id));
+            if self.jobs.is_cancelled(&job_id) {
+                continue; // job_cancel already marked the job Cancelled.
+            }
+            match self.tts_generate_inner(&request.text, &request.voice_id, request.speed) {
+                Ok(mut report) => {
+                    self.jobs.complete(&job_id, report.path.clone());
+                    report.job_id = job_id;
+                    results.push(report);
+                }
+                Err(error) => {
+                    self.jobs.fail(&job_id, error.to_string());
+                    return Err(error);
+                }
+            }
+        }
+        self.record_audit("tts_batch", "ok", self.revision());
+        Ok(BatchTtsReport { results })
     }
 
     /// Transcribe a sandboxed audio file (Phase 10 `transcribe`). Daemon-first
@@ -928,5 +1128,119 @@ mod tests {
             matches!(error, ApiError::Validation(_)),
             "unexpected error: {error}"
         );
+    }
+
+    #[test]
+    fn voice_profile_update_mutates_the_stored_profile() {
+        let dir = tempdir().expect("tempdir");
+        let mut session = session_in(dir.path(), PermissionTier::Edit);
+        let profile = session
+            .voice_design("Original", "calm narrator", vec![])
+            .expect("design");
+
+        let updated = session
+            .voice_profile_update(
+                &profile.id,
+                VoiceProfileUpdate {
+                    name: Some("Renamed".into()),
+                    tags: Some(vec!["renamed".into(), "warm".into()]),
+                    default_params: Some(VoiceParamsUpdate {
+                        speed: Some(1.25),
+                        ..VoiceParamsUpdate::default()
+                    }),
+                },
+            )
+            .expect("update");
+        assert_eq!(updated.name, "Renamed");
+        assert_eq!(updated.tags, vec!["renamed".to_owned(), "warm".to_owned()]);
+        assert!((updated.default_params.speed - 1.25).abs() < 1e-6);
+        assert_eq!(
+            updated.default_params.pitch,
+            VoiceParams::default().pitch,
+            "unspecified fields merge over the stored values"
+        );
+        assert!(!updated.locked);
+
+        // The stored profile carries the new values.
+        let stored = session.voice_profile_get(&profile.id).expect("get");
+        assert_eq!(stored.name, "Renamed");
+        assert!((stored.default_params.speed - 1.25).abs() < 1e-6);
+    }
+
+    #[test]
+    fn voice_profile_lock_unlock_round_trip() {
+        let dir = tempdir().expect("tempdir");
+        let mut session = session_in(dir.path(), PermissionTier::Edit);
+        let profile = session
+            .voice_design("Locked", "calm narrator", vec![])
+            .expect("design");
+
+        let locked = session.voice_profile_lock(&profile.id).expect("lock");
+        assert!(locked.locked);
+
+        // A locked profile refuses mutation until it is unlocked.
+        let error = session
+            .voice_profile_update(
+                &profile.id,
+                VoiceProfileUpdate {
+                    name: Some("Renamed".into()),
+                    ..VoiceProfileUpdate::default()
+                },
+            )
+            .expect_err("locked profiles refuse updates");
+        assert!(matches!(error, ApiError::Validation(_)));
+
+        session.voice_profile_unlock(&profile.id).expect("unlock");
+        let updated = session
+            .voice_profile_update(
+                &profile.id,
+                VoiceProfileUpdate {
+                    name: Some("Renamed".into()),
+                    ..VoiceProfileUpdate::default()
+                },
+            )
+            .expect("update after unlock");
+        assert_eq!(updated.name, "Renamed");
+        assert!(!updated.locked);
+    }
+
+    #[test]
+    fn tts_batch_synthesizes_one_job_per_request() {
+        let dir = tempdir().expect("tempdir");
+        let mut session = session_in(dir.path(), PermissionTier::Edit);
+        let aura = session
+            .voice_design("Aura", "calm narrator", vec![])
+            .expect("design")
+            .id;
+        let solo = session
+            .voice_design("Solo", "excited narrator", vec![])
+            .expect("design")
+            .id;
+
+        let report = session
+            .tts_batch(&[
+                BatchTtsRequest {
+                    voice_id: aura,
+                    text: "First line.".into(),
+                    speed: None,
+                },
+                BatchTtsRequest {
+                    voice_id: solo,
+                    text: "Second line.".into(),
+                    speed: Some(1.1),
+                },
+            ])
+            .expect("batch");
+
+        assert_eq!(report.results.len(), 2);
+        for result in &report.results {
+            assert!(result.duration_secs > 0.0);
+            assert!(std::path::Path::new(&result.path).is_file());
+            let status = session.job_status(&result.job_id).expect("job status");
+            assert_eq!(status.state, "completed", "jobs stay queryable");
+        }
+
+        let error = session.tts_batch(&[]).expect_err("empty requests");
+        assert!(matches!(error, ApiError::Validation(_)));
     }
 }
