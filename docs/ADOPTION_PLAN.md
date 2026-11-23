@@ -3,7 +3,7 @@
 > **Document Code:** `ALP-PLAN-ADOPTION-2026`  
 > **Source Analysis:** [REAVSA.md](file:///home/zvirox/Projects/audio-labs-pro/REAVSA.md)  
 > **Target Scope:** Audio Labs Pro (`alp`) Core Platform & Workspaces  
-> **Release Cadence:** Weekly Alpha Milestones (`alpha.7`–`alpha.10`) ➔ Bi-Weekly Beta Releases (`beta.1`–`beta.3`) ➔ `v1.0.0` General Availability
+> **Release Cadence:** Weekly Alpha Milestones (`alpha.7`–`alpha.11`) ➔ Bi-Weekly Beta Releases (`beta.1`–`beta.3`) ➔ `v1.0.0` General Availability
 
 ---
 
@@ -29,8 +29,9 @@ To resolve the primary ergonomic bottleneck of dual-vertical-sidebar layouts (wh
 | **`v0.0.1-alpha.7`** | **Phase 12** | Dual-Axis Shell & Multitrack Core | Dual-Axis Navigation shell (Rail + Subtabs), multitrack clip model, envelope curves, SQLite block storage schema | **Nov 23, 2026** | **Shipped** |
 | **`v0.0.1-alpha.8-m`** | **Phase M0–M8** | **UI Migration (iced → Tauri 2 + React)** | M0 feasibility gate, M1 alp-session extraction, M2 Tauri scaffold, M3 kit/shell, M4 transport/waveform, M5 workspace ports, M6 multitrack canvas, M7 AI/MCP parity, M8 packaging cutover | **Nov 23, 2026** | **Shipped** |
 | **`v0.0.1-alpha.8`** | **Phase 13** | Multitrack Canvas & Spectral Multi-View | Interactive DAW canvas (Canvas 2D/WebGL in React), clip split/slip/ripple, simultaneous Waveform + STFT Spectrogram, 2D spectral selection | **Nov 23, 2026** | **Shipped** |
-| **`v0.0.1-alpha.9`** | **Phase 14** | Advanced Spectral DSP & FX Racks | Subtractive spectral denoiser with profile sampling, spectral notch/repair, realtime insert FX racks, WSOLA time stretch | **Dec 21, 2026** | **Planned** |
-| **`v0.0.1-alpha.10`** | **Phase 15** | Voice Lab Expansion & Voice Design | Zero-shot cloning embeddings, prompt-driven voice design, persona cards & avatars, pronunciation lexicon with IPA/SSML | **Dec 28, 2026** | **Planned** |
+| **`v0.0.1-alpha.9`** | **UI Fix** | Dashboard, window controls & unslop | Dashboard home view, logo rail button, native window controls, decluttered bars, clamped non-overlapping panels, keyboard menus, ink control-room palette with one signal-teal accent | **Nov 23, 2026** | **Shipped** |
+| **`v0.0.1-alpha.10`** | **Phase 14** | Advanced Spectral DSP & FX Racks | Subtractive spectral denoiser with profile sampling, spectral notch/repair, realtime insert FX racks, WSOLA time stretch | **Dec 21, 2026** | **Planned** |
+| **`v0.0.1-alpha.11`** | **Phase 15** | Voice Lab Expansion & Voice Design | Zero-shot cloning embeddings, prompt-driven voice design, persona cards & avatars, pronunciation lexicon with IPA/SSML | **Dec 28, 2026** | **Planned** |
 | **`v0.1.0-beta.1`** | **Phase 16** | Audiobook Studio & Long-Form Engine | Manuscript ingestion (EPUB/MD), multi-character cast tagging, cadence pacing rules, M4B containerization with chapters | **Jan 08, 2027** | **Planned** |
 | **`v0.1.0-beta.2`** | **Phase 17** | Video Dubbing & Stem Separation | Local Demucs v4 vocal/stem isolation, sync-lock label tracks, speech-to-speech dubbing with rate fitting, FFmpeg video remux | **Jan 18, 2027** | **Planned** |
 | **`v0.1.0-beta.3`** | **Phase 18** | VST3 Hosting & Macro Automation | VST3 plugin hosting engine with native window embedding, DSP macro sequencing chains, batch processing queue | **Jan 28, 2027** | **Planned** |
@@ -48,7 +49,7 @@ To resolve the primary ergonomic bottleneck of dual-vertical-sidebar layouts (wh
 │ Dual-Axis Shell &   │ UI Migration to     │ Multitrack Canvas &                  │
 │ Core Clip Model     │ Tauri 2 + React     │ Spectrogram View (React)             │
 ├─────────────────────┼─────────────────────┼──────────────────────────────────────┤
-│ Phase 14 (alpha.9)  │ Phase 15 (alpha.10) │ Phase 16 (beta.1)                    │
+│ Phase 14 (alpha.10) │ Phase 15 (alpha.11) │ Phase 16 (beta.1)                    │
 │ Spectral DSP &      │ Voice Cloning &     │ Audiobook Studio &                   │
 │ Realtime FX Racks   │ Prompt Voice Design │ M4B Packaging                        │
 ├─────────────────────┴─────────────────────┴──────────────────────────────────────┤
@@ -169,7 +170,7 @@ To resolve the primary ergonomic bottleneck of dual-vertical-sidebar layouts (wh
 
 ---
 
-### Phase 14: Advanced Spectral DSP & Realtime FX Insert Racks (`v0.0.1-alpha.9`)
+### Phase 14: Advanced Spectral DSP & Realtime FX Insert Racks (`v0.0.1-alpha.10`)
 **Target Release Date:** December 21, 2026  
 **Primary Crates / Modules:** `alp-dsp`, `alp-engine`, `alp-session`, `frontend/`
 
@@ -196,7 +197,7 @@ To resolve the primary ergonomic bottleneck of dual-vertical-sidebar layouts (wh
 
 ---
 
-### Phase 15: Voice Lab Expansion & Natural Language Voice Design (`v0.0.1-alpha.10`)
+### Phase 15: Voice Lab Expansion & Natural Language Voice Design (`v0.0.1-alpha.11`)
 **Target Release Date:** December 28, 2026  
 **Primary Crates / Modules:** `alp-voice`, `alp-infer`, `alp-session`, `frontend/`
 

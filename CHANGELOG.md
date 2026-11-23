@@ -5,6 +5,8 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+## [0.0.1-alpha.9] - 2026-11-23
+
 ### Redesigned
 
 - **Full UI unslop pass** (direction: exact, nocturnal, instrument-like; ink control-room surfaces, one signal-teal accent, waveform and timecode as the moments). Across all eight screens: removed the seven per-workspace neon hues and colored glows/shadows, migrated ~193 hardcoded dark-only colors to the ink neutral ramp with three text roles, neutralized decorative icons and pulse/scale motion, normalized to a 4px spacing grid, and replaced hype/tracked/uppercase copy with plain sentence case.
@@ -80,8 +82,8 @@ versions follow the release milestones in the build plan.
 
 ### Planned (Phase 14–19 Adoption Roadmap)
 
-- **Phase 14 (`v0.0.1-alpha.9`):** Subtractive spectral denoiser with noise profiling, 2D spectral notch/repair, realtime insert FX racks, and high-fidelity WSOLA time-stretching.
-- **Phase 15 (`v0.0.1-alpha.10`):** Zero-shot voice cloning embeddings, prompt-driven voice design, persona cards & avatars, and custom pronunciation lexicon with IPA/SSML.
+- **Phase 14 (`v0.0.1-alpha.10`):** Subtractive spectral denoiser with noise profiling, 2D spectral notch/repair, realtime insert FX racks, and high-fidelity WSOLA time-stretching.
+- **Phase 15 (`v0.0.1-alpha.11`):** Zero-shot voice cloning embeddings, prompt-driven voice design, persona cards & avatars, and custom pronunciation lexicon with IPA/SSML.
 - **Phase 16 (`v0.1.0-beta.1`):** Audiobook Studio with EPUB/Markdown ingestion, multi-character cast tagging, cadence pacing rules, and M4B container packaging with QuickTime chapter markers.
 - **Phase 17 (`v0.1.0-beta.2`):** Video Dubbing with Demucs v4 4-stem separation, sync-locked label tracks (SRT/VTT), speech-to-speech dubbing with rate fitting, and FFmpeg video remux.
 - **Phase 18 (`v0.1.0-beta.3`):** VST3 plugin hosting engine, native X11/Wayland plugin window embedding, and scriptable DSP macro batch processing.
