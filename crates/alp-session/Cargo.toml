@@ -12,6 +12,7 @@ publish.workspace = true
 alp-api.workspace = true
 alp-core.workspace = true
 alp-engine.workspace = true
+alp-mcp.workspace = true
 alp-media.workspace = true
 alp-voice.workspace = true
 serde.workspace = true

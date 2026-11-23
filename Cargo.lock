@@ -263,6 +263,7 @@ dependencies = [
  "alp-api",
  "alp-core",
  "alp-engine",
+ "alp-mcp",
  "alp-media",
  "alp-voice",
  "serde",
