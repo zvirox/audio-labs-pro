@@ -18,7 +18,7 @@ devices remain untested. Phase 1 and Phase 2 remain the base.
 | `alp-infer` (separate process) | TTS/STT/clone models over ONNX Runtime and Candle/Safetensors. Isolated so an OOM or model crash never kills the editor. Talks over a versioned Unix-socket protocol owned by `alp-voice`. |
 | Worker threads | Decode, peak building, effect rendering, export. Cancellable jobs with progress channels; the shell uses this for real background mix export. |
 
-## Crate graph
+## Crate graph (current: iced 0.14)
 
 Solid arrows are compile-time dependencies. The dotted arrow is the runtime
 socket connection and must never become a Cargo dependency.
@@ -58,6 +58,58 @@ flowchart TD
   INFER --> VOICE
   VOICE -. "Unix socket (runtime)" .-> INFER
 ```
+
+## Planned: UI migration (Tauri 2 + React)
+
+> **Status:** Planned (phases M0–M8, see [`UI_MIGRATION.md`](UI_MIGRATION.md) and [ADR 0013](../adr/0013-ui-migration-tauri.md)).  
+> The new crates and frontend directory do not exist in the current codebase and will be created during phases M1–M2. The current iced architecture remains in place until cutover at M8.
+
+```mermaid
+flowchart TD
+  subgraph FE["frontend/ (webview, planned)"]
+    REACT["React app + kit<br/>views only, no project mutation"]
+  end
+  subgraph DESK["alp-desktop (Tauri, planned)"]
+    IPC["commands / events / channels"]
+    GLASS["glass (x11rb blur, tint fallback)"]
+  end
+  SESSION["alp-session (planned, UI-agnostic)<br/>EditSession, worker queue, control socket host,<br/>workspace persistence"]
+  ENG["alp-engine"]
+  CORE["alp-core"]
+  MEDIA["alp-media"]
+  VOICE["alp-voice"]
+  API["alp-api"]
+  INFER["alp-infer (separate process)"]
+
+  REACT <-->|invoke / events / Channel| IPC
+  IPC --> SESSION
+  GLASS --> DESK
+  SESSION --> ENG
+  SESSION --> CORE
+  SESSION --> MEDIA
+  SESSION --> VOICE
+  SESSION --> API
+  VOICE -. "Unix socket (runtime)" .-> INFER
+```
+
+### Planned crate changes and dependency rules
+- **`alp-session` (planned):** Headless session manager extracted from `alp-ui`. Owns the live `EditSession`, undoable `Command` stack, background worker pool, `alp-api::control` native socket host, and workspace persistence. Allowed dependencies: `alp-core`, `alp-engine`, `alp-media`, `alp-voice`, `alp-api`. **Must not depend on iced or tauri.**
+- **`alp-desktop` (planned):** Tauri 2 native desktop application wrapper. Owns the window lifecycle, system tray/menus, IPC command/event dispatch, and `x11rb` compositor blur. Depends only on `alp-session` and the Tauri framework.
+- **`frontend/` (planned):** Webview presentation application (Vite + React + TypeScript + Tailwind CSS). Not a Rust crate. Dispatches IPC commands and renders state reported by Rust.
+- **Removed after cutover (M8):** `alp-ui`, `alp-ui-kit`, and workspace dependencies `iced`, `iced-cube`, `lilt`.
+
+### Target IPC contract
+| Direction | Mechanism | Used for |
+|---|---|---|
+| TS → Rust | `invoke` commands | Transport commands, edit mutations (`DeleteRange`, `PasteClips`, etc.), voice generation, import, export, settings |
+| Rust → TS | Events | Project revision deltas, job status, model download progress, AI attach notifications |
+| Rust → TS | `Channel` (batched) | Real-time stereo input/output peak meters (~30 Hz), dictation partial transcripts |
+| Rust → TS | Raw binary `ipc::Response` | Multi-level peak pyramid waveform binary buffers (avoiding JSON serialization overhead) |
+
+Rules:
+- **Playhead:** Rust emits transport anchors (`position`, `timestamp`, `rate`) on state changes; the frontend interpolates playhead position in `requestAnimationFrame`.
+- **Project State:** Rust (`alp-session`) is the sole authority; the webview maintains a revision-tagged mirror.
+- **Errors:** All commands return typed error representations mapped to user-facing diagnostic dialogs.
 
 ## Allowed dependency directions
 
