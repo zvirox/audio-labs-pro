@@ -13,10 +13,9 @@ editing, **P4-P8** used by multitrack, DSP, TTS, dictation, and voice profiles,
 
 | Crate | Version | License | Status | Purpose |
 |---|---|---|---|---|
-| iced | 0.14.0 | MIT | P2 | UI toolkit, pinned exactly; wgpu, canvas, svg, advanced |
-| iced-cube | 0.0.6 | MIT OR Apache-2.0 | P2 | themed buttons/switches/checkboxes + Lucide icon embedding |
-| lucide-static-svg | 1.62.0 | ISC | P2 | Lucide icon SVGs embedded at compile time by iced-cube |
-| lilt | 0.8.2 | MIT | P2 | time-based panel transitions |
+| tauri | 2.12.7 | MIT OR Apache-2.0 | M2 | desktop application framework, IPC runtime, and WebKitGTK wrapper (`alp-desktop`) |
+| tauri-build | 2.7.6 | MIT OR Apache-2.0 | M2 | compile-time asset packager and build code generator |
+| raw-window-handle | 0.6.2 | MIT OR Apache-2.0 | M2 | native window handle interoperability |
 | nix | 0.30.1 | MIT | P1 | safe Linux peer credentials and effective-UID checks for the UI control socket |
 | x11rb | 0.13.2 | MIT OR Apache-2.0 | P2 | KWin X11 blur property; safe Rust |
 | cpal | 0.18.2 | Apache-2.0 | P1 | audio I/O |
@@ -47,6 +46,38 @@ editing, **P4-P8** used by multitrack, DSP, TTS, dictation, and voice profiles,
 | vorbis_rs | 0.5.6 | BSD-3-Clause | planned | OGG Vorbis encoding |
 | rustfft / realfft | 6.4.1 / 3.5.0 | MIT / MIT OR Apache-2.0 | P5 | FFT (rubato, alp-dsp spectral denoiser) |
 | fundsp | 0.23.0 | MIT OR Apache-2.0 | candidate | DSP blocks (own biquads preferred) |
+
+## Retired Rust crates (superseded in M8 cutover)
+
+| Crate | Former Version | License | Status | Replacement |
+|---|---|---|---|---|
+| iced | 0.14.0 | MIT | Retired in M8 | Replaced by Tauri 2 + React webview desktop shell (`alp-desktop`) |
+| iced-cube | 0.0.6 | MIT OR Apache-2.0 | Retired in M8 | Replaced by Tailwind CSS and React kit components (`frontend/src/kit`) |
+| lucide-static-svg | 1.62.0 | ISC | Retired in M8 | Replaced by `lucide-react` in frontend |
+| lilt | 0.8.2 | MIT | Retired in M8 | Replaced by CSS transitions and React motion handling |
+
+## Linux system runtimes
+
+| Library / Package | Version | License | Status | Purpose |
+|---|---|---|---|---|
+| WebKitGTK 4.1 (`libwebkit2gtk-4.1-0`) | >= 2.40.0 | LGPL-2.1+ / BSD | M0 / M8 | Native WebKit browser engine powering Tauri 2 desktop GUI |
+| GTK 3 (`libgtk-3-0`) | >= 3.24.0 | LGPL-2.0+ | M0 / M8 | Windowing and display backend for WebKitGTK |
+
+## Frontend npm packages
+
+| Package | Version | License | Status | Purpose |
+|---|---|---|---|---|
+| @tauri-apps/api | ^2.12.5 | MIT OR Apache-2.0 | M2 | Tauri frontend IPC client bindings and channel listener |
+| react | ^19.3.1 | MIT | M2 | Studio component tree and reactive state model |
+| react-dom | ^19.3.1 | MIT | M2 | Web DOM rendering |
+| cmdk | ^1.1.1 | MIT | M3 | Accessible, unstyled command palette primitive (`Ctrl+K`) |
+| lucide-react | ^1.78.0 | ISC | M3 | Clean, consistent studio iconography |
+| tailwindcss | ^4.3.5 | MIT | M2 | Utility-first CSS engine and glass styling |
+| @tailwindcss/vite | ^4.3.5 | MIT | M2 | Vite integration plugin for Tailwind CSS v4 |
+| typescript | ^7.0.2 | Apache-2.0 | M2 | Static type safety and IPC interface contracts |
+| vite | ^8.3.8 | MIT | M2 | Fast ESM frontend bundler and development server |
+| @vitejs/plugin-react | ^6.3.0 | MIT | M2 | Babel/Fast Refresh React plugin for Vite |
+| esbuild | ^0.28.2 | MIT | M2 | Fast TypeScript test runner bundler |
 
 Rejected: `mp3lame-encoder`/LAME (LGPL-3.0), espeak-ng (GPL-3.0),
 `espeak-rs` bindings (would link GPL code), Qwen3-TTS-Rust example (no license),

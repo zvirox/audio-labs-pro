@@ -53,15 +53,50 @@ Audio Labs Pro features a fluid glass aesthetic with compositor background blur.
 
 ---
 
-## 3. NVIDIA Proprietary Drivers
+## 3. WebKitGTK Runtime Dependencies & Hardware Acceleration
 
-When running Audio Labs Pro on systems with proprietary NVIDIA drivers:
-- Ensure the `nvidia-drm.modeset=1` kernel parameter is enabled for smooth Wayland buffer synchronization.
-- If you notice window flickering with Wayland and NVIDIA, launch the AppImage or binary with:
+The desktop application shell is built on Tauri 2 and WebKitGTK 4.1.
+
+### Distro Package Requirements
+If running from source or extracted archive outside Flatpak, ensure the WebKitGTK 4.1 runtime libraries are installed:
+
+- **Ubuntu 22.04+ / Debian 12+:**
   ```bash
-  WINIT_UNIX_BACKEND=x11 audio-labs-pro
+  sudo apt install libwebkit2gtk-4.1-0 libgtk-3-0
   ```
-  This forces X11 fallback through XWayland while maintaining 60 fps rendering.
+- **Fedora 38+:**
+  ```bash
+  sudo dnf install webkit2gtk4.1 gtk3
+  ```
+- **Arch Linux:**
+  ```bash
+  sudo pacman -S webkit2gtk-4.1 gtk3
+  ```
+- **openSUSE (Tumbleweed / Leap 15.5+):**
+  ```bash
+  sudo zypper install libwebkit2gtk-4_1-0 gtk3
+  ```
+
+### NVIDIA Proprietary Drivers & Wayland Webview Flags
+
+When running Audio Labs Pro on systems with proprietary NVIDIA drivers under Wayland:
+- Ensure `nvidia-drm.modeset=1` kernel parameter is enabled.
+- **DMA-BUF Renderer Synchronization:** If you experience blank/black webviews, stuttering, or buffer artifacts on NVIDIA Wayland sessions, disable the DMA-BUF renderer:
+  ```bash
+  WEBKIT_DISABLE_DMABUF_RENDERER=1 audio-labs-pro
+  ```
+- **Software Compositing Fallback:** If the GPU compositor crashes or fails to initialize:
+  ```bash
+  WEBKIT_DISABLE_COMPOSITING_MODE=1 audio-labs-pro
+  ```
+- **XWayland Fallback:** If Wayland native EGL presentation fails:
+  ```bash
+  GDK_BACKEND=x11 audio-labs-pro
+  ```
+- **Hybrid GPU Selection:** To explicitly invoke the NVIDIA discrete GPU:
+  ```bash
+  __GLX_VENDOR_LIBRARY_NAME=nvidia WEBKIT_DISABLE_DMABUF_RENDERER=1 audio-labs-pro
+  ```
 
 ---
 

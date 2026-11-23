@@ -12,7 +12,7 @@ undoable session engine. Nothing leaves the machine.
 ### Installation
 - **AppImage:** Run `./Audio-Labs-Pro-x86_64.AppImage` directly on any modern Linux distribution.
 - **Flatpak:** Install using `flatpak install io.github.zvirox.AudioLabsPro.flatpak`.
-- **Source Build:** Run `cargo build --release --workspace` and execute `target/release/alp-ui`.
+- **Source Build:** Run `npm --prefix frontend install && npm --prefix frontend run build` followed by `cargo build --release -p alp-desktop`. Execute `target/release/alp-desktop` (packaged and installed as `audio-labs-pro`).
 
 ### First-Run Wizard
 On first launch, Audio Labs Pro displays an interactive setup wizard:
@@ -22,25 +22,28 @@ On first launch, Audio Labs Pro displays an interactive setup wizard:
 
 ---
 
-## 2. The Seven Workspaces
+## 2. Studio Workspace Architecture
 
-An icon rail on the left switches between workspaces. A player is docked at
-the bottom of every screen; Stories replaces it with a track editor.
+Audio Labs Pro presents a modern React-powered studio shell backed by the zero-copy `alp-session` engine and Tauri 2 IPC.
+
+An icon rail on the left switches between workspaces. A high-resolution audio player is docked at the bottom of the screen with synchronized transport controls, atomic peak meters, and timecode readouts.
 
 | Icon | Workspace | What it holds |
 |---|---|---|
 | ✨ Sparkles | Generate | Voice cards, prompt editor, generate/play controls and take history |
-| 🎬 Clapperboard | Stories | Multi-line scripts, per-line render, stitch and the docked track editor |
+| 🎬 Clapperboard | Stories | Multi-line scripts, per-line render, stitch and docked track editor |
 | 💿 Disc | Captures | Recording, dictation, VAD transcription, input meters and transcript |
 | 👥 Users | Voices | Profile library, inspector, designed voices and the cloning gate |
 | ⚡ Zap | Effects | Cleanup chain, signal path and hosted CLAP/LV2 plugins |
 | 📦 Boxes | Models | Model catalogue, licences, offline policy and storage |
 | ⚙ Gear | Settings | Appearance, motion, AI control, storage, delivery and panels |
 
-The **timeline**, **mixer** and **inspector** remain available to the palette and
-AI clients. In Stories, the **Mixer** button opens them over the line cards; close
-it with the same button. Ripple delete lives in the mixer; recording and
-dictation live in Captures.
+### React Studio Shell & Navigation
+- **Command Palette (`Ctrl+K`):** Fast fuzzy launcher for any workspace, tool, or action across the entire studio.
+- **Inspector Drawer (`Ctrl+B`):** Slide-out right panel revealing clip properties, fade controls, voice details, or effect parameters.
+- **Docked Transport & Meters:** Real-time dual-channel peak meters powered by the continuous IPC subscription channel.
+- **Theme & Motion Toggles:** Instant switching between Dark, Light, and System themes (`Ctrl+D`) with persistent `Reduce motion` support (`Ctrl+Shift+M`).
+- **AI Control Center:** Settings workspace houses live MCP client approval, permission tier controls (`Observe`, `Edit`, `Export`), and socket latency monitoring.
 
 **Create Voice** opens a modal with Upload, Record and System Audio tabs. Record
 captures up to 30 seconds. **Create Profile** first asks you to tick the
@@ -50,7 +53,9 @@ Upload and System Audio state plainly that they are not wired in this build.
 
 ---
 
-## 3. Multitrack Timeline & Editing
+## 3. HTML5 Canvas Multitrack Timeline & Editing
+
+The multitrack timeline is powered by a high-performance HTML5 Canvas architecture engineered for smooth 60 fps rendering without per-clip DOM node overhead.
 
 ### Non-Destructive Editing
 Audio Labs Pro preserves source recordings immutably. Every edit produces non-destructive timeline clips that reference source ranges.
@@ -59,6 +64,8 @@ Audio Labs Pro preserves source recordings immutably. Every edit produces non-de
 - **Crossfading:** Overlapping adjacent clips creates smooth equal-power crossfades.
 - **Volume Envelope & Fades:** Adjust per-clip gain, linear/logarithmic fade-ins, and fade-outs in the Inspector panel.
 - **Ripple Mode (`R`):** When ripple mode is active, deleting or cutting a clip or transcript segment automatically pulls subsequent clips left, eliminating dead air.
+- **Snap to Grid (`S`):** Toggle intelligent time snapping for playhead scrubbing and clip positioning.
+- **Zoom & Pan (`Ctrl+=` / `Ctrl+-`):** Responsive zoom ranging from 10 px/sec to 1000 px/sec with focal playhead tracking.
 - **Infinite Undo / Redo (`Ctrl+Z` / `Ctrl+Y`):** Every timeline operation, effect tweak, voice insertion and generated take is fully undoable.
 
 ---
