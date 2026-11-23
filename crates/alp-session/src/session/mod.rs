@@ -516,6 +516,21 @@ impl EditSession {
         alp_core::frames_to_secs(self.project.duration_frames(), self.project.sample_rate)
     }
 
+    /// Look up loaded source audio by its source identifier.
+    #[must_use]
+    pub fn source_audio(&self, id: SourceId) -> Option<Arc<SourceAudio>> {
+        self.audio.get(&id).cloned()
+    }
+
+    /// Return the primary source audio in this session, if available.
+    #[must_use]
+    pub fn primary_source_audio(&self) -> Option<Arc<SourceAudio>> {
+        self.project
+            .sources
+            .first()
+            .and_then(|source| self.audio.get(&source.id).cloned())
+    }
+
     /// Number of clips in the single editing track.
     #[must_use]
     pub fn clip_count(&self) -> usize {

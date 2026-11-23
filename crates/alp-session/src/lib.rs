@@ -6,14 +6,19 @@
 //! - [`JobQueue`]: non-blocking background workers for exports, peak builds, and audio decoding.
 //! - [`PersistedWorkspace`]: layout, theme, and window preferences persisted to disk.
 //! - [`PanelManager`]: headless floating/docked panel geometry and z-order.
+//! - [`TransportController`]: audio playback coordination, meter streaming, and peak pyramids.
 
 pub mod jobs;
 pub mod panels;
 pub mod session;
+pub mod transport;
 pub mod workspace;
 
 pub use alp_api::ProjectSummary;
 pub use jobs::{Job, JobQueue, JobReporter, JobStatus};
 pub use panels::{DockSide, PanelKind, PanelManager, PanelRect, PanelState, Point, Size};
 pub use session::{EditSession, ImportedAudio, NORMALIZE_TARGET};
+pub use transport::{
+    MeterFrame, PeakLevelDto, TransportController, TransportState, WaveformPeaksDto,
+};
 pub use workspace::{LAYOUT_VERSION, PersistedWorkspace};
