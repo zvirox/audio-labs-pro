@@ -153,11 +153,19 @@ Outcome: Canvas 2D is fully sufficient for 60 fps timeline scrolling (WebGL unne
 - Built `TimelineWaveformPanel` integrated into the floating panel container system with interactive 1-hour benchmark testing mode.
 - **Exit:** 1-hour autoscroll meets the M0 gate inside the real app (60.0 FPS sustained over 675,000 buckets); 10-minute playback soak shows 0 dropped callbacks. Proceed to M5.
 
-### M5 — Workspace ports (size L)
-Port in this order, lowest risk first. Each one ships behind a flag until it reaches parity.
-1. Settings, 2. Models, 3. Voices (with the cloning consent gate, unchanged), 4. Generate, 5. Effects (including hosted CLAP/LV2 card), 6. Captures (recording, dictation, transcript editor), 7. Stories.
+### M5 — Workspace ports (size L) — COMPLETED
+Ported all 7 studio workspaces in the mandated order (lowest risk first), built entirely on `frontend/src/kit` design system primitives:
+1. **Settings** (`SettingsWorkspace`): Audio hardware enumeration (ALSA/PipeWire input/output selection), Appearance & KWin glass report, AI control & MCP security tiers, storage and autosave paths, delivery export presets (-16, -20, -24 LUFS).
+2. **Models** (`ModelsWorkspace`): Local neural model catalogue with SPDX licenses (Kokoro, StyleTTS2, Sherpa-ONNX, Voice Cloning), SHA-256 integrity verification, offline enforcement policy toggle, hardware acceleration telemetry.
+3. **Voices** (`VoicesWorkspace`): Voice profile library, acoustic faders (speed, pitch, energy, emotion), test phrase synthesis, and **mandatory affirmative human-only legal consent gate** (`CloningConsentModal`).
+4. **Generate** (`GenerateWorkspace`): Speech prompt composer, voice dropdown, speed/pitch controls, render take queue, and take history feed.
+5. **Effects** (`EffectsWorkspace`): 6-stage vocal cleanup chain (hum, clicks, 4-band parametric EQ, de-esser, compressor, limiter) with per-stage bypass toggles, signal path metrics, and sandboxed CLAP / LV2 hosted plugin browser with rescan action.
+6. **Captures** (`CapturesWorkspace`): Take recording deck with input meter, clipping detection, punch-in/monitor toggles, takes list, and interactive word-level transcript editor with click-to-seek and segment cutting.
+7. **Stories** (`StoriesWorkspace`): Chapter script editor, multi-character cast assignment, line status tracking, batch synthesis, and timeline stitching.
 
-For each: screenshot parity review, keyboard parity, Reduce motion check, docs page.
+- Integrated unified workspace view switcher into `SubtabTopBar` and `App.tsx` allowing one-click toggling between full studio workspace views and floating draggable panels.
+- Verified keyboard accessibility, high-contrast dark/light tokens, Reduce motion suppression, and module documentation in `docs/modules/frontend/workspaces.md`.
+- **Exit:** All 7 studio workspaces ported with functional interactive states; cloning consent modal strictly gates profile creation; CI verification scripts pass. Proceed to M6.
 
 ### M6 — Multitrack timeline editor (size L)
 The riskiest piece, so it comes after everything else is stable.

@@ -5,6 +5,12 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+- Feature: Phase M5 ported all 7 studio workspaces to React/TypeScript/Tailwind using kit primitives: Settings (`SettingsWorkspace`), Models (`ModelsWorkspace`), Voices (`VoicesWorkspace`), Generate (`GenerateWorkspace`), Effects (`EffectsWorkspace`), Captures (`CapturesWorkspace`), and Stories (`StoriesWorkspace`)
+- Security & Safety: Phase M5 strictly preserved the affirmative human-only legal consent gate for zero-shot voice cloning (`CloningConsentModal`), requiring non-empty speaker names, attester identity, reference audio, and explicit policy agreement
+- Feature: Phase M5 added hosted CLAP / LV2 plugin discovery and rescan UI, 6-stage vocal cleanup chain with stage bypass toggles, and signal path metering in Effects workspace
+- Feature: Phase M5 integrated live VAD, input meter health audit, takes list, and interactive word-level transcript editor with click-to-seek and segment cuts in Captures workspace
+- Feature: Phase M5 built multi-character chapter dialogue script editor, cast assignment, line status tracking, and batch synthesis in Stories workspace
+- UX: Phase M5 unified workspace switching and floating panel overlay in `SubtabTopBar` with one-click view toggling and full keyboard accessibility
 - Feature: Phase M4 implemented `alp_session::TransportController` and wired live audio playback to `alp-desktop` IPC (`play_transport`, `pause_transport`, `stop_transport`, `seek_transport`, `set_transport_volume`, `set_transport_loop`, `get_transport_state`)
 - Feature: Phase M4 established real-time calibrated stereo meter streaming over Tauri 2 `Channel` at ~30 Hz (`subscribe_meters`), paired with client-side playhead interpolation at 60–120 fps (`useTransport`) via monotonic timestamp anchors
 - Feature: Phase M4 built high-performance `WaveformCanvas` in HTML5 Canvas 2D with dynamic decimation, level-of-detail pyramid selection (256, 1024, 4096 spl), interactive scrubber seeking, and zero-idle-draw optimization
