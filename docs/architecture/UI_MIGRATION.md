@@ -115,7 +115,7 @@ If the gate fails: try WebGL for the waveform. If WebKitGTK is still the blocker
 ### M2 — Tauri shell + frontend scaffold (size M)
 - Create `alp-desktop` and `frontend/` (Vite, React, TS strict, Tailwind).
 - Wire one end-to-end command and one event; generate TS types from Rust.
-- Check `unsafe_code = "deny"` against Tauri's macro output. If it trips, scope an `allow` to `alp-desktop` only and record it in the ADR.
+- Check `unsafe_code = "deny"` against Tauri's macro output: keep workspace-wide deny. M2 first checks whether Tauri's generated code actually trips the lint; if not, no exception exists. If it trips, scope the exception to `alp-desktop` only at the narrowest level (macro-generated item, not crate). Hand-written code in `alp-desktop` must contain zero `unsafe` (glass and window code use safe `x11rb` and `raw-window-handle`). Record every exception in ADR 0013 with reason, item, and Tauri version; re-check on upgrades.
 - Port the design tokens: neon hues per workspace, dark and light glass palettes, contrast rules, spacing, radii, elevation.
 - Early Flatpak de-risk: build a throwaway Flatpak manifest with the Tauri skeleton and confirm audio (PipeWire/ALSA), file access, and model-directory access work.
 - **Exit:** the window opens with the iced-equivalent background, token page renders, CI builds both apps, and throwaway Flatpak manifest builds and plays a test tone.
@@ -173,7 +173,7 @@ The riskiest piece, so it comes after everything else is stable.
 |---|---|
 | `check-ui.sh` (no raw iced widgets outside kit) | ESLint rule banning raw `<button>`, `<input>` etc. outside `frontend/src/kit/` |
 | `check-file-length.sh` (Rust) | Extend to `.ts` / `.tsx` |
-| `check-deps.sh` | Add `alp-session`, `alp-desktop`; forbid iced and tauri in `alp-session` |
+| `check-deps.sh` | Add `alp-session`, `alp-desktop`; forbid iced and tauri in `alp-session`; check-deps.sh or a new check fails if `unsafe` appears in hand-written alp-desktop source |
 | `check-docs.sh` | Also require a page per frontend feature folder |
 | fmt, clippy, tests | Add `tsc --noEmit`, ESLint, Vitest, Playwright |
 
@@ -187,7 +187,7 @@ The riskiest piece, so it comes after everything else is stable.
 | Dual UI maintenance during migration | Time-box: iced stays frozen (bug fixes only) from M2 |
 | Flatpak runtime change | Handle in M8 (runtime version: verify the currently supported GNOME runtime and that it provides webkit2gtk-4.1 at M8 time; Freedesktop 24.08 stays until M8); early de-risk in M2 builds throwaway manifest and verifies audio playback |
 | npm supply-chain and license surface | Lockfile, `npm audit` in CI, license check feeds `THIRD_PARTY.md` |
-| `unsafe_code = "deny"` vs Tauri macros | Scope the exception to `alp-desktop`, document it |
+| `unsafe_code = "deny"` vs Tauri macros | Workspace deny stays; M2 verifies if macros trip it; if so, item-level exception only, zero unsafe in hand-written code, verified by guard |
 
 ## 10. Manual acceptance checklist (before removing iced)
 

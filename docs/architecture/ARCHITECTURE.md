@@ -94,7 +94,7 @@ flowchart TD
 
 ### Planned crate changes and dependency rules
 - **`alp-session` (planned):** Headless session manager extracted from `alp-ui`. Owns the live `EditSession`, undoable `Command` stack, background worker pool, `alp-api::control` native socket host, and workspace persistence. Allowed dependencies: `alp-core`, `alp-engine`, `alp-media`, `alp-voice`, `alp-api`. **Must not depend on iced or tauri.**
-- **`alp-desktop` (planned):** Tauri 2 native desktop application wrapper. Owns the window lifecycle, system tray/menus, IPC command/event dispatch, and `x11rb` compositor blur. Depends only on `alp-session` and the Tauri framework.
+- **`alp-desktop` (planned):** Tauri 2 native desktop application wrapper. Owns the window lifecycle, system tray/menus, IPC command/event dispatch, and `x11rb` compositor blur. Depends only on `alp-session` and the Tauri framework. Maintains workspace `unsafe_code = "deny"`: hand-written code contains zero `unsafe` (glass and window use safe `x11rb` and `raw-window-handle`); if Tauri macros trip the lint, exceptions are scoped strictly to the macro-generated item, cataloged in ADR 0013, and enforced by planned guard checks.
 - **`frontend/` (planned):** Webview presentation application (Vite + React + TypeScript + Tailwind CSS). Not a Rust crate. Dispatches IPC commands and renders state reported by Rust.
 - **Removed after cutover (M8):** `alp-ui`, `alp-ui-kit`, and workspace dependencies `iced`, `iced-cube`, `lilt`.
 

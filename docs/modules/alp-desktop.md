@@ -58,3 +58,4 @@ The native desktop shell application built on Tauri 2. Replacing the legacy iced
 
 - Requires WebKitGTK (`webkit2gtk-4.1` / `javascriptcoregtk-4.1`) on the host system or Flatpak runtime.
 - Wayland background blur defaults to tint fallback in accordance with the `unsafe_code = "deny"` invariant.
+- Hand-written code must contain zero `unsafe` (window and KWin blur use safe `raw-window-handle` and `x11rb`). Any compiler exception necessitated by Tauri macro expansion is restricted to the specific generated item and tracked in ADR 0013.
