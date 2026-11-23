@@ -33,7 +33,7 @@ versions follow the release milestones in the build plan.
 
 - **Clean Cutover from Iced to Tauri 2 + React:** Cleanly removed legacy iced crates (`crates/alp-ui`, `crates/alp-ui-kit`) and workspace dependencies (`iced`, `iced-cube`, `lilt`), achieving complete cutover.
 - **Guard Tooling:** Updated `scripts/check-deps.sh` for 12 ALP crates and updated `scripts/check-ui.sh` for frontend kit compliance.
-- **Workflows & Packaging:** Updated `.github/workflows/ci.yml` and `.github/workflows/release.yml` for WebKitGTK 4.1, Node 20, GNOME 48 SDK, and `alp-desktop`.
+- **Workflows & Packaging:** Updated `.github/workflows/ci.yml` and `.github/workflows/release.yml` for WebKitGTK 4.1, Node 20, GNOME 49 SDK (Freedesktop 25.08 extensions), and `alp-desktop`.
 
 ### Planned (Phase 14–19 Adoption Roadmap)
 
