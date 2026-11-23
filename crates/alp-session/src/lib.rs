@@ -12,6 +12,7 @@ pub mod panels;
 pub mod session;
 pub mod workspace;
 
+pub use alp_api::ProjectSummary;
 pub use jobs::{Job, JobQueue, JobReporter, JobStatus};
 pub use panels::{DockSide, PanelKind, PanelManager, PanelRect, PanelState, Point, Size};
 pub use session::{EditSession, ImportedAudio, NORMALIZE_TARGET};

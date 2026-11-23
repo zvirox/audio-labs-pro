@@ -7,6 +7,7 @@ cd "$root"
 
 python3 - <<'PY'
 import json
+import pathlib
 import subprocess
 import sys
 
@@ -22,6 +23,7 @@ ALLOWED = {
     "alp-api": {"alp-core", "alp-dsp", "alp-engine", "alp-media", "alp-plugin", "alp-voice"},
     "alp-mcp": {"alp-api", "alp-core"},
     "alp-session": {"alp-api", "alp-core", "alp-engine", "alp-media", "alp-voice"},
+    "alp-desktop": {"alp-session"},
     "alp-ui": {"alp-api", "alp-core", "alp-engine", "alp-mcp", "alp-media", "alp-plugin", "alp-session", "alp-ui-kit", "alp-voice"},
     "alp-cli": {"alp-core", "alp-dsp", "alp-engine", "alp-media", "alp-plugin", "alp-voice"},
 }
@@ -75,6 +77,16 @@ for name, package in packages.items():
         forbidden = {"iced", "tauri", "alp-ui", "alp-ui-kit"} & all_deps
         if forbidden:
             errors.append(f"alp-session has forbidden dependencies: {', '.join(sorted(forbidden))}")
+    if name == "alp-desktop":
+        desktop_src = pathlib.Path("crates/alp-desktop/src")
+        if desktop_src.exists():
+            for rs_file in desktop_src.rglob("*.rs"):
+                for line_idx, line in enumerate(rs_file.read_text(encoding="utf-8").splitlines(), start=1):
+                    stripped = line.strip()
+                    if stripped.startswith("//") or stripped.startswith("/*") or stripped.startswith("*"):
+                        continue
+                    if "unsafe " in line or "unsafe{" in line or "unsafe(" in line:
+                        errors.append(f"hand-written unsafe code in alp-desktop {rs_file.name}:{line_idx}: {line}")
 
 if errors:
     for error in errors:
