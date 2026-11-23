@@ -12,51 +12,91 @@ import { Button } from '../kit/Button';
 import { Slider } from '../kit/Slider';
 import { Meter } from '../kit/Meter';
 
-interface DockedPlayerProps {
+export interface DockedPlayerProps {
   durationSecs?: number;
   sampleRate?: number;
+  playing?: boolean;
+  currentTime?: number;
+  volume?: number;
+  loopEnabled?: boolean;
+  peakL?: number;
+  peakR?: number;
+  isClipping?: boolean;
+  onTogglePlay?: () => void;
+  onStop?: () => void;
+  onSeek?: (secs: number) => void;
+  onSetVolume?: (vol: number) => void;
+  onToggleLoop?: () => void;
 }
 
 export function DockedPlayer({
   durationSecs = 20.0,
   sampleRate = 48000,
+  playing,
+  currentTime,
+  volume = 1.0,
+  loopEnabled,
+  peakL = 0.0,
+  peakR = 0.0,
+  onTogglePlay,
+  onStop,
+  onSeek,
+  onSetVolume,
+  onToggleLoop,
 }: DockedPlayerProps) {
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [localPlaying, setLocalPlaying] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [isLooping, setIsLooping] = useState(false);
-  const [currentTime, setCurrentTime] = useState(4.25);
-  const [volume, setVolume] = useState(0.85);
+  const [localLooping, setLocalLooping] = useState(false);
+  const [localTime, setLocalTime] = useState(0.0);
+  const [localVolume, setLocalVolume] = useState(volume);
   const [isMuted, setIsMuted] = useState(false);
 
-  // Meter simulation during playback
-  const [leftMeter, setLeftMeter] = useState(0.0);
-  const [rightMeter, setRightMeter] = useState(0.0);
+  const activePlaying = playing !== undefined ? playing : localPlaying;
+  const activeTime = currentTime !== undefined ? currentTime : localTime;
+  const activeLooping = loopEnabled !== undefined ? loopEnabled : localLooping;
+  const activeVolume = volume !== undefined ? volume : localVolume;
 
-  useEffect(() => {
-    let timer: ReturnType<typeof setInterval>;
-    if (isPlaying) {
-      timer = setInterval(() => {
-        setCurrentTime((prev) => {
-          const next = prev + 0.1;
-          if (next >= durationSecs) {
-            return isLooping ? 0 : durationSecs;
-          }
-          return next;
-        });
-
-        // Simulate reactive audio energy
-        const energyL = Math.min(0.95, Math.random() * 0.4 + (isMuted ? 0 : volume * 0.5));
-        const energyR = Math.min(0.95, Math.random() * 0.4 + (isMuted ? 0 : volume * 0.48));
-        setLeftMeter(energyL);
-        setRightMeter(energyR);
-      }, 100);
+  const handlePlayToggle = () => {
+    if (onTogglePlay) {
+      onTogglePlay();
     } else {
-      setLeftMeter(0.0);
-      setRightMeter(0.0);
+      setLocalPlaying(!localPlaying);
     }
+  };
 
-    return () => clearInterval(timer);
-  }, [isPlaying, isLooping, durationSecs, volume, isMuted]);
+  const handleStop = () => {
+    if (onStop) {
+      onStop();
+    } else {
+      setLocalPlaying(false);
+      setLocalTime(0.0);
+    }
+  };
+
+  const handleSeek = (newTime: number) => {
+    if (onSeek) {
+      onSeek(newTime);
+    } else {
+      setLocalTime(newTime);
+    }
+  };
+
+  const handleVolumeChange = (newVol: number) => {
+    if (onSetVolume) {
+      onSetVolume(newVol);
+    } else {
+      setLocalVolume(newVol);
+    }
+    if (isMuted) setIsMuted(false);
+  };
+
+  const handleLoopToggle = () => {
+    if (onToggleLoop) {
+      onToggleLoop();
+    } else {
+      setLocalLooping(!localLooping);
+    }
+  };
 
   // Space key play/pause
   useEffect(() => {
@@ -69,12 +109,12 @@ export function DockedPlayer({
       }
       if (e.code === 'Space') {
         e.preventDefault();
-        setIsPlaying((prev) => !prev);
+        handlePlayToggle();
       }
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [handlePlayToggle]);
 
   const formatTimecode = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -94,28 +134,25 @@ export function DockedPlayer({
         <Button
           variant="primary"
           size="sm"
-          onClick={() => setIsPlaying(!isPlaying)}
+          onClick={handlePlayToggle}
           leftIcon={
-            isPlaying ? (
+            activePlaying ? (
               <Pause className="w-4 h-4 fill-current" />
             ) : (
               <Play className="w-4 h-4 fill-current ml-0.5" />
             )
           }
           title="Play / Pause transport (Space)"
-          aria-label={isPlaying ? 'Pause' : 'Play'}
+          aria-label={activePlaying ? 'Pause' : 'Play'}
         >
-          {isPlaying ? 'Pause' : 'Play'}
+          {activePlaying ? 'Pause' : 'Play'}
         </Button>
 
         {/* Stop */}
         <Button
           variant="secondary"
           size="sm"
-          onClick={() => {
-            setIsPlaying(false);
-            setCurrentTime(0);
-          }}
+          onClick={handleStop}
           leftIcon={<Square className="w-3.5 h-3.5" />}
           title="Stop and return to 0:00"
           aria-label="Stop"
@@ -133,9 +170,9 @@ export function DockedPlayer({
 
         {/* Loop */}
         <Button
-          variant={isLooping ? 'primary' : 'ghost'}
+          variant={activeLooping ? 'primary' : 'ghost'}
           size="sm"
-          onClick={() => setIsLooping(!isLooping)}
+          onClick={handleLoopToggle}
           leftIcon={<Repeat className="w-3.5 h-3.5" />}
           title="Toggle loop playback (L)"
           aria-label="Loop"
@@ -146,7 +183,7 @@ export function DockedPlayer({
       <div className="flex-1 max-w-2xl flex items-center gap-3">
         {/* Digital Clock readout */}
         <div className="px-2.5 py-1 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] font-mono text-xs font-bold text-[var(--color-accent)] tracking-wider">
-          {formatTimecode(currentTime)}
+          {formatTimecode(activeTime)}
         </div>
 
         {/* Interactive scrubber */}
@@ -155,8 +192,8 @@ export function DockedPlayer({
             min={0}
             max={durationSecs}
             step={0.01}
-            value={currentTime}
-            onChange={setCurrentTime}
+            value={activeTime}
+            onChange={handleSeek}
             formatValue={(v) => `${formatTimecode(v)} / ${formatTimecode(durationSecs)}`}
           />
         </div>
@@ -170,7 +207,7 @@ export function DockedPlayer({
       <div className="flex items-center gap-4 flex-shrink-0">
         {/* Stereo LED Audio Meter */}
         <div className="w-28 hidden md:block">
-          <Meter leftLevel={leftMeter} rightLevel={rightMeter} showLabels={false} />
+          <Meter leftLevel={peakL} rightLevel={peakR} peakLeft={peakL} peakRight={peakR} showLabels={false} />
         </div>
 
         {/* Volume Fader */}
@@ -181,7 +218,7 @@ export function DockedPlayer({
             className="text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] p-1 rounded-md"
             title={isMuted ? 'Unmute master' : 'Mute master'}
           >
-            {isMuted || volume === 0 ? (
+            {isMuted || activeVolume === 0 ? (
               <VolumeX className="w-4 h-4 text-red-400" />
             ) : (
               <Volume2 className="w-4 h-4" />
@@ -192,11 +229,8 @@ export function DockedPlayer({
               min={0}
               max={1}
               step={0.01}
-              value={isMuted ? 0 : volume}
-              onChange={(val) => {
-                setVolume(val);
-                if (isMuted) setIsMuted(false);
-              }}
+              value={isMuted ? 0 : activeVolume}
+              onChange={handleVolumeChange}
               formatValue={(v) => `${(v * 100).toFixed(0)}%`}
             />
           </div>

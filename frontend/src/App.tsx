@@ -11,9 +11,11 @@ import { SubtabTopBar } from './layout/SubtabTopBar';
 import { InspectorDrawer } from './layout/InspectorDrawer';
 import { DockedPlayer } from './layout/DockedPlayer';
 import { PanelContainer } from './panels/PanelContainer';
+import { TimelineWaveformPanel } from './panels/TimelineWaveformPanel';
 import { CommandPalette } from './components/CommandPalette';
 import { ShortcutsModal } from './components/ShortcutsModal';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { useTransport } from './hooks/useTransport';
 
 import { Button } from './kit/Button';
 import { Slider } from './kit/Slider';
@@ -95,6 +97,7 @@ export default function App() {
   const [workspaceState, setWorkspaceState] = useState<WorkspaceState | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const isNative = isTauriEnvironment();
+  const transport = useTransport();
 
   // Active workspace metadata
   const currentWsObj =
@@ -397,7 +400,7 @@ export default function App() {
                 onClose={handleClosePanel}
                 onFocus={handleFocusPanel}
               >
-                {renderPanelContent(panel.kind)}
+                {renderPanelContent(panel.kind, transport)}
               </PanelContainer>
             ))}
           </main>
@@ -413,8 +416,20 @@ export default function App() {
 
       {/* Bottom Docked Transport & Playback Player Bar (64px) */}
       <DockedPlayer
-        durationSecs={projectSummary?.duration_secs || 20.0}
+        durationSecs={transport.durationSecs}
         sampleRate={projectSummary?.sample_rate || 48000}
+        playing={transport.playing}
+        currentTime={transport.positionSecs}
+        volume={transport.volume}
+        loopEnabled={transport.loopEnabled}
+        peakL={transport.peakL}
+        peakR={transport.peakR}
+        isClipping={transport.isClipping}
+        onTogglePlay={transport.togglePlay}
+        onStop={transport.stop}
+        onSeek={transport.seek}
+        onSetVolume={transport.setVolume}
+        onToggleLoop={transport.toggleLoop}
       />
 
       {/* Command Palette Modal (Ctrl+K) */}
@@ -443,35 +458,24 @@ export default function App() {
 }
 
 /** Render distinct internal content for each studio floating panel using kit primitives */
-function renderPanelContent(kind: PanelKind) {
+function renderPanelContent(
+  kind: PanelKind,
+  transport: ReturnType<typeof useTransport>
+) {
   switch (kind) {
     case 'timeline':
       return (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between text-xs font-mono text-[var(--color-fg-muted)]">
-            <span>TRACK 01: Lead Vocal</span>
-            <span className="text-[var(--color-accent)]">0:00 - 0:20</span>
-          </div>
-          <div className="h-28 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] flex items-center justify-center p-3 relative overflow-hidden">
-            {/* Simulated waveform canvas visualization */}
-            <div className="w-full flex items-center justify-center gap-1 h-full">
-              {Array.from({ length: 48 }).map((_, i) => {
-                const height = Math.sin(i * 0.3) * 40 + 45;
-                return (
-                  <div
-                    key={i}
-                    className="flex-1 bg-[var(--color-accent)] opacity-80 rounded-full"
-                    style={{ height: `${height}%` }}
-                  />
-                );
-              })}
-            </div>
-          </div>
-          <div className="flex items-center justify-between text-[11px] text-[var(--color-fg-subtle)] font-mono">
-            <span>Snapping: 1/16 Beat</span>
-            <span>Zoom: 100% (Normal)</span>
-          </div>
-        </div>
+        <TimelineWaveformPanel
+          currentTime={transport.positionSecs}
+          duration={transport.durationSecs}
+          isPlaying={transport.playing}
+          loopEnabled={transport.loopEnabled}
+          loopStart={transport.loopStartSecs}
+          loopEnd={transport.loopEndSecs}
+          onSeek={transport.seek}
+          onTogglePlay={transport.togglePlay}
+          onToggleLoop={transport.toggleLoop}
+        />
       );
 
     case 'mixer':

@@ -89,3 +89,43 @@ export interface IpcError {
   code: string;
   message: string;
 }
+
+export interface MeterFrame {
+  peak_l: number;
+  peak_r: number;
+  rms_l: number;
+  rms_r: number;
+  position_secs: number;
+  anchor_timestamp_ms: number;
+  playing: boolean;
+  duration_secs: number;
+}
+
+export interface TransportState {
+  playing: boolean;
+  position_secs: number;
+  position_frames: number;
+  duration_secs: number;
+  sample_rate: number;
+  loop_enabled: boolean;
+  loop_start_secs: number;
+  loop_end_secs: number;
+  volume: number;
+  master_peak_l: number;
+  master_peak_r: number;
+  master_rms_l: number;
+  master_rms_r: number;
+  anchor_timestamp_ms: number;
+}
+
+export interface PeakLevelDto {
+  bucket_samples: number;
+  pairs: [number, number][];
+}
+
+export interface WaveformPeaksDto {
+  sample_rate: number;
+  frames: number;
+  duration_secs: number;
+  levels: PeakLevelDto[];
+}
