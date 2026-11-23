@@ -12,6 +12,16 @@ Provides typed Tauri 2 IPC command handlers bridging requests from the React fro
 - `reset_workspace_layout(state)` — Resets panel geometry to default arrangement and persists to disk.
 - `get_glass_report(state)` — Returns the active compositor glass inspection report (`GlassReport`).
 - `trigger_demo_edit(app, action, state)` — Applies a timeline modification and broadcasts `session_revision_changed` event.
+- `play_transport(state)` — Starts audio playback through `TransportController`.
+- `pause_transport(state)` — Pauses playback while preserving current playhead.
+- `stop_transport(state)` — Stops playback and rewinds to zero or loop boundary.
+- `seek_transport(position_secs, state)` — Seeks playhead to specific timestamp in seconds.
+- `set_transport_volume(volume, state)` — Sets master output volume (0.0..=1.5).
+- `set_transport_loop(enabled, start_secs, end_secs, state)` — Configures timeline loop playback.
+- `get_transport_state(state)` — Retrieves current authoritative transport snapshot (`TransportState`).
+- `get_waveform_peaks(state)` — Retrieves multi-level peak pyramid (`WaveformPeaksDto`) for active project audio.
+- `get_benchmark_1hour_peaks()` — Generates synthetic 1-hour waveform peaks for the M0/M4 autoscroll gate.
+- `subscribe_meters(on_event: Channel<MeterFrame>, state)` — Streams live calibrated meter frames to the UI over Tauri 2 `Channel` at ~30 Hz.
 - `SessionRevisionPayload` — Struct transmitted across the Tauri event bridge.
 
 ## Data flow

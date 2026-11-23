@@ -10,15 +10,17 @@ mod state;
 use tauri::Manager;
 
 use crate::commands::{
-    get_glass_report, get_project_summary, get_workspace_state, reset_workspace_layout,
-    save_workspace_state, trigger_demo_edit,
+    get_benchmark_1hour_peaks, get_glass_report, get_project_summary, get_transport_state,
+    get_waveform_peaks, get_workspace_state, pause_transport, play_transport,
+    reset_workspace_layout, save_workspace_state, seek_transport, set_transport_loop,
+    set_transport_volume, stop_transport, subscribe_meters, trigger_demo_edit,
 };
 use crate::glass::probe;
 use crate::state::AppState;
 
 fn main() {
     tracing_subscriber::fmt::init();
-    tracing::info!("Starting Audio Labs Pro desktop shell (Phase M3)...");
+    tracing::info!("Starting Audio Labs Pro desktop shell (Phase M4)...");
 
     let app_state = AppState::new_demo();
     let state_for_setup = app_state.clone();
@@ -44,6 +46,16 @@ fn main() {
             reset_workspace_layout,
             get_glass_report,
             trigger_demo_edit,
+            play_transport,
+            pause_transport,
+            stop_transport,
+            seek_transport,
+            set_transport_volume,
+            set_transport_loop,
+            get_transport_state,
+            get_waveform_peaks,
+            get_benchmark_1hour_peaks,
+            subscribe_meters,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Audio Labs Pro desktop shell");
