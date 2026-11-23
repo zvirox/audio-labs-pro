@@ -12,7 +12,7 @@
 //! reported as a failure that names the argument, not as a zero-value default
 //! that silently edits the wrong thing.
 
-use alp_api::{ApiSession, ExportPreset};
+use alp_api::{ApiSession, BatchTtsRequest, ExportPreset, VoiceParamsUpdate, VoiceProfileUpdate};
 use serde_json::{Value, json};
 
 use crate::protocol::ToolCallResult;
@@ -1151,6 +1151,136 @@ pub fn dispatch(session: &mut ApiSession, tool_name: &str, arguments: &Value) ->
                     serde_json::to_value(report).unwrap(),
                 ),
                 Err(e) => ToolCallResult::failure(format!("Regeneration failed: {e}")),
+            }
+        }
+        "voice_profile_update" => {
+            let voice_id = arguments
+                .get("voice_id")
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            let default_params = arguments.get("default_params").and_then(Value::as_object);
+            let update = VoiceProfileUpdate {
+                name: arguments
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .map(String::from),
+                tags: arguments
+                    .get("tags")
+                    .and_then(Value::as_array)
+                    .map(|items| {
+                        items
+                            .iter()
+                            .filter_map(Value::as_str)
+                            .map(String::from)
+                            .collect()
+                    }),
+                default_params: default_params.map(|params| VoiceParamsUpdate {
+                    speed: params
+                        .get("speed")
+                        .and_then(Value::as_f64)
+                        .map(|v| v as f32),
+                    pitch: params
+                        .get("pitch")
+                        .and_then(Value::as_f64)
+                        .map(|v| v as f32),
+                    energy: params
+                        .get("energy")
+                        .and_then(Value::as_f64)
+                        .map(|v| v as f32),
+                    emotion: params
+                        .get("emotion")
+                        .and_then(Value::as_str)
+                        .map(String::from),
+                }),
+            };
+            match session.voice_profile_update(voice_id, update) {
+                Ok(detail) => ToolCallResult::success(
+                    format!("Updated voice '{}' ({})", detail.name, detail.id),
+                    serde_json::to_value(detail).unwrap(),
+                ),
+                Err(e) => ToolCallResult::failure(format!("Voice profile update failed: {e}")),
+            }
+        }
+        "voice_profile_lock" => {
+            let voice_id = arguments
+                .get("voice_id")
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            match session.voice_profile_lock(voice_id) {
+                Ok(detail) => ToolCallResult::success(
+                    format!("Locked voice '{}' ({})", detail.name, detail.id),
+                    serde_json::to_value(detail).unwrap(),
+                ),
+                Err(e) => ToolCallResult::failure(format!("Voice profile lock failed: {e}")),
+            }
+        }
+        "voice_profile_unlock" => {
+            let voice_id = arguments
+                .get("voice_id")
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            match session.voice_profile_unlock(voice_id) {
+                Ok(detail) => ToolCallResult::success(
+                    format!("Unlocked voice '{}' ({})", detail.name, detail.id),
+                    serde_json::to_value(detail).unwrap(),
+                ),
+                Err(e) => ToolCallResult::failure(format!("Voice profile unlock failed: {e}")),
+            }
+        }
+        "tts_batch" => {
+            let requests: Vec<BatchTtsRequest> = arguments
+                .get("requests")
+                .and_then(Value::as_array)
+                .map(|items| {
+                    items
+                        .iter()
+                        .filter_map(|item| {
+                            Some(BatchTtsRequest {
+                                voice_id: item.get("voice_id").and_then(Value::as_str)?.to_owned(),
+                                text: item.get("text").and_then(Value::as_str)?.to_owned(),
+                                speed: item.get("speed").and_then(Value::as_f64).map(|v| v as f32),
+                            })
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+            if requests.is_empty() {
+                return ToolCallResult::failure(
+                    "requests is empty; provide at least one {voice_id, text} item",
+                );
+            }
+            match session.tts_batch(&requests) {
+                Ok(report) => {
+                    let summary = format!(
+                        "Synthesized {} clip(s): {}",
+                        report.results.len(),
+                        report
+                            .results
+                            .iter()
+                            .map(|r| r.path.clone())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    );
+                    ToolCallResult::success(summary, serde_json::to_value(report).unwrap())
+                }
+                Err(e) => ToolCallResult::failure(format!("Batch synthesis failed: {e}")),
+            }
+        }
+        "audiobook_encode" => {
+            let script_json = arguments
+                .get("script_json")
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            let output_path = arguments.get("output_path").and_then(Value::as_str);
+            match session.audiobook_encode(script_json, output_path) {
+                Ok(report) => ToolCallResult::success(
+                    format!(
+                        "Encoded audiobook on track {}: {} segment(s), master at {}",
+                        report.track_id, report.segment_count, report.master_path
+                    ),
+                    serde_json::to_value(report).unwrap(),
+                ),
+                Err(e) => ToolCallResult::failure(format!("Audiobook encode failed: {e}")),
             }
         }
         _ => ToolCallResult::failure(format!("tool '{tool_name}' not recognized")),

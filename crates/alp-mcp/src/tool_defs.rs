@@ -666,6 +666,75 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
                         "required": ["track_id", "source_id", "start_secs"]
                     }),
                 },
+                McpTool {
+                    name: "voice_profile_update".into(),
+                    description: "Update a stored voice profile's name, tags and default parameters (speed, pitch, energy, emotion). Profile kind, backend and consent records are not mutable: cloning is never creatable through MCP, and a locked profile refuses mutation until it is unlocked.".into(),
+                    input_schema: json!({
+                        "type": "object",
+                        "properties": {
+                            "voice_id": { "type": "string", "description": "Voice profile handle (see tts_voices)" },
+                            "name": { "type": "string", "description": "New display name (non-empty)" },
+                            "tags": { "type": "array", "items": { "type": "string" }, "description": "New descriptive tags" },
+                            "default_params": {
+                                "type": "object",
+                                "description": "Partial default-parameter update (speed, pitch, energy, emotion); omitted fields keep stored values",
+                                "properties": {
+                                    "speed": { "type": "number", "description": "Speed multiplier, 0.25 to 4.0 (1.0 neutral)" },
+                                    "pitch": { "type": "number", "description": "Pitch adjustment in semitones (0.0 neutral)" },
+                                    "energy": { "type": "number", "description": "Energy / vocal effort (1.0 neutral)" },
+                                    "emotion": { "type": "string", "description": "Expressive emotion / style tag" }
+                                }
+                            }
+                        },
+                        "required": ["voice_id"]
+                    }),
+                },
+                McpTool {
+                    name: "voice_profile_lock".into(),
+                    description: "Lock a stored voice profile so it refuses agent-visible mutation until it is unlocked.".into(),
+                    input_schema: json!({
+                        "type": "object",
+                        "properties": {
+                            "voice_id": { "type": "string", "description": "Voice profile handle (see tts_voices)" }
+                        },
+                        "required": ["voice_id"]
+                    }),
+                },
+                McpTool {
+                    name: "voice_profile_unlock".into(),
+                    description: "Unlock a stored voice profile so agent-visible mutation is allowed again.".into(),
+                    input_schema: json!({
+                        "type": "object",
+                        "properties": {
+                            "voice_id": { "type": "string", "description": "Voice profile handle (see tts_voices)" }
+                        },
+                        "required": ["voice_id"]
+                    }),
+                },
+                McpTool {
+                    name: "tts_batch".into(),
+                    description: "Synthesize a batch of speech requests (batch parity: enqueue a text list). One background job per request; jobs run sequentially and job_cancel stops the batch at the next segment boundary. Returns one report per synthesized clip with its job id.".into(),
+                    input_schema: json!({
+                        "type": "object",
+                        "properties": {
+                            "requests": {
+                                "type": "array",
+                                "minItems": 1,
+                                "description": "Items to synthesize, in order",
+                                "items": {
+                                    "type": "object",
+                                    "required": ["voice_id", "text"],
+                                    "properties": {
+                                        "voice_id": { "type": "string", "description": "Voice profile handle (see tts_voices)" },
+                                        "text": { "type": "string", "description": "Text to speak" },
+                                        "speed": { "type": "number", "description": "Speed multiplier, 0.25 to 4.0 (default 1.0)" }
+                                    }
+                                }
+                            }
+                        },
+                        "required": ["requests"]
+                    }),
+                },
             ]);
     }
 
@@ -682,6 +751,24 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
                     "output_path": { "type": "string", "description": "Destination file path" }
                 },
                 "required": ["preset", "output_path"]
+            }),
+        });
+        tools.push(McpTool {
+            name: "audiobook_encode".into(),
+            description: "Encode a full audiobook from a script (audiobook parity: synthesize each segment with its voice, place the clips on a dedicated Audiobook track, and export the master with the audiobook delivery preset). Script JSON: {\"segments\":[{\"text\":...,\"voice_id\":...,\"speed\"?,\"gap_secs\"?}]} — the same contract as tts_script_generate.".into(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "script_json": {
+                        "type": "string",
+                        "description": "Audiobook script JSON ({\"segments\":[...]} or a bare array of segments)"
+                    },
+                    "output_path": {
+                        "type": "string",
+                        "description": "Destination path for the exported master (default: generated under the project renders directory)"
+                    }
+                },
+                "required": ["script_json"]
             }),
         });
     }
@@ -910,6 +997,20 @@ pub fn metadata_for(name: &str) -> ToolMetadata {
                 read_only: false,
                 destructive: false,
                 idempotent: true,
+                open_world: false,
+            },
+        ),
+        // --- Voice & profile parity (alpha.6) ---
+        "voice_profile_update" => ("Update Voice Profile", add),
+        "voice_profile_lock" => ("Lock Voice Profile", add),
+        "voice_profile_unlock" => ("Unlock Voice Profile", add),
+        "tts_batch" => ("Synthesize Batch", add),
+        "audiobook_encode" => (
+            "Encode Audiobook",
+            ToolAnnotations {
+                read_only: false,
+                destructive: true,
+                idempotent: false,
                 open_world: false,
             },
         ),
