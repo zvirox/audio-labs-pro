@@ -110,11 +110,14 @@ Build a throwaway Tauri window and measure it against the iced baseline from `..
 
 Outcome: Canvas 2D is fully sufficient for 60 fps timeline scrolling (WebGL unnecessary for standard waveform view). WebKitGTK event loop idles at 0.00% CPU. Window handle exposure and KWin blur via safe `x11rb` work without `unsafe`. Proceed to M1.
 
-### M1 — Extract `alp-session` (size M)
-- Move all non-rendering logic out of `alp-ui` into `alp-session`; `alp-ui` becomes a thin iced adapter.
-- Split `app.rs` while doing this (it is near the 1,500-line ceiling).
-- Add `alp-session` to `scripts/check-deps.sh` with the rule "no iced, no tauri".
-- **Exit:** all 144+ tests pass, iced app behaves identically, MCP attach still works.
+### M1 — Extract `alp-session` (size M) — COMPLETE
+
+**Status:** Completed (2026-11-23). All exit criteria verified.
+- Extracted all non-rendering logic (`EditSession`, `JobQueue`, `PersistedWorkspace`, `PanelManager`) into headless `alp-session` crate.
+- `alp-ui` adapted into a thin iced shell re-exporting headless types with zero breaking changes.
+- Split `app.rs` from 1,054 lines down to 669 lines by extracting `app/message.rs` and `app/types.rs`.
+- Added `alp-session` to `scripts/check-deps.sh` enforcing strict forbidden dependencies: no iced, no tauri, no alp-ui, no alp-ui-kit.
+- **Exit:** All 144+ workspace tests pass, iced app behaves identically, MCP attach tests pass with 100% parity. Proceed to M2.
 
 ### M2 — Tauri shell + frontend scaffold (size M)
 - Create `alp-desktop` and `frontend/` (Vite, React, TS strict, Tailwind).

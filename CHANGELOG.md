@@ -5,6 +5,7 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+- Refactor: Phase M1 extracted headless `alp-session` crate (`EditSession`, `JobQueue`, `PersistedWorkspace`, `PanelManager`) with zero GUI dependencies, split `app.rs` from 1,054 down to 669 lines, and verified all 144+ workspace tests and MCP live attach parity
 - Spike: Phase M0 Tauri 2 + WebKitGTK feasibility spike and live benchmarks (GO gate passed; see `docs/spikes/PHASE-M0-RESULTS.md`)
 - Docs: UI migration plan and ADR 0013 accepted
 

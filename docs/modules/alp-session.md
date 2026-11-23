@@ -1,7 +1,5 @@
 # `alp-session`
 
-Status: planned
-
 ## Purpose
 
 The headless project session and coordination layer. Extracted from `alp-ui` during Phase M1 of the UI migration, `alp-session` encapsulates all non-rendering application state:

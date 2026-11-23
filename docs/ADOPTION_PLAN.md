@@ -104,10 +104,10 @@ To resolve the primary ergonomic bottleneck of dual-vertical-sidebar layouts (wh
   - Throwaway Tauri 2 transparent undecorated window; probe KWin blur via `x11rb` and WebKitGTK `backdrop-filter`.
   - Canvas 2D waveform autoscroll of 1-hour file.
   - *Exit Criteria:* Waveform autoscroll $\ge 55$ fps (achieved **60.02 fps**), idle CPU $< 1\%$ (achieved **0.00%**), compositor blur verified (`x11rb` active on X11, legible tint fallback on Wayland). Gate **PASSED** (2026-11-23; see [`docs/spikes/PHASE-M0-RESULTS.md`](spikes/PHASE-M0-RESULTS.md)).
-- [ ] **M1 — Extract `alp-session` (Size: M):**
+- [x] **M1 — Extract `alp-session` (Size: M — COMPLETE):**
   - Extract non-rendering session state, command stack, worker queue, autosave, and `alp-api::control` socket host into `alp-session` (no iced, no tauri).
-  - Split `app.rs` before hitting the 1,500-line ceiling.
-  - *Exit Criteria:* All 144+ workspace tests pass; existing iced app behaves identically; MCP attach works.
+  - Split `app.rs` before hitting the 1,500-line ceiling (reduced from 1,054 to 669 lines).
+  - *Exit Criteria:* All 144+ workspace tests pass; existing iced app behaves identically; MCP attach works. Completed 2026-11-23.
 - [ ] **M2 — Tauri Shell & Frontend Scaffold (Size: M):**
   - Create `alp-desktop` and `frontend/` (Vite, React, TypeScript strict, Tailwind CSS).
   - Port design tokens (neon hues, dark/light glass palettes, contrast rules). Generate Rust $\leftrightarrow$ TS types.
