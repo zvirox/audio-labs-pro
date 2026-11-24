@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { Button } from './Button';
+import { LinearCard } from '../components/linear/LinearCard';
 
 export interface DialogProps {
   open: boolean;
@@ -45,17 +46,18 @@ export function Dialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 animate-in fade-in duration-150"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div
+      <LinearCard
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="dialog-title"
-        className={`w-full ${sizeWidths[size]} rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]`}
+        level="modal"
+        className={`w-full ${sizeWidths[size]} p-0 overflow-hidden flex flex-col max-h-[90vh]`}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)]">
@@ -89,7 +91,7 @@ export function Dialog({
             {footer}
           </div>
         )}
-      </div>
+      </LinearCard>
     </div>
   );
 }

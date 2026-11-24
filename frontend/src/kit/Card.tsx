@@ -1,4 +1,5 @@
 import React from 'react';
+import { LinearCard } from '../components/linear/LinearCard';
 
 export interface CardProps {
   title?: React.ReactNode;
@@ -22,13 +23,12 @@ export function Card({
   onClick,
 }: CardProps) {
   return (
-    <div
+    <LinearCard
+      level="raised"
       onClick={onClick}
-      className={`rounded-xl bg-[var(--color-surface)] border transition-[color,background-color,border-color,opacity,transform] ${
- accent
- ? 'border-[var(--color-accent)]'
- : 'border-[var(--color-border)]'
- } ${onClick ? 'cursor-pointer hover:border-[var(--color-border-strong)]' : ''} ${className}`}
+      className={`p-0 overflow-hidden ${
+        accent ? '!border-[var(--color-accent)]' : ''
+      } ${onClick ? 'cursor-pointer hover:border-[var(--color-border-strong)]' : ''} ${className}`}
     >
       {(title || subtitle || actions) && (
         <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)]">
@@ -49,6 +49,6 @@ export function Card({
           {footer}
         </div>
       )}
-    </div>
+    </LinearCard>
   );
 }

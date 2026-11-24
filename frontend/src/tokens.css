@@ -2,32 +2,32 @@
   color-scheme: dark;
   font-feature-settings: "tnum" 1;
 
-  /* Studio Dark Glass Palette (Default) */
-  --color-bg: oklch(0.12 0.015 250 / 0.82);
-  --color-bg-solid: oklch(0.12 0.015 250);
-  --color-surface: oklch(0.16 0.018 250 / 0.85);
-  --color-surface-2: oklch(0.20 0.020 250 / 0.90);
-  --color-surface-3: oklch(0.24 0.022 250 / 0.95);
-  --color-surface-solid: oklch(0.16 0.018 250);
-  --color-fg: oklch(0.97 0.005 250);
-  --color-fg-muted: oklch(0.72 0.015 250);
-  --color-fg-subtle: oklch(0.55 0.015 250);
-  --color-border: oklch(0.28 0.02 250 / 0.70);
-  --color-border-strong: oklch(0.40 0.025 250);
-  --color-focus: oklch(0.75 0.18 200);
+  /* Linear Dark Surface Palette (Zero Glass) */
+  --color-bg: #08080a;
+  --color-bg-solid: #08080a;
+  --color-surface: #121215;
+  --color-surface-2: #17171c;
+  --color-surface-3: #202026;
+  --color-surface-solid: #121215;
+  --color-fg: #f4f4f5;
+  --color-fg-muted: #a1a1aa;
+  --color-fg-subtle: #71717a;
+  --color-border: #23232a;
+  --color-border-strong: #33333d;
+  --color-focus: #22d3ee;
 
   /* Status Colors */
-  --color-success: oklch(0.75 0.17 155);
-  --color-warning: oklch(0.80 0.16 75);
-  --color-danger: oklch(0.70 0.20 25);
-  --color-info: oklch(0.75 0.16 230);
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #f43f5e;
+  --color-info: #22d3ee;
 
   /* One signal accent; chrome and surfaces stay neutral ink. */
-  --color-accent: #2fd4c2;
-  --color-accent-hover: #55e0d0;
-  --color-accent-active: #20b8a7;
-  --color-accent-fg: #04201d;
-  --color-record: #f2555a;
+  --color-accent: #22d3ee;
+  --color-accent-hover: #38bdf8;
+  --color-accent-active: #0284c7;
+  --color-accent-fg: #08080a;
+  --color-record: #f43f5e;
   /* Layout Chrome Dimensions */
   --rail-width: 56px;
   --subtab-height: 40px;
@@ -51,45 +51,47 @@
   --radius-xl: 12px;
   --radius-full: 9999px;
 
-  /* Glass Filter */
-  --glass-blur: blur(16px);
-  --glass-tint: rgba(11, 15, 25, 0.75);
+  /* Linear Dual-Shadow Elevations (No Blur) */
+  --glass-blur: none;
+  --glass-tint: #121215;
+  --shadow-linear-dark: inset 0 1px 0 0 rgba(255, 255, 255, 0.07), 0 1px 2px 0 rgba(0, 0, 0, 0.4), 0 12px 30px -10px rgba(0, 0, 0, 0.85);
 
-  /* Motion: one curve, short for feedback, longer for entrances */
-  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Motion: mechanical easing curve */
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --duration-quick: 140ms;
   --duration-menu: 180ms;
-  --duration-enter: 320ms;
+  --duration-enter: 240ms;
 }
 
 .theme-light {
   color-scheme: light;
 
-  --color-bg: oklch(0.985 0.003 250 / 0.88);
-  --color-bg-solid: oklch(0.985 0.003 250);
-  --color-surface: oklch(1.0 0 0 / 0.88);
-  --color-surface-2: oklch(0.955 0.006 250 / 0.92);
-  --color-surface-3: oklch(0.92 0.008 250 / 0.95);
-  --color-surface-solid: oklch(1.0 0 0);
-  --color-fg: oklch(0.18 0.02 250);
-  --color-fg-muted: oklch(0.45 0.02 250);
-  --color-fg-subtle: oklch(0.60 0.015 250);
-  --color-border: oklch(0.88 0.008 250 / 0.80);
-  --color-border-strong: oklch(0.65 0.02 250);
-  --color-focus: oklch(0.55 0.20 200);
+  --color-bg: #f7f7f8;
+  --color-bg-solid: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-surface-2: #f2f2f4;
+  --color-surface-3: #e8e8ec;
+  --color-surface-solid: #ffffff;
+  --color-fg: #09090b;
+  --color-fg-muted: #52525b;
+  --color-fg-subtle: #8e8e93;
+  --color-border: #e2e2e7;
+  --color-border-strong: #c8c8d0;
+  --color-focus: #0891b2;
 
   /* Light Status */
-  --color-success: oklch(0.52 0.16 155);
-  --color-warning: oklch(0.58 0.16 75);
-  --color-danger: oklch(0.55 0.20 25);
-  --color-info: oklch(0.52 0.16 230);
+  --color-success: #059669;
+  --color-warning: #d97706;
+  --color-danger: #e11d48;
+  --color-info: #0891b2;
 
   /* Deepened signal accent for light surfaces (>= 4.5:1 as text). */
-  --color-accent: #0f766e;
-  --color-accent-hover: #0d625b;
-  --color-accent-active: #0a4f4a;
+  --color-accent: #0891b2;
+  --color-accent-hover: #0e7490;
+  --color-accent-active: #155e75;
   --color-accent-fg: #ffffff;
-  --color-record: #dc2626;
+  --color-record: #e11d48;
 
-  --glass-tint: rgba(255, 255, 255, 0.82);
+  --glass-tint: #ffffff;
+  --shadow-linear-light: inset 0 1px 0 0 rgba(255, 255, 255, 0.8), 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 10px 25px -5px rgba(0, 0, 0, 0.06);
 }
