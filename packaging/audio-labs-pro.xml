@@ -3,13 +3,13 @@
   <mime-type type="application/x-audio-labs-pro">
     <comment>Audio Labs Pro Project</comment>
     <glob pattern="*.alp"/>
-    <icon name="io.github.zvirox.AudioLabsPro"/>
+    <icon name="audio-labs-pro"/>
     <sub-class-of type="application/json"/>
   </mime-type>
   <mime-type type="application/x-audio-labs-pro-voice">
     <comment>Audio Labs Pro Voice Profile Archive</comment>
     <glob pattern="*.alpvoice"/>
-    <icon name="io.github.zvirox.AudioLabsPro"/>
+    <icon name="audio-labs-pro"/>
     <sub-class-of type="application/zip"/>
   </mime-type>
 </mime-info>

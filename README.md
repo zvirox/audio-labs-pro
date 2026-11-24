@@ -207,32 +207,40 @@ no models — every dialog explains what it needs before touching hardware.
 
 ---
 
-## 5. Installation
+## 5. 📦 Installation
 
-### Method 1: Packages from the release
+Download the appropriate package and `SHA256SUMS` from the [Latest Release](https://github.com/zvirox/audio-labs-pro/releases/latest).
 
-The
-[v0.0.1-alpha.5 release](https://github.com/zvirox/audio-labs-pro/releases)
-ships `.deb`, `.rpm`, `.flatpak` and a `sha256sums.txt`.
+### Debian / Ubuntu (`.deb`)
 
 ```bash
-# Verify checksums first
-sha256sum -c sha256sums.txt   # (asset names may differ slightly from the manifest)
-
-# Debian / Ubuntu
-sudo apt install ./audio-labs-pro_0.0.1-alpha.5_amd64.deb
-
-# Fedora / openSUSE (the RPM orders as a pre-release: 0.0.1~alpha.5)
-sudo dnf install ./audio-labs-pro-0.0.1~alpha.5-1.x86_64.rpm
-
-# Flatpak, any distribution (Freedesktop 25.08 runtime)
-flatpak install --user ./Audio-Labs-Pro-0.0.1-alpha.5-x86_64.flatpak
+sudo apt install ./audio-labs-pro_<version>_amd64.deb
 ```
 
-The packages install `audio-labs-pro` (workstation), `alp-cli` and `alp-infer`,
-with the desktop entry, AppStream metadata, icon scheme and MIME types
-(`application/x-audio-labs-pro[-voice]`). `alp-mcp` is not packaged; use the
-source build below if you need the MCP server.
+### Fedora / RHEL (`.rpm`)
+
+```bash
+sudo dnf install ./audio-labs-pro-<version>-1.x86_64.rpm
+```
+
+### Arch Linux / Manjaro (`.pkg.tar.zst`)
+
+```bash
+sudo pacman -U ./audio-labs-pro-<version>-1-x86_64.pkg.tar.zst
+```
+
+### Verify Checksums
+
+Verify file integrity against the release manifest:
+
+```bash
+sha256sum -c SHA256SUMS --ignore-missing
+```
+
+> [!NOTE]
+> **Packaging Update:** Flatpak, AppImage, and AUR builds are retired in favor of native packages (`.deb`, `.rpm`, `.pkg.tar.zst`).
+
+The packages install `audio-labs-pro` (workstation), `alp-cli`, and `alp-infer`, with the desktop entry, icons, and MIME types (`application/x-audio-labs-pro[-voice]`).
 
 ### Method 2: Build from source
 

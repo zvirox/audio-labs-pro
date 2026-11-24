@@ -1,0 +1,64 @@
+name: audio-labs-pro
+arch: amd64
+platform: linux
+version: ${VERSION}
+release: "1"
+section: sound
+maintainer: Prakash <zvirox@proton.me>
+description: Professional Voice Audio Workstation with speech synthesis, transcription, and multi-track mixing
+homepage: https://github.com/zvirox/audio-labs-pro
+license: Apache-2.0
+
+contents:
+  - src: target/release/audio-labs-pro
+    dst: /usr/bin/audio-labs-pro
+    file_info: { mode: 0755 }
+  - src: target/release/alp-cli
+    dst: /usr/bin/alp-cli
+    file_info: { mode: 0755 }
+  - src: target/release/alp-infer
+    dst: /usr/bin/alp-infer
+    file_info: { mode: 0755 }
+  - src: packaging/audio-labs-pro.desktop
+    dst: /usr/share/applications/audio-labs-pro.desktop
+  - src: packaging/audio-labs-pro.xml
+    dst: /usr/share/mime/packages/audio-labs-pro.xml
+  - src: packaging/icons/hicolor/48x48/apps/audio-labs-pro.png
+    dst: /usr/share/icons/hicolor/48x48/apps/audio-labs-pro.png
+  - src: packaging/icons/hicolor/64x64/apps/audio-labs-pro.png
+    dst: /usr/share/icons/hicolor/64x64/apps/audio-labs-pro.png
+  - src: packaging/icons/hicolor/128x128/apps/audio-labs-pro.png
+    dst: /usr/share/icons/hicolor/128x128/apps/audio-labs-pro.png
+  - src: packaging/icons/hicolor/256x256/apps/audio-labs-pro.png
+    dst: /usr/share/icons/hicolor/256x256/apps/audio-labs-pro.png
+  - src: packaging/icons/hicolor/scalable/apps/audio-labs-pro.svg
+    dst: /usr/share/icons/hicolor/scalable/apps/audio-labs-pro.svg
+  - src: LICENSE
+    dst: /usr/share/doc/audio-labs-pro/LICENSE
+
+scripts:
+  postinstall: packaging/scripts/postinstall.sh
+  preremove: packaging/scripts/preremove.sh
+
+overrides:
+  deb:
+    depends:
+      - libwebkit2gtk-4.1-0
+      - libgtk-3-0
+      - libasound2
+      - libpipewire-0.3-0
+      - shared-mime-info
+  rpm:
+    depends:
+      - webkit2gtk4.1
+      - gtk3
+      - alsa-lib
+      - pipewire-libs
+      - shared-mime-info
+  archlinux:
+    depends:
+      - webkit2gtk-4.1
+      - gtk3
+      - alsa-lib
+      - pipewire
+      - shared-mime-info

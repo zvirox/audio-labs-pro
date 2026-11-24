@@ -8,6 +8,10 @@ license.workspace = true
 repository.workspace = true
 publish.workspace = true
 
+[[bin]]
+name = "audio-labs-pro"
+path = "src/main.rs"
+
 [dependencies]
 alp-session.workspace = true
 tauri = "2"

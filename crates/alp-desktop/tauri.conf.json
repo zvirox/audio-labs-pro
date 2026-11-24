@@ -6,6 +6,9 @@
   "build": {
     "frontendDist": "../../frontend/dist"
   },
+  "bundle": {
+    "active": false
+  },
   "app": {
     "withGlobalTauri": true,
     "windows": [
