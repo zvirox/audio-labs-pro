@@ -5,6 +5,13 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+## [0.1.0-beta.1] - 2026-11-24
+
+### Added
+- **Unified Linear-Style Design System**: Migrated to solid elevated surfaces (`#121215`, `#17171c`, `#202026`), hairline precision borders (`#23232a`), and zero blur across all workspaces.
+- **Packaging & CI**: Reusable packaging matrix generating .deb, .rpm, .apk, and .tar.gz assets with automated release publishing.
+- **Starship Control Integration**: Ecosystem orchestration bridge via `$XDG_DATA_HOME/starship/plugins/alp.json` and Unix domain socket `$XDG_RUNTIME_DIR/starship/bridges/alp.sock`.
+
 ## [0.0.1-alpha.9] - 2026-11-23
 
 ### Redesigned

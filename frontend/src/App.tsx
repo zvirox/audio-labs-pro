@@ -360,7 +360,7 @@ export default function App() {
       {/* Top Application Bar (Universal Linear TitleBar) */}
       <TitleBar
         title="Audio Labs Pro"
-        version="v0.1.0"
+        version="v0.1.0-beta.1"
         icon={<img src={appIcon} alt="" aria-hidden="true" className="h-4 w-4 rounded" />}
         onThemeToggle={handleToggleTheme}
       >
