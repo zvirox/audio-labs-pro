@@ -48,7 +48,7 @@ The application pairs a high-performance audio engine with a clean, distraction-
 
 Audio Labs Pro functions entirely on its own as an independent desktop application. You do not need any additional software to record, edit, and export audio.
 
-For an advanced agentic workflow, Audio Labs Pro links seamlessly with **Starship Control**, the unified Linux desktop AI assistant.
+For an advanced agentic workflow, Audio Labs Pro links seamlessly with [Starship Control](https://github.com/zvirox/starship-control) ([Releases](https://github.com/zvirox/starship-control/releases)), the unified Linux desktop AI assistant.
 
 ### Why It Exists
 
@@ -67,7 +67,7 @@ Getting started with Starship Control is completely automatic:
 1. **Automatic Discovery**: When Audio Labs Pro opens, it registers its presence in `$XDG_DATA_HOME/starship/plugins/alp.json`.
 2. **Private Unix Bridge**: It establishes a dedicated local communication bridge at `$XDG_RUNTIME_DIR/starship/bridges/alp.sock`.
 3. **Peer-Authenticated Security**: Connections are verified at the Linux kernel level using `SO_PEERCRED`. Only processes running as your logged-in user account can interact with the audio engine. No network sockets are exposed, and zero audio data leaves your machine.
-4. **Immediate Control**: Summon Starship Control with `Super+Shift+Space`. It instantly recognizes Audio Labs Pro and stands ready to execute voice commands and workflow recipes.
+4. **Immediate Control**: Summon Starship Control with `Super+Shift+Space`. It instantly recognizes Audio Labs Pro and stands ready to execute voice commands and workflow recipes. For setup guides and downloads, visit the [Starship Control repository](https://github.com/zvirox/starship-control) and [releases](https://github.com/zvirox/starship-control/releases).
 
 ---
 
