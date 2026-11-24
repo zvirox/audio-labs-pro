@@ -11,7 +11,6 @@ import { PrimaryRail, WORKSPACE_LIST, DASHBOARD_ITEM } from './layout/PrimaryRai
 import { SubtabTopBar } from './layout/SubtabTopBar';
 import { InspectorDrawer } from './layout/InspectorDrawer';
 import { DockedPlayer } from './layout/DockedPlayer';
-import { WindowControls } from './layout/WindowControls';
 import {
   clampPanels,
   tidyPanels,
@@ -23,6 +22,7 @@ import { PanelContainer } from './panels/PanelContainer';
 import { TimelineWaveformPanel } from './panels/TimelineWaveformPanel';
 import { CommandPalette } from './components/CommandPalette';
 import { ShortcutsModal } from './components/ShortcutsModal';
+import { TitleBar } from './components/linear/TitleBar';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useTransport } from './hooks/useTransport';
 
@@ -357,55 +357,44 @@ export default function App() {
 
   return (
     <div className="h-screen w-screen flex flex-col bg-[var(--color-bg)] text-[var(--color-fg)] font-sans antialiased overflow-hidden select-none">
-      {/* Top Application Bar */}
-      <header className="h-10 border-b border-[var(--color-border)] bg-[var(--color-surface)] flex items-center gap-3 pl-3 pr-1 flex-shrink-0 z-40">
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <img src={appIcon} alt="" aria-hidden="true" className="h-5 w-5 rounded" />
-          <span className="font-medium text-xs text-[var(--color-fg)]">
-            Audio Labs Pro
-          </span>
-        </div>
-
+      {/* Top Application Bar (Universal Linear TitleBar) */}
+      <TitleBar
+        title="Audio Labs Pro"
+        version="v0.1.0"
+        icon={<img src={appIcon} alt="" aria-hidden="true" className="h-4 w-4 rounded" />}
+        onThemeToggle={handleToggleTheme}
+      >
         <div
           className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono flex-shrink-0 ${
             isNative
-              ? 'bg-emerald-500/10 text-[var(--color-fg-muted)] border border-[var(--color-border-strong)]'
-              : 'bg-amber-500/10 text-[var(--color-fg-muted)] border border-amber-500/30'
+              ? 'bg-[#22C55E]/10 text-[var(--color-fg-muted)] border border-[var(--border)]'
+              : 'bg-[#EAB308]/10 text-[var(--color-fg-muted)] border border-[#EAB308]/30'
           }`}
         >
           <span
-            className={`w-1.5 h-1.5 rounded-full ${isNative ? 'bg-emerald-400' : 'bg-amber-400'}`}
+            className={`w-1.5 h-1.5 rounded-full ${isNative ? 'bg-[#22C55E]' : 'bg-[#EAB308]'}`}
           />
           {isNative ? 'Native' : 'Mock'}
         </div>
 
-        {/* Draggable title-bar region (frameless window) */}
-        <div className="flex-1 h-full" data-tauri-drag-region />
+        {projectSummary && (
+          <div className="hidden md:flex items-center gap-2 text-[11px] font-mono text-[var(--text-muted)]">
+            <span>Rev #{projectSummary.revision}</span>
+            <span>{projectSummary.is_dirty ? 'Modified' : 'Saved'}</span>
+          </div>
+        )}
 
-        <div className="flex items-center gap-2 text-xs flex-shrink-0">
-          {projectSummary && (
-            <div className="hidden md:flex items-center gap-2 text-[11px] font-mono text-[var(--color-fg-muted)]">
-              <span>Rev #{projectSummary.revision}</span>
-              <span className={projectSummary.is_dirty ? 'text-[var(--color-fg-muted)]' : 'text-[var(--color-fg-muted)]'}>
-                {projectSummary.is_dirty ? 'Modified' : 'Saved'}
-              </span>
-            </div>
-          )}
-
-          <Button
-            variant="ghost"
-            size="xs"
-            onClick={fetchInitialState}
-            disabled={isLoading}
-            leftIcon={<RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />}
-            aria-label="Sync project state"
-          >
-            Sync
-          </Button>
-        </div>
-
-        <WindowControls />
-      </header>
+        <Button
+          variant="ghost"
+          size="xs"
+          onClick={fetchInitialState}
+          disabled={isLoading}
+          leftIcon={<RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />}
+          aria-label="Sync project state"
+        >
+          Sync
+        </Button>
+      </TitleBar>
 
       {/* Main Dual-Axis Workspace Layout */}
       <div className="flex-1 flex overflow-hidden relative">
