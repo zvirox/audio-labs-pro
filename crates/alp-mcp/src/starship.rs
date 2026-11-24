@@ -5,9 +5,7 @@
 //! at `$XDG_DATA_HOME/starship/plugins/alp.json`.
 
 use serde_json::json;
-use starship_plugin::{
-    bridge_dir, AppManifest, PluginBridge, PluginTool,
-};
+use starship_plugin::{AppManifest, PluginBridge, PluginTool, bridge_dir};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
@@ -64,10 +62,7 @@ pub fn build_alp_bridge() -> PluginBridge {
                 .get("preset")
                 .and_then(|v| v.as_str())
                 .unwrap_or("voice_clean");
-            let track_id = params
-                .get("trackId")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(1);
+            let track_id = params.get("trackId").and_then(|v| v.as_u64()).unwrap_or(1);
 
             Ok(json!({
                 "status": "applied",
@@ -236,10 +231,21 @@ mod tests {
         let result = resp.get("result").expect("result field");
         assert_eq!(result.get("appId").and_then(|v| v.as_str()), Some("alp"));
 
-        let tools = result.get("tools").and_then(|v| v.as_array()).expect("tools array");
+        let tools = result
+            .get("tools")
+            .and_then(|v| v.as_array())
+            .expect("tools array");
         assert!(tools.iter().any(|t| t.get("name").and_then(|v| v.as_str()) == Some("alp.audio.cleanup_preset")));
-        assert!(tools.iter().any(|t| t.get("name").and_then(|v| v.as_str()) == Some("alp.voice.separate_tracks")));
-        assert!(tools.iter().any(|t| t.get("name").and_then(|v| v.as_str()) == Some("analyze_loudness")));
+        assert!(
+            tools.iter().any(
+                |t| t.get("name").and_then(|v| v.as_str()) == Some("alp.voice.separate_tracks")
+            )
+        );
+        assert!(
+            tools
+                .iter()
+                .any(|t| t.get("name").and_then(|v| v.as_str()) == Some("analyze_loudness"))
+        );
     }
 
     #[test]
@@ -258,10 +264,15 @@ mod tests {
         })
         .to_string();
 
-        let call_resp_str = bridge.handle_request(&call_req).expect("tool call response");
+        let call_resp_str = bridge
+            .handle_request(&call_req)
+            .expect("tool call response");
         let call_resp: serde_json::Value = serde_json::from_str(&call_resp_str).unwrap();
         let result = call_resp.get("result").expect("result");
-        assert_eq!(result.get("status").and_then(|v| v.as_str()), Some("applied"));
+        assert_eq!(
+            result.get("status").and_then(|v| v.as_str()),
+            Some("applied")
+        );
 
         // 2. Test checkpoint create
         let ckpt_req = json!({
@@ -278,7 +289,10 @@ mod tests {
         let ckpt_resp_str = bridge.handle_request(&ckpt_req).expect("ckpt resp");
         let ckpt_resp: serde_json::Value = serde_json::from_str(&ckpt_resp_str).unwrap();
         let ckpt_res = ckpt_resp.get("result").expect("ckpt result");
-        let ckpt_id = ckpt_res.get("checkpointId").and_then(|v| v.as_str()).expect("id");
+        let ckpt_id = ckpt_res
+            .get("checkpointId")
+            .and_then(|v| v.as_str())
+            .expect("id");
 
         // 3. Test checkpoint restore
         let restore_req = json!({
