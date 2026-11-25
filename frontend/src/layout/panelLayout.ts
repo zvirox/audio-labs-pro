@@ -82,8 +82,8 @@ export function tidyPanels(panels: PanelState[], bounds: CanvasBounds): PanelSta
 
 /** Rough canvas size before the DOM is measured (window minus fixed chrome). */
 export function estimateCanvasBounds(): CanvasBounds {
-  const chromeW = 56 + 32; // rail + canvas padding
-  const chromeH = 40 + 40 + 64 + 32; // header + subtab bar + player + padding
+  const chromeW = 240; // expanded sidebar width
+  const chromeH = 40 + 44 + 40 + 56; // titlebar + breadcrumb + subtab + docked player
   return {
     width: Math.max(320, window.innerWidth - chromeW),
     height: Math.max(240, window.innerHeight - chromeH),

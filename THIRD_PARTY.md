@@ -17,7 +17,7 @@ editing, **P4-P8** used by multitrack, DSP, TTS, dictation, and voice profiles,
 | tauri-build | 2.7.6 | MIT OR Apache-2.0 | M2 | compile-time asset packager and build code generator |
 | raw-window-handle | 0.6.2 | MIT OR Apache-2.0 | M2 | native window handle interoperability |
 | nix | 0.30.1 | MIT | P1 | safe Linux peer credentials and effective-UID checks for the UI control socket |
-| x11rb | 0.13.2 | MIT OR Apache-2.0 | P2 | KWin X11 blur property; safe Rust |
+| x11rb | 0.13.2 | MIT OR Apache-2.0 | P2 | Safe X11 display inspection utilities |
 | cpal | 0.18.2 | Apache-2.0 | P1 | audio I/O |
 | rtrb | 0.4.0 | MIT OR Apache-2.0 | P1 | lock-free SPSC ring buffer |
 | symphonia | 0.6.1 | MPL-2.0 | P1 | decoding (unmodified; file-level copyleft only) |
@@ -72,7 +72,8 @@ editing, **P4-P8** used by multitrack, DSP, TTS, dictation, and voice profiles,
 | react-dom | ^19.3.1 | MIT | M2 | Web DOM rendering |
 | cmdk | ^1.1.1 | MIT | M3 | Accessible, unstyled command palette primitive (`Ctrl+K`) |
 | lucide-react | ^1.78.0 | ISC | M3 | Clean, consistent studio iconography |
-| tailwindcss | ^4.3.5 | MIT | M2 | Utility-first CSS engine and glass styling |
+| echarts | ^5.x | Apache-2.0 | Linear UI | High-density DSP & I/O telemetry charts (`echarts-linear-theme.ts`) |
+| tailwindcss | ^4.3.5 | MIT | M2 | Utility-first CSS engine powering locked opaque Linear UI tokens |
 | @tailwindcss/vite | ^4.3.5 | MIT | M2 | Vite integration plugin for Tailwind CSS v4 |
 | typescript | ^7.0.2 | Apache-2.0 | M2 | Static type safety and IPC interface contracts |
 | vite | ^8.3.8 | MIT | M2 | Fast ESM frontend bundler and development server |
@@ -103,10 +104,10 @@ F5-TTS weights (CC-BY-NC), XTTS-v2 (CPML), KittenTTS 2 (custom license + AUP).
 | Asset | License | Status |
 |---|---|---|
 | CMU Pronouncing Dictionary v0.7b (`cmudict_data.json`) | BSD-style (CMU) | P0, used via `piper-plus-g2p`; ship the notice with the app |
-| Inter variable (`InterVariable.ttf`, family “Inter Variable”) | SIL OFL-1.1 | P2, bundled in `crates/alp-ui-kit/assets/fonts/` with `LICENSE-Inter.txt` |
-| Application Brand & Scalable Icon (`io.github.zvirox.AudioLabsPro.svg`) | CC0-1.0 / MIT | P9, bundled in `packaging/icons/` |
-| AppStream metadata & MIME spec (`io.github.zvirox.AudioLabsPro.*`) | CC0-1.0 | P9, desktop integration |
-| Lucide icons (embedded via `lucide-static-svg`, accessed as `alp_ui_kit::icons`) | ISC | P2, SVG paths embedded at compile time by iced-cube; ship the ISC notice with the app |
+| Inter variable (`InterVariable.ttf`, family “Inter Variable”) | SIL OFL-1.1 | Bundled in `frontend/src/assets/fonts/` with `LICENSE-Inter.txt` |
+| Application Brand & Scalable Icon (`audio-labs-pro.png` / `.desktop`) | CC0-1.0 / MIT | Bundled in `packaging/icons/` & `packaging/` |
+| AppStream & MIME spec (`packaging/audio-labs-pro.xml`) | CC0-1.0 | Linux desktop integration via `packaging/nfpm.yaml` |
+| Lucide icons | ISC | Bundled via `lucide-react` npm package |
 
 ## Distribution obligations
 

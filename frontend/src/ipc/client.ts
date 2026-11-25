@@ -172,12 +172,12 @@ export async function getGlassReport(): Promise<GlassReport> {
     return await invoke<GlassReport>('get_glass_report');
   }
   return {
-    session: 'x11',
-    desktop: 'KDE',
-    handle: 'x11/x11',
-    mode: 'compositor_blur',
-    blur_available: true,
-    detail: 'Mock KWin blur active via _KDE_NET_WM_BLUR_BEHIND_REGION.',
+    session: 'wayland',
+    desktop: 'Linux',
+    handle: 'preview',
+    mode: 'tint_fallback',
+    blur_available: false,
+    detail: 'Opaque solid Linear window surface (compositor blur disabled by design standard).',
   };
 }
 

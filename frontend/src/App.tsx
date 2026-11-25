@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Mic,
   Play,
-  RefreshCw,
   Info,
   DownloadCloud,
 } from 'lucide-react';
@@ -23,6 +22,8 @@ import { TimelineWaveformPanel } from './panels/TimelineWaveformPanel';
 import { CommandPalette } from './components/CommandPalette';
 import { ShortcutsModal } from './components/ShortcutsModal';
 import { TitleBar } from './components/linear/TitleBar';
+import { Breadcrumb } from './components/linear/Breadcrumb';
+import { toggleLinearTheme, useLinearTheme } from './components/linear/ThemeToggle';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useTransport } from './hooks/useTransport';
 
@@ -30,7 +31,6 @@ import { Button } from './kit/Button';
 import { Slider } from './kit/Slider';
 import { Toggle } from './kit/Toggle';
 import { Meter } from './kit/Meter';
-import appIcon from './assets/app-icon.png';
 
 import {
   SettingsWorkspace,
@@ -103,7 +103,7 @@ const WORKSPACE_SUBTABS: Record<string, { id: string; label: string }[]> = {
     { id: 'audio_dev', label: 'Audio Hardware & ALSA' },
     { id: 'models_cat', label: 'Model Catalogue' },
     { id: 'mcp_agents', label: 'MCP Agents & Tiers' },
-    { id: 'glass', label: 'KWin Glass & Blur' },
+    { id: 'appearance', label: 'Window & Surface' },
     { id: 'shortcuts', label: 'Shortcuts Parity' },
   ],
 };
@@ -112,7 +112,8 @@ export default function App() {
   const [activeWorkspace, setActiveWorkspace] = useState('dashboard');
   const [activeSubtab, setActiveSubtab] = useState('cloning');
   const [viewMode, setViewMode] = useState<'workspace' | 'panels'>('workspace');
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [theme, setTheme] = useLinearTheme();
   const [reduceMotion, setReduceMotion] = useState(false);
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
@@ -144,7 +145,7 @@ export default function App() {
   const displayPanels = useMemo(() => {
     const source = workspaceState?.panels ?? [];
     const clamped = clampPanels(source, canvasBounds);
-    if (canvasBounds.width > 0 && hasOverlap(clamped) && !hasOverlap(source)) {
+    if (canvasBounds.width > 0 && hasOverlap(clamped)) {
       return tidyPanels(clamped, canvasBounds);
     }
     return clamped;
@@ -158,17 +159,12 @@ export default function App() {
   // Accent is a single token from tokens.css; no per-workspace hue switching.
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === 'light') {
-      root.classList.add('theme-light');
-    } else {
-      root.classList.remove('theme-light');
-    }
     if (reduceMotion) {
       root.classList.add('reduce-motion');
     } else {
       root.classList.remove('reduce-motion');
     }
-  }, [theme, reduceMotion]);
+  }, [reduceMotion]);
 
   // Apply theme & reduce-motion to root
   useEffect(() => {
@@ -204,7 +200,7 @@ export default function App() {
         ? tidyPanels(ws.panels, bounds)
         : clampPanels(ws.panels, bounds);
       setWorkspaceState({ ...ws, panels });
-      if (ws.theme === 'light' || ws.theme === 'dark') {
+      if (!localStorage.getItem('ui-theme') && (ws.theme === 'light' || ws.theme === 'dark')) {
         setTheme(ws.theme as 'dark' | 'light');
       }
       setReduceMotion(ws.reduce_motion);
@@ -308,17 +304,14 @@ export default function App() {
     }
   }, [canvasBounds]);
 
-  // Theme cycle
+  // Theme cycle (routes through shared TitleBar ui-theme state)
   const handleToggleTheme = useCallback(() => {
-    setTheme((t) => {
-      const next = t === 'dark' ? 'light' : 'dark';
-      setWorkspaceState((prev) => {
-        if (!prev) return null;
-        const nextState = { ...prev, theme: next };
-        saveWorkspaceState(nextState).catch(console.error);
-        return nextState;
-      });
-      return next;
+    const next = toggleLinearTheme();
+    setWorkspaceState((prev) => {
+      if (!prev) return null;
+      const nextState = { ...prev, theme: next };
+      saveWorkspaceState(nextState).catch(console.error);
+      return nextState;
     });
   }, []);
 
@@ -355,79 +348,52 @@ export default function App() {
     onToggleInspector: () => setIsInspectorOpen((prev) => !prev),
   });
 
+  const subtabs = WORKSPACE_SUBTABS[activeWorkspace] || [];
+  const activeSubtabObj = subtabs.find((s) => s.id === activeSubtab);
+
   return (
-    <div className="h-screen w-screen flex flex-col bg-[var(--color-bg)] text-[var(--color-fg)] font-sans antialiased overflow-hidden select-none">
-      {/* Top Application Bar (Universal Linear TitleBar) */}
-      <TitleBar
-        title="Audio Labs Pro"
-        version="v0.1.0-beta.1"
-        icon={<img src={appIcon} alt="" aria-hidden="true" className="h-4 w-4 rounded" />}
-        onThemeToggle={handleToggleTheme}
-      >
-        <div
-          className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono flex-shrink-0 ${
-            isNative
-              ? 'bg-[#22C55E]/10 text-[var(--color-fg-muted)] border border-[var(--border)]'
-              : 'bg-[#EAB308]/10 text-[var(--color-fg-muted)] border border-[#EAB308]/30'
-          }`}
-        >
-          <span
-            className={`w-1.5 h-1.5 rounded-full ${isNative ? 'bg-[#22C55E]' : 'bg-[#EAB308]'}`}
-          />
-          {isNative ? 'Native' : 'Mock'}
-        </div>
+    <div className="h-screen w-screen flex flex-col bg-[var(--bg-app)] text-[var(--text)] font-sans antialiased overflow-hidden select-none">
+      {/* Top Application Bar (Universal Linear TitleBar — sole ThemeToggle host) */}
+      <TitleBar />
 
-        {projectSummary && (
-          <div className="hidden md:flex items-center gap-2 text-[11px] font-mono text-[var(--text-muted)]">
-            <span>Rev #{projectSummary.revision}</span>
-            <span>{projectSummary.is_dirty ? 'Modified' : 'Saved'}</span>
-          </div>
-        )}
-
-        <Button
-          variant="ghost"
-          size="xs"
-          onClick={fetchInitialState}
-          disabled={isLoading}
-          leftIcon={<RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />}
-          aria-label="Sync project state"
-        >
-          Sync
-        </Button>
-      </TitleBar>
-
-      {/* Main Dual-Axis Workspace Layout */}
+      {/* Main Linear Layout */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Left Primary Rail (56px) */}
+        {/* Left Collapsible Sidebar (240px / 56px) */}
         <PrimaryRail
           activeWorkspace={activeWorkspace}
           onSelectWorkspace={handleSelectWorkspace}
           onOpenCommandPalette={() => setIsPaletteOpen(true)}
           onOpenShortcuts={() => setIsShortcutsOpen(true)}
-          onToggleTheme={handleToggleTheme}
-          theme={theme}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed((c) => !c)}
         />
 
-        {/* Center Canvas Area: Subtab Top Bar + Floating Workspace Canvas */}
-        <div className="flex-1 flex flex-col overflow-hidden relative bg-[var(--color-bg)]">
-          {/* Top Subtab Bar (40px) */}
-          <SubtabTopBar
-            activeWorkspaceName={currentWsObj.name}
-            activeColor="var(--color-accent)"
-            activeSubtab={activeSubtab}
-            onSelectSubtab={setActiveSubtab}
-            subtabs={WORKSPACE_SUBTABS[activeWorkspace] || []}
+        {/* Center Canvas Area: Breadcrumb + Subtab Top Bar + Workspace Canvas */}
+        <div className="flex-1 flex flex-col overflow-hidden relative bg-[var(--bg-app)]">
+          <Breadcrumb
+            workspaceName={currentWsObj.name}
+            subtabLabel={activeSubtabObj?.label}
+            isNative={isNative}
+            revision={projectSummary?.revision}
+            isDirty={projectSummary?.is_dirty}
+            isLoading={isLoading}
+            onSync={fetchInitialState}
             isInspectorOpen={isInspectorOpen}
             onToggleInspector={() => setIsInspectorOpen(!isInspectorOpen)}
             onTogglePanel={handleTogglePanel}
             onResetLayout={handleResetLayout}
             onTriggerEdit={handleTriggerEdit}
-            isDirty={projectSummary?.is_dirty}
             viewMode={viewMode}
             onToggleViewMode={() =>
               setViewMode((v) => (v === 'workspace' ? 'panels' : 'workspace'))
             }
-            hideStudioActions={activeWorkspace === 'dashboard'}
+            hideStudioActions={activeWorkspace === 'dashboard' || activeWorkspace === 'settings'}
+          />
+
+          <SubtabTopBar
+            activeSubtab={activeSubtab}
+            onSelectSubtab={setActiveSubtab}
+            subtabs={subtabs}
           />
 
           {/* Main Canvas Surface */}
@@ -455,8 +421,10 @@ export default function App() {
               <div ref={canvasRef} className="h-full w-full relative overflow-hidden p-4">
                 {/* Canvas is the content; no decorative watermark behind panels. */}
 
-                {/* Render Floating Panels from Persisted Workspace (clamped on-screen) */}
-                {displayPanels.map((panel) => (
+                {/* Render Floating Panels from Persisted Workspace (open only, clamped on-screen) */}
+                {displayPanels
+                  .filter((panel) => panel.open)
+                  .map((panel) => (
                   <PanelContainer
                     key={panel.kind}
                     panel={panel}

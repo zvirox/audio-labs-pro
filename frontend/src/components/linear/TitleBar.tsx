@@ -1,201 +1,173 @@
-import React, { useEffect, useState } from 'react';
-import { Minus, Square, Copy, X, Sun, Moon } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Copy, Minus, Square, X } from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { ThemeToggle } from './ThemeToggle';
 
 export interface TitleBarProps {
-  title?: string;
+  appName?: string;
   version?: string;
-  icon?: React.ReactNode;
-  compact?: boolean;
   className?: string;
-  onThemeToggle?: (theme: 'dark' | 'light') => void;
-  children?: React.ReactNode;
 }
 
-export const TitleBar: React.FC<TitleBarProps> = ({
-  title = 'Audio Labs Pro',
-  version = 'v0.1.0-beta.1',
-  icon,
-  compact = false,
+function getDefaultVersion(): string {
+  const raw = typeof __APP_VERSION__ !== 'undefined' && __APP_VERSION__ ? __APP_VERSION__ : '0.1.0-beta.1';
+  return raw.startsWith('v') ? raw : `v${raw}`;
+}
+
+function hasTauriWindow(): boolean {
+  return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+}
+
+export function TitleBar({
+  appName = 'Audio Labs Pro',
+  version = getDefaultVersion(),
   className = '',
-  onThemeToggle,
-  children,
-}) => {
+}: TitleBarProps) {
   const [isMaximized, setIsMaximized] = useState(false);
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
-  useEffect(() => {
-    // Sync initial theme
-    const currentTheme =
-      (document.documentElement.getAttribute('data-theme') as 'dark' | 'light') ||
-      (document.documentElement.classList.contains('light') ? 'light' : 'dark');
-    setTheme(currentTheme);
-
+  const syncMaximized = useCallback(async () => {
+    if (!hasTauriWindow()) return;
     try {
-      if (typeof window !== 'undefined' && ('__TAURI_INTERNALS__' in window || '__TAURI__' in window)) {
-        const appWindow = getCurrentWindow();
-        appWindow.isMaximized().then(setIsMaximized).catch(() => {});
-        const unlisten = appWindow.onResized(() => {
-          appWindow.isMaximized().then(setIsMaximized).catch(() => {});
-        });
-        return () => {
-          unlisten.then((fn) => fn()).catch(() => {});
-        };
-      }
+      const win = getCurrentWindow();
+      setIsMaximized(await win.isMaximized());
     } catch {
-      // Running outside Tauri runtime
+      // ignore in non-windowed test environments
     }
   }, []);
 
-  const handleMinimize = async () => {
+  useEffect(() => {
+    if (!hasTauriWindow()) return;
+    let unlisten: (() => void) | undefined;
+    void syncMaximized();
     try {
-      const appWindow = getCurrentWindow();
-      await appWindow.minimize();
+      const win = getCurrentWindow();
+      void win
+        .onResized(() => {
+          void syncMaximized();
+        })
+        .then((fn) => {
+          unlisten = fn;
+        });
     } catch {
-      // fallback
+      // ignore in headless browser preview
     }
-  };
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, [syncMaximized]);
 
-  const handleToggleMaximize = async () => {
+  const handleDragMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || event.detail >= 2 || !hasTauriWindow()) return;
     try {
-      const appWindow = getCurrentWindow();
-      await appWindow.toggleMaximize();
-      const maximized = await appWindow.isMaximized();
-      setIsMaximized(maximized);
+      void getCurrentWindow().startDragging();
     } catch {
-      setIsMaximized((prev) => !prev);
+      // ignore in headless browser preview
     }
   };
 
-  const handleClose = async () => {
+  const handleToggleMaximize = () => {
+    if (!hasTauriWindow()) return;
     try {
-      const appWindow = getCurrentWindow();
-      await appWindow.close();
+      void getCurrentWindow()
+        .toggleMaximize()
+        .then(() => syncMaximized());
     } catch {
-      // fallback
+      // ignore in headless browser preview
     }
   };
 
-  const toggleTheme = () => {
-    const nextTheme: 'dark' | 'light' = theme === 'dark' ? 'light' : 'dark';
-    setTheme(nextTheme);
-    document.documentElement.setAttribute('data-theme', nextTheme);
-    if (nextTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-      document.documentElement.classList.remove('light');
-    } else {
-      document.documentElement.classList.add('light');
-      document.documentElement.classList.remove('dark');
+  const handleMinimize = () => {
+    if (!hasTauriWindow()) return;
+    try {
+      void getCurrentWindow().minimize();
+    } catch {
+      // ignore in headless browser preview
     }
-    localStorage.setItem('theme', nextTheme);
-    window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme: nextTheme } }));
-    onThemeToggle?.(nextTheme);
   };
 
-  if (compact) {
-    return (
-      <div
-        role="region"
-        aria-label="Window Title Bar"
-        data-tauri-drag-region
-        className={`h-8 w-full select-none bg-[var(--bg-app)] border-b border-[var(--border)] flex items-center justify-between px-2.5 text-[var(--text)] ${className}`}
-      >
-        <div data-tauri-drag-region className="flex items-center gap-2">
-          {icon && <span className="size-4 shrink-0 flex items-center justify-center">{icon}</span>}
-          <span className="text-xs font-semibold tracking-tight">{title}</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={toggleTheme}
-            aria-label="Toggle theme"
-            className="size-6 inline-flex items-center justify-center rounded text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-surface-2)] transition-colors cursor-pointer"
-          >
-            {theme === 'dark' ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
-          </button>
-          <button
-            onClick={handleClose}
-            aria-label="Close window"
-            className="size-6 inline-flex items-center justify-center rounded text-[var(--text-muted)] hover:bg-[#F43F5E] hover:text-white transition-colors cursor-pointer"
-          >
-            <X className="size-3.5" />
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const handleClose = () => {
+    if (!hasTauriWindow()) return;
+    try {
+      void getCurrentWindow().close();
+    } catch {
+      // ignore in headless browser preview
+    }
+  };
 
   return (
-    <div
-      role="region"
-      aria-label="Window Title Bar"
-      data-tauri-drag-region
-      className={`h-10 w-full select-none bg-[var(--bg-app)] border-b border-[var(--border)] flex items-center justify-between px-3 text-[var(--text)] shrink-0 z-50 ${className}`}
+    <header
+      className={`flex h-10 shrink-0 select-none items-center justify-between border-b border-[var(--border)] bg-[var(--bg-surface)] px-3 text-[var(--text)] ${className}`}
+      data-testid="linear-titlebar"
     >
-      {/* Left branding */}
-      <div data-tauri-drag-region className="flex items-center gap-2 shrink-0">
-        {icon && <span className="size-5 shrink-0 flex items-center justify-center">{icon}</span>}
-        <span className="text-[13px] font-semibold tracking-tight text-[var(--text)]">{title}</span>
-        {version && (
-          <span className="px-1.5 py-0.5 text-[11px] font-mono rounded bg-[var(--bg-surface-2)] border border-[var(--border)] text-[var(--text-muted)] select-none">
-            {version}
-          </span>
-        )}
-      </div>
-
-      {/* Center empty drag region */}
+      {/* Left: 20px app logo, app name, version tag */}
       <div
         data-tauri-drag-region
+        onMouseDown={handleDragMouseDown}
         onDoubleClick={handleToggleMaximize}
-        className="flex-1 h-full min-w-8 flex items-center justify-center cursor-default"
+        className="flex items-center gap-2 pr-3"
+      >
+        <svg
+          viewBox="0 0 20 20"
+          className="h-5 w-5 shrink-0 text-[var(--accent-blue)]"
+          fill="none"
+          aria-hidden="true"
+        >
+          <rect x="1" y="1" width="18" height="18" rx="4" stroke="currentColor" strokeWidth="1.5" />
+          <path
+            d="M5.5 11.5V8.5M8.5 13.5V6.5M11.5 12V8M14.5 10.5V9.5"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
+        </svg>
+        <span className="text-[13px] font-semibold tracking-tight text-[var(--text)]">
+          {appName}
+        </span>
+        <span className="rounded border border-[var(--border)] bg-[var(--bg-surface-2)] px-1.5 py-0.5 text-[11px] font-medium leading-none text-[var(--text-muted)] tabular-nums">
+          {version}
+        </span>
+      </div>
+
+      {/* Center: clean empty drag region */}
+      <div
+        data-tauri-drag-region
+        onMouseDown={handleDragMouseDown}
+        onDoubleClick={handleToggleMaximize}
+        className="h-full flex-1"
       />
 
-      {/* Right controls */}
-      <div className="flex items-center gap-1 shrink-0">
-        {children}
-        {children && <div className="w-px h-3.5 bg-[var(--border)] mx-1" />}
-        {/* Theme toggle */}
+      {/* Right: ThemeToggle, divider, minimize, maximize/restore, close */}
+      <div className="flex items-center gap-0.5">
+        <ThemeToggle />
+        <div className="mx-1.5 h-4 w-px bg-[var(--border)]" aria-hidden="true" />
         <button
-          onClick={toggleTheme}
-          aria-label="Toggle theme"
-          title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-          className="size-7 inline-flex items-center justify-center rounded-md text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-surface-2)] transition-colors cursor-pointer"
-        >
-          {theme === 'dark' ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
-        </button>
-
-        {/* Thin divider */}
-        <div className="w-px h-3.5 bg-[var(--border)] mx-1" />
-
-        {/* Minimize */}
-        <button
+          type="button"
           onClick={handleMinimize}
           aria-label="Minimize window"
           title="Minimize"
-          className="size-7 inline-flex items-center justify-center rounded-md text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-surface-2)] transition-colors cursor-pointer"
+          className="inline-flex h-7 w-8 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--bg-surface-2)] hover:text-[var(--text)] transition-colors duration-[var(--duration-quick)] [transition-timing-function:var(--ease-out-expo)] cursor-pointer"
         >
-          <Minus className="size-3.5" />
+          <Minus className="h-3.5 w-3.5" />
         </button>
-
-        {/* Maximize / Restore */}
         <button
+          type="button"
           onClick={handleToggleMaximize}
           aria-label={isMaximized ? 'Restore window' : 'Maximize window'}
           title={isMaximized ? 'Restore' : 'Maximize'}
-          className="size-7 inline-flex items-center justify-center rounded-md text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-surface-2)] transition-colors cursor-pointer"
+          className="inline-flex h-7 w-8 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--bg-surface-2)] hover:text-[var(--text)] transition-colors duration-[var(--duration-quick)] [transition-timing-function:var(--ease-out-expo)] cursor-pointer"
         >
-          {isMaximized ? <Copy className="size-3" /> : <Square className="size-3" />}
+          {isMaximized ? <Copy className="h-3 w-3" /> : <Square className="h-3 w-3" />}
         </button>
-
-        {/* Close */}
         <button
+          type="button"
           onClick={handleClose}
           aria-label="Close window"
           title="Close"
-          className="size-7 inline-flex items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[#F43F5E] hover:text-white transition-colors cursor-pointer"
+          className="inline-flex h-7 w-8 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--color-close-hover)] hover:text-[var(--text-on-accent)] transition-colors duration-[var(--duration-quick)] [transition-timing-function:var(--ease-out-expo)] cursor-pointer"
         >
-          <X className="size-3.5" />
+          <X className="h-3.5 w-3.5" />
         </button>
       </div>
-    </div>
+    </header>
   );
-};
+}

@@ -1,83 +1,61 @@
 import React from 'react';
-import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { LinearCard } from './LinearCard';
 
 export interface StatCardProps {
-  title: string;
+  label: string;
   value: string | number;
-  unit?: string;
-  delta?: {
-    value: string | number;
-    positive?: boolean;
-    comparison?: string;
-  };
   icon?: React.ReactNode;
-  iconBgColor?: string;
-  iconColor?: string;
+  delta?: {
+    value: string;
+    trend: 'up' | 'down' | 'neutral';
+  };
+  subtitle?: string;
   className?: string;
 }
 
 export const StatCard: React.FC<StatCardProps> = ({
-  title,
+  label,
   value,
-  unit,
-  delta,
   icon,
-  iconBgColor = 'bg-[#3355FF]/10',
-  iconColor = 'text-[#3355FF]',
+  delta,
+  subtitle,
   className = '',
 }) => {
+  const deltaStyle =
+    delta?.trend === 'up'
+      ? 'bg-[var(--tint-green)] text-[var(--accent-green)]'
+      : delta?.trend === 'down'
+      ? 'bg-[var(--tint-red)] text-[var(--accent-red)]'
+      : 'bg-[var(--bg-surface-2)] text-[var(--text-muted)]';
+
   return (
-    <LinearCard level={1} className={`p-5 flex flex-col justify-between ${className}`}>
-      {/* Top row: Title and Icon Chip */}
+    <LinearCard level={1} className={`flex flex-col justify-between gap-2 p-4 ${className}`}>
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-medium uppercase tracking-wider text-[var(--text-muted)] select-none">
-          {title}
+        <span className="text-[12px] font-medium uppercase tracking-wider text-[var(--text-muted)]">
+          {label}
         </span>
         {icon && (
-          <div
-            className={`size-8 rounded-full flex items-center justify-center shrink-0 ${iconBgColor} ${iconColor}`}
-          >
+          <div className="flex h-7 w-7 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--tint-blue)] text-[var(--accent-blue)]">
             {icon}
           </div>
         )}
       </div>
 
-      {/* Middle row: Big Metric + Unit */}
-      <div className="mt-3 flex items-baseline gap-1.5">
-        <span className="text-[28px] font-semibold tracking-tight text-[var(--text)] tabular-nums font-sans leading-none">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="whitespace-nowrap font-sans text-[24px] xl:text-[28px] font-semibold leading-none tracking-tight text-[var(--text)] tabular-nums">
           {value}
         </span>
-        {unit && (
-          <span className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide">
-            {unit}
+        {delta && (
+          <span
+            className={`inline-flex shrink-0 whitespace-nowrap items-center rounded border border-[var(--border)] px-1.5 py-0.5 text-[11px] font-medium leading-none tabular-nums ${deltaStyle}`}
+          >
+            {delta.value}
           </span>
         )}
       </div>
 
-      {/* Bottom row: Delta Pill + Comparison */}
-      {delta && (
-        <div className="mt-4 flex items-center gap-2">
-          <span
-            className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[11px] font-medium tabular-nums ${
-              delta.positive
-                ? 'bg-[#22C55E]/10 text-[#22C55E]'
-                : 'bg-[#F43F5E]/10 text-[#F43F5E]'
-            }`}
-          >
-            {delta.positive ? (
-              <ArrowUpRight className="size-3 shrink-0" />
-            ) : (
-              <ArrowDownRight className="size-3 shrink-0" />
-            )}
-            {delta.value}
-          </span>
-          {delta.comparison && (
-            <span className="text-xs text-[var(--text-muted)] truncate">
-              {delta.comparison}
-            </span>
-          )}
-        </div>
+      {subtitle && (
+        <span className="truncate text-[12px] text-[var(--text-muted)]">{subtitle}</span>
       )}
     </LinearCard>
   );

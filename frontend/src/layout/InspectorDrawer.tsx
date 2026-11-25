@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { X, Sliders, Music, Zap, Check } from 'lucide-react';
+import { Sliders, Volume2, X } from 'lucide-react';
 import { Button } from '../kit/Button';
 import { Slider } from '../kit/Slider';
+import { Toggle } from '../kit/Toggle';
+import { Meter } from '../kit/Meter';
 
 interface InspectorDrawerProps {
   open: boolean;
@@ -14,8 +16,8 @@ export function InspectorDrawer({
   onClose,
   activeWorkspaceName,
 }: InspectorDrawerProps) {
-  const [gain, setGain] = useState(0.0); // dB (-60 to +12)
-  const [pan, setPan] = useState(0.0); // -1.0 to +1.0
+  const [gain, setGain] = useState(0.0);
+  const [pan, setPan] = useState(0.0);
   const [isMuted, setIsMuted] = useState(false);
   const [isSolo, setIsSolo] = useState(false);
   const [isArmed, setIsArmed] = useState(false);
@@ -25,167 +27,102 @@ export function InspectorDrawer({
 
   return (
     <aside
-      className="w-[280px] border-l border-[var(--color-border)] bg-[var(--color-surface)] flex flex-col flex-shrink-0 z-20 select-none animate-in slide-in-from-right duration-150"
-      aria-label="Property Inspector Drawer"
+      aria-label="Context Inspector"
+      className="flex w-[280px] shrink-0 flex-col border-l border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text)]"
     >
-      {/* Header */}
-      <div className="h-10 px-4 border-b border-[var(--color-border)] bg-[var(--color-surface-2)] flex items-center justify-between">
+      <div className="flex h-11 items-center justify-between border-b border-[var(--border)] px-4">
         <div className="flex items-center gap-2">
-          <Sliders className="w-4 h-4 text-[var(--color-accent)]" />
-          <span className="text-xs font-medium text-[var(--color-fg)]">
-            Inspector
-          </span>
+          <Sliders className="h-3.5 w-3.5 text-[var(--accent-blue)]" />
+          <span className="text-[13px] font-semibold">Inspector</span>
         </div>
-        <Button
-          variant="icon"
-          size="xs"
+        <button
+          type="button"
           onClick={onClose}
-          aria-label="Close Inspector"
-          title="Close Inspector (Ctrl+B)"
+          aria-label="Close inspector"
+          className="inline-flex h-6 w-6 items-center justify-center rounded text-[var(--text-muted)] hover:bg-[var(--bg-surface-2)] hover:text-[var(--text)] cursor-pointer"
         >
-          <X className="w-4 h-4" />
-        </Button>
+          <X className="h-3.5 w-3.5" />
+        </button>
       </div>
 
-      {/* Drawer Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-5 text-xs">
-        {/* Selected Clip Card */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium text-[var(--color-fg-muted)]">
-              Selected Clip
-            </span>
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--color-surface-2)] text-[var(--color-accent)]">
-              clp_demo_01
-            </span>
+      <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-surface-2)] p-3">
+          <div className="text-[11px] font-medium uppercase tracking-wider text-[var(--text-faint)]">
+            Active Studio
           </div>
-
-          <div className="p-3 rounded-xl bg-[var(--color-surface-2)] border border-[var(--color-border)] space-y-2.5">
-            <div className="flex items-center gap-2">
-              <Music className="w-4 h-4 text-[var(--color-accent)]" />
-              <div className="font-medium truncate text-[var(--color-fg)]">
-                Demo Lead Voice Take
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 text-[11px] font-mono pt-1">
-              <div>
-                <span className="text-[var(--color-fg-subtle)]">START: </span>
-                <span>0.00s</span>
-              </div>
-              <div>
-                <span className="text-[var(--color-fg-subtle)]">DUR: </span>
-                <span>12.50s</span>
-              </div>
-            </div>
-
-            {/* Normalize Action Button */}
-            <Button
-              variant={normalized ? 'outline' : 'secondary'}
-              size="xs"
-              className="w-full mt-1"
-              leftIcon={normalized ? <Check className="w-4 h-4 text-[var(--color-fg-muted)]" /> : <Zap className="w-4 h-4 text-[var(--color-fg-muted)]" />}
-              onClick={() => setNormalized(!normalized)}
-            >
-              {normalized ? 'Normalized (-0.2 dBFS)' : 'Normalize Clip'}
-            </Button>
+          <div className="mt-1 text-[13px] font-semibold text-[var(--text)]">
+            {activeWorkspaceName}
           </div>
         </div>
 
-        {/* Track Gain & Pan Controls */}
-        <div className="space-y-3 pt-3 border-t border-[var(--color-border)]">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium text-[var(--color-fg-muted)]">
-              Track Mixing
-            </span>
-            <span className="text-[10px] font-mono text-[var(--color-fg-subtle)]">trk_0 (Audio)</span>
+        <div className="flex flex-col gap-3 rounded-lg border border-[var(--border)] bg-[var(--bg-surface-2)] p-3">
+          <div className="flex items-center gap-1.5 text-[12px] font-semibold text-[var(--text)]">
+            <Volume2 className="h-3.5 w-3.5 text-[var(--accent-sky)]" />
+            <span>Channel Strip</span>
           </div>
 
           <Slider
-            label="Gain"
+            label="Input Gain"
             value={gain}
-            min={-36}
+            min={-60}
             max={12}
             step={0.5}
-            unit="dB"
+            unit=" dB"
+            formatValue={(v) => `${v > 0 ? '+' : ''}${v.toFixed(1)} dB`}
             onChange={setGain}
-            formatValue={(v) => `${v > 0 ? `+${v.toFixed(1)}` : v.toFixed(1)} dB`}
           />
 
           <Slider
-            label="Pan"
+            label="Stereo Pan"
             value={pan}
             min={-1}
             max={1}
             step={0.05}
+            formatValue={(v) =>
+              Math.abs(v) < 0.02
+                ? 'Center'
+                : v < 0
+                ? `${Math.round(Math.abs(v) * 100)}L`
+                : `${Math.round(v * 100)}R`
+            }
             onChange={setPan}
-            formatValue={(v) => {
-              if (Math.abs(v) < 0.05) return 'Center';
-              return v < 0 ? `L ${(Math.abs(v) * 100).toFixed(0)}%` : `R ${(v * 100).toFixed(0)}%`;
-            }}
           />
 
-          {/* Mute, Solo, Record Arm Toggles */}
-          <div className="grid grid-cols-3 gap-2 pt-1">
-            <button
-              type="button"
-              onClick={() => setIsMuted(!isMuted)}
-              className={`h-8 rounded-lg text-xs font-medium transition-[color,background-color,border-color,opacity,transform] border cursor-pointer ${
- isMuted
- ? 'bg-amber-500/20 text-[var(--color-fg-muted)] border-amber-500/40'
- : 'bg-[var(--color-surface-2)] text-[var(--color-fg-muted)] border-[var(--color-border)] hover:bg-[var(--color-surface-3)]'
- }`}
+          <div className="grid grid-cols-3 gap-1.5 pt-1">
+            <Button
+              size="sm"
+              variant={isMuted ? 'danger' : 'secondary'}
+              onClick={() => setIsMuted((prev) => !prev)}
             >
-              MUTE
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsSolo(!isSolo)}
-              className={`h-8 rounded-lg text-xs font-medium transition-[color,background-color,border-color,opacity,transform] border cursor-pointer ${
- isSolo
- ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)] border-[var(--color-border-strong)]'
- : 'bg-[var(--color-surface-2)] text-[var(--color-fg-muted)] border-[var(--color-border)] hover:bg-[var(--color-surface-3)]'
- }`}
+              Mute
+            </Button>
+            <Button
+              size="sm"
+              variant={isSolo ? 'primary' : 'secondary'}
+              onClick={() => setIsSolo((prev) => !prev)}
             >
-              SOLO
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsArmed(!isArmed)}
-              className={`h-8 rounded-lg text-xs font-medium transition-[color,background-color,border-color,opacity,transform] border cursor-pointer ${
- isArmed
- ? 'bg-red-500/30 text-red-300 border-red-500/50'
- : 'bg-[var(--color-surface-2)] text-[var(--color-fg-muted)] border-[var(--color-border)] hover:bg-[var(--color-surface-3)]'
- }`}
+              Solo
+            </Button>
+            <Button
+              size="sm"
+              variant={isArmed ? 'danger' : 'secondary'}
+              onClick={() => setIsArmed((prev) => !prev)}
             >
-              ARM
-            </button>
+              Arm
+            </Button>
           </div>
         </div>
 
-        {/* Audio Engine Specs */}
-        <div className="space-y-2 pt-3 border-t border-[var(--color-border)]">
-          <div className="text-[11px] font-medium text-[var(--color-fg-muted)]">
-            Audio Stream Engine
-          </div>
-          <div className="p-3 rounded-xl bg-[var(--color-surface-2)] border border-[var(--color-border)] space-y-1.5 text-[11px] font-mono">
-            <div className="flex justify-between">
-              <span className="text-[var(--color-fg-subtle)]">SAMPLE RATE:</span>
-              <span className="text-[var(--color-fg)]">48,000 Hz</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-[var(--color-fg-subtle)]">BIT DEPTH:</span>
-              <span className="text-[var(--color-fg)]">32-bit Float</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-[var(--color-fg-subtle)]">CHANNELS:</span>
-              <span className="text-[var(--color-fg)]">2 (Stereo)</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-[var(--color-fg-subtle)]">ACTIVE LAB:</span>
-              <span className="text-[var(--color-accent)]">{activeWorkspaceName}</span>
-            </div>
-          </div>
+        <div className="flex flex-col gap-2.5 rounded-lg border border-[var(--border)] bg-[var(--bg-surface-2)] p-3">
+          <div className="text-[12px] font-semibold text-[var(--text)]">Output Level</div>
+          <Meter leftLevel={isMuted ? 0 : 0.62} rightLevel={isMuted ? 0 : 0.58} showLabels />
+          <Toggle
+            checked={normalized}
+            onChange={setNormalized}
+            label="Loudness Normalize"
+            description="Clamp peaks at -1.0 dBTP"
+            size="sm"
+          />
         </div>
       </div>
     </aside>

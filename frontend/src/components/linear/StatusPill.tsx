@@ -1,40 +1,46 @@
 import React from 'react';
 
 export interface StatusPillProps {
+  variant?: 'success' | 'warning' | 'danger' | 'info' | 'neutral';
   label: string;
-  status: 'online' | 'active' | 'warning' | 'alert' | 'idle';
-  monoValue?: string;
   className?: string;
 }
 
-// Solid flat dots without glow per Linear screenshot spec
-const statusDotColor = {
-  online: 'bg-[#22C55E]',
-  active: 'bg-[#3355FF]',
-  warning: 'bg-[#EAB308]',
-  alert: 'bg-[#F43F5E]',
-  idle: 'bg-[#5A5B62]',
+const VARIANT_STYLES: Record<NonNullable<StatusPillProps['variant']>, { chip: string; dot: string }> = {
+  success: {
+    chip: 'bg-[var(--tint-green)] text-[var(--accent-green)] border-[var(--border)]',
+    dot: 'bg-[var(--accent-green)]',
+  },
+  warning: {
+    chip: 'bg-[var(--tint-amber)] text-[var(--accent-amber)] border-[var(--border)]',
+    dot: 'bg-[var(--accent-amber)]',
+  },
+  danger: {
+    chip: 'bg-[var(--tint-red)] text-[var(--accent-red)] border-[var(--border)]',
+    dot: 'bg-[var(--accent-red)]',
+  },
+  info: {
+    chip: 'bg-[var(--tint-blue)] text-[var(--accent-blue)] border-[var(--border)]',
+    dot: 'bg-[var(--accent-blue)]',
+  },
+  neutral: {
+    chip: 'bg-[var(--bg-surface-2)] text-[var(--text-muted)] border-[var(--border)]',
+    dot: 'bg-[var(--text-muted)]',
+  },
 };
 
 export const StatusPill: React.FC<StatusPillProps> = ({
+  variant = 'neutral',
   label,
-  status,
-  monoValue,
   className = '',
 }) => {
+  const styles = VARIANT_STYLES[variant];
   return (
-    <div
-      className={`inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--bg-surface-2)] px-2.5 py-1 text-xs select-none ${className}`}
+    <span
+      className={`inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-[11px] font-medium leading-none tracking-wide ${styles.chip} ${className}`}
     >
-      <span className={`size-1.5 rounded-full shrink-0 ${statusDotColor[status]}`} />
-      <span className="font-sans font-medium text-[var(--text-muted)]">
-        {label}
-      </span>
-      {monoValue && (
-        <span className="font-mono font-medium text-[var(--text)] pl-1.5 border-l border-[var(--border)] tabular-nums">
-          {monoValue}
-        </span>
-      )}
-    </div>
+      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${styles.dot}`} />
+      <span>{label}</span>
+    </span>
   );
 };

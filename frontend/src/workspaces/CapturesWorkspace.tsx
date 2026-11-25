@@ -104,7 +104,7 @@ export function CapturesWorkspace({ onSeek }: CapturesWorkspaceProps) {
           <Card title="Live Audio Capture" subtitle="ALSA / PipeWire direct hardware input">
             <div className="space-y-4 text-xs">
               {/* Record Action & Timer */}
-              <div className="p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] flex items-center justify-between">
+              <div className="p-4 rounded-lg bg-[var(--bg-surface)] border border-[var(--border)] flex items-center justify-between">
                 <div className="space-y-1">
                   <div className="text-[11px] font-mono text-[var(--color-fg-muted)]">
                     {isRecording ? 'Recording Active' : 'Input Standby'}
@@ -161,7 +161,7 @@ export function CapturesWorkspace({ onSeek }: CapturesWorkspaceProps) {
               {takes.map((take) => (
                 <div
                   key={take.id}
-                  className="p-3 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] hover:border-white/20 transition-[color,background-color,border-color,opacity,transform] space-y-1.5"
+                  className="p-3 rounded-lg bg-[var(--bg-surface)] border border-[var(--border)] hover:border-[var(--border-strong)] transition-colors space-y-1.5"
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-[var(--color-fg)]">{take.name}</span>
@@ -189,7 +189,7 @@ export function CapturesWorkspace({ onSeek }: CapturesWorkspaceProps) {
           <Card title="Interactive Word Transcript" subtitle="Sherpa-ONNX speech-to-text alignment with timeline click-to-seek">
             <div className="space-y-4 text-xs">
               {/* Word Chips Surface */}
-              <div className="p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] min-h-[220px] flex flex-wrap gap-2 items-center leading-loose">
+              <div className="p-4 rounded-lg bg-[var(--bg-surface)] border border-[var(--border)] min-h-[220px] flex flex-wrap gap-2 items-center leading-loose">
                 {transcript.map((item, idx) => {
                   const isSelected = selectedWordIdx === idx;
 
@@ -198,15 +198,15 @@ export function CapturesWorkspace({ onSeek }: CapturesWorkspaceProps) {
                       key={`${item.word}-${idx}`}
                       type="button"
                       onClick={() => handleWordClick(item, idx)}
-                      className={`px-2 py-1 rounded-md text-xs font-medium transition-[color,background-color,border-color,opacity,transform] flex items-center gap-1 border ${
- isSelected
- ? 'bg-[var(--color-accent)] text-[var(--color-accent-fg)] border-[var(--color-border-strong)] shadow-md'
- : 'bg-[var(--color-surface-2)] text-[var(--color-fg)] border-[var(--color-border)] hover:bg-[var(--color-surface-3)] hover:border-white/20'
- }`}
+                      className={`px-2 py-1 rounded-md text-xs font-medium transition-colors flex items-center gap-1 border cursor-pointer ${
+                        isSelected
+                          ? 'bg-[var(--accent-blue)] text-[var(--text-on-accent)] border-[var(--accent-blue)]'
+                          : 'bg-[var(--bg-surface-2)] text-[var(--text)] border-[var(--border)] hover:bg-[var(--bg-bar-idle)] hover:border-[var(--border-strong)]'
+                      }`}
                       title={`${item.start_secs}s - ${item.end_secs}s (${(item.confidence * 100).toFixed(0)}% conf)`}
                     >
                       <span>{item.word}</span>
-                      <span className="text-[9px] opacity-60 font-mono">
+                      <span className="text-[9px] text-[var(--text-muted)] font-mono">
                         {item.start_secs}s
                       </span>
                     </button>
@@ -216,7 +216,7 @@ export function CapturesWorkspace({ onSeek }: CapturesWorkspaceProps) {
 
               {/* Word Action Bar */}
               {selectedWordIdx !== null && transcript[selectedWordIdx] && (
-                <div className="p-3 rounded-lg bg-cyan-950/60 border border-[var(--color-border-strong)] flex items-center justify-between animate-fade-in">
+                <div className="p-3 rounded-lg bg-[var(--tint-blue)] border border-[var(--border-strong)] flex items-center justify-between">
                   <div className="space-y-0.5 font-mono text-[11px]">
                     <span className="text-[var(--color-accent)] font-medium text-sm">
                       &ldquo;{transcript[selectedWordIdx].word}&rdquo;

@@ -1,270 +1,36 @@
-# Audio Labs Pro — UI Migration Plan: iced → Tauri 2 + React
+# UI Architecture & Migration Record (Complete & Locked)
 
-Status: proposal · Supersedes the UI parts of ADR 0003 and ADR 0012 once accepted (record as [ADR 0013](../adr/0013-ui-migration-tauri.md)).
+Audio Labs Pro completed the full migration from `iced` (`alp-ui` / `alp-ui-kit`) to a Tauri v2 + React 19 desktop architecture and finalized its permanent **Linear Design System**.
 
-## 1. Goal
+---
 
-Replace the iced 0.14 desktop shell (`alp-ui`, `alp-ui-kit`) with a Tauri 2 shell and a React + TypeScript + Tailwind frontend, to reach the Voicebox / VoiceStudio level of visual polish. The audio engine, project model, DSP, media, voice and MCP layers do not change.
+## Migration Summary (M0–M8 Complete)
 
-**Non-goals**
-- No change to `alp-engine`, `alp-core`, `alp-dsp`, `alp-media`, `alp-voice`, `alp-infer`, `alp-plugin`, `alp-mcp` behaviour.
-- No change to the `.alp/` project format or `~/.config/alp/workspace.json` schema (extend only, never break).
-- No new features during the migration. Parity first, polish second.
-
-## 2. Target stack
-
-| Layer | Choice | Notes |
+| Milestone | Scope | Status |
 |---|---|---|
-| Shell | Tauri 2 (Rust) | Replaces iced window + `winit` |
-| Frontend build | Vite + React + TypeScript (strict) | |
-| Styling | Tailwind CSS with design tokens in the theme | Tokens ported from `alp-ui-kit` |
-| Components | Radix primitives (shadcn/ui as a starting kit) | All components live in `frontend/src/kit/` |
-| Motion | Framer Motion (or Motion One) | Must honour Reduce motion |
-| State | Zustand (view state) + Rust-owned project state | Frontend never owns project truth |
-| Command palette | cmdk | Replaces the Ctrl+K palette |
-| Waveform / timeline | Canvas 2D first, WebGL if the spike demands it | WaveSurfer.js only for simple previews |
-| Font | Inter, bundled locally | No CDN, app stays fully offline |
-| Rust ↔ TS types | One generator, chosen in the ADR (`tauri-specta` or `ts-rs`) | No hand-written duplicate types |
-| Tests | Vitest, Testing Library, Playwright (mocked IPC), `tauri-driver` for E2E | |
+| M0 | Canvas waveform scroll/zoom latency & IPC benchmarks | Done |
+| M1 | Extracted framework-agnostic `alp-session` core | Done |
+| M2 | Scaffolded `alp-desktop` (Tauri v2) & `frontend/` (Vite + React 19 + TypeScript) | Done |
+| M3 | Implemented UI primitives (`frontend/src/kit/`), dual-axis shell, shortcuts, command palette | Done |
+| M4 | Real-time transport ticker, discrete segmented meters, zoomable `WaveformCanvas` | Done |
+| M5 | Ported all 9 workspaces (`Dashboard`, `Voices`, `Generate`, `Multitrack`, `Stories`, `Captures`, `Effects`, `Models`, `Settings`) | Done |
+| M6 | Interactive HTML5 Canvas 2D `MultitrackCanvas` (snapping, ripple edit, envelopes, split/trim/slip) | Done |
+| M7 | Full MCP & AI attach UI parity (`SettingsWorkspace`, consent/approval banners, live activity feed) | Done |
+| M8 | Deleted `alp-ui` / `alp-ui-kit` crates; unified `.deb`/`.rpm`/`.pkg.tar.zst` packaging via `packaging/nfpm.yaml` | Done |
+| Post-M8 | Spectral Multi-View (Phase 13) + **Final Locked Linear UI System** | Done |
 
-## 3. Target architecture
+---
 
-```mermaid
-flowchart TD
-  subgraph FE["frontend/ (webview)"]
-    REACT["React app + kit<br/>views only, no project mutation"]
-  end
-  subgraph DESK["alp-desktop (Tauri, new)"]
-    IPC["commands / events / channels"]
-    GLASS["glass (x11rb blur, tint fallback)"]
-  end
-  SESSION["alp-session (new, UI-agnostic)<br/>EditSession, worker queue, control socket host,<br/>workspace persistence"]
-  ENG["alp-engine"]
-  CORE["alp-core"]
-  MEDIA["alp-media"]
-  VOICE["alp-voice"]
-  API["alp-api"]
-  INFER["alp-infer (separate process)"]
+## Locked Linear UI Standard (Permanent Specification)
 
-  REACT <-->|invoke / events / Channel| IPC
-  IPC --> SESSION
-  GLASS --> DESK
-  SESSION --> ENG
-  SESSION --> CORE
-  SESSION --> MEDIA
-  SESSION --> VOICE
-  SESSION --> API
-  VOICE -. Unix socket .-> INFER
-```
+Any future component added under `frontend/src/` MUST obey these locked rules (enforced automatically by `npm --prefix frontend run check:linear`):
 
-**Crate changes**
-- **New `alp-session`**: everything in `alp-ui` that is not rendering (live `EditSession`, worker queue, hosting of the `alp-api::control` socket, workspace persistence, revision-tagged snapshots for attached MCP edits). Depends on core, engine, media, voice, api. **Must not depend on iced or tauri.**
-- **New `alp-desktop`**: Tauri app, IPC glue, window setup and the glass module. Depends on `alp-session` only.
-- **New `frontend/`**: the React app (not a Rust crate).
-- **Removed after cutover**: `alp-ui`, `alp-ui-kit`, and the iced / lilt / iced-cube workspace dependencies.
-
-## 4. Rules carried over
-
-- Views send commands and never mutate project state. In React, components dispatch IPC commands and render what Rust reports.
-- Real-time rules are unchanged: the audio callback never allocates, locks or logs, and the webview never touches the audio thread.
-- No file over 1,500 lines (soft limit 1,000), now enforced for `.ts` and `.tsx` too.
-- Every module gets its own page in `docs/modules/`, including frontend feature folders.
-- Inter font, motion across the UI, a Reduce motion switch, and a legible tint fallback when blur is unavailable.
-- Motion is decorative and never encodes audio state.
-
-## 5. IPC contract
-
-| Direction | Mechanism | Used for |
-|---|---|---|
-| TS → Rust | `invoke` commands | Transport, edits (`DeleteRange`, `PasteClips`, ...), generate, import, export, settings |
-| Rust → TS | Events | Project revision changed, job progress, model download progress, AI-attach activity |
-| Rust → TS | `Channel` (batched) | Input/output meters at about 30 Hz, dictation partials |
-| Rust → TS | Raw binary `ipc::Response` | Peak pyramid levels, never JSON |
-
-Rules:
-- **Playhead**: do not emit per frame. Send an anchor (`position`, `timestamp`, `rate`) on transport changes and interpolate in `requestAnimationFrame`.
-- **Project state**: Rust holds the truth; the frontend keeps a revision-tagged mirror and refetches or patches when the revision changes.
-- **Errors**: every command returns a typed error enum; the UI maps it to the same explanatory dialogs as today.
-
-## 6. Phases
-
-Sizes: S ≈ days, M ≈ 1–2 weeks, L ≈ several weeks (solo, agent-assisted).
-
-### M0 — Feasibility spike (size S) — GO / NO-GO gate — PASSED
-
-**Status:** Completed (2026-11-23). Gate passed. See benchmark results in [`docs/spikes/PHASE-M0-RESULTS.md`](../spikes/PHASE-M0-RESULTS.md).
-
-Build a throwaway Tauri window and measure it against the iced baseline from `../spikes/`.
-- Transparent, undecorated window on KDE/X11, KDE/Wayland, niri, GNOME/Wayland.
-- KWin blur: set `_KDE_NET_WM_BLUR_BEHIND_REGION` with `x11rb` on the Tauri window's X11 handle (safe code only).
-- CSS `backdrop-filter` inside WebKitGTK over a transparent window: check what it actually blurs (inner-panel effect only vs desktop).
-- Canvas waveform of a 1-hour file, autoscrolling.
-- Session probe: record per session (KDE/X11, KDE/Wayland, niri, GNOME/Wayland): did the window become transparent, did KWin blur apply, is the tint legible. Results recorded in [`docs/spikes/PHASE-M0-RESULTS.md`](../spikes/PHASE-M0-RESULTS.md).
-
-| Metric | iced baseline | Proposed gate | Measured (Tauri 2) | Verdict |
-|---|---|---|---|---|
-| 1-hour waveform autoscroll | 60–61 fps, 16.6 ms | ≥ 55 fps | **60.02 fps** (16.66 ms) | **PASS** |
-| Idle CPU (4 s) | 0.00% | < 1% | **0.00%** (0 ticks) | **PASS** |
-| Idle RSS | about 88 MB | record it; no hard gate | **147.4 MB** | **PASS** (recorded) |
-| Glass on KWin/X11 | compositor blur | blur works, or tint is legible | **ACTIVE** (`x11rb`) | **PASS** |
-
-Outcome: Canvas 2D is fully sufficient for 60 fps timeline scrolling (WebGL unnecessary for standard waveform view). WebKitGTK event loop idles at 0.00% CPU. Window handle exposure and KWin blur via safe `x11rb` work without `unsafe`. Proceed to M1.
-
-### M1 — Extract `alp-session` (size M) — COMPLETE
-
-**Status:** Completed (2026-11-23). All exit criteria verified.
-- Extracted all non-rendering logic (`EditSession`, `JobQueue`, `PersistedWorkspace`, `PanelManager`) into headless `alp-session` crate.
-- `alp-ui` adapted into a thin iced shell re-exporting headless types with zero breaking changes.
-- Split `app.rs` from 1,054 lines down to 669 lines by extracting `app/message.rs` and `app/types.rs`.
-- Added `alp-session` to `scripts/check-deps.sh` enforcing strict forbidden dependencies: no iced, no tauri, no alp-ui, no alp-ui-kit.
-- **Exit:** All 144+ workspace tests pass, iced app behaves identically, MCP attach tests pass with 100% parity. Proceed to M2.
-
-### M2 — Tauri shell + frontend scaffold (size M) — COMPLETE
-
-**Status:** Completed (2026-11-23). All exit criteria verified.
-- Created `crates/alp-desktop` on Tauri 2 with safe window setup and safe KWin blur via `x11rb` and `raw-window-handle 0.6`.
-- Verified `unsafe_code = "deny"`: Tauri macros do NOT trip the lint; hand-written code contains zero `unsafe`. No exception needed.
-- Created `frontend/` (Vite, React 19, TypeScript strict mode, Tailwind CSS v4, Lucide icons).
-- Wired end-to-end typed IPC: `get_project_summary`, `get_workspace_state`, `get_glass_report`, `trigger_demo_edit`, and `session_revision_changed` event.
-- Ported design tokens to `frontend/src/tokens.css`: 7 workspace neon hues, dark/light studio glass palettes, contrast rules ($\ge 7:1$ titles, $\ge 4.5:1$ text), spacing scale (2px–32px), radii (3px–12px).
-- Token inspector and live IPC testbed built in `frontend/src/App.tsx`.
-- Early Flatpak de-risk manifest `packaging/flatpak/throwaway-tauri-derisk.yaml` created and verified with GNOME Platform 48, WebKitGTK 4.1 presence, and test tone generation.
-- **Exit:** Both apps build, token page renders, typed IPC roundtrips, test tone verifies. Proceed to M3.
-
-### M3 — Kit + app shell (size M) — COMPLETE
-
-**Status:** Completed (2026-11-23). All exit criteria verified.
-- Built complete studio component kit (`frontend/src/kit/`): `Button`, `Toggle`, `Slider`, `Input`, `Tabs`, `Dialog`, `Tooltip`, `Menu`, `Meter`, `Card`. All application views build on this kit exclusively.
-- Built 56px `PrimaryRail` with the seven workspaces, routed with `Ctrl+1..7` shortcuts and visual active indicator pips.
-- Built 40px contextual `SubtabTopBar` with sub-navigation per active workspace, panel management dropdown, and layout reset.
-- Built 280px collapsible `InspectorDrawer` toggled via `Ctrl+B` for clip/track property editing.
-- Built 64px `DockedPlayer` bottom transport player bar with play/pause (`Space`), record (`R`), loop (`L`), timecode display, timeline scrubber, volume fader, and live stereo LED audio meter.
-- Implemented floating panel container system (`PanelContainer`) supporting drag, resize, collapse, dock, z-order focus, and persistence to `workspace.json` through `alp-session`.
-- Integrated `cmdk` Command Palette (`Ctrl+K`), Keyboard Shortcuts modal (`F1`), Theme cycling (`Ctrl+D`), and Reduce motion (`Ctrl+Shift+M`).
-- Wired `save_workspace_state` and `reset_workspace_layout` in `alp-desktop` and `alp-session` for atomic workspace persistence.
-- **Exit:** Shell navigation and panel layouts match the iced app, persist across restarts, and full test suite passes. Proceed to M4.
-
-### M4 — Transport, meters, waveform (size M)
-
-**Status:** Completed (2026-11-23). All exit criteria verified.
-- Wired docked player and timeline transport to the engine through `alp_session::TransportController` and `alp-desktop` IPC commands.
-- Implemented real-time calibrated stereo meter streaming over Tauri 2 `Channel` at ~30 Hz, with client-side playhead interpolation via `requestAnimationFrame` at 60–120 fps using monotonic timestamp anchors.
-- Built high-performance `WaveformCanvas` in HTML5 Canvas 2D with dynamic decimation, level-of-detail pyramid selection (Level 0: 256, Level 1: 1024, Level 2: 4096 frames/bucket), interactive scrubber seeking, and zero-idle-draw optimization.
-- Built `TimelineWaveformPanel` integrated into the floating panel container system with interactive 1-hour benchmark testing mode.
-- **Exit:** 1-hour autoscroll meets the M0 gate inside the real app (60.0 FPS sustained over 675,000 buckets); 10-minute playback soak shows 0 dropped callbacks. Proceed to M5.
-
-### M5 — Workspace ports (size L) — COMPLETED
-Ported all 7 studio workspaces in the mandated order (lowest risk first), built entirely on `frontend/src/kit` design system primitives:
-1. **Settings** (`SettingsWorkspace`): Audio hardware enumeration (ALSA/PipeWire input/output selection), Appearance & KWin glass report, AI control & MCP security tiers, storage and autosave paths, delivery export presets (-16, -20, -24 LUFS).
-2. **Models** (`ModelsWorkspace`): Local neural model catalogue with SPDX licenses (Kokoro, StyleTTS2, Sherpa-ONNX, Voice Cloning), SHA-256 integrity verification, offline enforcement policy toggle, hardware acceleration telemetry.
-3. **Voices** (`VoicesWorkspace`): Voice profile library, acoustic faders (speed, pitch, energy, emotion), test phrase synthesis, and **mandatory affirmative human-only legal consent gate** (`CloningConsentModal`).
-4. **Generate** (`GenerateWorkspace`): Speech prompt composer, voice dropdown, speed/pitch controls, render take queue, and take history feed.
-5. **Effects** (`EffectsWorkspace`): 6-stage vocal cleanup chain (hum, clicks, 4-band parametric EQ, de-esser, compressor, limiter) with per-stage bypass toggles, signal path metrics, and sandboxed CLAP / LV2 hosted plugin browser with rescan action.
-6. **Captures** (`CapturesWorkspace`): Take recording deck with input meter, clipping detection, punch-in/monitor toggles, takes list, and interactive word-level transcript editor with click-to-seek and segment cutting.
-7. **Stories** (`StoriesWorkspace`): Chapter script editor, multi-character cast assignment, line status tracking, batch synthesis, and timeline stitching.
-
-- Integrated unified workspace view switcher into `SubtabTopBar` and `App.tsx` allowing one-click toggling between full studio workspace views and floating draggable panels.
-- Verified keyboard accessibility, high-contrast dark/light tokens, Reduce motion suppression, and module documentation in `docs/modules/frontend/workspaces.md`.
-- **Exit:** All 7 studio workspaces ported with functional interactive states; cloning consent modal strictly gates profile creation; CI verification scripts pass. Proceed to M6.
-
-### M6 — Multitrack timeline editor (size L) — COMPLETED
-- Implemented high-performance HTML5 Canvas 2D multitrack timeline editor (`MultitrackCanvas.tsx` and `MultitrackWorkspace.tsx`):
-  - Track lanes with Mute/Solo/Arm pills, volume/pan readouts, and alternating studio lane background.
-  - Non-destructive clips with synthetic waveform overview, fade-in/out parabolic curves, volume automation envelopes, and selection halos.
-  - Timecode ruler with sub-second subdivision ticks, loop boundaries (`[ ... ]`), and purple cue marker flags.
-  - Bright neon cyan playhead beam and active recording indicator.
-- Designed framework-free mathematical hit-testing and drag logic modules with zero UI dependencies (`frontend/src/timeline/timelineMath.ts`, `dragLogic.ts`).
-- Created direct Node test suite (`frontend/src/timeline/timelineMath.test.ts`, runnable via `npm test`) validating coordinate projections, 8px trim handle detection, fade curves, magnetic snapping, and drag command resolution (8/8 tests passing).
-- Wired 16 typed timeline IPC commands into `alp-desktop` and `alp-session` (`get_timeline_state`, `timeline_undo`, `timeline_redo`, `timeline_split_clip`, `timeline_delete_selected`, `timeline_cut`, `timeline_copy`, `timeline_paste`, `timeline_move_clip`, `timeline_trim_clip`, `timeline_set_clip_fades`, `timeline_set_clip_envelope`, `timeline_set_loop_range`, `timeline_add_marker`, `timeline_remove_marker`, `timeline_select_clip`, `timeline_set_selection`).
-- All mutations dispatch through `alp_core` undoable `Command` objects, preserving exact clip IDs on redo (`test timeline_operations_undo_redo_and_clip_id_preservation`).
-- **Exit:** All editing shortcuts from [`docs/KEYBOARD_SHORTCUTS.md`](../KEYBOARD_SHORTCUTS.md) work (`Ctrl+Z`, `Ctrl+Y`, `Ctrl+B`, `Delete`, `Ctrl+C`, `Ctrl+X`, `Ctrl+V`, `R`, `Ctrl+A`, `Space`, `Home`); redo restores identical clip IDs; null tests pass. Proceed to M7.
-
-### M7 — AI/MCP parity (size M) — COMPLETED
-- Implemented headless `AiControlManager` in `alp-session::ai`:
-  - Unix domain socket listener at `$XDG_RUNTIME_DIR/alp/control.sock` with permission 0600 and peer UID checking.
-  - Ephemeral random session authentication token (`ALP_CONTROL_TOKEN`) generated per session and never persisted.
-  - Granular permission tier enforcement (`Observe`, `Edit`, `Export`) gating native and MCP tool calls.
-  - Off-thread worker execution on `alp-attached-mcp-{client_id}` against base-revision scratch snapshots.
-  - Live atomic commit into `EditSession`: multi-step operations commit as a single undo entry, with automatic rejection of stale writes on revision conflict.
-  - Real-time `ProjectChange` event broadcasting over socket subscriptions and `AiEvent` emission.
-- Wired 6 typed AI IPC commands in `alp-desktop` (`get_ai_status`, `toggle_ai_control`, `set_ai_permission_tier`, `respond_ai_approval`, `get_ai_activity_log`, `undo_ai_change`) with background event pump emitting `session_revision_changed`, `ai_client_approval`, and `ai_activity_event`.
-- Upgraded `SettingsWorkspace.tsx`:
-  - Active/standby MCP host indicator and toggle switch.
-  - Live socket path display and 1-click token copy with clipboard feedback.
-  - One-click copyable CLI attach snippet: `ALP_CONTROL_TOKEN='...' alp-mcp --attach`.
-  - Segmented permission tier selector (`Observe`, `Edit`, `Export`).
-  - Real-time commit counters and measured latency metrics (`last_commit_ms`, `max_commit_ms`).
-  - Interactive client approval banner for incoming unknown connections.
-  - Live AI Activity Audit Log streaming events and committed/refused outcomes.
-- Real-time frontend synchronization in `App.tsx`: live project summary, track counts, and timeline re-render when MCP edits commit.
-- **Exit:** the `alp-mcp --attach` workflows in [`docs/mcp/`](../mcp/) pass unchanged; all null tests pass. Proceed to M8.
-
-### M8 — Packaging and cutover (size M) — COMPLETE
-- `.deb` / `.rpm`: added WebKitGTK runtime dependencies (`libwebkit2gtk-4.1-0`, `webkit2gtk4.1`, `gtk3`).
-- **Flatpak**: manifest moved to `org.gnome.Platform // 48` runtime providing WebKitGTK 4.1; `org.freedesktop.Sdk.Extension.node20` added; target binary set to `alp-desktop`.
-- Updated AppStream metadata (`0.0.1-alpha.8`), [`docs/TROUBLESHOOTING.md`](../TROUBLESHOOTING.md) (WebKitGTK, NVIDIA, Wayland), and [`THIRD_PARTY.md`](../../THIRD_PARTY.md) for Tauri 2 crates and npm dependency tree.
-- Removed `alp-ui`, `alp-ui-kit` and iced dependencies; updated `check-deps.sh` and `check-ui.sh`.
-- **Exit:** full workspace verification passes, manual acceptance checklist satisfied, iced crates cleanly removed.
-
-## 7. Glass strategy under Tauri
-
-ADR 0013 supersedes ADR 0012 only for the rendering layer. All core glass invariants remain unchanged:
-1. Transparent undecorated Tauri window; panels are DOM elements.
-2. The glass module moves from `alp-ui` to `alp-desktop::glass` (safe `x11rb` and `raw-window-handle` only).
-3. KWin/X11: set the blur property `_KDE_NET_WM_BLUR_BEHIND_REGION` from Rust (`x11rb`, safe code) using the window's X11 handle.
-4. Everywhere else: translucent tint (alpha ≥ 0.70) plus a darker root scrim, as today. `ALP_FORCE_TINT=1` keeps working.
-5. CSS `backdrop-filter` only blurs content inside the webview (inner-panel effect), not desktop behind the window.
-6. Wayland `ext_background_effect_v1` stays out of scope, as in ADR 0012. Motion remains decorative and never encodes audio state.
-
-## 8. Guards and CI changes
-
-| Today | After migration |
-|---|---|
-| `check-ui.sh` (no raw iced widgets outside kit) | ESLint rule banning raw `<button>`, `<input>` etc. outside `frontend/src/kit/` |
-| `check-file-length.sh` (Rust) | Extend to `.ts` / `.tsx` |
-| `check-deps.sh` | Add `alp-session`, `alp-desktop`; forbid iced and tauri in `alp-session`; check-deps.sh or a new check fails if `unsafe` appears in hand-written alp-desktop source |
-| `check-docs.sh` | Also require a page per frontend feature folder |
-| fmt, clippy, tests | Add `tsc --noEmit`, ESLint, Vitest, Playwright |
-
-## 9. Risks and mitigations
-
-| Risk | Mitigation |
-|---|---|
-| WebKitGTK performance or blur differs across distros | M0 gate; test KDE, GNOME, niri early; keep tint fallback |
-| Timeline performance in the DOM | Canvas/WebGL only for the timeline; no per-clip DOM nodes |
-| IPC overhead for meters and peaks | Batched `Channel`, binary responses, interpolated playhead |
-| Dual UI maintenance during migration | Time-box: iced stays frozen (bug fixes only) from M2 |
-| Flatpak runtime change | Handle in M8 (runtime version: verify the currently supported GNOME runtime and that it provides webkit2gtk-4.1 at M8 time; Freedesktop 24.08 stays until M8); early de-risk in M2 builds throwaway manifest and verifies audio playback |
-| npm supply-chain and license surface | Lockfile, `npm audit` in CI, license check feeds `THIRD_PARTY.md` |
-| `unsafe_code = "deny"` vs Tauri macros | Workspace deny stays; M2 verifies if macros trip it; if so, item-level exception only, zero unsafe in hand-written code, verified by guard |
-
-## 10. Manual acceptance checklist (before removing iced)
-
-- [x] All seven workspaces reach feature parity with the iced build
-- [x] Layout, theme and Reduce motion persist across restarts
-- [x] 30-minute capture soak: 0 dropped samples with the new UI running
-- [x] Forced-kill capture recovery still works
-- [x] WAV/FLAC null test unchanged
-- [x] MCP attach workflows pass
-- [x] Idle CPU and 1-hour waveform scroll meet the gates
-- [x] `.deb`, `.rpm` and Flatpak install and run on a clean machine
-
-## 11. Rollback
-
-The iced crates were maintained in the workspace until M8 passed. Cutover is now completed.
-
-## 12. Agent rules for this migration
-
-- One phase at a time; stop at each exit criterion and report measurements.
-- Never change behaviour in the engine, core or session crates except to extract code in M1.
-- Update [`docs/architecture/ARCHITECTURE.md`](ARCHITECTURE.md) in the same commit as any crate or IPC change.
-- Every new module gets its [`docs/modules/`](../modules/) page; every decision that supersedes an ADR gets a new ADR.
-- Do not add dependencies without listing them in [`THIRD_PARTY.md`](../../THIRD_PARTY.md).
-
-## 13. M8 documentation debt
-
-Checklist of documentation updates completed during M8 cutover:
-- [x] `docs/TROUBLESHOOTING.md`: WebKitGTK runtime dependencies per distro, hardware acceleration, NVIDIA/Wayland webview issues.
-- [x] `docs/USER_GUIDE.md`: build/run target changes from `-p alp-ui` to `-p alp-desktop`; the installed binary name `audio-labs-pro` stays the same; document the React UI workflows.
-- [x] `docs/KEYBOARD_SHORTCUTS.md`: shortcut PARITY only. The cmdk palette keeps Ctrl+K, and F1, Ctrl+1..7, Ctrl+D, Ctrl+Shift+M, Ctrl+B stay as they are.
-- [x] `THIRD_PARTY.md`: npm dependency licences, Tauri 2 crates, WebKitGTK packages; produced from a lockfile-based licence report.
+1. **Window Geometry & Surface:** `1280x800` default (16:10), `1024x640` minimum, `decorations: false`, `transparent: false`, `shadow: true`, zero compositor/KWin/X11 blur.
+2. **Universal `TitleBar` (40 px):** Contains logo (20 px), app title, version tag read from `tauri.conf.json`, clean drag region, the **sole** application `ThemeToggle` (`ui-theme` storage key), divider, minimize, maximize/restore, and close (`#E5484D` hover).
+3. **Tokens & Solid Surfaces:**
+   - Dark (`data-theme="dark"`): `--bg-app: #050505`, `--bg-surface: #111213`, `--bg-surface-2: #1A1B1E`, `--border: #1F2125`, `--border-strong: #2C2E33`, `--text: #F5F5F6`.
+   - Light (`data-theme="light"`): `--bg-app: #F3F4F6`, `--bg-surface: #FFFFFF`, `--bg-surface-2: #F4F5F7`, `--border: #E5E7EB`, `--border-strong: #D1D5DB`, `--text: #0F1115`.
+   - Primary accent `#3355FF`, sky `#38B6F0`, green `#22C55E`, red `#F43F5E`, amber `#EAB308`, teal `#1FB5A5`, purple `#7C5CE6`, orange `#F97316`.
+4. **Forbidden Patterns:** Zero `backdrop-filter`/blur, zero translucent surface overlays (`rgba()`, `hsla()`, Tailwind `/10` `/20`), zero `shadowBlur` or glow/pulse animations, zero surface gradients (`bg-gradient-*`), zero drop shadows in dark mode, zero pill-shaped chips/buttons (`rounded-full` allowed strictly on tiny status/legend dots).
+5. **Typography:** Self-hosted `InterVariable.ttf`; `tabular-nums` for stat cards and tables; monospace restricted solely to timecodes, keycaps, and terminal/log strings.
+6. **Canvases:** `WaveformCanvas`, `SpectrogramCanvas`, and `MultitrackCanvas` read live theme variables via `linearCanvasTheme.ts` on every `theme-changed` event so light and dark themes both stay crisp and high-contrast.

@@ -1,108 +1,51 @@
-# Audio Labs Pro — Troubleshooting & Platform Guide
+# Troubleshooting Guide
 
-Guidance on configuring Linux audio systems, Wayland compositors, and GPU acceleration for Audio Labs Pro.
-
----
-
-## 1. Linux Audio: PipeWire, PulseAudio & ALSA
-
-Audio Labs Pro uses high-performance audio streams for low-latency playback and crash-resilient recording.
-
-### Recommended Audio Setup: PipeWire
-Modern distributions (Fedora, Ubuntu 22.04+, Arch, Debian 12+) use PipeWire by default. Audio Labs Pro connects seamlessly via PipeWire's ALSA/PulseAudio emulation layer.
-- Verify PipeWire status:
-  ```bash
-  systemctl --user status pipewire pipewire-pulse
-  ```
-- If experiencing xruns (audio dropouts or buffer underruns) under heavy load, check your quantum buffer size:
-  ```bash
-  pw-metadata -n settings 0 clock.quantum 1024
-  ```
-
-### Raw ALSA Fallback
-If PipeWire is not present, Audio Labs Pro falls back to direct ALSA devices.
-- Ensure your user belongs to the `audio` group:
-  ```bash
-  sudo usermod -aG audio $USER
-  ```
-- Test ALSA capture and playback devices:
-  ```bash
-  arecord -l
-  aplay -l
-  ```
+Common diagnostics for Audio Labs Pro on Linux desktop sessions.
 
 ---
 
-## 2. Wayland & Compositor Blur Effects
+## 1. WebKitGTK / Window Rendering Issues
 
-Audio Labs Pro features a fluid glass aesthetic with compositor background blur.
+Audio Labs Pro uses a solid, opaque **Linear UI** window (`transparent: false`, compositor blur permanently disabled). No KWin blur rules or compositor transparency tweaks are required.
 
-### KDE Plasma (Wayland & X11)
-- Plasma's KWin compositor natively supports background blur on Wayland via `org_kde_kwin_blur` protocols.
-- Audio Labs Pro automatically detects KWin and activates hardware-accelerated blur.
-
-### GNOME Shell (Wayland)
-- GNOME Shell does not expose an unprivileged client-side blur protocol by default.
-- When running under GNOME, Audio Labs Pro smoothly falls back to **Tinted Glass Mode**, providing high-contrast readability without requiring non-standard shell extensions.
-
-### wlroots Compositors (Sway, Hyprland, River)
-- Hyprland enables window blur through compositor-level window rules. Add the following to your `hyprland.conf`:
-  ```ini
-  windowrulev2 = blur, class:^(audio-labs-pro)$
-  ```
-
----
-
-## 3. WebKitGTK Runtime Dependencies & Hardware Acceleration
-
-The desktop application shell is built on Tauri 2 and WebKitGTK 4.1.
-
-### Distro Package Requirements
-If running from source or extracted archive outside Flatpak, ensure the WebKitGTK 4.1 runtime libraries are installed:
-
-- **Ubuntu 22.04+ / Debian 12+:**
-  ```bash
-  sudo apt install libwebkit2gtk-4.1-0 libgtk-3-0
-  ```
-- **Fedora 38+:**
-  ```bash
-  sudo dnf install webkit2gtk4.1 gtk3
-  ```
-- **Arch Linux:**
-  ```bash
-  sudo pacman -S webkit2gtk-4.1 gtk3
-  ```
-- **openSUSE (Tumbleweed / Leap 15.5+):**
-  ```bash
-  sudo zypper install libwebkit2gtk-4_1-0 gtk3
-  ```
-
-### NVIDIA Proprietary Drivers & Wayland Webview Flags
-
-When running Audio Labs Pro on systems with proprietary NVIDIA drivers under Wayland:
-- Ensure `nvidia-drm.modeset=1` kernel parameter is enabled.
-- **DMA-BUF Renderer Synchronization:** If you experience blank/black webviews, stuttering, or buffer artifacts on NVIDIA Wayland sessions, disable the DMA-BUF renderer:
+- If you observe blank frames on certain NVIDIA Wayland drivers with WebKitGTK, test explicit DMA-BUF opt-out:
   ```bash
   WEBKIT_DISABLE_DMABUF_RENDERER=1 audio-labs-pro
   ```
-- **Software Compositing Fallback:** If the GPU compositor crashes or fails to initialize:
-  ```bash
-  WEBKIT_DISABLE_COMPOSITING_MODE=1 audio-labs-pro
-  ```
-- **XWayland Fallback:** If Wayland native EGL presentation fails:
-  ```bash
-  GDK_BACKEND=x11 audio-labs-pro
-  ```
-- **Hybrid GPU Selection:** To explicitly invoke the NVIDIA discrete GPU:
-  ```bash
-  __GLX_VENDOR_LIBRARY_NAME=nvidia WEBKIT_DISABLE_DMABUF_RENDERER=1 audio-labs-pro
-  ```
+- If the window opens smaller than comfortable, reset or resize freely above the enforced minimum of `1024x640` (default launch geometry is `1280x800`).
 
 ---
 
-## 4. Voice Model Inference & Memory
+## 2. Audio Device / PipeWire / ALSA Dropouts
 
-- **Lightweight Built-in Acoustic:** Requires 0 MB download and minimal RAM (< 100 MB). Fully supported on any dual-core CPU.
-- **Kokoro & Kitten Neural Models:** Require ~300 MB RAM and run with sub-second latency on modern CPUs.
-- **GPU Acceleration:** Audio Labs Pro probes `/dev/dri/renderD*` nodes. If available, neural models can leverage hardware acceleration.
-- If inference daemon crashes due to memory limits, the main workstation UI remains completely isolated and displays a recoverable warning toast.
+1. Open **Preferences (`Ctrl+7`) -> Audio Hardware & ALSA** to verify the default PipeWire or ALSA sink/source.
+2. Confirm PipeWire is active (`systemctl --user status pipewire pipewire-pulse`).
+3. Ensure sample rates match across input and output streams (`48.0 kHz` recommended).
+
+---
+
+## 3. Theme Preference Not Updating
+
+- Click the sun/moon icon in the top-right **TitleBar** or press `Ctrl+D`.
+- Theme state persists under `localStorage["ui-theme"]` (`dark` or `light`) alongside `data-theme` on the document root so it paints immediately on launch without flash.
+
+---
+
+## 4. MCP Socket & Starship Control Diagnostics
+
+- **Live Desktop MCP Socket:** When **Allow MCP** is active in Preferences, the host listens at:
+  ```bash
+  $XDG_RUNTIME_DIR/alp/control.sock
+  ```
+- **Starship Control Bridge:** Registers health and capability metadata at:
+  ```bash
+  $XDG_RUNTIME_DIR/starship/bridges/alp.sock
+  ```
+- If an external MCP tool returns a permission error, verify your selected **Permission Tier** (`Observe`, `Edit`, or `Export`) in **Preferences -> MCP Agents & Tiers**.
+
+---
+
+## 5. Neural Inference Subprocess (`alp-infer`)
+
+- Ensure `alp-infer` is installed alongside `audio-labs-pro` in `/usr/bin/alp-infer` (or built via `cargo build --workspace` during local development).
+- Model files downloaded from HuggingFace are verified by SHA-256 checksum inside `alp-voice::sha256` before activation.

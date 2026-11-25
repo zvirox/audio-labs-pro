@@ -1,5 +1,5 @@
 import React, { forwardRef, useId } from 'react';
-import { XCircle } from 'lucide-react';
+import { X } from 'lucide-react';
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -22,86 +22,68 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       className = '',
       id,
       value,
-      disabled,
       ...props
     },
-    ref
+    ref,
   ) => {
-    const generatedId = useId();
-    const inputId = id || generatedId;
-    const hasError = Boolean(errorMessage);
+    const autoId = useId();
+    const inputId = id ?? autoId;
+    const hasValue = value !== undefined && value !== '';
 
     return (
-      <div className={`space-y-1 text-left ${className}`}>
+      <div className={`flex flex-col gap-1.5 ${className}`}>
         {label && (
           <label
             htmlFor={inputId}
-            className="block text-xs font-medium text-[var(--color-fg-muted)]"
+            className="text-[12px] font-medium text-[var(--text-muted)]"
           >
             {label}
           </label>
         )}
-
         <div className="relative flex items-center">
           {leftIcon && (
-            <div className="absolute left-2.5 text-[var(--color-fg-subtle)] pointer-events-none flex items-center">
+            <span className="pointer-events-none absolute left-2.5 text-[var(--text-muted)]">
               {leftIcon}
-            </div>
+            </span>
           )}
-
           <input
             ref={ref}
             id={inputId}
             value={value}
-            disabled={disabled}
-            className={`w-full h-8 rounded-lg bg-[var(--color-surface-2)] text-[var(--color-fg)] text-xs border transition-colors placeholder:text-[var(--color-fg-subtle)] focus:outline-none focus:ring-1 focus:ring-[var(--color-focus)] disabled:opacity-40 disabled:cursor-not-allowed ${
- leftIcon ? 'pl-8' : 'pl-3'
- } ${rightIcon || onClear ? 'pr-8' : 'pr-3'} ${
- hasError
- ? 'border-red-500/60 focus:border-red-500 focus:ring-red-500/30'
- : 'border-[var(--color-border)] focus:border-[var(--color-focus)]'
- }`}
-            aria-invalid={hasError}
-            aria-describedby={
-              hasError
-                ? `${inputId}-error`
-                : helperText
-                ? `${inputId}-helper`
-                : undefined
-            }
+            className={`h-8 w-full rounded-md border bg-[var(--bg-surface-2)] text-[13px] text-[var(--text)] placeholder:text-[var(--text-faint)] transition-colors duration-[var(--duration-quick)] focus:outline-none focus:ring-2 focus:ring-[var(--color-focus)] disabled:opacity-50 ${
+              errorMessage
+                ? 'border-[var(--accent-red)] focus:border-[var(--accent-red)]'
+                : 'border-[var(--border)] hover:border-[var(--border-strong)] focus:border-[var(--accent-blue)]'
+            } ${leftIcon ? 'pl-8' : 'px-3'} ${
+              rightIcon || (onClear && hasValue) ? 'pr-8' : 'pr-3'
+            }`}
             {...props}
           />
-
-          {onClear && value && !disabled && (
+          {onClear && hasValue ? (
             <button
               type="button"
               onClick={onClear}
-              className="absolute right-2 text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] p-0.5"
-              title="Clear input"
+              aria-label="Clear input"
+              className="absolute right-2 rounded p-0.5 text-[var(--text-muted)] hover:bg-[var(--bg-bar-idle)] hover:text-[var(--text)] cursor-pointer"
             >
-              <XCircle className="w-4 h-4" />
+              <X className="h-3.5 w-3.5" />
             </button>
-          )}
-
-          {rightIcon && !onClear && (
-            <div className="absolute right-2.5 text-[var(--color-fg-subtle)] pointer-events-none flex items-center">
-              {rightIcon}
-            </div>
+          ) : (
+            rightIcon && (
+              <span className="pointer-events-none absolute right-2.5 text-[var(--text-muted)]">
+                {rightIcon}
+              </span>
+            )
           )}
         </div>
-
-        {hasError ? (
-          <p id={`${inputId}-error`} className="text-[11px] text-red-400 font-medium">
-            {errorMessage}
-          </p>
-        ) : helperText ? (
-          <p id={`${inputId}-helper`} className="text-[11px] text-[var(--color-fg-subtle)]">
-            {helperText}
-          </p>
-        ) : null}
+        {errorMessage ? (
+          <p className="text-[12px] text-[var(--accent-red)]">{errorMessage}</p>
+        ) : (
+          helperText && <p className="text-[12px] text-[var(--text-faint)]">{helperText}</p>
+        )}
       </div>
     );
-  }
+  },
 );
 
 Input.displayName = 'Input';

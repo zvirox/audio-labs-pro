@@ -137,11 +137,11 @@ export function StoriesWorkspace() {
                 <div
                   key={story.id}
                   onClick={() => setActiveStoryId(story.id)}
-                  className={`p-3 rounded-xl border transition-[color,background-color,border-color,opacity,transform] cursor-pointer space-y-1 ${
- story.id === activeStoryId
- ? 'bg-[var(--color-surface)] border-[var(--color-border-strong)] shadow-md'
- : 'bg-[var(--color-bg)] border-[var(--color-border)] hover:border-white/15'
- }`}
+                  className={`p-3 rounded-lg border transition-colors cursor-pointer space-y-1 ${
+                    story.id === activeStoryId
+                      ? 'bg-[var(--bg-surface)] border-[var(--border-strong)]'
+                      : 'bg-[var(--bg-app)] border-[var(--border)] hover:border-[var(--border-strong)]'
+                  }`}
                 >
                   <div className="font-medium text-[var(--color-fg)]">{story.title}</div>
                   <div className="text-[11px] font-mono text-[var(--color-fg-muted)]">
@@ -165,22 +165,20 @@ export function StoriesWorkspace() {
                 {activeStory?.lines.map((line, idx) => (
                   <div
                     key={line.id}
-                    className="p-3 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] space-y-2"
+                    className="p-3 rounded-lg bg-[var(--bg-surface)] border border-[var(--border)] space-y-2"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-[var(--color-fg-muted)] font-medium w-4">#{idx + 1}</span>
-                        <span className="font-medium text-[var(--color-accent)]">{line.speaker}</span>
+                        <span className="font-mono text-[var(--text-muted)] font-medium w-4">#{idx + 1}</span>
+                        <span className="font-medium text-[var(--accent-blue)]">{line.speaker}</span>
                       </div>
 
                       <span
                         className={`px-2 py-0.5 rounded font-mono text-[10px] font-medium border ${
- line.status === 'ready'
- ? 'bg-emerald-500/20 text-[var(--color-fg-muted)] border-[var(--color-border-strong)]'
- : line.status === 'rendering'
- ? 'bg-[var(--color-surface-2)] text-[var(--color-fg-muted)] border-[var(--color-border)]'
- : 'bg-[var(--color-surface-2)] text-[var(--color-fg-muted)] border-[var(--color-border)]'
- }`}
+                          line.status === 'ready'
+                            ? 'bg-[var(--tint-green)] text-[var(--accent-green)] border-[var(--border-strong)]'
+                            : 'bg-[var(--bg-surface-2)] text-[var(--text-muted)] border-[var(--border)]'
+                        }`}
                       >
                         {line.status}
                       </span>

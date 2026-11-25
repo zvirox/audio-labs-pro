@@ -1,155 +1,47 @@
 # Audio Labs Pro — User Guide
 
-Audio Labs Pro is a studio-styled, local-first voice audio workstation built in
-Rust. It combines non-destructive single-track and multitrack editing with local
-speech synthesis, voice profiles, transcription, speech-cleanup DSP and an
-undoable session engine. Nothing leaves the machine.
+Audio Labs Pro is a local-first Linux workstation for voice cloning, text-to-speech synthesis, multitrack nonlinear audio editing, spectral analysis, and AI-assisted MCP production.
 
 ---
 
-## 1. Getting Started
+## Installation (Linux)
 
-### Installation
-- **AppImage:** Run `./Audio-Labs-Pro-x86_64.AppImage` directly on any modern Linux distribution.
-- **Flatpak:** Install using `flatpak install io.github.zvirox.AudioLabsPro.flatpak`.
-- **Source Build:** Run `npm --prefix frontend install && npm --prefix frontend run build` followed by `cargo build --release -p alp-desktop`. Execute `target/release/alp-desktop` (packaged and installed as `audio-labs-pro`).
+Download the release package for your distribution from GitHub Releases (`packaging/nfpm.yaml`):
 
-### First-Run Wizard
-On first launch, Audio Labs Pro displays an interactive setup wizard:
-1. **Audio Hardware Setup:** Probes your system's ALSA / PipeWire devices and selects the active recording input.
-2. **System Capabilities:** Analyzes RAM, CPU core count, and GPU/DRM render nodes to recommend the optimal AI model tier ("Fast" lightweight vs "Best" high-fidelity).
-3. **Appearance & Compositor Glass:** Tests your compositor for background blur capabilities and enables hardware-accelerated glass or pristine tinted glass fallback.
+- **Debian / Ubuntu / Pop!_OS (`.deb`):**
+  ```bash
+  sudo apt install ./audio-labs-pro_*_amd64.deb
+  ```
+- **Fedora / RHEL / openSUSE (`.rpm`):**
+  ```bash
+  sudo dnf install ./audio-labs-pro-*.x86_64.rpm
+  ```
+- **Arch Linux / CachyOS / EndeavourOS (`.pkg.tar.zst`):**
+  ```bash
+  sudo pacman -U ./audio-labs-pro-*.pkg.tar.zst
+  ```
 
----
-
-## 2. Studio Workspace Architecture
-
-Audio Labs Pro presents a modern React-powered studio shell backed by the zero-copy `alp-session` engine and Tauri 2 IPC.
-
-An icon rail on the left switches between workspaces. A high-resolution audio player is docked at the bottom of the screen with synchronized transport controls, atomic peak meters, and timecode readouts.
-
-| Icon | Workspace | What it holds |
-|---|---|---|
-| ✨ Sparkles | Generate | Voice cards, prompt editor, generate/play controls and take history |
-| 🎬 Clapperboard | Stories | Multi-line scripts, per-line render, stitch and docked track editor |
-| 💿 Disc | Captures | Recording, dictation, VAD transcription, input meters and transcript |
-| 👥 Users | Voices | Profile library, inspector, designed voices and the cloning gate |
-| ⚡ Zap | Effects | Cleanup chain, signal path and hosted CLAP/LV2 plugins |
-| 📦 Boxes | Models | Model catalogue, licences, offline policy and storage |
-| ⚙ Gear | Settings | Appearance, motion, AI control, storage, delivery and panels |
-
-### React Studio Shell & Navigation
-- **Command Palette (`Ctrl+K`):** Fast fuzzy launcher for any workspace, tool, or action across the entire studio.
-- **Inspector Drawer (`Ctrl+B`):** Slide-out right panel revealing clip properties, fade controls, voice details, or effect parameters.
-- **Docked Transport & Meters:** Real-time dual-channel peak meters powered by the continuous IPC subscription channel.
-- **Theme & Motion Toggles:** Instant switching between Dark, Light, and System themes (`Ctrl+D`) with persistent `Reduce motion` support (`Ctrl+Shift+M`).
-- **AI Control Center:** Settings workspace houses live MCP client approval, permission tier controls (`Observe`, `Edit`, `Export`), and socket latency monitoring.
-
-**Create Voice** opens a modal with Upload, Record and System Audio tabs. Record
-captures up to 30 seconds. **Create Profile** first asks you to tick the
-speaker-permission declaration, then presents the human consent attestation.
-Upload and System Audio state plainly that they are not wired in this build.
-**Import Voice** accepts `.alpvoice` bundles dropped on the window.
+Installed binaries:
+- `/usr/bin/audio-labs-pro` — Desktop workstation (Tauri v2 + React Linear UI)
+- `/usr/bin/alp-cli` — Headless CLI automation tool
+- `/usr/bin/alp-infer` — Isolated local neural inference subprocess
+- `/usr/bin/alp-mcp` — Standalone MCP JSON-RPC host binary
 
 ---
 
-## 3. HTML5 Canvas Multitrack Timeline & Editing
+## Interface Tour (Linear UI)
 
-The multitrack timeline is powered by a high-performance HTML5 Canvas architecture engineered for smooth 60 fps rendering without per-clip DOM node overhead.
+Audio Labs Pro uses a high-contrast, opaque **Linear UI** without compositor blur or visual clutter:
 
-### Non-Destructive Editing
-Audio Labs Pro preserves source recordings immutably. Every edit produces non-destructive timeline clips that reference source ranges.
-
-- **Split Clip (`Ctrl+B`):** Splits the active clip at the current playhead position.
-- **Crossfading:** Overlapping adjacent clips creates smooth equal-power crossfades.
-- **Volume Envelope & Fades:** Adjust per-clip gain, linear/logarithmic fade-ins, and fade-outs in the Inspector panel.
-- **Ripple Mode (`R`):** When ripple mode is active, deleting or cutting a clip or transcript segment automatically pulls subsequent clips left, eliminating dead air.
-- **Snap to Grid (`S`):** Toggle intelligent time snapping for playhead scrubbing and clip positioning.
-- **Zoom & Pan (`Ctrl+=` / `Ctrl+-`):** Responsive zoom ranging from 10 px/sec to 1000 px/sec with focal playhead tracking.
-- **Infinite Undo / Redo (`Ctrl+Z` / `Ctrl+Y`):** Every timeline operation, effect tweak, voice insertion and generated take is fully undoable.
-
----
-
-## 4. Captures: Recording & Dictation
-
-1. Open the **Captures** workspace.
-2. Select your input device from the dropdown. Placeholder ALSA "null" devices are hidden.
-3. Choose **Record** or **Dictate**.
-4. Audio streams with lock-free atomic meters and is flushed to disk in crash-safe chunks every 5 seconds. If power is interrupted, autosave recovery restores your project on reopening.
-
-Stopping a recording adds a row to the capture list and runs VAD segmentation.
-Transcripts export as **SRT** or plain **TXT** from the same workspace. The
-built-in recogniser currently writes placeholder segment text: timings and
-ripple cuts are real, the words are a stand-in.
-
----
-
-## 5. Cleanup DSP Chain
-
-Audio Labs Pro ships a mastering-grade voice processing chain:
-
-- **High-Pass Filter (HPF):** Eliminates low-end rumble (selectable 40 Hz to 120 Hz).
-- **De-Hum:** Adaptive notch filter cascade targeting 50 Hz and 60 Hz electrical mains hum and their first 4 harmonics.
-- **De-Click:** Fast sample-rate transient detector that isolates and interpolates micro-clicks and mouth pops.
-- **Parametric EQ:** 5-band equalizer with gentle presence boosts and resonance cuts.
-- **De-Esser:** Dynamic gain-reduction band focused around 5.5 kHz – 7.5 kHz to soften harsh sibilance.
-- **Vocal Compressor:** Soft-knee downward compressor with program-dependent attack/release for consistent voice levels.
-- **Peak Limiter:** True-peak lookahead limiter set to -1.0 dBFS ceiling to prevent digital clipping.
-
-The chain is applied by the CLI and export render paths. The **Effects**
-workspace shows and edits the chain and hosts CLAP/LV2 plugins, but the desktop
-preview currently plays unprocessed audio.
-
----
-
-## 6. Generate: Synthesis & Scripts
-
-The **Generate** workspace turns text into speech locally:
-
-- **Text-to-Speech:** Enter text, pick a profile (*Aura*, *Atlas*, *Echo*, *Sol* or your own), choose a tier and press **Generate**.
-- **Render History:** Each take is cached on disk. Rows can play, insert into the
-  timeline or be deleted.
-- **Stories:** The **Stories** workspace keeps multi-line scripts as JSON with a
-  voice per line. **Render story** generates pending lines on a worker and
-  **stitch** assembles them into one take; script audio is not persisted, so lines
-  return as Pending after a restart.
-
-The built-in acoustic backend is a deterministic local synth; it does not yet
-honour pitch, energy or emotion hints.
-
----
-
-## 7. Voice Profiles & Cloning
-
-### Reference Audio Quality Gate
-Before creating a cloned voice profile, reference audio must pass an objective acoustic audit:
-- Duration: $\ge 5.0$ seconds.
-- Clipping: Zero detected digital clipping.
-- Noise Floor: $\le -35$ dBFS.
-- Silence Ratio: $\le 60\%$ speech activity.
-
-### Human Consent Attestation Gate
-In strict compliance with ethics and safety rules, creating a cloned voice requires two human steps: a speaker-permission declaration checkbox in the Create Voice dialog, and a human consent attestation with the speaker's and attester's names. Both are permanently stored in the profile metadata. Automation, headless scripts, and AI agents cannot bypass this human-only gate.
-
-### Prompt-Based Voice Design
-Create synthetic voices by entering a natural language description (e.g. *"Warm, deep British documentary narrator with calm cadence"*). The profile records the description and tags; timbre matching is not implemented yet.
-
-### Portable `.alpvoice` Packages
-Voice profiles can be exported to and imported from `.alpvoice` packages (standard uncompressed ZIP format with IEEE 802.3 CRC-32 integrity validation). Drag a bundle onto the window or use the per-row **Export** button. Built-in profiles cannot be deleted.
-
----
-
-## 8. Models & Delivery
-
-- **Models:** The catalogue lists each model with author, version, size, licence
-  and on-disk status. Accepting a licence records the decision; SHA-256
-  verification is available from `alp-cli`. Audio Labs Pro has no downloader and
-  makes no outbound requests, so files are placed in the model folder by hand.
-- **Exporting Master Audio:**
-  - **Master WAV (24-bit PCM):** Studio broadcast master.
-  - **Podcast Preset:** Mastered to -16 LUFS integrated loudness with -1.0 dBFS ceiling.
-  - **Audiobook Preset:** -20 LUFS integrated.
-  - **Voice-Over Preset:** High-clarity vocal balance optimized for spoken word.
-  - **FLAC:** Lossless 24-bit compression.
-  - **MP3 and OGG:** Not shipped. MP3 remains rejected for licensing reasons;
-    OGG is deferred until the encoder licence is vetted.
+- **Top TitleBar (40 px):** Displays the app mark, `Audio Labs Pro`, current version tag (`v0.1.0-beta.1`), drag region (double-click to maximize/restore), the global Light/Dark `ThemeToggle` (`Ctrl+D`), and window controls.
+- **Collapsible Sidebar (`240 px` / `56 px`):** Switches between **Dashboard** (`Ctrl+0`) and 7 workspaces:
+  1. **Voice Studio (`Ctrl+1`)** — Zero-shot voice cloning (requires written consent attestation), TTS synthesis, Neural Models, and Lexicon.
+  2. **Multitrack DAW (`Ctrl+2`)** — Non-linear canvas arranger with discrete `Waveform | Spectrogram | Dual` per-track views, gain/pan envelopes, split/trim/slip editing, magnetic snap (`S`), and ripple edit (`R`).
+  3. **Audiobook Lab (`Ctrl+3`)** — Multi-speaker narrative scripting and voice assignment.
+  4. **Video Dubbing (`Ctrl+4`)** — Audio-sync workspace and speech generation workflows.
+  5. **Batch & Repair (`Ctrl+5`)** — Live capture, VAD transcript preview, and noise repair tools.
+  6. **DSP & Effects (`Ctrl+6`)** — Parametric EQ, dynamics, spatial reverb, and hosted CLAP / LV2 plugins.
+  7. **Preferences (`Ctrl+7`)** — Audio hardware (PipeWire/ALSA), MCP AI control host tiers, window surface telemetry, and delivery loudness presets.
+- **Breadcrumb & Inspector Bar:** Shows your current location (`Audio Labs Pro / Workspace / Subtab`), engine connection pill, revision counter, layout controls, and collapsible right **Inspector Drawer**.
+- **Global Transport (`DockedPlayer`):** Bottom dock with Stop, Play/Pause (`Space`), Record Arm, Loop (`L`), timecode scrub bar, and discrete segmented L/R peak meters.
+- **Command Palette (`Ctrl+K`):** Instant search across every workspace, floating studio panel, and theme action.

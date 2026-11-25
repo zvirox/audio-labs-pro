@@ -65,30 +65,30 @@ export function EffectsWorkspace() {
 
       {/* Signal Path Metrics Banner */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] flex items-center justify-between">
+        <div className="p-4 rounded-lg bg-[var(--bg-surface)] border border-[var(--border)] flex items-center justify-between">
           <div>
-            <div className="text-[11px] text-[var(--color-fg-muted)] font-medium">Active Cleanup Stages</div>
-            <div className="text-lg font-medium font-mono text-[var(--color-accent)] mt-0.5">
+            <div className="text-[11px] text-[var(--text-muted)] font-medium">Active Cleanup Stages</div>
+            <div className="text-lg font-medium font-sans text-[var(--accent-blue)] mt-0.5 tabular-nums">
               {enabledCount} / {stages.length} Active
             </div>
           </div>
-          <Activity className="w-6 h-6 text-[var(--color-accent)]/40" />
+          <Activity className="w-6 h-6 text-[var(--accent-blue)]" />
         </div>
 
-        <div className="p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] flex items-center justify-between">
+        <div className="p-4 rounded-lg bg-[var(--bg-surface)] border border-[var(--border)] flex items-center justify-between">
           <div>
-            <div className="text-[11px] text-[var(--color-fg-muted)] font-medium">Mastering Target</div>
-            <div className="text-lg font-medium font-mono text-[var(--color-fg-muted)] mt-0.5">-16.0 LUFS</div>
+            <div className="text-[11px] text-[var(--text-muted)] font-medium">Mastering Target</div>
+            <div className="text-lg font-medium font-sans text-[var(--text)] mt-0.5 tabular-nums">-16.0 LUFS</div>
           </div>
-          <Sliders className="w-6 h-6 text-[var(--color-fg-muted)]" />
+          <Sliders className="w-6 h-6 text-[var(--text-muted)]" />
         </div>
 
-        <div className="p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] flex items-center justify-between">
+        <div className="p-4 rounded-lg bg-[var(--bg-surface)] border border-[var(--border)] flex items-center justify-between">
           <div>
-            <div className="text-[11px] text-[var(--color-fg-muted)] font-medium">True Peak Ceiling</div>
-            <div className="text-lg font-medium font-mono text-[var(--color-fg-muted)] mt-0.5">-1.0 dBFS</div>
+            <div className="text-[11px] text-[var(--text-muted)] font-medium">True Peak Ceiling</div>
+            <div className="text-lg font-medium font-sans text-[var(--text)] mt-0.5 tabular-nums">-1.0 dBFS</div>
           </div>
-          <Check className="w-6 h-6 text-[var(--color-fg-muted)]" />
+          <Check className="w-6 h-6 text-[var(--accent-green)]" />
         </div>
       </div>
 
@@ -104,11 +104,11 @@ export function EffectsWorkspace() {
                   <div
                     key={stage.id}
                     onClick={() => setActiveStageId(stage.id)}
-                    className={`p-3 rounded-xl border transition-[color,background-color,border-color,opacity,transform] cursor-pointer flex items-center justify-between ${
- isSelected
- ? 'bg-[var(--color-surface)] border-[var(--color-border-strong)] shadow-md'
- : 'bg-[var(--color-bg)] border-[var(--color-border)] hover:border-white/15'
- }`}
+                    className={`p-3 rounded-lg border transition-colors cursor-pointer flex items-center justify-between ${
+                      isSelected
+                        ? 'bg-[var(--bg-surface)] border-[var(--border-strong)]'
+                        : 'bg-[var(--bg-app)] border-[var(--border)] hover:border-[var(--border-strong)]'
+                    }`}
                   >
                     <div className="flex items-center gap-3">
                       <span className="font-mono text-[var(--color-fg-muted)] font-medium w-4">{idx + 1}</span>
@@ -122,11 +122,11 @@ export function EffectsWorkspace() {
                       <button
                         type="button"
                         onClick={() => toggleStage(stage.id)}
-                        className={`p-1.5 rounded-lg border transition-colors ${
- stage.enabled
- ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)] border-[var(--color-border-strong)]'
- : 'bg-[var(--color-surface-2)] text-[var(--color-fg-subtle)] border-[var(--color-border)]'
- }`}
+                        className={`p-1.5 rounded-md border transition-colors ${
+                          stage.enabled
+                            ? 'bg-[var(--tint-blue)] text-[var(--accent-blue)] border-[var(--border-strong)]'
+                            : 'bg-[var(--bg-surface-2)] text-[var(--text-faint)] border-[var(--border)]'
+                        }`}
                         title={stage.enabled ? 'Bypass stage' : 'Enable stage'}
                       >
                         <Power className="w-4 h-4" />
@@ -207,7 +207,7 @@ export function EffectsWorkspace() {
                         {plugin.vendor} · {plugin.category}
                       </div>
                     </div>
-                    <span className="px-2 py-0.5 rounded font-mono text-[10px] font-medium bg-purple-500/20 text-[var(--color-fg-muted)] border border-[var(--color-border-strong)]">
+                    <span className="px-2 py-0.5 rounded font-mono text-[10px] font-medium bg-[var(--tint-purple)] text-[var(--accent-purple)] border border-[var(--border-strong)]">
                       {plugin.format}
                     </span>
                   </div>

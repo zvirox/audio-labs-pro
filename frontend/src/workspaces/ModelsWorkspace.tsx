@@ -61,25 +61,25 @@ export function ModelsWorkspace() {
               {models.map((model) => (
                 <div
                   key={model.id}
-                  className="p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] hover:border-white/20 transition-[color,background-color,border-color,opacity,transform] space-y-2 text-xs"
+                  className="p-4 rounded-lg bg-[var(--bg-surface)] border border-[var(--border)] hover:border-[var(--border-strong)] transition-colors space-y-2 text-xs"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-[var(--color-fg)] text-sm">{model.name}</span>
+                      <span className="font-medium text-[var(--text)] text-sm">{model.name}</span>
                       {model.is_builtin && (
-                        <span className="px-1.5 py-0.5 rounded bg-[var(--color-accent)]/20 text-[var(--color-accent)] border border-[var(--color-border-strong)] font-mono text-[10px]">
+                        <span className="px-1.5 py-0.5 rounded bg-[var(--tint-blue)] text-[var(--accent-blue)] border border-[var(--border-strong)] font-mono text-[10px]">
                           Built-in
                         </span>
                       )}
                     </div>
                     <span
                       className={`px-2 py-0.5 rounded font-mono text-[11px] font-medium border ${
- model.status === 'verified'
- ? 'bg-emerald-500/20 text-[var(--color-fg-muted)] border-[var(--color-border-strong)]'
- : model.status === 'installed'
- ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)] border-[var(--color-border-strong)]'
- : 'bg-amber-500/20 text-[var(--color-fg-muted)] border-amber-500/30'
- }`}
+                        model.status === 'verified'
+                          ? 'bg-[var(--tint-green)] text-[var(--accent-green)] border-[var(--border-strong)]'
+                          : model.status === 'installed'
+                          ? 'bg-[var(--tint-blue)] text-[var(--accent-blue)] border-[var(--border-strong)]'
+                          : 'bg-[var(--tint-amber)] text-[var(--accent-amber)] border-[var(--accent-amber)]'
+                      }`}
                     >
                       {model.status.toUpperCase()}
                     </span>

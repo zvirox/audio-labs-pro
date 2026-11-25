@@ -5,6 +5,11 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+### Changed & Locked
+- **Final Linear UI Implementation & Lock:** Completed exact Linear dark (`#050505` / `#111213`) and light (`#F3F4F6` / `#FFFFFF`) design system with `#3355FF` primary accent, self-hosted `InterVariable.ttf`, 40 px frameless `TitleBar` (reading version directly from `tauri.conf.json`, sole `ThemeToggle` on `ui-theme`), collapsible `Sidebar` (`240px`/`56px`), `Breadcrumb`, `LinearCard`/`StatCard`/`DataTable`/`LinearDialog`/`ProgressRow`/`RangeTabs`/`DonutLegend`, ECharts telemetry dashboard, discrete segmented `Meter` strips, and theme-reactive 2D audio canvases (`linearCanvasTheme.ts`).
+- **Compositor Blur Removed:** Disabled X11 KWin blur in `alp-desktop::glass` and locked window geometry at `1280x800` (min `1024x640`, opaque solid rendering) enforced by `npm --prefix frontend run check:linear`.
+- **Documentation & Roadmap Audit:** Reconciled `MASTER_CHECKLIST.md`, `docs/ADOPTION_PLAN.md`, `ALP_STATUS_REPORT.md`, `docs/architecture/*`, `docs/USER_GUIDE.md`, `docs/TROUBLESHOOTING.md`, and `docs/modules/*` with actual crate inventories (12 crates, 68 MCP tools, Starship bridge, `alp-dsp::denoise`, `alp-dsp::spectral`, `nfpm` packaging); retired dead `plan.md` and legacy `alp-ui` docs.
+
 ## [0.1.0-beta.1] - 2026-11-24
 
 ### Added

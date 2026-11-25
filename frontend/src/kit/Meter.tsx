@@ -1,7 +1,7 @@
 import { memo } from 'react';
 
 export interface MeterProps {
-  leftLevel: number; // in linear 0.0 - 1.0 or dBFS
+  leftLevel: number;
   rightLevel?: number;
   peakLeft?: number;
   peakRight?: number;
@@ -10,62 +10,113 @@ export interface MeterProps {
   className?: string;
 }
 
+const SEGMENT_COUNT = 20;
+
+function toLinearNormalized(val: number): number {
+  if (Number.isNaN(val)) return 0;
+  if (val < 0) {
+    return Math.max(0, Math.min(1, (val + 60) / 60));
+  }
+  return Math.max(0, Math.min(1, val));
+}
+
+function segmentColorClass(index: number): string {
+  const ratio = (index + 1) / SEGMENT_COUNT;
+  if (ratio > 0.85) return 'bg-[var(--accent-red)]';
+  if (ratio > 0.7) return 'bg-[var(--accent-amber)]';
+  return 'bg-[var(--accent-green)]';
+}
+
+function SegmentedBar({
+  level,
+  peak,
+  vertical,
+  label,
+  showLabel,
+}: {
+  level: number;
+  peak?: number;
+  vertical: boolean;
+  label: string;
+  showLabel: boolean;
+}) {
+  const activeSegments = Math.round(level * SEGMENT_COUNT);
+  const peakIndex = peak !== undefined ? Math.min(SEGMENT_COUNT - 1, Math.floor(peak * SEGMENT_COUNT)) : -1;
+
+  return (
+    <div
+      className={
+        vertical ? 'flex flex-col items-center gap-1' : 'flex items-center gap-2'
+      }
+    >
+      {showLabel && (
+        <span className="font-mono text-[10px] font-medium text-[var(--text-muted)] tabular-nums">
+          {label}
+        </span>
+      )}
+      <div
+        role="meter"
+        aria-label={`${label} audio level`}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(level * 100)}
+        className={
+          vertical
+            ? 'flex h-24 w-2 flex-col-reverse gap-0.5 rounded bg-[var(--bg-surface-2)] p-0.5 border border-[var(--border)]'
+            : 'flex h-2.5 flex-1 items-center gap-0.5 rounded bg-[var(--bg-surface-2)] p-0.5 border border-[var(--border)]'
+        }
+      >
+        {Array.from({ length: SEGMENT_COUNT }, (_, idx) => {
+          const isActive = idx < activeSegments || idx === peakIndex;
+          return (
+            <span
+              key={idx}
+              className={`rounded-[1px] ${vertical ? 'w-full flex-1' : 'h-full flex-1'} ${
+                isActive ? segmentColorClass(idx) : 'bg-[var(--bg-bar-idle)]'
+              }`}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export const Meter = memo(function Meter({
   leftLevel,
   rightLevel,
-  peakLeft = 0,
-  peakRight = 0,
+  peakLeft,
+  peakRight,
   orientation = 'horizontal',
-  showLabels = true,
+  showLabels = false,
   className = '',
 }: MeterProps) {
-  // Convert linear 0..1 to percentage or clamp
-  const lPercent = Math.max(0, Math.min(100, leftLevel * 100));
-  const rPercent = rightLevel !== undefined ? Math.max(0, Math.min(100, rightLevel * 100)) : undefined;
-
-  const isClippedL = peakLeft > 0.98 || leftLevel > 0.98;
-  const isClippedR = peakRight > 0.98 || (rightLevel !== undefined && rightLevel > 0.98);
-
-  const isVertical = orientation === 'vertical';
-
-  const renderBar = (percent: number, isClipped: boolean, channel: string) => {
-    return (
-      <div className={`relative flex-1 bg-[var(--color-surface-3)] rounded-[2px] overflow-hidden border border-[var(--color-border)] ${isVertical ? 'w-2 h-full' : 'h-2 w-full'}`}>
-        {/* Gradient fill */}
-        <div
-          className={`absolute transition-[color,background-color,border-color,opacity,transform] duration-75 ${
- isVertical
- ? 'bottom-0 w-full bg-gradient-to-t from-emerald-500 via-amber-400 to-rose-500'
- : 'left-0 h-full bg-gradient-to-r from-emerald-500 via-amber-400 to-rose-500'
- }`}
-          style={isVertical ? { height: `${percent}%` } : { width: `${percent}%` }}
-        />
-        {/* Clip LED indicator */}
-        {isClipped && (
-          <div
-            className={`absolute ${isVertical ? 'top-0 left-0 right-0 h-1.5' : 'right-0 top-0 bottom-0 w-1.5'} bg-red-500 animate-pulse`}
-            title={`${channel} Clipped`}
-          />
-        )}
-      </div>
-    );
-  };
+  const vertical = orientation === 'vertical';
+  const left = toLinearNormalized(leftLevel);
+  const right = rightLevel !== undefined ? toLinearNormalized(rightLevel) : undefined;
+  const pLeft = peakLeft !== undefined ? toLinearNormalized(peakLeft) : undefined;
+  const pRight = peakRight !== undefined ? toLinearNormalized(peakRight) : undefined;
 
   return (
-    <div className={`flex flex-col gap-1 select-none font-mono text-[9px] ${className}`}>
-      {showLabels && (
-        <div className="flex justify-between text-[var(--color-fg-subtle)] px-0.5">
-          <span>-48</span>
-          <span>-24</span>
-          <span>-12</span>
-          <span>-6</span>
-          <span className="text-rose-400">0</span>
-        </div>
+    <div
+      className={`${vertical ? 'inline-flex items-stretch gap-1.5' : 'flex flex-col gap-1'} ${className}`}
+    >
+      <SegmentedBar
+        level={left}
+        peak={pLeft}
+        vertical={vertical}
+        label="L"
+        showLabel={showLabels}
+      />
+      {right !== undefined && (
+        <SegmentedBar
+          level={right}
+          peak={pRight}
+          vertical={vertical}
+          label="R"
+          showLabel={showLabels}
+        />
       )}
-      <div className={`flex ${isVertical ? 'flex-row h-24' : 'flex-col'} gap-1`}>
-        {renderBar(lPercent, isClippedL, 'L')}
-        {rPercent !== undefined && renderBar(rPercent, isClippedR, 'R')}
-      </div>
     </div>
   );
 });

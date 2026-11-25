@@ -90,15 +90,15 @@ export function VoicesWorkspace() {
                   <div
                     key={profile.id}
                     onClick={() => setSelectedId(profile.id)}
-                    className={`p-3 rounded-xl border transition-[color,background-color,border-color,opacity,transform] cursor-pointer space-y-2 text-xs ${
- isSelected
- ? 'bg-[var(--color-surface)] border-[var(--color-border-strong)] shadow-md'
- : 'bg-[var(--color-bg)] border-[var(--color-border)] hover:border-white/15'
- }`}
+                    className={`p-3 rounded-lg border transition-colors cursor-pointer space-y-2 text-xs ${
+                      isSelected
+                        ? 'bg-[var(--bg-surface)] border-[var(--border-strong)]'
+                        : 'bg-[var(--bg-app)] border-[var(--border)] hover:border-[var(--border-strong)]'
+                    }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-[var(--color-accent)]/20 text-[var(--color-accent)] flex items-center justify-center font-medium text-xs">
+                        <div className="w-7 h-7 rounded-full bg-[var(--tint-blue)] text-[var(--accent-blue)] flex items-center justify-center font-medium text-xs">
                           {profile.name.charAt(0)}
                         </div>
                         <div>
@@ -153,7 +153,7 @@ export function VoicesWorkspace() {
               <div className="space-y-6 text-xs">
                 {/* Consent Badge if Cloned */}
                 {activeProfile.consent && (
-                  <div className="p-3 rounded-lg bg-emerald-500/10 border border-[var(--color-border-strong)] flex items-start gap-3">
+                  <div className="p-3 rounded-lg bg-[var(--tint-green)] border border-[var(--border-strong)] flex items-start gap-3">
                     <ShieldCheck className="w-4 h-4 text-[var(--color-fg-muted)] flex-shrink-0 mt-0.5" />
                     <div className="space-y-0.5 text-[var(--color-fg-muted)]">
                       <div className="font-medium text-[var(--color-fg-muted)]">Verified Legal Consent Record</div>
@@ -238,7 +238,7 @@ export function VoicesWorkspace() {
               </div>
             </Card>
           ) : (
-            <div className="p-8 text-center text-[var(--color-fg-muted)] bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)]">
+            <div className="p-8 text-center text-[var(--text-muted)] bg-[var(--bg-surface)] rounded-lg border border-[var(--border)]">
               Select a voice profile to view acoustic parameters.
             </div>
           )}

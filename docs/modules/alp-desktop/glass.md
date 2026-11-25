@@ -2,20 +2,19 @@
 
 ## Purpose
 
-Negotiates desktop window blur with the Linux display compositor and provides a guaranteed translucent tint fallback.
+Provides deterministic display-session detection and reports the locked opaque Linear window surface configuration to the frontend.
 
 ## Public API
 
-- `GlassMode` — Enum (`CompositorBlur` or `TintFallback`).
-- `GlassReport` — Detailed inspection report describing desktop session, window handle, active mode, and diagnostic reasoning.
-- `probe(window)` — Probes the active Tauri window, attempts KWin blur on X11, or selects tint fallback.
-- `enable_x11_blur(window)` — Sets `_KDE_NET_WM_BLUR_BEHIND_REGION` on X11 windows using safe `x11rb`.
-- `resolve(session, desktop, handle, force_tint)` — Pure resolution logic for deterministic evaluation.
-- `should_attempt_x11_blur(desktop)` — Identifies KDE Plasma desktop environments.
+- `GlassMode` — Enum (`CompositorBlur` kept for IPC wire compatibility; runtime selects `TintFallback` for solid opaque rendering).
+- `GlassReport` — Inspection report containing desktop environment, display server, handle kind, mode, and surface policy details.
+- `probe(window)` — Inspects display server and returns an opaque solid `GlassReport` without applying compositor blur atoms.
+- `resolve(session, desktop, handle, force_tint)` — Pure deterministic resolution helper.
+- `should_attempt_x11_blur(desktop)` — Pure desktop detection helper retained for test coverage.
 
 ## Data flow
 
-During Tauri window setup, `probe()` queries `raw-window-handle 0.6`. If running on KDE/X11 and `ALP_FORCE_TINT` is unset, `enable_x11_blur()` applies the X11 blur atom. The resulting `GlassReport` is stored in `AppState` and reported to the frontend.
+During Tauri setup in `main.rs`, `probe()` records display environment metadata into `AppState`. Compositor/X11 blur is permanently disabled to enforce the locked solid opaque Linear UI design standard.
 
 ## Allowed dependencies
 
@@ -26,16 +25,16 @@ During Tauri window setup, `probe()` queries `raw-window-handle 0.6`. If running
 
 ## Threading / real-time notes
 
-Probing runs once during application startup or display migration on the UI thread. It never touches audio callback threads.
+Runs once on the UI setup thread during startup and never touches real-time audio threads.
 
 ## Error handling
 
-If X11 connection fails, window ID conversion fails, or atom configuration is rejected, the probe logs a warning and falls back to `TintFallback` without crashing.
+Non-fatal query errors fall back safely to deterministic default `GlassReport` fields without aborting startup.
 
 ## Testing
 
-Deterministic unit tests in `crates/alp-desktop/src/glass.rs` test `resolve` across Wayland, X11, GNOME, KDE, and `ALP_FORCE_TINT=1`.
+Deterministic unit tests in `crates/alp-desktop/src/glass.rs` verify `resolve()` and `GlassMode` roundtrip serialization.
 
 ## Known limits
 
-Wayland blur protocols (`ext_background_effect_v1`) remain out of scope in accordance with ADR 0012; Wayland sessions use the high-contrast tint fallback ($\alpha \ge 0.70$).
+Window compositor blur is intentionally disabled (`blur_available: false`, `transparent: false` in `tauri.conf.json`) because the Linear UI standard requires solid opaque surfaces.

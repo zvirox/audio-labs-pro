@@ -8,6 +8,7 @@
 
 import { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import type { WaveformPeaksDto } from '../ipc/types';
+import { readLinearCanvasTokens, useLinearCanvasTheme } from '../utils/linearCanvasTheme';
 
 export interface WaveformCanvasProps {
   peaks: WaveformPeaksDto;
@@ -40,8 +41,9 @@ export function WaveformCanvas({
   onSelectRange,
   autoscroll = true,
   height = 200,
-  accentColor = '#06b6d4', // Studio Cyan
+  accentColor,
 }: WaveformCanvasProps) {
+  const themeTick = useLinearCanvasTheme();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -119,13 +121,14 @@ export function WaveformCanvas({
     const waveHeight = canvasHeight - rulerHeight;
     const waveMidY = waveTop + waveHeight / 2;
     const halfWave = waveHeight / 2 - 4;
+    const tokens = readLinearCanvasTokens();
 
-    // 1. Background Grid & Axis
-    ctx.fillStyle = '#0b0f19';
+    // 1. Background Grid & Axis (--bg-surface-2)
+    ctx.fillStyle = tokens.bgSurface2;
     ctx.fillRect(0, 0, width, canvasHeight);
 
     // Center zero axis
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.strokeStyle = tokens.border;
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(0, waveMidY);
@@ -136,9 +139,9 @@ export function WaveformCanvas({
     if (selectionEnd > selectionStart) {
       const selX1 = ((selectionStart - viewStart) / viewDuration) * width;
       const selX2 = ((selectionEnd - viewStart) / viewDuration) * width;
-      ctx.fillStyle = 'rgba(6, 182, 212, 0.15)';
+      ctx.fillStyle = tokens.tintSky;
       ctx.fillRect(selX1, waveTop, selX2 - selX1, waveHeight);
-      ctx.strokeStyle = 'rgba(6, 182, 212, 0.5)';
+      ctx.strokeStyle = tokens.accentSky;
       ctx.strokeRect(selX1, waveTop, selX2 - selX1, waveHeight);
     }
 
@@ -146,11 +149,11 @@ export function WaveformCanvas({
     if (loopEnabled && loopEnd > loopStart) {
       const loopX1 = ((loopStart - viewStart) / viewDuration) * width;
       const loopX2 = ((loopEnd - viewStart) / viewDuration) * width;
-      ctx.fillStyle = 'rgba(168, 85, 247, 0.12)';
+      ctx.fillStyle = tokens.tintPurple;
       ctx.fillRect(loopX1, waveTop, loopX2 - loopX1, waveHeight);
 
       // Loop boundary markers
-      ctx.strokeStyle = '#c084fc';
+      ctx.strokeStyle = tokens.accentPurple;
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(loopX1, waveTop);
@@ -160,18 +163,12 @@ export function WaveformCanvas({
       ctx.stroke();
     }
 
-    // 4. Waveform Peak Bars
+    // 4. Flat Waveform Peak Bars (Sky on --bg-surface-2, zero gradients)
     if (activeLevel && activeLevel.pairs.length > 0) {
       const bucketSamples = activeLevel.bucket_samples;
       const totalPairs = activeLevel.pairs.length;
 
-      // Gradient fill
-      const grad = ctx.createLinearGradient(0, waveTop, 0, waveTop + waveHeight);
-      grad.addColorStop(0, accentColor);
-      grad.addColorStop(0.5, 'rgba(255, 255, 255, 0.9)');
-      grad.addColorStop(1, accentColor);
-
-      ctx.fillStyle = grad;
+      ctx.fillStyle = accentColor || tokens.accentSky;
 
       const visibleStartFrame = viewStart * peaks.sample_rate;
       const visibleEndFrame = (viewStart + viewDuration) * peaks.sample_rate;
@@ -208,28 +205,31 @@ export function WaveformCanvas({
       }
     }
 
-    // 5. Timecode Ruler at Top
-    ctx.fillStyle = '#0f172a';
+    // 5. Dotted Timecode Ruler at Top
+    ctx.fillStyle = tokens.bgSurface;
     ctx.fillRect(0, 0, width, rulerHeight);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.strokeStyle = tokens.border;
     ctx.beginPath();
     ctx.moveTo(0, rulerHeight);
     ctx.lineTo(width, rulerHeight);
     ctx.stroke();
 
-    // Ruler tick marks
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+    // Ruler tick marks (dotted grid)
+    ctx.fillStyle = tokens.textMuted;
     ctx.font = '10px ui-monospace, monospace';
     const tickIntervalSecs = viewDuration > 600 ? 120 : viewDuration > 60 ? 10 : 2;
     const firstTick = Math.ceil(viewStart / tickIntervalSecs) * tickIntervalSecs;
 
     for (let t = firstTick; t < viewStart + viewDuration; t += tickIntervalSecs) {
       const x = ((t - viewStart) / viewDuration) * width;
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.save();
+      ctx.strokeStyle = tokens.borderStrong;
+      ctx.setLineDash([1, 2]);
       ctx.beginPath();
       ctx.moveTo(x, rulerHeight - 6);
       ctx.lineTo(x, rulerHeight);
       ctx.stroke();
+      ctx.restore();
 
       const mins = Math.floor(t / 60);
       const secs = Math.floor(t % 60);
@@ -237,13 +237,10 @@ export function WaveformCanvas({
       ctx.fillText(label, x + 3, rulerHeight - 8);
     }
 
-    // 6. Playhead Line & Cursor Pip
+    // 6. Red Playhead Line & Cursor Flag (zero glow)
     const playheadX = ((currentTime - viewStart) / viewDuration) * width;
     if (playheadX >= 0 && playheadX <= width) {
-      // Glow effect
-      ctx.shadowColor = '#38bdf8';
-      ctx.shadowBlur = 6;
-      ctx.strokeStyle = '#38bdf8';
+      ctx.strokeStyle = tokens.accentRed;
       ctx.lineWidth = 1.5;
 
       ctx.beginPath();
@@ -251,13 +248,11 @@ export function WaveformCanvas({
       ctx.lineTo(playheadX, canvasHeight);
       ctx.stroke();
 
-      // Top flag marker
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = '#38bdf8';
+      ctx.fillStyle = tokens.accentRed;
       ctx.beginPath();
-      ctx.moveTo(playheadX - 6, 0);
-      ctx.lineTo(playheadX + 6, 0);
-      ctx.lineTo(playheadX, 10);
+      ctx.moveTo(playheadX - 5, 0);
+      ctx.lineTo(playheadX + 5, 0);
+      ctx.lineTo(playheadX, 9);
       ctx.closePath();
       ctx.fill();
     }
@@ -288,6 +283,7 @@ export function WaveformCanvas({
     viewDuration,
     accentColor,
     peaks.sample_rate,
+    themeTick,
   ]);
 
   // Request render only on relevant updates (zero-idle-draw compliant)
@@ -372,7 +368,7 @@ export function WaveformCanvas({
   };
 
   return (
-    <div ref={containerRef} className="relative w-full flex flex-col select-none bg-[var(--color-bg-solid)] rounded border border-[var(--color-border)] overflow-hidden">
+    <div ref={containerRef} className="relative w-full flex flex-col select-none bg-[var(--bg-surface-2)] rounded-lg border border-[var(--border)] overflow-hidden">
       {/* Waveform Canvas */}
       <canvas
         ref={canvasRef}
@@ -386,17 +382,17 @@ export function WaveformCanvas({
         onWheel={handleWheel}
       />
 
-      {/* Floating Viewport Telemetry Overlay */}
-      <div className="absolute top-2 right-3 flex items-center gap-2 pointer-events-none text-xs font-mono">
-        <span className="px-1.5 py-0.5 rounded bg-black/60 text-[var(--color-fg)] border border-[var(--color-border)]">
+      {/* Viewport Telemetry Overlay */}
+      <div className="absolute top-2 right-3 flex items-center gap-2 pointer-events-none text-[11px] font-mono">
+        <span className="px-1.5 py-0.5 rounded bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border)] tabular-nums">
           Level: {activeLevel?.bucket_samples} spl ({peaks.levels.indexOf(activeLevel)})
         </span>
         {isPlaying && (
           <span
-            className={`px-1.5 py-0.5 rounded font-medium border ${
+            className={`px-1.5 py-0.5 rounded font-medium border tabular-nums ${
               fps >= 55
-                ? 'bg-[var(--color-surface-2)] text-[var(--color-fg-muted)] border-[var(--color-border-strong)]'
-                : 'bg-amber-950/80 text-[var(--color-fg-muted)] border-amber-500/30'
+                ? 'bg-[var(--bg-surface)] text-[var(--text-muted)] border-[var(--border-strong)]'
+                : 'bg-[var(--tint-amber)] text-[var(--accent-amber)] border-[var(--accent-amber)]'
             }`}
           >
             {fps} FPS

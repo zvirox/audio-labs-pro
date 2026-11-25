@@ -1,23 +1,16 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Command } from 'cmdk';
 import {
-  Mic,
-  Layers,
-  BookOpen,
-  Film,
-  Wrench,
-  Sparkles,
-  Settings,
-  Sliders,
-  Play,
-  RotateCcw,
-  Sun,
+  LayoutGrid,
   Moon,
-  Zap,
-  HelpCircle,
-  Eye,
-  Home,
+  Plus,
+  RotateCcw,
+  Search,
+  Sparkles,
+  Sun,
+  Terminal,
 } from 'lucide-react';
+import { DASHBOARD_ITEM, WORKSPACE_LIST } from '../layout/PrimaryRail';
 import type { PanelKind } from '../ipc/types';
 
 interface CommandPaletteProps {
@@ -43,281 +36,184 @@ export function CommandPalette({
   onTriggerEdit,
   theme,
 }: CommandPaletteProps) {
+  const [search, setSearch] = useState('');
+
   useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        if (open) onClose();
-      }
-      if (e.key === 'Escape' && open) {
-        onClose();
-      }
+    if (!open) {
+      setSearch('');
     }
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
+  const runAction = (fn: () => void) => {
+    fn();
+    onClose();
+  };
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-20 p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-100"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+      className="fixed inset-0 z-50 flex items-start justify-center pt-[14vh] px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Command Palette"
     >
-      <div className="w-full max-w-xl rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-2xl overflow-hidden flex flex-col">
-        <Command className="w-full text-xs">
-          {/* Search bar */}
-          <div className="flex items-center px-4 border-b border-[var(--color-border)]">
+      {/* Solid dimmed scrim */}
+      <div
+        className="fixed inset-0 bg-[var(--bg-app)] opacity-80"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      <div className="relative z-10 w-full max-w-[600px] overflow-hidden rounded-lg border border-[var(--border-strong)] bg-[var(--bg-surface)] shadow-[var(--shadow-card)]">
+        <Command
+          label="Command Palette"
+          className="flex flex-col"
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              onClose();
+            }
+          }}
+        >
+          <div className="flex items-center gap-2.5 border-b border-[var(--border)] px-3.5 py-2.5">
+            <Search className="h-4 w-4 shrink-0 text-[var(--text-muted)]" />
             <Command.Input
               autoFocus
-              placeholder="Search workspaces, panels and actions"
-              className="w-full h-11 bg-transparent text-xs text-[var(--color-fg)] placeholder:text-[var(--color-fg-subtle)] focus:outline-none"
+              value={search}
+              onValueChange={setSearch}
+              placeholder="Jump to workspace, toggle panel, or run command..."
+              className="w-full bg-transparent text-[13px] text-[var(--text)] placeholder:text-[var(--text-faint)] outline-none"
             />
+            <kbd className="rounded border border-[var(--border)] bg-[var(--bg-surface-2)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--text-muted)]">
+              ESC
+            </kbd>
           </div>
 
-          <Command.List className="max-h-80 overflow-y-auto p-2 space-y-1">
-            <Command.Empty className="p-4 text-center text-xs text-[var(--color-fg-muted)]">
-              No matching commands or actions found.
+          <Command.List className="max-h-[360px] overflow-y-auto p-2 text-[13px]">
+            <Command.Empty className="py-8 text-center text-[13px] text-[var(--text-muted)]">
+              No matching commands found.
             </Command.Empty>
 
-            {/* Workspaces Group */}
-            <Command.Group heading="Studio Workspaces" className="text-[11px] font-medium text-[var(--color-fg-subtle)] px-2 py-1">
-              <Command.Item
-                onSelect={() => {
-                  onSelectWorkspace('dashboard');
-                  onClose();
-                }}
-                className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-[var(--color-fg)] hover:bg-[var(--color-surface-2)] aria-selected:bg-[var(--color-surface-2)]"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Home className="w-4 h-4 text-[var(--color-accent)]" />
-                  <span>Dashboard (Home)</span>
-                </div>
-                <kbd className="text-[10px] font-mono text-[var(--color-fg-subtle)]">Ctrl+0</kbd>
-              </Command.Item>
+            <Command.Group
+              heading="Workspaces"
+              className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-[var(--text-faint)]"
+            >
+              {[DASHBOARD_ITEM, ...WORKSPACE_LIST].map((ws) => {
+                const Icon = ws.icon;
+                return (
+                  <Command.Item
+                    key={ws.id}
+                    value={`${ws.name} ${ws.desc}`}
+                    onSelect={() => runAction(() => onSelectWorkspace(ws.id))}
+                    className="flex items-center justify-between gap-3 rounded-md px-2.5 py-2 text-[var(--text)] transition-colors duration-[var(--duration-quick)] aria-selected:bg-[var(--bg-surface-2)] cursor-pointer"
+                  >
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-[var(--border)] bg-[var(--tint-blue)] text-[var(--accent-blue)]">
+                        <Icon className="h-3.5 w-3.5" />
+                      </span>
+                      <div className="min-w-0">
+                        <div className="truncate font-medium">{ws.name}</div>
+                        <div className="truncate text-[11px] text-[var(--text-muted)]">{ws.desc}</div>
+                      </div>
+                    </div>
+                    <kbd className="shrink-0 rounded border border-[var(--border)] bg-[var(--bg-surface-2)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--text-muted)]">
+                      {ws.shortcut}
+                    </kbd>
+                  </Command.Item>
+                );
+              })}
+            </Command.Group>
 
+            <Command.Group
+              heading="Panels & Layout"
+              className="mt-1.5 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-[var(--text-faint)]"
+            >
+              {(
+                [
+                  { id: 'timeline', label: 'Toggle Timeline Panel' },
+                  { id: 'mixer', label: 'Toggle Mixer Rack Panel' },
+                  { id: 'transport', label: 'Toggle Transport Panel' },
+                  { id: 'voice_lab', label: 'Toggle Voice Lab Panel' },
+                  { id: 'effects', label: 'Toggle DSP Effects Panel' },
+                  { id: 'models', label: 'Toggle Neural Models Panel' },
+                  { id: 'media_bin', label: 'Toggle Media Bin Panel' },
+                  { id: 'ai_activity', label: 'Toggle MCP Agent Activity Panel' },
+                  { id: 'export_queue', label: 'Toggle Export Queue Panel' },
+                ] as { id: PanelKind; label: string }[]
+              ).map((p) => (
+                <Command.Item
+                  key={p.id}
+                  value={p.label}
+                  onSelect={() => runAction(() => onTogglePanel(p.id))}
+                  className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[var(--text)] transition-colors duration-[var(--duration-quick)] aria-selected:bg-[var(--bg-surface-2)] cursor-pointer"
+                >
+                  <LayoutGrid className="h-3.5 w-3.5 text-[var(--text-muted)]" />
+                  <span>{p.label}</span>
+                </Command.Item>
+              ))}
               <Command.Item
-                onSelect={() => {
-                  onSelectWorkspace('voice');
-                  onClose();
-                }}
-                className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-[var(--color-fg)] hover:bg-[var(--color-surface-2)] aria-selected:bg-[var(--color-surface-2)]"
+                value="Reset Panel Layout"
+                onSelect={() => runAction(onResetLayout)}
+                className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[var(--text)] transition-colors duration-[var(--duration-quick)] aria-selected:bg-[var(--bg-surface-2)] cursor-pointer"
               >
-                <div className="flex items-center gap-2.5">
-                  <Mic className="w-4 h-4 text-[var(--color-accent)]" />
-                  <span>Voice Studio Lab</span>
-                </div>
-                <kbd className="text-[10px] font-mono text-[var(--color-fg-subtle)]">Ctrl+1</kbd>
-              </Command.Item>
-
-              <Command.Item
-                onSelect={() => {
-                  onSelectWorkspace('multitrack');
-                  onClose();
-                }}
-                className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-[var(--color-fg)] hover:bg-[var(--color-surface-2)] aria-selected:bg-[var(--color-surface-2)]"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Layers className="w-4 h-4 text-indigo-400" />
-                  <span>Multitrack Arranger DAW</span>
-                </div>
-                <kbd className="text-[10px] font-mono text-[var(--color-fg-subtle)]">Ctrl+2</kbd>
-              </Command.Item>
-
-              <Command.Item
-                onSelect={() => {
-                  onSelectWorkspace('audiobook');
-                  onClose();
-                }}
-                className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-[var(--color-fg)] hover:bg-[var(--color-surface-2)] aria-selected:bg-[var(--color-surface-2)]"
-              >
-                <div className="flex items-center gap-2.5">
-                  <BookOpen className="w-4 h-4 text-[var(--color-fg-muted)]" />
-                  <span>Audiobook Production Lab</span>
-                </div>
-                <kbd className="text-[10px] font-mono text-[var(--color-fg-subtle)]">Ctrl+3</kbd>
-              </Command.Item>
-
-              <Command.Item
-                onSelect={() => {
-                  onSelectWorkspace('dubbing');
-                  onClose();
-                }}
-                className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-[var(--color-fg)] hover:bg-[var(--color-surface-2)] aria-selected:bg-[var(--color-surface-2)]"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Film className="w-4 h-4 text-pink-400" />
-                  <span>Video Dubbing & Stem Isolation</span>
-                </div>
-                <kbd className="text-[10px] font-mono text-[var(--color-fg-subtle)]">Ctrl+4</kbd>
-              </Command.Item>
-
-              <Command.Item
-                onSelect={() => {
-                  onSelectWorkspace('tools');
-                  onClose();
-                }}
-                className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-[var(--color-fg)] hover:bg-[var(--color-surface-2)] aria-selected:bg-[var(--color-surface-2)]"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Wrench className="w-4 h-4 text-[var(--color-fg-muted)]" />
-                  <span>Audio Tools, Batch & Repair</span>
-                </div>
-                <kbd className="text-[10px] font-mono text-[var(--color-fg-subtle)]">Ctrl+5</kbd>
-              </Command.Item>
-
-              <Command.Item
-                onSelect={() => {
-                  onSelectWorkspace('effects');
-                  onClose();
-                }}
-                className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-[var(--color-fg)] hover:bg-[var(--color-surface-2)] aria-selected:bg-[var(--color-surface-2)]"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Sparkles className="w-4 h-4 text-[var(--color-fg-muted)]" />
-                  <span>DSP Effects & Plugins Rack</span>
-                </div>
-                <kbd className="text-[10px] font-mono text-[var(--color-fg-subtle)]">Ctrl+6</kbd>
-              </Command.Item>
-
-              <Command.Item
-                onSelect={() => {
-                  onSelectWorkspace('settings');
-                  onClose();
-                }}
-                className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-[var(--color-fg)] hover:bg-[var(--color-surface-2)] aria-selected:bg-[var(--color-surface-2)]"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Settings className="w-4 h-4 text-[var(--color-fg-muted)]" />
-                  <span>Preferences & Hardware</span>
-                </div>
-                <kbd className="text-[10px] font-mono text-[var(--color-fg-subtle)]">Ctrl+7</kbd>
+                <RotateCcw className="h-3.5 w-3.5 text-[var(--text-muted)]" />
+                <span>Reset Panel Layout</span>
               </Command.Item>
             </Command.Group>
 
-            {/* Studio Panels Group */}
-            <Command.Group heading="Floating Panels" className="text-[11px] font-medium text-[var(--color-fg-subtle)] px-2 py-1 mt-2">
+            <Command.Group
+              heading="Session & Appearance"
+              className="mt-1.5 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-[var(--text-faint)]"
+            >
               <Command.Item
-                onSelect={() => {
-                  onTogglePanel('mixer');
-                  onClose();
-                }}
-                className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-[var(--color-fg)] hover:bg-[var(--color-surface-2)] aria-selected:bg-[var(--color-surface-2)]"
+                value="Add Sample Track Timeline Mutation"
+                onSelect={() => runAction(onTriggerEdit)}
+                className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[var(--text)] transition-colors duration-[var(--duration-quick)] aria-selected:bg-[var(--bg-surface-2)] cursor-pointer"
               >
-                <div className="flex items-center gap-2.5">
-                  <Sliders className="w-4 h-4 text-[var(--color-accent)]" />
-                  <span>Toggle Mixer Panel</span>
-                </div>
+                <Plus className="h-3.5 w-3.5 text-[var(--accent-blue)]" />
+                <span>Add Sample Track to Session</span>
               </Command.Item>
-
               <Command.Item
-                onSelect={() => {
-                  onTogglePanel('transport');
-                  onClose();
-                }}
-                className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-[var(--color-fg)] hover:bg-[var(--color-surface-2)] aria-selected:bg-[var(--color-surface-2)]"
+                value="Toggle Light Dark Theme"
+                onSelect={() => runAction(onToggleTheme)}
+                className="flex items-center justify-between rounded-md px-2.5 py-2 text-[var(--text)] transition-colors duration-[var(--duration-quick)] aria-selected:bg-[var(--bg-surface-2)] cursor-pointer"
               >
-                <div className="flex items-center gap-2.5">
-                  <Play className="w-4 h-4 text-[var(--color-accent)]" />
-                  <span>Toggle Transport Panel</span>
-                </div>
+                <span className="flex items-center gap-2.5">
+                  {theme === 'dark' ? (
+                    <Sun className="h-3.5 w-3.5 text-[var(--accent-amber)]" />
+                  ) : (
+                    <Moon className="h-3.5 w-3.5 text-[var(--accent-blue)]" />
+                  )}
+                  <span>Switch to {theme === 'dark' ? 'Light' : 'Dark'} Theme</span>
+                </span>
+                <kbd className="rounded border border-[var(--border)] bg-[var(--bg-surface-2)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--text-muted)]">
+                  Ctrl+D
+                </kbd>
               </Command.Item>
-
               <Command.Item
-                onSelect={() => {
-                  onTogglePanel('timeline');
-                  onClose();
-                }}
-                className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-[var(--color-fg)] hover:bg-[var(--color-surface-2)] aria-selected:bg-[var(--color-surface-2)]"
+                value="Show Keyboard Shortcuts"
+                onSelect={() => runAction(onOpenShortcuts)}
+                className="flex items-center justify-between rounded-md px-2.5 py-2 text-[var(--text)] transition-colors duration-[var(--duration-quick)] aria-selected:bg-[var(--bg-surface-2)] cursor-pointer"
               >
-                <div className="flex items-center gap-2.5">
-                  <Layers className="w-4 h-4 text-[var(--color-accent)]" />
-                  <span>Toggle Timeline Panel</span>
-                </div>
+                <span className="flex items-center gap-2.5">
+                  <Terminal className="h-3.5 w-3.5 text-[var(--text-muted)]" />
+                  <span>Open Keyboard Shortcuts Reference</span>
+                </span>
+                <kbd className="rounded border border-[var(--border)] bg-[var(--bg-surface-2)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--text-muted)]">
+                  ?
+                </kbd>
               </Command.Item>
-
               <Command.Item
-                onSelect={() => {
-                  onTogglePanel('inspector');
-                  onClose();
-                }}
-                className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-[var(--color-fg)] hover:bg-[var(--color-surface-2)] aria-selected:bg-[var(--color-surface-2)]"
+                value="Audio Labs Engine Info"
+                onSelect={() => runAction(() => onSelectWorkspace('dashboard'))}
+                className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[var(--text)] transition-colors duration-[var(--duration-quick)] aria-selected:bg-[var(--bg-surface-2)] cursor-pointer"
               >
-                <div className="flex items-center gap-2.5">
-                  <Eye className="w-4 h-4 text-[var(--color-accent)]" />
-                  <span>Toggle Right Inspector Drawer</span>
-                </div>
-                <kbd className="text-[10px] font-mono text-[var(--color-fg-subtle)]">Ctrl+B</kbd>
-              </Command.Item>
-            </Command.Group>
-
-            {/* Global Actions */}
-            <Command.Group heading="Studio Actions & Views" className="text-[11px] font-medium text-[var(--color-fg-subtle)] px-2 py-1 mt-2">
-              <Command.Item
-                onSelect={() => {
-                  onTriggerEdit();
-                  onClose();
-                }}
-                className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-[var(--color-fg)] hover:bg-[var(--color-surface-2)] aria-selected:bg-[var(--color-surface-2)]"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Zap className="w-4 h-4 text-[var(--color-fg-muted)]" />
-                  <span>Trigger Timeline Demo Edit</span>
-                </div>
-              </Command.Item>
-
-              <Command.Item
-                onSelect={() => {
-                  onResetLayout();
-                  onClose();
-                }}
-                className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-[var(--color-fg)] hover:bg-[var(--color-surface-2)] aria-selected:bg-[var(--color-surface-2)]"
-              >
-                <div className="flex items-center gap-2.5">
-                  <RotateCcw className="w-4 h-4 text-[var(--color-accent)]" />
-                  <span>Reset Floating Panels to Default</span>
-                </div>
-              </Command.Item>
-
-              <Command.Item
-                onSelect={() => {
-                  onToggleTheme();
-                  onClose();
-                }}
-                className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-[var(--color-fg)] hover:bg-[var(--color-surface-2)] aria-selected:bg-[var(--color-surface-2)]"
-              >
-                <div className="flex items-center gap-2.5">
-                  {theme === 'dark' ? <Sun className="w-4 h-4 text-[var(--color-fg-muted)]" /> : <Moon className="w-4 h-4 text-indigo-400" />}
-                  <span>Toggle Dark / Light Theme</span>
-                </div>
-                <kbd className="text-[10px] font-mono text-[var(--color-fg-subtle)]">Ctrl+D</kbd>
-              </Command.Item>
-
-              <Command.Item
-                onSelect={() => {
-                  onOpenShortcuts();
-                  onClose();
-                }}
-                className="flex items-center justify-between p-2 rounded-lg cursor-pointer text-[var(--color-fg)] hover:bg-[var(--color-surface-2)] aria-selected:bg-[var(--color-surface-2)]"
-              >
-                <div className="flex items-center gap-2.5">
-                  <HelpCircle className="w-4 h-4 text-[var(--color-accent)]" />
-                  <span>Open Keyboard Shortcuts Cheatsheet</span>
-                </div>
-                <kbd className="text-[10px] font-mono text-[var(--color-fg-subtle)]">F1</kbd>
+                <Sparkles className="h-3.5 w-3.5 text-[var(--accent-sky)]" />
+                <span>Go to Studio Overview</span>
               </Command.Item>
             </Command.Group>
           </Command.List>
-
-          <div className="p-2.5 border-t border-[var(--color-border)] bg-[var(--color-surface-2)] flex items-center justify-between text-[11px] text-[var(--color-fg-subtle)]">
-            <div className="flex items-center gap-3">
-              <span>Use <kbd className="font-mono text-[10px] px-1 py-0.5 rounded bg-[var(--color-surface-3)]">↑</kbd> <kbd className="font-mono text-[10px] px-1 py-0.5 rounded bg-[var(--color-surface-3)]">↓</kbd> to navigate</span>
-              <span><kbd className="font-mono text-[10px] px-1 py-0.5 rounded bg-[var(--color-surface-3)]">Enter</kbd> to select</span>
-            </div>
-            <span><kbd className="font-mono text-[10px] px-1 py-0.5 rounded bg-[var(--color-surface-3)]">Esc</kbd> to close</span>
-          </div>
         </Command>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useId } from 'react';
 
 export interface ToggleProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'onChange'> {
   checked: boolean;
@@ -18,55 +18,56 @@ export const Toggle = forwardRef<HTMLButtonElement, ToggleProps>(
       size = 'md',
       disabled = false,
       className = '',
-      id,
       ...props
     },
-    ref
+    ref,
   ) => {
-    const toggleId = id || (label ? `toggle-${label.toLowerCase().replace(/\s+/g, '-')}` : undefined);
-
-    const switchSizes = {
-      sm: { track: 'w-7 h-4', thumb: 'w-4 h-4', translate: 'translate-x-3' },
-      md: { track: 'w-10 h-5.5', thumb: 'w-4 h-4', translate: 'translate-x-4.5' },
-    };
-
-    const currentSize = switchSizes[size];
+    const id = useId();
+    const trackClass = size === 'sm' ? 'h-4 w-7' : 'h-5 w-9';
+    const thumbClass = size === 'sm' ? 'h-2.5 w-2.5' : 'h-3.5 w-3.5';
+    const translateClass =
+      size === 'sm'
+        ? checked
+          ? 'translate-x-3.5'
+          : 'translate-x-0.5'
+        : checked
+        ? 'translate-x-[18px]'
+        : 'translate-x-0.5';
 
     return (
-      <div className={`inline-flex items-center justify-between gap-3 ${className}`}>
+      <div className={`flex items-center justify-between gap-3 ${className}`}>
         {(label || description) && (
-          <label
-            htmlFor={toggleId}
-            className={`cursor-pointer select-none text-left ${disabled ? 'opacity-40 pointer-events-none' : ''}`}
-          >
-            {label && <div className="text-xs font-medium text-[var(--color-fg)]">{label}</div>}
+          <label htmlFor={id} className="flex min-w-0 flex-col cursor-pointer">
+            {label && <span className="text-[13px] font-medium text-[var(--text)]">{label}</span>}
             {description && (
-              <div className="text-[11px] text-[var(--color-fg-muted)] mt-0.5">{description}</div>
+              <span className="text-[12px] text-[var(--text-muted)]">{description}</span>
             )}
           </label>
         )}
         <button
           ref={ref}
-          id={toggleId}
+          id={id}
           type="button"
           role="switch"
           aria-checked={checked}
           disabled={disabled}
           onClick={() => onChange(!checked)}
-          className={`relative inline-flex flex-shrink-0 cursor-pointer rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] disabled:opacity-40 disabled:cursor-not-allowed ${
- currentSize.track
- } ${checked ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-surface-3)] border border-[var(--color-border)]'}`}
+          className={`relative inline-flex shrink-0 items-center rounded-md border transition-colors duration-[var(--duration-quick)] [transition-timing-function:var(--ease-out-expo)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${trackClass} ${
+            checked
+              ? 'border-[var(--accent-blue)] bg-[var(--accent-blue)]'
+              : 'border-[var(--border-strong)] bg-[var(--bg-bar-idle)]'
+          }`}
           {...props}
         >
           <span
-            className={`pointer-events-none inline-block rounded-full bg-white shadow-md transform ring-0 transition-transform duration-150 ease-out my-auto ml-0.5 ${
-              currentSize.thumb
-            } ${checked ? `${currentSize.translate} bg-[var(--color-accent-fg)]` : 'translate-x-0 bg-[var(--color-fg-muted)]'}`}
+            className={`inline-block rounded bg-[var(--bg-surface)] transition-transform duration-[var(--duration-quick)] [transition-timing-function:var(--ease-out-expo)] ${thumbClass} ${translateClass} ${
+              checked ? 'bg-[var(--text-on-accent)]' : 'bg-[var(--text)]'
+            }`}
           />
         </button>
       </div>
     );
-  }
+  },
 );
 
 Toggle.displayName = 'Toggle';

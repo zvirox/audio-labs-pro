@@ -1,109 +1,37 @@
 # Release & Packaging Audit — Audio Labs Pro
 
-**Audited:** 2026-11-24  
-**Auditor:** Prakash / Antigravity  
+**Verified State:** `v0.1.0-beta.1`  
 **Repository:** `audio-labs-pro` (`https://github.com/zvirox/audio-labs-pro`)
 
 ---
 
-## 1. Workflows in `.github/workflows/`
+## 1. Automated Workflows (`.github/workflows/`)
 
-* **`.github/workflows/ci.yml`**:
-  * **Trigger:** `push` / `pull_request` on `main`.
-  * **Jobs:** `workspace` (test, check, clippy), `frontend` (build, test).
-* **`.github/workflows/release.yml`**:
-  * **Trigger:** `push` on tags matching `v*` or `workflow_dispatch`.
-  * **Jobs:**
-    1. `packages`: builds `.deb` and `.rpm` using manual `dpkg-deb` and `rpmbuild`.
-    2. `flatpak`: compiles workspace in Freedesktop SDK building `Audio-Labs-Pro-${VERSION}-x86_64.flatpak`.
-    3. `publish`: aggregates artifacts, calculates `sha256sums.txt`, and creates GitHub Release via `gh release create`.
+- **`.github/workflows/ci.yml`:** Runs on push/PR to `main` (`cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test --workspace`, `npm run check:linear`, `npm test`, `npm run build`, and `./scripts/check-{deps,docs,ui,file-length}.sh`).
+- **`.github/workflows/release.yml`:** Runs on `v*` tag pushes on `ubuntu-24.04`. Builds release binaries (`audio-labs-pro`, `alp-cli`, `alp-infer`, `alp-mcp`) and delegates multi-distro packaging to `nfpm`.
 
 ---
 
-## 2. Existing Packaging Files & Configuration
+## 2. Unified `nfpm` Packaging (`packaging/nfpm.yaml`)
 
-* **`crates/alp-desktop/tauri.conf.json`**:
-  * `"productName": "Audio Labs Pro"`
-  * `"identifier": "io.github.zvirox.audio-labs-pro"`
-* **`packaging/` directory contents:**
-  * `packaging/desktop/io.github.zvirox.AudioLabsPro.desktop`
-  * `packaging/desktop/io.github.zvirox.AudioLabsPro.metainfo.xml`
-  * `packaging/mime/io.github.zvirox.AudioLabsPro.xml`
-  * `packaging/icons/hicolor/...`
-  * `packaging/deb/control`
-  * `packaging/rpm/audio-labs-pro.spec`
-  * `packaging/flatpak/io.github.zvirox.AudioLabsPro.yaml`
-  * `packaging/flatpak/throwaway-tauri-derisk.yaml`
+Legacy manual `deb/`, `rpm/`, `flatpak/` directories were retired in M8 in favor of a single declarative `packaging/nfpm.yaml`:
+- `.deb` (Debian / Ubuntu)
+- `.rpm` (Fedora / RHEL / openSUSE)
+- `.pkg.tar.zst` (Arch Linux / CachyOS)
+
+Desktop metadata installed under `/usr/share/`:
+- `packaging/audio-labs-pro.desktop` -> `/usr/share/applications/audio-labs-pro.desktop`
+- `packaging/audio-labs-pro.xml` -> MIME integration for `.alpproj`
+- `packaging/icons/hicolor/...` -> `audio-labs-pro.png`
 
 ---
 
-## 3. Existing Tags and Release Assets
+## 3. Version & Binary Matrix (Aligned)
 
-* **Tags:** `v0.0.1-alpha.1` through `v0.0.1-alpha.9`
-* **Latest Release (`v0.0.1-alpha.9`):**
-  * `Audio-Labs-Pro-0.0.1-alpha.9-x86_64.flatpak` (15.21 MiB)
-  * `audio-labs-pro-0.0.1.alpha.9-1.x86_64.rpm` (27.71 MiB)
-  * `audio-labs-pro_0.0.1-alpha.9_amd64.deb` (19.96 MiB)
-  * `sha256sums.txt` (323 B)
-  * *(Notice: No Arch `pkg.tar.zst` was built)*
-
----
-
-## 4. Version Alignment Check
-
-| Location | Version | Matches Latest Tag (`v0.0.1-alpha.9`)? |
-|---|---|---|
-| `Cargo.toml` (workspace) | `0.1.0` | **Mismatch** (`0.1.0` vs tag `v0.0.1-alpha.9`) |
-| `crates/alp-desktop/tauri.conf.json` | `0.1.0` | **Mismatch** |
-| `frontend/package.json` | `1.0.0` | **Mismatch** (`1.0.0`) |
-
-*Note: The upcoming release will reconcile version across manifests and tags.*
-
----
-
-## 5. Naming Matrix & Identifier Alignment
-
-* **GitHub Repository Name:** `audio-labs-pro`
-* **Cargo Binary Name:** `alp-desktop` (`crates/alp-desktop/Cargo.toml`: `[package] name = "alp-desktop"`)
-* **Installed Binary Name:** `audio-labs-pro` (The previous release script renamed `alp-desktop` to `audio-labs-pro` during packaging staging).
-* **Helper Binaries:** `alp-cli`, `alp-infer`
-* **Tauri `productName`:** `"Audio Labs Pro"`
-* **Desktop File:** `packaging/desktop/io.github.zvirox.AudioLabsPro.desktop` (standardize to `packaging/audio-labs-pro.desktop`)
-* **Icon:** Standardize to `audio-labs-pro.png`
-* **Mismatch Assessment:**
-  - Rule 1 requires binary name to match the repo name `audio-labs-pro`.
-  - In `crates/alp-desktop/Cargo.toml`, we can set `[[bin]] name = "audio-labs-pro" path = "src/main.rs"` or rename the crate, eliminating the manual rename step.
-
----
-
-## 6. Runtime Dependencies & Extra Files
-
-* **Binaries:**
-  * `/usr/bin/audio-labs-pro` (GUI desktop shell)
-  * `/usr/bin/alp-cli` (Command-line tool)
-  * `/usr/bin/alp-infer` (Offline voice synthesis helper)
-* **Desktop File:** `/usr/share/applications/audio-labs-pro.desktop`
-* **Mime Type:** `/usr/share/mime/packages/audio-labs-pro.xml`
-* **Runtime Dependencies:**
-  * Debian/Ubuntu: `libwebkit2gtk-4.1-0`, `libgtk-3-0`, `libasound2`, `libpipewire-0.3-0`
-  * Fedora/RPM: `webkit2gtk4.1`, `gtk3`, `alsa-lib`, `pipewire-libs`
-  * Arch Linux: `webkit2gtk-4.1`, `gtk3`, `alsa-lib`, `pipewire`
-
----
-
-## 7. Secrets Used
-
-* **`GH_TOKEN` / `GITHUB_TOKEN`**: Standard repository actions token.
-
----
-
-## 8. Packaging Formats & Migration Action Table
-
-| Format | Present | Job / File Location | Action |
-|---|---|---|---|
-| **Debian (.deb)** | Yes | `.github/workflows/release.yml` (`dpkg-deb`) | **Replace** with unified `nfpm` workflow |
-| **RPM (.rpm)** | Yes | `.github/workflows/release.yml` (`rpmbuild`) | **Replace** with unified `nfpm` workflow |
-| **Arch (.pkg.tar.zst)** | No | None | **Add** via unified `nfpm` workflow |
-| **Flatpak** | Yes | `.github/workflows/release.yml` (`flatpak` job) | **Delete** job & `packaging/flatpak/` |
-| **AppImage** | No | None | **N/A** |
-| **Checksums** | Yes | `sha256sums.txt` | **Replace** with standardized `SHA256SUMS` + signature |
+| Manifest / Target | Value |
+|---|---|
+| Workspace `Cargo.toml` | `0.1.0-beta.1` |
+| `crates/alp-desktop/tauri.conf.json` | `0.1.0-beta.1` (`identifier: "io.github.zvirox.audio-labs-pro"`) |
+| `frontend/package.json` | `0.1.0-beta.1` (TitleBar reads `__APP_VERSION__` from `tauri.conf.json`) |
+| Primary GUI binary | `audio-labs-pro` (`crates/alp-desktop/Cargo.toml`) |
+| Companion binaries | `alp-cli`, `alp-infer`, `alp-mcp` |

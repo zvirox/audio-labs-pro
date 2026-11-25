@@ -6,24 +6,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Audio Labs Pro</title>
     <script>
-      (function() {
+      (function () {
         try {
-          const stored = localStorage.getItem('theme') || localStorage.getItem('linear-theme');
-          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-          const theme = stored ? stored : (prefersDark ? 'dark' : 'light');
-          document.documentElement.setAttribute('data-theme', theme);
-          if (theme === 'dark') {
-            document.documentElement.classList.add('dark');
-            document.documentElement.classList.remove('light');
-          } else {
-            document.documentElement.classList.add('light');
-            document.documentElement.classList.remove('dark');
-          }
+          var stored = localStorage.getItem('ui-theme');
+          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var theme = stored === 'light' || stored === 'dark' ? stored : prefersDark ? 'dark' : 'light';
+          var root = document.documentElement;
+          root.setAttribute('data-theme', theme);
+          root.classList.toggle('dark', theme === 'dark');
+          root.classList.toggle('light', theme === 'light');
         } catch (e) {}
       })();
     </script>
   </head>
-  <body class="bg-[var(--bg-app)] text-[var(--text)] antialiased selection:bg-[var(--color-accent)] selection:text-[var(--color-accent-fg)] overflow-hidden">
+  <body class="bg-[var(--bg-app)] text-[var(--text)] antialiased overflow-hidden">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

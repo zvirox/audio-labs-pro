@@ -2,16 +2,16 @@
 
 ## Purpose
 
-Thread-safe application state container managing shared instances of `EditSession`, `PersistedWorkspace`, and `GlassReport`.
+Thread-safe application state container managing shared instances of `EditSession`, `PersistedWorkspace`, and `GlassReport` for the Linear desktop host.
 
 ## Public API
 
-- `AppState` — Thread-safe container wrapping session, workspace, and glass state in `Arc<Mutex<T>>`.
-- `AppState::new_demo()` — Initializes default state with a valid demo session and layout.
+- `AppState` — Container wrapping session, workspace layout, and surface report state in `Arc<Mutex<T>>`.
+- `AppState::new_demo()` — Initializes default demo session, panel geometry, and runtime surface metadata.
 
 ## Data flow
 
-Managed by Tauri using `tauri::Builder::manage(app_state)`. Injected into command handlers via Tauri's `State<'_, AppState>` extractor.
+Managed by Tauri via `tauri::Builder::manage(app_state)` and extracted into command handlers via `tauri::State<'_, AppState>`.
 
 ## Allowed dependencies
 
@@ -21,16 +21,16 @@ Managed by Tauri using `tauri::Builder::manage(app_state)`. Injected into comman
 
 ## Threading / real-time notes
 
-Locks are acquired only during command dispatch and released immediately. The audio engine operates completely decoupled via lock-free ringbuffers.
+Locks are acquired strictly around quick state snapshots and mutations; real-time audio rendering proceeds lock-free inside `alp-engine`.
 
 ## Error handling
 
-Lock poison errors are caught and transformed into user-friendly error strings returned over IPC.
+Lock poison states map to user-safe `IpcError` responses.
 
 ## Testing
 
-Covered by command handler execution and desktop shell integration tests.
+Verified alongside `commands.rs` command roundtrips and `alp-session` tests.
 
 ## Known limits
 
-Workspace persistence flushes to disk upon command invocation; debounced auto-flush will be wired in Phase M3.
+Browser standalone previews use in-memory fallback mocks when Tauri IPC internals are absent.

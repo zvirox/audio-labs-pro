@@ -1,10 +1,18 @@
+@font-face {
+  font-family: "Inter";
+  src: url("./assets/fonts/InterVariable.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root,
 [data-theme="dark"],
 :root.dark {
   color-scheme: dark;
   font-feature-settings: "tnum" 1;
 
-  /* Screenshot Palette Tokens (Section 3) */
+  /* Linear Shared Standard Tokens — Dark */
   --bg-app: #050505;
   --bg-surface: #111213;
   --bg-surface-2: #1A1B1E;
@@ -15,73 +23,88 @@
   --text-muted: #8A8B91;
   --text-faint: #5A5B62;
 
-  /* Linear Dark Surface Palette (Zero Glass, Flat Border-Only) */
+  /* Accents (shared across dark & light) */
+  --accent-blue: #3355FF;
+  --accent-blue-hover: #2944CC;
+  --accent-blue-active: #1F3399;
+  --accent-sky: #38B6F0;
+  --accent-green: #22C55E;
+  --accent-red: #F43F5E;
+  --accent-amber: #EAB308;
+  --accent-teal: #1FB5A5;
+  --accent-pink: #EC4899;
+  --accent-purple: #7C5CE6;
+  --accent-orange: #F97316;
+  --color-close-hover: #E5484D;
+
+  /* Precomputed solid icon/status chip tints (zero translucency) */
+  --tint-blue: #151B30;
+  --tint-sky: #16262E;
+  --tint-green: #13281C;
+  --tint-red: #2D171C;
+  --tint-amber: #2B2512;
+  --tint-teal: #132625;
+  --tint-purple: #1E1B2D;
+  --tint-orange: #2D1E13;
+
+  /* Semantic Token Bindings */
   --color-bg: var(--bg-app);
   --color-bg-solid: var(--bg-app);
   --color-surface: var(--bg-surface);
   --color-surface-2: var(--bg-surface-2);
-  --color-surface-3: #202128;
+  --color-surface-3: var(--bg-bar-idle);
   --color-surface-solid: var(--bg-surface);
   --color-fg: var(--text);
   --color-fg-muted: var(--text-muted);
   --color-fg-subtle: var(--text-faint);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
-  --color-focus: #3355FF;
+  --color-focus: var(--accent-blue);
 
-  /* Status Colors */
-  --color-success: #22C55E;
-  --color-warning: #EAB308;
-  --color-danger: #F43F5E;
-  --color-info: #38B6F0;
+  --color-success: var(--accent-green);
+  --color-warning: var(--accent-amber);
+  --color-danger: var(--accent-red);
+  --color-info: var(--accent-sky);
 
-  /* One signal accent; chrome and surfaces stay neutral ink. */
-  --color-accent: #3355FF;
-  --color-accent-hover: #4D6CFF;
-  --color-accent-active: #6682FF;
-  --color-accent-fg: #F5F5F6;
-  --color-record: #F43F5E;
+  --color-accent: var(--accent-blue);
+  --color-accent-hover: var(--accent-blue-hover);
+  --color-accent-active: var(--accent-blue-active);
+  --color-accent-fg: #FFFFFF;
+  --text-on-accent: #FFFFFF;
+  --color-record: var(--accent-red);
+  --color-white: #FFFFFF;
 
-  /* Layout Chrome Dimensions */
-  --rail-width: 56px;
+  /* Layout Dimensions (4px grid) */
+  --titlebar-height: 40px;
+  --sidebar-width: 240px;
+  --sidebar-collapsed-width: 56px;
   --subtab-height: 40px;
   --inspector-width: 280px;
   --player-height: 64px;
 
-  /* Spacing Scale */
-  --space-xxs: 2px;
-  --space-xs: 4px;
-  --space-sm: 8px;
-  --space-md: 12px;
-  --space-lg: 16px;
-  --space-xl: 24px;
-  --space-2xl: 32px;
-
-  /* Corner Radii */
-  --radius-xs: 3px;
+  /* Radii: cards 8px, buttons/inputs 6px, chips/tags/tooltips 4px */
+  --radius-chip: 4px;
+  --radius-control: 6px;
+  --radius-card: 8px;
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
-  --radius-xl: 12px;
-  --radius-full: 9999px;
 
-  /* Linear Solid Elevations (Zero Glass Blur) */
-  --glass-blur: none;
-  --glass-tint: var(--bg-surface);
-  --shadow-linear-dark: none;
+  /* Depth: strictly none in dark */
+  --shadow-card: none;
 
-  /* Motion: mechanical easing curve */
+  /* Motion: 150ms ease-out */
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
-  --duration-quick: 140ms;
-  --duration-menu: 180ms;
-  --duration-enter: 240ms;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-quick: 150ms;
+  --duration-standard: 220ms;
 }
 
 [data-theme="light"],
-.theme-light,
 :root.light {
   color-scheme: light;
 
+  /* Linear Shared Standard Tokens — Light */
   --bg-app: #F3F4F6;
   --bg-surface: #FFFFFF;
   --bg-surface-2: #F4F5F7;
@@ -92,31 +115,41 @@
   --text-muted: #6B7280;
   --text-faint: #9CA3AF;
 
+  /* Precomputed solid light icon/status chip tints */
+  --tint-blue: #E7EBFF;
+  --tint-sky: #E7F6FD;
+  --tint-green: #E4F8EC;
+  --tint-red: #FEE8EC;
+  --tint-amber: #FDF6DF;
+  --tint-teal: #E4F6F4;
+  --tint-purple: #EFEBFD;
+  --tint-orange: #FFF0E6;
+
   --color-bg: var(--bg-app);
   --color-bg-solid: var(--bg-app);
   --color-surface: var(--bg-surface);
   --color-surface-2: var(--bg-surface-2);
-  --color-surface-3: #E5E7EB;
+  --color-surface-3: var(--bg-bar-idle);
   --color-surface-solid: var(--bg-surface);
   --color-fg: var(--text);
   --color-fg-muted: var(--text-muted);
   --color-fg-subtle: var(--text-faint);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
-  --color-focus: #3355FF;
+  --color-focus: var(--accent-blue);
 
-  /* Light Status */
-  --color-success: #22C55E;
-  --color-warning: #EAB308;
-  --color-danger: #F43F5E;
-  --color-info: #38B6F0;
+  --color-success: var(--accent-green);
+  --color-warning: var(--accent-amber);
+  --color-danger: var(--accent-red);
+  --color-info: var(--accent-sky);
 
-  --color-accent: #3355FF;
-  --color-accent-hover: #2944CC;
-  --color-accent-active: #1F3399;
+  --color-accent: var(--accent-blue);
+  --color-accent-hover: var(--accent-blue-hover);
+  --color-accent-active: var(--accent-blue-active);
   --color-accent-fg: #FFFFFF;
-  --color-record: #F43F5E;
+  --color-record: var(--accent-red);
+  --color-white: #FFFFFF;
 
-  --glass-tint: var(--bg-surface);
-  --shadow-linear-light: 0 1px 2px 0 rgba(16, 24, 40, 0.05);
+  /* Depth: light cards use border plus subtle 1px elevation */
+  --shadow-card: 0 1px 2px rgb(16 24 40 / 5%);
 }

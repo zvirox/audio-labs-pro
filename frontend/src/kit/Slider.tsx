@@ -13,7 +13,6 @@ export interface SliderProps {
   formatValue?: (val: number) => string;
   disabled?: boolean;
   className?: string;
-  showTicks?: boolean;
 }
 
 export const Slider = forwardRef<HTMLInputElement, SliderProps>(
@@ -22,7 +21,7 @@ export const Slider = forwardRef<HTMLInputElement, SliderProps>(
       value,
       min,
       max,
-      step = 1,
+      step = 0.01,
       onChange,
       label,
       ariaLabel,
@@ -30,78 +29,55 @@ export const Slider = forwardRef<HTMLInputElement, SliderProps>(
       formatValue,
       disabled = false,
       className = '',
-      showTicks = false,
     },
-    ref
+    ref,
   ) => {
-    const inputId = useId();
-    const percentage = Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
-
-    const displayValue = formatValue
-      ? formatValue(value)
-      : `${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}${unit ? ` ${unit}` : ''}`;
+    const id = useId();
+    const span = max - min;
+    const pct = span > 0 ? Math.max(0, Math.min(100, ((value - min) / span) * 100)) : 0;
+    const displayVal = formatValue ? formatValue(value) : `${value}${unit}`;
 
     return (
-      <div className={`space-y-1.5 select-none ${disabled ? 'opacity-40 pointer-events-none' : ''} ${className}`}>
-        {(label || displayValue) && (
-          <div className="flex items-center justify-between text-xs">
-            {label && (
-              <label htmlFor={inputId} className="font-medium text-[var(--color-fg-muted)]">
-                {label}
-              </label>
-            )}
-            <span className="font-mono text-[11px] text-[var(--color-accent)] font-medium">
-              {displayValue}
+      <div className={`flex flex-col gap-1.5 ${className}`}>
+        {(label || ariaLabel) && label && (
+          <div className="flex items-center justify-between text-[12px]">
+            <label htmlFor={id} className="font-medium text-[var(--text-muted)]">
+              {label}
+            </label>
+            <span className="font-sans text-[12px] font-medium text-[var(--text)] tabular-nums">
+              {displayVal}
             </span>
           </div>
         )}
-
-        <div className="relative flex items-center h-5 group">
-          {/* Track background */}
-          <div className="w-full h-1.5 bg-[var(--color-surface-3)] rounded-full overflow-hidden border border-[var(--color-border)]">
-            {/* Fill track */}
+        <div className="relative flex h-5 items-center">
+          <div className="h-1.5 w-full overflow-hidden rounded bg-[var(--bg-bar-idle)]">
             <div
-              className="h-full bg-[var(--color-accent)] transition-[color,background-color,border-color,opacity,transform] duration-75"
-              style={{ width: `${percentage}%` }}
+              className="h-full bg-[var(--accent-blue)]"
+              style={{ width: `${pct}%` }}
             />
           </div>
-
-          {/* Native range input with invisible slider styling overlay */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded border border-[var(--border-strong)] bg-[var(--bg-surface)]"
+            style={{ left: `${pct}%` }}
+          />
           <input
             ref={ref}
-            id={inputId}
+            id={id}
             type="range"
             min={min}
             max={max}
             step={step}
             value={value}
             disabled={disabled}
-            onChange={(e) => onChange(parseFloat(e.target.value))}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize focus:outline-none"
-            aria-valuemin={min}
-            aria-valuemax={max}
-            aria-valuenow={value}
-            aria-valuetext={displayValue}
             aria-label={ariaLabel ?? label}
-          />
-
-          {/* Custom draggable thumb indicator */}
-          <div
-            className="pointer-events-none absolute w-4 h-4 rounded-full bg-[var(--color-surface-solid)] shadow-sm border border-[var(--color-border)] transition-transform duration-75 transform -translate-x-1/2"
-            style={{ left: `${percentage}%` }}
+            onChange={(e) => onChange(parseFloat(e.target.value))}
+            className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
           />
         </div>
-
-        {showTicks && (
-          <div className="flex justify-between text-[9px] font-mono text-[var(--color-fg-subtle)] px-0.5">
-            <span>{min}</span>
-            <span>{((max + min) / 2).toFixed(0)}</span>
-            <span>{max}</span>
-          </div>
-        )}
       </div>
     );
-  }
+  },
 );
 
 Slider.displayName = 'Slider';

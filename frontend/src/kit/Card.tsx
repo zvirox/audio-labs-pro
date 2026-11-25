@@ -24,28 +24,28 @@ export function Card({
 }: CardProps) {
   return (
     <LinearCard
-      level="raised"
+      level={1}
       onClick={onClick}
-      className={`p-0 overflow-hidden ${
-        accent ? '!border-[var(--color-accent)]' : ''
-      } ${onClick ? 'cursor-pointer hover:border-[var(--color-border-strong)]' : ''} ${className}`}
+      className={`flex flex-col overflow-hidden ${
+        accent ? 'border-[var(--accent-blue)]' : ''
+      } ${onClick ? 'cursor-pointer' : ''} ${className}`}
     >
       {(title || subtitle || actions) && (
-        <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)]">
-          <div>
-            {title && <h3 className="text-xs font-medium text-[var(--color-fg)]">{title}</h3>}
+        <div className="flex items-start justify-between gap-4 border-b border-[var(--border)] px-4 py-3">
+          <div className="min-w-0">
+            {title && (
+              <h3 className="truncate text-[14px] font-semibold text-[var(--text)]">{title}</h3>
+            )}
             {subtitle && (
-              <p className="text-[11px] text-[var(--color-fg-muted)] mt-0.5">{subtitle}</p>
+              <p className="mt-0.5 truncate text-[12px] text-[var(--text-muted)]">{subtitle}</p>
             )}
           </div>
-          {actions && <div className="flex items-center gap-1.5">{actions}</div>}
+          {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
         </div>
       )}
-
-      <div className="p-4 text-xs text-[var(--color-fg)]">{children}</div>
-
+      <div className="flex-1 p-4">{children}</div>
       {footer && (
-        <div className="p-3 bg-[var(--color-surface-2)] border-t border-[var(--color-border)] rounded-b-xl flex items-center justify-between text-xs">
+        <div className="border-t border-[var(--border)] bg-[var(--bg-surface-2)] px-4 py-2.5 text-[12px] text-[var(--text-muted)]">
           {footer}
         </div>
       )}

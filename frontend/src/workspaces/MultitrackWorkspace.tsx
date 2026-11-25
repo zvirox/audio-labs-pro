@@ -334,9 +334,9 @@ export function MultitrackWorkspace({
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-[#090d16] select-none">
+    <div className="h-full flex flex-col overflow-hidden bg-[var(--bg-app)] select-none">
       {/* Arranger Top Toolbar */}
-      <div className="h-10 border-b border-[var(--color-border)] px-3 flex items-center justify-between bg-[var(--color-surface)] flex-shrink-0 z-10">
+      <div className="min-h-10 border-b border-[var(--color-border)] px-3 py-1 flex flex-wrap items-center justify-between gap-2 bg-[var(--color-surface)] flex-shrink-0 z-10">
         {/* Left: Edit Operations */}
         <div className="flex items-center gap-1">
           <Button
@@ -377,7 +377,7 @@ export function MultitrackWorkspace({
             size="xs"
             onClick={handleDeleteSelected}
             disabled={!timeline.selected_clip_id}
-            leftIcon={<Trash2 className="w-4 h-4 text-rose-400" />}
+            leftIcon={<Trash2 className="w-4 h-4 text-[var(--accent-red)]" />}
             title="Delete selected clip (Delete)"
           >
             Delete
@@ -401,7 +401,7 @@ export function MultitrackWorkspace({
             variant={rippleEnabled ? 'primary' : 'secondary'}
             size="xs"
             onClick={() => setRippleEnabled(!rippleEnabled)}
-            leftIcon={<Waves className="w-4 h-4 text-indigo-400" />}
+            leftIcon={<Waves className="w-4 h-4 text-[var(--accent-purple)]" />}
             title="Toggle automatic ripple editing on cuts and deletions (R)"
           >
             Ripple
@@ -422,7 +422,7 @@ export function MultitrackWorkspace({
             <button
               type="button"
               onClick={() => handleSetAllViewModes('spectrogram')}
-              className="px-2 py-0.5 rounded text-[var(--color-fg-muted)] hover:text-orange-300 hover:bg-[var(--color-surface-2)] transition-colors"
+              className="px-2 py-0.5 rounded text-[var(--color-fg-muted)] hover:text-[var(--accent-orange)] hover:bg-[var(--color-surface-2)] transition-colors"
               title="Switch all tracks to Spectrogram heatmap view"
             >
               Spectral
@@ -439,25 +439,25 @@ export function MultitrackWorkspace({
         </div>
 
         {/* Center: Playhead Timecode & Status */}
-        <div className="flex items-center gap-3">
-          <div className="font-mono text-xs font-medium text-[var(--color-accent)] bg-[var(--color-bg)] px-2.5 py-1 rounded border border-[var(--color-border-strong)]">
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="font-mono text-xs font-medium text-[var(--accent-blue)] bg-[var(--bg-surface-2)] px-2 py-1 rounded border border-[var(--border)] tabular-nums">
             {new Date(currentTimeSecs * 1000).toISOString().substring(14, 22)}
           </div>
-          <span className="text-[11px] text-[var(--color-fg-muted)] font-sans hidden sm:inline">
+          <span className="text-[11px] text-[var(--text-muted)] font-sans hidden xl:inline">
             {statusMessage}
           </span>
         </div>
 
         {/* Right: Zoom & Track Adder */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 shrink-0">
           <Button
             variant="secondary"
             size="xs"
             onClick={() => setZoom((z) => Math.max(10, z * 0.8))}
-            leftIcon={<ZoomOut className="w-4 h-4" />}
+            leftIcon={<ZoomOut className="w-3.5 h-3.5" />}
             title="Zoom out (Ctrl+-)"
           />
-          <div className="w-20 hidden md:block">
+          <div className="w-16 hidden xl:block">
             <Slider
               value={zoom}
               min={10}
@@ -469,7 +469,7 @@ export function MultitrackWorkspace({
             variant="secondary"
             size="xs"
             onClick={() => setZoom((z) => Math.min(1000, z * 1.25))}
-            leftIcon={<ZoomIn className="w-4 h-4" />}
+            leftIcon={<ZoomIn className="w-3.5 h-3.5" />}
             title="Zoom in (Ctrl++)"
           />
 

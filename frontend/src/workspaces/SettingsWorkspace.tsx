@@ -44,14 +44,13 @@ import {
 
 export interface SettingsWorkspaceProps {
   theme: 'dark' | 'light';
-  onToggleTheme: () => void;
+  onToggleTheme?: () => void;
   reduceMotion: boolean;
   onToggleReduceMotion: () => void;
 }
 
 export function SettingsWorkspace({
   theme,
-  onToggleTheme,
   reduceMotion,
   onToggleReduceMotion,
 }: SettingsWorkspaceProps) {
@@ -188,12 +187,12 @@ export function SettingsWorkspace({
 
       {/* Pending Client Approval Banner */}
       {pendingApproval && (
-        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-4 animate-in fade-in duration-200">
+        <div className="p-4 rounded-lg bg-[var(--tint-amber)] border border-[var(--accent-amber)] flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <AlertCircle className="w-4 h-4 text-[var(--color-fg-muted)] shrink-0" />
+            <AlertCircle className="w-4 h-4 text-[var(--accent-amber)] shrink-0" />
             <div>
-              <div className="font-medium text-amber-200 text-sm">
-                AI Client Connection Request: <span className="font-mono text-[var(--color-accent)]">"{pendingApproval}"</span>
+              <div className="font-medium text-[var(--text)] text-[13px]">
+                AI Client Connection Request: <span className="font-mono text-[var(--accent-blue)]">"{pendingApproval}"</span>
               </div>
               <div className="text-xs text-[var(--color-fg-muted)]">
                 A local agent authenticated with your session token and requests attachment to this workspace.
@@ -265,39 +264,39 @@ export function SettingsWorkspace({
           </div>
         </Card>
 
-        {/* Appearance & Compositor Glass Card */}
-        <Card title="Appearance & Window Glass" subtitle="KWin desktop blur and interface themes">
+        {/* Window Surface & Motion Card (theme toggle lives solely in TitleBar) */}
+        <Card title="Window & Surface Architecture" subtitle="Locked opaque Linear geometry and motion preferences">
           <div className="space-y-4 text-xs">
             <div className="flex items-center justify-between py-1">
               <div>
-                <div className="font-medium text-[var(--color-fg)]">Interface Theme</div>
-                <div className="text-[var(--color-fg-muted)] text-[11px]">Dark graphite or clean studio light (Ctrl+D)</div>
+                <div className="font-medium text-[var(--text)]">Active Interface Theme</div>
+                <div className="text-[var(--text-muted)] text-[11px]">Controlled from TitleBar toggle or Ctrl+D</div>
               </div>
-              <Button variant="secondary" size="sm" onClick={onToggleTheme}>
-                {theme === 'dark' ? 'Dark (Studio)' : 'Light (Clean)'}
-              </Button>
+              <span className="rounded border border-[var(--border)] bg-[var(--bg-surface-2)] px-2.5 py-1 text-[12px] font-medium text-[var(--text)]">
+                {theme === 'dark' ? 'Dark' : 'Light'}
+              </span>
             </div>
 
-            <div className="flex items-center justify-between py-1 border-t border-[var(--color-border)]">
+            <div className="flex items-center justify-between py-1 border-t border-[var(--border)]">
               <div>
-                <div className="font-medium text-[var(--color-fg)]">Reduce Motion</div>
-                <div className="text-[var(--color-fg-muted)] text-[11px]">Disables decorative transitions (Ctrl+Shift+M)</div>
+                <div className="font-medium text-[var(--text)]">Reduce Motion</div>
+                <div className="text-[var(--text-muted)] text-[11px]">Disables decorative transitions (Ctrl+Shift+M)</div>
               </div>
               <Toggle checked={reduceMotion} onChange={onToggleReduceMotion} label="" />
             </div>
 
-            {/* Glass Status */}
-            <div className="p-3 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)] space-y-1.5 font-mono text-[11px]">
+            {/* Surface Verification Readout */}
+            <div className="p-3 rounded-lg bg-[var(--bg-surface-2)] border border-[var(--border)] space-y-1.5 font-mono text-[11px]">
               <div className="flex items-center justify-between">
-                <span className="text-[var(--color-fg-muted)]">Desktop Session:</span>
-                <span className="text-[var(--color-accent)] font-medium">{glass?.desktop || 'KDE Plasma'} ({glass?.session || 'X11'})</span>
+                <span className="text-[var(--text-muted)]">Desktop Session:</span>
+                <span className="text-[var(--accent-blue)] font-medium">{glass?.desktop || 'Linux'} ({glass?.session || 'X11/Wayland'})</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-[var(--color-fg-muted)]">Glass Mode:</span>
-                <span className="text-[var(--color-fg-muted)] font-medium">{glass?.mode || 'compositor_blur'}</span>
+                <span className="text-[var(--text-muted)]">Surface Policy:</span>
+                <span className="text-[var(--text)] font-medium">Opaque Solid (Linear Standard)</span>
               </div>
-              <div className="text-[var(--color-fg-muted)] text-[10px] pt-1">
-                {glass?.detail || 'KWin blur property active via safe x11rb atom manipulation.'}
+              <div className="text-[var(--text-muted)] text-[10px] pt-1">
+                {glass?.detail || 'Opaque solid Linear window surface (compositor blur disabled).'}
               </div>
             </div>
           </div>
@@ -307,27 +306,27 @@ export function SettingsWorkspace({
         <Card title="AI Agent Control & Security" subtitle="Model Context Protocol (MCP) live socket host">
           <div className="space-y-4 text-xs">
             {/* Status & Toggle Header */}
-            <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)]">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--bg-surface-2)] border border-[var(--border)]">
               <div className="flex items-center gap-2.5">
                 <div
                   className={`w-2.5 h-2.5 rounded-full ${
- aiStatus?.enabled ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-surface-3)]'
- }`}
+                    aiStatus?.enabled ? 'bg-[var(--accent-green)]' : 'bg-[var(--text-faint)]'
+                  }`}
                 />
                 <div>
-                  <div className="font-medium text-[var(--color-fg)] flex items-center gap-2">
+                  <div className="font-medium text-[var(--text)] flex items-center gap-2">
                     <span>MCP Attach Host</span>
                     <span
-                      className={`text-[10px] px-2 py-0.5 rounded font-mono font-medium ${
- aiStatus?.enabled
- ? 'bg-emerald-500/20 text-[var(--color-fg-muted)] border border-[var(--color-border-strong)]'
- : 'bg-[var(--color-surface-2)] text-[var(--color-fg-muted)] border border-[var(--color-border)]'
- }`}
+                      className={`text-[10px] px-2 py-0.5 rounded font-mono font-medium border ${
+                        aiStatus?.enabled
+                          ? 'bg-[var(--tint-green)] text-[var(--accent-green)] border-[var(--border-strong)]'
+                          : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border-[var(--border)]'
+                      }`}
                     >
                       {aiStatus?.enabled ? 'ACTIVE' : 'STANDBY'}
                     </span>
                   </div>
-                  <div className="text-[11px] text-[var(--color-fg-muted)] font-mono mt-0.5 truncate max-w-xs">
+                  <div className="text-[11px] text-[var(--text-muted)] font-mono mt-0.5 truncate max-w-xs">
                     {aiStatus?.enabled
                       ? aiStatus.socket_path || '$XDG_RUNTIME_DIR/alp/control.sock'
                       : 'Unix socket standby'}
@@ -347,8 +346,8 @@ export function SettingsWorkspace({
             {/* Permission Tier Selector */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-[var(--color-fg-muted)] font-medium">Permission Tier</label>
-                <span className="text-[var(--color-fg-muted)] text-[11px]">Enforced on all tool calls</span>
+                <label className="text-[var(--text-muted)] font-medium">Permission Tier</label>
+                <span className="text-[var(--text-muted)] text-[11px]">Enforced on all tool calls</span>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {(['observe', 'edit', 'export'] as const).map((tier) => (
@@ -356,11 +355,11 @@ export function SettingsWorkspace({
                     key={tier}
                     type="button"
                     onClick={() => handleTierChange(tier)}
-                    className={`py-2 px-3 rounded-lg font-medium text-center capitalize border transition-[color,background-color,border-color,opacity,transform] ${
- aiStatus?.tier === tier
- ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)] border-[var(--color-border-strong)] shadow-sm'
- : 'bg-[var(--color-surface)] text-[var(--color-fg-muted)] border-[var(--color-border)] hover:text-[var(--color-fg)]'
- }`}
+                    className={`py-2 px-3 rounded-md font-medium text-center capitalize border transition-colors cursor-pointer ${
+                      aiStatus?.tier === tier
+                        ? 'bg-[var(--tint-blue)] text-[var(--accent-blue)] border-[var(--border-strong)]'
+                        : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border-[var(--border)] hover:text-[var(--text)]'
+                    }`}
                   >
                     {tier}
                   </button>
@@ -496,13 +495,13 @@ export function SettingsWorkspace({
                       <span className="text-[var(--color-fg-muted)] text-[10px]">{log.queue_to_commit_ms} ms</span>
                     )}
                     <span
-                      className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
- log.committed
- ? 'bg-emerald-500/20 text-[var(--color-fg-muted)] border border-[var(--color-border-strong)]'
- : log.outcome.startsWith('refused')
- ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
- : 'bg-[var(--color-surface-2)] text-[var(--color-fg-muted)]'
- }`}
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+                        log.committed
+                          ? 'bg-[var(--tint-green)] text-[var(--accent-green)] border-[var(--border-strong)]'
+                          : log.outcome.startsWith('refused')
+                          ? 'bg-[var(--tint-red)] text-[var(--accent-red)] border-[var(--accent-red)]'
+                          : 'bg-[var(--bg-surface-2)] text-[var(--text-muted)] border-[var(--border)]'
+                      }`}
                     >
                       {log.outcome}
                     </span>
@@ -544,7 +543,7 @@ export function SettingsWorkspace({
             </Button>
           </div>
           {exportNotice && (
-            <div className="p-2.5 rounded-lg bg-cyan-950/40 border border-[var(--color-border-strong)] text-[var(--color-accent)] font-mono text-[11px] animate-in fade-in">
+            <div className="p-2.5 rounded-lg bg-[var(--tint-blue)] border border-[var(--border-strong)] text-[var(--accent-blue)] font-mono text-[11px]">
               {exportNotice}
             </div>
           )}

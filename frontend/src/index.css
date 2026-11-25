@@ -1,16 +1,50 @@
 @import "tailwindcss";
 @import "./tokens.css";
 
-html, body, #root {
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme {
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+
+  --color-app: var(--bg-app);
+  --color-surface: var(--bg-surface);
+  --color-surface-2: var(--bg-surface-2);
+  --color-bar-idle: var(--bg-bar-idle);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-ink: var(--text);
+  --color-ink-muted: var(--text-muted);
+  --color-ink-faint: var(--text-faint);
+  --color-accent: var(--accent-blue);
+  --color-sky: var(--accent-sky);
+  --color-success: var(--accent-green);
+  --color-danger: var(--accent-red);
+  --color-warning: var(--accent-amber);
+  --color-teal: var(--accent-teal);
+  --color-pink: var(--accent-pink);
+  --color-purple: var(--accent-purple);
+  --color-orange: var(--accent-orange);
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+}
+
+html,
+body,
+#root {
   height: 100%;
   width: 100%;
   margin: 0;
   padding: 0;
   user-select: none;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-sans);
+  background-color: var(--bg-app);
+  color: var(--text);
 }
 
-/* Custom scrollbars for studio dark panels */
+/* Custom flat scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -19,14 +53,14 @@ html, body, #root {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: var(--radius-full);
+  background: var(--border);
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-border-strong);
+  background: var(--border-strong);
 }
 
-/* Respect OS-level and in-app reduced motion: collapse animations/transitions. */
+/* Respect OS-level and in-app reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -45,4 +79,11 @@ html, body, #root {
   animation-iteration-count: 1 !important;
   transition-duration: 0.01ms !important;
   scroll-behavior: auto !important;
+}
+
+.theme-switching,
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
 }

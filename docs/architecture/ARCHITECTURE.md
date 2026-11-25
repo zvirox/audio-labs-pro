@@ -1,345 +1,50 @@
-# Audio Labs Pro — architecture
+# System Architecture
 
-Source of truth for crate boundaries and dependency directions. If this file and
-`cargo metadata` disagree, the code or this document is wrong and must be fixed
-in the same commit.
+Audio Labs Pro is a local-first Linux workstation combining non-destructive audio production, real-time DSP, neural speech synthesis/transcription, plugin hosting, and authenticated AI MCP control inside a single-window Tauri desktop application.
 
-Status: Phase 3 complete on this machine and wired into the shell (crash-safe
-capture, single-track edits, import conversion, WAV/FLAC export and autosave
-recovery). The 30-minute dropout soak and forced-kill recovery pass; other audio
-devices remain untested. Phase 1 and Phase 2 remain the base.
+---
 
-## Processes
+## Crate Topology (12 Crates, Acyclic DAG)
 
-| Process | Responsibility |
-|---|---|
-| `alp-desktop` | Native desktop application host built on Tauri 2 and WebKitGTK. Owns window lifecycle, glass blur, and typed IPC bridge. Zero `unsafe`. |
-| `alp-session` | In-process headless session owner. Owns `EditSession`, undo/redo command stack, project state, background workers, and AI control socket (`alp-api::control`). |
-| `alp-engine` (in-process audio thread) | cpal callbacks, mixer, transport, recorder. Real-time safe: no allocation, no locks, no logging. |
-| `alp-infer` (separate process) | TTS/STT/clone models over ONNX Runtime and Candle/Safetensors. Isolated so an OOM or model crash never kills the editor. Talks over a versioned Unix-socket protocol owned by `alp-voice`. |
-| Worker threads | Decode, peak building, effect rendering, export. Cancellable jobs with progress channels; the shell uses this for real background mix export. |
-
-## Crate graph (Tauri 2 + React architecture)
-
-Solid arrows are compile-time dependencies. The dotted arrow is the runtime
-socket connection and must never become a Cargo dependency.
-
-```mermaid
-flowchart TD
-  subgraph FE["frontend/ (React 19 + TypeScript + Tailwind CSS)"]
-    REACT["React app + kit<br/>views only, no project mutation"]
-  end
-  subgraph DESK["alp-desktop (Tauri 2 host)"]
-    IPC["commands / events / channels"]
-    GLASS["glass (safe x11rb blur, tint fallback)"]
-  end
-  SESSION["alp-session (Headless session manager)<br/>EditSession, worker queue, control socket host,<br/>workspace persistence"]
-  ENG["alp-engine<br/>cpal I/O, mixer, transport"]
-  CORE["alp-core<br/>project model, commands, types"]
-  MEDIA["alp-media<br/>decode, encode, peaks"]
-  VOICE["alp-voice<br/>traits, model manager, protocol"]
-  API["alp-api<br/>control protocol, models, commands"]
-  MCP["alp-mcp<br/>MCP tool protocol"]
-  DSP["alp-dsp<br/>cleanup effects"]
-  INFER["alp-infer (separate process)<br/>ONNX / Candle backends"]
-  CLI["alp-cli<br/>headless tools"]
-
-  REACT <-->|invoke / events / Channel| IPC
-  IPC --> SESSION
-  GLASS --> DESK
-  SESSION --> ENG
-  SESSION --> CORE
-  SESSION --> MEDIA
-  SESSION --> VOICE
-  SESSION --> API
-  SESSION --> MCP
-  CLI --> ENG
-  CLI --> VOICE
-  CLI --> DSP
-  CLI --> MEDIA
-  CLI --> CORE
-  CLI --> API
-  ENG --> MEDIA
-  ENG --> CORE
-  VOICE --> MEDIA
-  VOICE --> CORE
-  DSP --> CORE
-  MEDIA --> CORE
-  API --> CORE
-  MCP --> API
-  MCP --> CORE
-  INFER --> VOICE
-  VOICE -. "Unix socket (runtime)" .-> INFER
+```
+alp-core                  Domain model: Project, Track, Clip, Fade, Envelope, BlockStore, Undo/Redo
+  ├── alp-media           Audio decoding (WAV/FLAC/OGG/MP3), peak pyramids, resampler, TPDF export
+  ├── alp-dsp             Parametric EQ, biquads, compressor/limiter, LUFS, RNNoise/spectral denoise, STFT spectrogram
+  └── alp-plugin          CLAP & LV2 plugin discovery, sandboxing, and parameter state
+        │
+alp-engine                cpal/PipeWire/ALSA live audio loop, lock-free mixer, capture, offline renderer
+alp-voice                 Voice cloning consent & curation, lexicon, VAD, scripts, STT & synthesis orchestration
+alp-infer                 Isolated inference subprocess daemon (Kokoro, Kitten, StyleTTS2, Qwen3, Moonshine, GGUF)
+        │
+alp-api                   High-level workspace/track/clip/voice/effect/job/audit/export API operations
+alp-session               Framework-agnostic UI session bridge: workspace state, panels, transport ticker, undo/AI wiring
+        │
+  ├── alp-cli             Headless CLI automation (`alp`)
+  ├── alp-mcp             JSON-RPC stdio/UNIX socket server (68 tools across Observe/Edit/Export) + Starship bridge
+  └── alp-desktop         Tauri v2 shell (`audio-labs-pro`), frameless opaque Linear window, IPC commands & events
+        └── frontend/     React 19 + TypeScript + Vite 8 + Tailwind CSS v4 + ECharts + cmdk Linear UI
 ```
 
-### Crate architecture and dependency rules
-- **`alp-session`:** Headless session manager. Owns the live `EditSession`, undoable `Command` stack, background worker pool, `alp-api::control` native socket host, and workspace persistence. Allowed dependencies: `alp-core`, `alp-engine`, `alp-media`, `alp-voice`, `alp-api`, `alp-mcp`. **Must not depend on iced or tauri.**
-- **`alp-desktop`:** Tauri 2 native desktop application wrapper. Owns the window lifecycle, system tray/menus, IPC command/event dispatch, and `x11rb` compositor blur. Depends only on `alp-session` and the Tauri framework. Maintains workspace `unsafe_code = "deny"`: hand-written code contains zero `unsafe` (glass and window use safe `x11rb` and `raw-window-handle`); verified by automated guard checks.
-- **`frontend/`:** Webview presentation application (Vite + React 19 + TypeScript + Tailwind CSS). Not a Rust crate. Dispatches IPC commands and renders state reported by Rust.
-- **Legacy cutover (completed in M8):** `alp-ui`, `alp-ui-kit`, and workspace dependencies `iced`, `iced-cube`, `lilt` removed.
+---
 
-### Glass architecture (`alp-desktop`)
+## Key Architectural Decisions
 
-The glass module lives in `alp-desktop::glass` (ADR 0013 superseding ADR 0012 for the rendering layer):
-- The session/desktop matrix: KWin/X11 blur via `_KDE_NET_WM_BLUR_BEHIND_REGION` using safe `x11rb`, translucent tint fallback (alpha $\ge$ 0.70) everywhere else (GNOME/Wayland, niri, etc.).
-- `ALP_FORCE_TINT=1` continues to force the tint fallback.
-- Wayland `ext_background_effect_v1` remains out of scope (requires unsafe foreign display binding, violating workspace policy).
-- Motion remains decorative and never encodes audio state.
-- **CSS `backdrop-filter`:** Inner-panel effect only (blurring webview DOM elements behind floating menus and drawers), not desktop blur behind the OS window.
+1. **Zero Audio-Thread Blocking:** All file decoding, neural inference, SQLite block commits, and IPC state serialization stay off the real-time audio callback thread.
+2. **Process-Isolated Neural Inference:** Heavy ML runtimes (`onnxruntime` / `llama.cpp` / Candle) execute inside the `alp-infer` child binary so model crashes cannot crash or glitch live audio playback.
+3. **Consent-Locked Voice Cloning:** Cloning flows in `alp-voice` and `CloningConsentModal` require explicit speaker name, attesting identity, and legal attestation before generating embeddings.
+4. **Framework-Agnostic Session Kernel (`alp-session`):** All application state, panel layout clamping, transport synchronization, and AI attach approval logic live in `alp-session` so `alp-desktop` (Tauri) and `alp-mcp` operate over identical invariants.
+5. **Final Locked Linear UI (`frontend/` + `alp-desktop`):**
+   - Frameless desktop window (`1280x800` default, `1024x640` minimum, `decorations: false`, `transparent: false`, `shadow: true`) with opaque surfaces and zero compositor/X11 blur (`crates/alp-desktop/src/glass.rs` enforces opaque fallback).
+   - Strict token hierarchy (`frontend/src/tokens.css`, `index.css`) supporting dark (`#050505` base / `#111213` surface) and light (`#F3F4F6` base / `#FFFFFF` surface) themes persisted under `ui-theme`, switched exclusively from `TitleBar` (`Ctrl+D`), with self-hosted `InterVariable.ttf` and zero glass/blur/glow/translucency enforced by `npm run check:linear`.
+6. **Starship Control Bridge:** `alp-mcp::starship` integrates `starship-plugin` to expose Audio Labs Pro health and session status over `$XDG_RUNTIME_DIR/starship/bridges/alp.sock`.
 
-```text
-alp-desktop::glass
-  ├─ probe()       read Tauri window's raw window handle safely
-  ├─ resolve()     identify session/desktop and report mode honestly
-  └─ x11 blur      set _KDE_NET_WM_BLUR_BEHIND_REGION for KWin via x11rb
-```
+---
 
-### Target IPC contract
-| Direction | Mechanism | Used for |
-|---|---|---|
-| TS → Rust | `invoke` commands | Transport commands, edit mutations (`DeleteRange`, `PasteClips`, etc.), voice generation, import, export, settings |
-| Rust → TS | Events | Project revision deltas, job status, model download progress, AI attach notifications |
-| Rust → TS | `Channel` (batched) | Real-time stereo input/output peak meters (~30 Hz), dictation partial transcripts |
-| Rust → TS | Raw binary `ipc::Response` | Multi-level peak pyramid waveform binary buffers (avoiding JSON serialization overhead) |
+## Verification Guards
 
-Rules:
-- **Playhead:** Rust emits transport anchors (`position`, `timestamp`, `rate`) on state changes; the frontend interpolates playhead position in `requestAnimationFrame`.
-- **Project State:** Rust (`alp-session`) is the sole authority; the webview maintains a revision-tagged mirror.
-- **Errors:** All commands return typed error representations mapped to user-facing diagnostic dialogs.
-
-## Allowed dependency directions
-
-Enforced by `scripts/check-deps.sh`.
-
-- `alp-core` depends on no other ALP crate.
-- `alp-media` and `alp-dsp` depend on `alp-core` only.
-- `alp-engine` depends on core and media. Never on dsp, ui or voice.
-- `alp-voice` depends on core and media. It reaches `alp-infer` only over the
-  socket protocol.
-- `alp-infer` depends on `alp-voice` (traits and protocol), core and media.
-- `alp-ui-kit` has **no ALP dependencies**. It uses `iced` and `lilt` plus the
-  Rust standard library only.
-- `alp-ui` depends on ui-kit, core, engine, media and voice. It never touches
-  cpal, ONNX or model-runtime implementation details directly.
-- `alp-cli` depends on core, engine, media, dsp and voice. Never on ui.
-
-### Phase 3 additions
-
-- Capture writes a raw f32 spool plus a chunk-synced JSON manifest; recovery
-  truncates to the committed frame count and finalizes a WAV atomically. A
-  ten-second SPSC ring absorbs chunk-sync stalls; the writer polls at 1 ms.
-- `alp-core` owns the selection model, clipboard fragments and undoable range
-  edits (`DeleteRange`, `SilenceRange`, `PasteClips`, `DuplicateClip`,
-  `PunchIn`, `NormalizeClip`, reverse/invert). Split ids are cached across redo.
-- `alp-media` owns WAV/FLAC export, deterministic TPDF dither, RIFF/Vorbis
-  metadata, and the null-test comparison helper.
-- `alp-ui` keeps a live `EditSession` with a real project and command stack;
-  views send messages and never mutate project state. Mix export runs on the
-  worker queue from a cloned `MixScene`. `alp-mcp --attach` proxies into the
-  desktop's shared `McpServer`; workers execute against revision-tagged scratch
-  snapshots and only unchanged revisions can commit one live undo entry.
-  Operator and attached commits feed authenticated resource subscriptions.
-- `ProjectPaths` writes an atomic autosave recovery copy and restores it only
-  after schema validation. The desktop session opens a fixed `ui-demo` project
-  and debounces autosaves after edits.
-- Hardware acceptance is automated by `scripts/phase3-demo.sh` but still needs a
-  real input device.
-
-### Phase 2 additions
-
-- `alp-ui-kit` implements tokens, bundled Inter, dark/light glass palettes,
-  semantic controls, overlays, motion and the peak-pyramid waveform canvas.
-- `alp-ui` implements the shell, eight floating-panel stubs, drag/resize/z-order/
-  snap/collapse/dock, versioned workspace persistence, command palette and
-  keyboard shortcuts, a cooperative worker queue, and the glass probe.
-- `alp-media::PeakPyramid` is converted at the `alp-ui` boundary into
-  `alp-ui-kit::waveform::WaveformPeaks`; the kit never links `alp-media`.
-- `scripts/check-ui.sh` rejects a raw `iced::widget::button` in `alp-ui` (the
-  component kit is the only button constructor).
-- `scripts/check-file-length.sh` still enforces 1,500 lines; `app.rs` is close to
-  the ceiling and should be split before the next feature.
-- Peak cache format remains owned by `alp-media`; the UI reads it through a
-  public type, never by parsing the file.
-
-## Threading and real-time rules
-
-| Context | May do | Must not do |
-|---|---|---|
-| UI thread | Render, input, cheap state updates, drain worker events | Decode, infer, block, wait on workers |
-| Audio callback | Read pre-decoded buffers, mix, write the device buffer, drain `rtrb` commands | Allocate, lock, log, syscall, join, sleep |
-| Worker threads | Decode, peaks, offline render, export, import conversion | Touch the audio callback directly |
-| `alp-infer` | Model load/inference, its own memory | Depend on UI state; hold the audio device |
-
-The UI subscribes to `window::frames()` while a panel animates, a recording
-runs, the demo transport plays, a job runs, live AI attach is enabled, or a
-diagnostic env var is set. When nothing moves and attach is disabled there is
-no redraw subscription, which is why idle CPU is zero. Worker progress arrives
-over `std::sync::mpsc` and is drained with `try_recv()` from a frame.
-
-Phase 1 measurements (release build, this machine):
-
-| Check | Result |
-|---|---|
-| 1-hour mono 48 kHz WAV peak build | 1.42 s |
-| same cache reopened | 0.013 s |
-| eight simultaneous 60 s clips rendered | 2,880,000 frames in 1.5 s |
-| 10 s device playback | 931 callbacks, 476,672 frames, no stream error |
-| 10-minute eight-clip soak | see `docs/spikes/PHASE1-RESULTS.md` |
-
-Phase 2 measurements (release build, this machine):
-
-| Check | Result |
-|---|---|
-| 1-hour waveform autoscroll | 60–61 frames/s, 16.6 ms average frame time |
-| idle CPU over 4 s | 0.00% (0 scheduler ticks) |
-| idle RSS | about 88 MB |
-| module/unit tests | 30 in `alp-ui`, 18 in `alp-ui-kit`; 104 workspace-wide |
-
-Phase 3 headless measurements (release build, this machine):
-
-| Check | Result |
-|---|---|
-| import conversion | 44.1 kHz source converted to 48 kHz |
-| autosave recovery | clean 3 clips; recovered edited project 4 clips |
-| 10 s reference render | 480,000 frames |
-| WAV/FLAC null test | max sample difference 1.8e-7 at 24-bit |
-| full workspace tests | 144 tests plus doctests |
-| 30-minute capture soak | 86,401,536 frames · 0 dropped samples |
-| forced-kill capture recovery | 379,904 frames · `recovered=true` |
-
-The mixer is allocation-free by construction; an automated allocator guard is
-tracked in ADR 0011 as a follow-up.
-
-## Non-destructive editing
-
-- Source media is immutable; imports are copied into `media/`.
-- A project is tracks → clips `{source_id, source_range, timeline_start, gain,
-  fade_in, fade_out, envelope, reversed, inverted, effects[]}`.
-- Every mutation is a `Command` with `apply`/`revert`; undo/redo is the stack.
-- Range edits cache the complete replacement clip list once, so redo restores
-  the same ids. `SilenceRange` keeps later clips in place; `DeleteRange` can
-  ripple or leave a gap.
-- Reverse and invert are clip flags rendered by the mixer; normalization uses
-  the source peak measured at import.
-- Playback, bounce and export walk the same clip graph and the same `Effect`
-  implementations, so a null test can compare preview and render.
-
-## Project format
-
-Directory `*.alp/` containing `project.json` (versioned + migrations), `media/`,
-`peaks/` (i16 min/max pyramid, 3 levels, ~3.4 MB per hour), `renders/`, `voices.ref`
-and `autosave/project.json` while edits are unsaved. Saves are atomic: sibling
-temp file, `sync_all`, rename. A clean save removes the recovery copy; recovery
-validates it before replacing `project.json`. A capture in progress uses
-`<output>.alp-capture` plus `<output>.alp-capture.json`. A corrupt or stale peak
-cache is rebuilt; it is never authoritative.
-
-The UI workspace is a separate `~/.config/alp/workspace.json`, also written
-atomically. It stores schema version 1, theme, Reduce motion, last glass mode and
-the eight panel geometries. A missing, corrupt or newer file is ignored in favour
-of defaults.
-
-## Glass strategy (current: iced 0.14)
-
-1. Transparent undecorated window with in-window floating panels (one OS
-   window). iced 0.14 exposes `window::run(id, |&dyn Window| …)`, so the app can
-   read `RawWindowHandle` and `RawDisplayHandle` safely.
-2. On KWin/X11, set `_KDE_NET_WM_BLUR_BEHIND_REGION` through `x11rb` for the
-   window rectangle. Report `Glass: compositor blur` only after the property
-   write succeeds.
-3. Everywhere else paint the translucent tint (panel alpha ≥ 0.70) plus a darker
-   root scrim. The fallback is legible without a compositor blur effect.
-4. `ALP_FORCE_TINT=1` disables the blur attempt for testing and screenshots.
-5. Motion is decorative: Reduce motion disables it; no motion ever encodes audio
-   state.
-
-Wayland `ext_background_effect_v1` remains unimplemented because attaching a
-foreign display requires `unsafe`, and the workspace forbids unsafe code. This
-is recorded in ADR 0012, which supersedes the vendor-patch assumption in ADR
-0003. The current matrix is:
-
-| Session | Result |
-|---|---|
-| niri/Wayland | transparent tint; no blur |
-| GNOME/Wayland | transparent tint; no blur |
-| KDE/X11 | KWin blur property + tint |
-| KDE/Wayland | tint fallback (unless the app is run through an X11 handle) |
-| other X11 | tint fallback |
-
-### Glass module boundary
-
-```text
-alp-desktop::glass
-  ├─ probe()       read Tauri window's raw window handle safely
-  ├─ resolve()     identify session/desktop and choose a mode for the report
-  └─ x11 blur      set _KDE_NET_WM_BLUR_BEHIND_REGION for KWin via x11rb
-```
-
-It is the only place that touches platform windowing, and it must
-never block the audio thread or the UI frame.
-
-## UI architecture (Tauri 2 + React)
-
-In accordance with ADR 0013 and [`docs/architecture/UI_MIGRATION.md`](UI_MIGRATION.md), the user interface is built on Tauri 2 + React 19 / TypeScript / Tailwind CSS:
-
-```text
-frontend/ (React 19 + TypeScript + Tailwind CSS)
-    │
-    │ Typed Tauri IPC (commands, events, batched channels, binary peaks)
-    ▼
-alp-desktop (Tauri 2 native host, safe x11rb KWin blur, zero unsafe)
-    │
-    │ Direct Rust dependency (only allowed ALP dependency)
-    ▼
-alp-session (Headless EditSession, JobQueue, PersistedWorkspace, PanelManager, AiControlManager)
-    │
-    ├── alp-api
-    ├── alp-core
-    ├── alp-engine
-    ├── alp-media
-    ├── alp-mcp
-    └── alp-voice
-```
-
-### Migration Status
-
-- **Phase M0 — Feasibility Spike:** PASSED. 60.02 fps waveform scroll, 0.00% idle CPU, safe KWin blur via `x11rb`.
-- **Phase M1 — Extract `alp-session`:** COMPLETE. Extracted headless session and panel manager with zero GUI dependencies; iced shell maintained with 100% test parity.
-- **Phase M2 — Tauri Shell + Frontend Scaffold:** COMPLETE.
-  - Native host `crates/alp-desktop` created with Tauri 2.
-  - Verified `unsafe_code = "deny"` invariant: Tauri macros do NOT trip the lint; hand-written code contains zero `unsafe`.
-  - Typed IPC bridge wired (`get_project_summary`, `get_workspace_state`, `get_glass_report`, `trigger_demo_edit`, `session_revision_changed`).
-  - `frontend/` scaffolded with Vite, React 19, TypeScript strict mode, Tailwind CSS v4, and design tokens ported from `alp-ui-kit`.
-  - Safe KWin blur module ported to `alp-desktop::glass` using safe `x11rb` and `raw-window-handle 0.6`.
-  - Early Flatpak de-risk manifest (`packaging/flatpak/throwaway-tauri-derisk.yaml`) created and verified with GNOME Platform 48, WebKitGTK 4.1 presence, and test tone generation.
-- **Phase M3 — Kit + App Shell:** COMPLETE.
-  - Complete studio primitive kit created (`frontend/src/kit/`: Button, Toggle, Slider, Input, Tabs, Dialog, Tooltip, Menu, Meter, Card).
-  - Dual-axis navigation implemented (56px PrimaryRail + 40px SubtabTopBar + 280px collapsible InspectorDrawer).
-  - 64px DockedPlayer transport bar with play/pause (`Space`), record (`R`), loop (`L`), timecode display, timeline scrubber, master volume, and stereo LED meters.
-  - Floating and docked panel container system (`PanelContainer`) supporting drag, resize, z-order focus, collapse, and docking.
-  - Keyboard shortcuts (`Ctrl+1..7`, `Ctrl+K`, `F1`, `Ctrl+D`, `Ctrl+Shift+M`, `Ctrl+B`) and `cmdk` Command Palette.
-  - Persistent workspace state synchronized through `alp-session` and `workspace.json`.
-- **Phase M4 — Transport, Meters & Waveform Canvas:** COMPLETE.
-  - Transport controller implemented in `alp_session::TransportController` and wired to `alp-desktop` IPC (`play_transport`, `pause_transport`, `stop_transport`, `seek_transport`, `set_transport_volume`, `set_transport_loop`, `get_transport_state`).
-  - Streaming meter frames over Tauri 2 `Channel` at ~30 Hz (`subscribe_meters`), paired with client-side playhead interpolation via `requestAnimationFrame` at 60–120 fps (`useTransport`).
-  - High-performance `WaveformCanvas` in HTML5 Canvas 2D with dynamic decimation, level-of-detail pyramid selection (Level 0: 256, Level 1: 1024, Level 2: 4096 frames/bucket), interactive scrubber seeking, and zero-idle-draw optimization.
-  - `TimelineWaveformPanel` integrated into floating panels with real-time 1-hour benchmark testing mode.
-  - Verified 1-hour waveform autoscroll gate (60.0 FPS sustained over 675,000 buckets) and 10-minute playback soak with 0 dropped callbacks.
-- **Phase M5 — Seven Workspaces Parity:** COMPLETE.
-  - Implemented 7 full-fidelity studio workspaces (`GenerateWorkspace`, `StoriesWorkspace`, `CapturesWorkspace`, `VoicesWorkspace`, `EffectsWorkspace`, `ModelsWorkspace`, `SettingsWorkspace`).
-  - Real-time project and session state binding, persistence across restarts, theme and reduce-motion settings.
-- **Phase M6 — HTML5 Canvas Multitrack Timeline Editor:** COMPLETE.
-  - Full multitrack timeline arranger implemented in `MultitrackWorkspace` and `TimelineArrangerCanvas`.
-  - Non-destructive clip editing, clip splitting (`Ctrl+B`), fades, crossfades, clip movement, volume envelopes, ripple editing (`R`), snapping (`S`), zoom (`Ctrl+=` / `Ctrl+-`), and multi-track audio playback.
-  - Zero per-clip DOM node overhead; 60 fps canvas rendering.
-- **Phase M7 — AI / MCP Parity:** COMPLETE.
-  - Headless `AiControlManager` in `crates/alp-session/src/ai.rs`.
-  - 6 typed AI IPC commands in `crates/alp-desktop/src/commands.rs` (`get_ai_status`, `set_ai_permission`, `approve_ai_client`, `deny_ai_client`, `disconnect_ai_client`, `clear_ai_audit_log`).
-  - Continuous event streaming pump in `main.rs`, live AI audit log viewer in `SettingsWorkspace`, and real-time state synchronization in `App.tsx`.
-- **Phase M8 — Packaging and Cutover:** COMPLETE.
-  - Packaging manifests updated with WebKitGTK 4.1 runtime dependencies (`.deb`, `.rpm`, and Flatpak on GNOME 48 runtime).
-  - Cutover complete: `alp-ui`, `alp-ui-kit`, and legacy iced dependencies removed from workspace.
-  - `scripts/check-deps.sh` updated for 12 ALP crates; `scripts/check-ui.sh` updated for frontend kit compliance and zero legacy iced references.
-  - Documentation debt resolved across troubleshooting, user guide, keyboard shortcuts, and third-party inventory.
-
-
+Every repository change must pass automated guards in `scripts/` and `frontend/scripts/`:
+- `./scripts/check-deps.sh` — Crate DAG boundaries
+- `./scripts/check-docs.sh` — 8-section module docs per Rust file
+- `./scripts/check-file-length.sh` — Max 1,500 lines per Rust source file
+- `./scripts/check-ui.sh` — `frontend/src/kit/` primitives and accessibility checks
+- `npm --prefix frontend run check:linear` — Enforces locked Linear UI design constraints

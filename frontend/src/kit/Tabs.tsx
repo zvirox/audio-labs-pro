@@ -23,41 +23,37 @@ export function Tabs({
   onChange,
   variant = 'subtab',
   className = '',
-  size = 'sm',
+  size = 'md',
 }: TabsProps) {
-  const sizeStyles = {
-    sm: 'text-xs h-7 px-2.5 gap-1.5',
-    md: 'text-xs h-8 px-4 gap-2',
-  };
+  const heightClass = size === 'sm' ? 'h-7 text-[12px] px-2.5' : 'h-8 text-[13px] px-3';
 
-  if (variant === 'segmented') {
+  if (variant === 'segmented' || variant === 'pills') {
     return (
       <div
         role="tablist"
-        className={`inline-flex p-0.5 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] select-none ${className}`}
+        className={`inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--bg-surface-2)] p-0.5 ${className}`}
       >
-        {items.map((tab) => {
-          const isActive = tab.id === activeId;
+        {items.map((item) => {
+          const isActive = item.id === activeId;
           return (
             <button
-              key={tab.id}
+              key={item.id}
+              type="button"
               role="tab"
               aria-selected={isActive}
-              disabled={tab.disabled}
-              onClick={() => onChange(tab.id)}
-              className={`inline-flex items-center justify-center font-medium rounded-md transition-[color,background-color,border-color,opacity,transform] cursor-pointer ${
- sizeStyles[size]
- } ${
- isActive
- ? 'bg-[var(--color-surface)] text-[var(--color-fg)] shadow-xs font-medium'
- : 'text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]'
- } disabled:opacity-40 disabled:pointer-events-none`}
+              disabled={item.disabled}
+              onClick={() => !item.disabled && onChange(item.id)}
+              className={`inline-flex items-center gap-1.5 rounded font-medium transition-colors duration-[var(--duration-quick)] [transition-timing-function:var(--ease-out-expo)] disabled:opacity-40 cursor-pointer ${heightClass} ${
+                isActive
+                  ? 'border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text)]'
+                  : 'border border-transparent text-[var(--text-muted)] hover:text-[var(--text)]'
+              }`}
             >
-              {tab.icon}
-              <span>{tab.label}</span>
-              {tab.badge !== undefined && (
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-[var(--color-surface-3)] text-[var(--color-fg-muted)]">
-                  {tab.badge}
+              {item.icon}
+              <span>{item.label}</span>
+              {item.badge !== undefined && (
+                <span className="rounded border border-[var(--border)] bg-[var(--bg-surface-2)] px-1.5 py-0.5 text-[10px] font-medium leading-none tabular-nums text-[var(--text-muted)]">
+                  {item.badge}
                 </span>
               )}
             </button>
@@ -67,35 +63,32 @@ export function Tabs({
     );
   }
 
-  // Subtab horizontal bar style (standard in 40px top bar). Single line, scrolls
-  // horizontally instead of wrapping so tab labels never stack or duplicate.
   return (
     <div
       role="tablist"
-      className={`inline-flex flex-nowrap items-center gap-1 select-none overflow-x-auto [scrollbar-width:none] ${className}`}
+      className={`flex items-center gap-1 border-b border-[var(--border)] ${className}`}
     >
-      {items.map((tab) => {
-        const isActive = tab.id === activeId;
+      {items.map((item) => {
+        const isActive = item.id === activeId;
         return (
           <button
-            key={tab.id}
+            key={item.id}
+            type="button"
             role="tab"
             aria-selected={isActive}
-            disabled={tab.disabled}
-            onClick={() => onChange(tab.id)}
-            className={`relative inline-flex shrink-0 items-center justify-center whitespace-nowrap font-medium transition-colors cursor-pointer rounded-md ${
- sizeStyles[size]
- } ${
- isActive
- ? 'bg-[var(--color-surface)] text-[var(--color-fg)] border border-[var(--color-border)]'
- : 'text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] hover:bg-[var(--color-surface-2)]'
- } disabled:opacity-40 disabled:pointer-events-none`}
+            disabled={item.disabled}
+            onClick={() => !item.disabled && onChange(item.id)}
+            className={`relative -mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-[13px] font-medium transition-colors duration-[var(--duration-quick)] [transition-timing-function:var(--ease-out-expo)] disabled:opacity-40 cursor-pointer ${
+              isActive
+                ? 'border-[var(--accent-blue)] text-[var(--text)]'
+                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text)]'
+            }`}
           >
-            {tab.icon}
-            <span>{tab.label}</span>
-            {tab.badge !== undefined && (
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-[var(--color-surface-3)] text-[var(--color-fg-muted)]">
-                {tab.badge}
+            {item.icon}
+            <span>{item.label}</span>
+            {item.badge !== undefined && (
+              <span className="rounded border border-[var(--border)] bg-[var(--bg-surface-2)] px-1.5 py-0.5 text-[10px] font-medium leading-none tabular-nums text-[var(--text-muted)]">
+                {item.badge}
               </span>
             )}
           </button>

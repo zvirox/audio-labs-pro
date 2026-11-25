@@ -202,7 +202,7 @@ export function GenerateWorkspace() {
                 return (
                   <div
                     key={take.id}
-                    className="p-3 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] hover:border-white/20 transition-[color,background-color,border-color,opacity,transform] space-y-2"
+                    className="p-3 rounded-lg bg-[var(--bg-surface)] border border-[var(--border)] hover:border-[var(--border-strong)] transition-colors space-y-2"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">

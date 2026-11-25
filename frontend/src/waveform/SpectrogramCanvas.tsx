@@ -8,6 +8,7 @@
 
 import { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import type { SpectrogramData, SpectralSelectionDto } from '../ipc/types';
+import { readLinearCanvasTokens, useLinearCanvasTheme } from '../utils/linearCanvasTheme';
 
 export type SpectrogramPalette = 'magma' | 'inferno' | 'viridis';
 
@@ -105,6 +106,7 @@ export function SpectrogramCanvas({
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
   const [dragCurrent, setDragCurrent] = useState<{ x: number; y: number } | null>(null);
   const [hoverInfo, setHoverInfo] = useState<{ time: number; freq: number; db: number } | null>(null);
+  const themeTick = useLinearCanvasTheme();
 
   // Sync palette prop
   useEffect(() => {
@@ -157,13 +159,14 @@ export function SpectrogramCanvas({
 
     const w = canvas.width;
     const h = canvas.height;
+    const tokens = readLinearCanvasTokens();
 
     if (!data || data.num_frames === 0 || data.num_bins === 0) {
       // Empty background
-      ctx.fillStyle = '#090d16';
+      ctx.fillStyle = tokens.bgSurface2;
       ctx.fillRect(0, 0, w, h);
-      ctx.fillStyle = '#475569';
-      ctx.font = '12px "JetBrains Mono", monospace';
+      ctx.fillStyle = tokens.textMuted;
+      ctx.font = '12px Inter, system-ui, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('No spectrogram data', w / 2, h / 2);
       return;
@@ -209,12 +212,12 @@ export function SpectrogramCanvas({
     // Grid overlays
     if (showGrid) {
       ctx.save();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+      ctx.strokeStyle = tokens.borderStrong;
       ctx.lineWidth = 1;
-      ctx.setLineDash([3, 3]);
+      ctx.setLineDash([2, 3]);
 
-      ctx.font = '9px "JetBrains Mono", monospace';
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+      ctx.font = '9px ui-monospace, monospace';
+      ctx.fillStyle = tokens.textMuted;
       ctx.textAlign = 'right';
 
       for (const f of GRID_FREQS_HZ) {
@@ -259,20 +262,20 @@ export function SpectrogramCanvas({
       const selH = Math.max(2, y2 - y1);
 
       ctx.save();
-      // Translucent cyan overlay
-      ctx.fillStyle = 'rgba(6, 182, 212, 0.2)';
+      ctx.globalAlpha = 0.25;
+      ctx.fillStyle = tokens.tintSky;
       ctx.fillRect(x1, y1, selW, selH);
+      ctx.globalAlpha = 1;
 
-      // Neon cyan boundary with glowing dash
-      ctx.strokeStyle = '#22d3ee';
+      ctx.strokeStyle = tokens.accentSky;
       ctx.lineWidth = 1.5;
       ctx.setLineDash([4, 2]);
       ctx.strokeRect(x1, y1, selW, selH);
 
       // Corner grab handles
       const handleSize = 6;
-      ctx.fillStyle = '#ffffff';
-      ctx.strokeStyle = '#0891b2';
+      ctx.fillStyle = tokens.bgSurface;
+      ctx.strokeStyle = tokens.accentSky;
       ctx.lineWidth = 1;
       ctx.setLineDash([]);
 
@@ -305,6 +308,7 @@ export function SpectrogramCanvas({
     timeToX,
     xToTime,
     yToFreq,
+    themeTick,
   ]);
 
   // Handle Canvas Resizing
@@ -444,28 +448,28 @@ export function SpectrogramCanvas({
   return (
     <div
       ref={containerRef}
-      className={`relative w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg-solid)] overflow-hidden select-none ${className}`}
+      className={`relative w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface-2)] overflow-hidden select-none ${className}`}
       style={{ height }}
     >
       {/* Top Toolbar: Palette selector, HUD badge, Clear */}
       <div className="absolute top-2 left-2 right-2 flex items-center justify-between z-10 pointer-events-none">
         <div className="flex items-center gap-2 pointer-events-auto">
           {clipName && (
-            <span className="text-[10px] font-mono font-medium text-[var(--color-fg)] bg-[var(--color-surface)] border border-[var(--color-border)] px-2 py-0.5 rounded shadow-sm">
+            <span className="text-[11px] font-medium text-[var(--text)] bg-[var(--bg-surface)] border border-[var(--border)] px-2 py-0.5 rounded">
               {clipName}
             </span>
           )}
           {/* Palette switcher */}
-          <div className="flex items-center bg-[var(--color-surface)] border border-[var(--color-border)] rounded p-0.5 text-[10px] font-mono shadow">
+          <div className="flex items-center bg-[var(--bg-surface)] border border-[var(--border)] rounded-md p-0.5 text-[11px] font-medium">
             {(['magma', 'inferno', 'viridis'] as SpectrogramPalette[]).map((pal) => (
               <button
                 key={pal}
                 type="button"
                 onClick={() => setActivePalette(pal)}
-                className={`px-1.5 py-0.5 rounded capitalize transition-colors ${
+                className={`px-1.5 py-0.5 rounded capitalize transition-colors cursor-pointer ${
                   activePalette === pal
-                    ? 'bg-cyan-500/20 text-[var(--color-accent)] font-medium border border-[var(--color-accent)]'
-                    : 'text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]'
+                    ? 'bg-[var(--tint-blue)] text-[var(--accent-blue)] font-medium border border-[var(--border-strong)]'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text)] border border-transparent'
                 }`}
               >
                 {pal}
@@ -476,21 +480,21 @@ export function SpectrogramCanvas({
 
         {/* 2D Spectral Selection HUD */}
         {activeBox && (
-          <div className="pointer-events-auto flex items-center gap-2.5 bg-[var(--color-surface)] border border-[var(--color-accent)] rounded px-2.5 py-1 text-[11px] font-mono text-[var(--color-accent)] shadow-lg backdrop-blur-sm">
-            <span className="text-[var(--color-fg-muted)]">Δt:</span>
-            <span className="font-medium text-[var(--color-fg)]">
+          <div className="pointer-events-auto flex items-center gap-2.5 bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded px-2.5 py-1 text-[11px] font-mono text-[var(--text)]">
+            <span className="text-[var(--text-muted)]">Δt:</span>
+            <span className="font-medium text-[var(--text)]">
               {(activeBox.t2 - activeBox.t1).toFixed(2)}s
             </span>
-            <span className="text-[var(--color-fg-muted)]">|</span>
-            <span className="text-[var(--color-fg-muted)]">Range:</span>
-            <span className="font-medium text-[var(--color-fg)]">
+            <span className="text-[var(--text-muted)]">|</span>
+            <span className="text-[var(--text-muted)]">Range:</span>
+            <span className="font-medium text-[var(--text)]">
               {activeBox.f1 >= 1000 ? `${(activeBox.f1 / 1000).toFixed(1)}k` : Math.round(activeBox.f1)}
               {' → '}
               {activeBox.f2 >= 1000 ? `${(activeBox.f2 / 1000).toFixed(1)}k` : Math.round(activeBox.f2)}Hz
             </span>
-            <span className="text-[var(--color-fg-muted)]">|</span>
-            <span className="text-[var(--color-fg-muted)]">fc:</span>
-            <span className="font-medium text-[var(--color-fg-muted)]">
+            <span className="text-[var(--text-muted)]">|</span>
+            <span className="text-[var(--text-muted)]">fc:</span>
+            <span className="font-medium text-[var(--text-muted)]">
               {activeBox.fc >= 1000 ? `${(activeBox.fc / 1000).toFixed(2)} kHz` : `${Math.round(activeBox.fc)} Hz`}
             </span>
             <span className="text-[var(--color-fg-muted)]">|</span>

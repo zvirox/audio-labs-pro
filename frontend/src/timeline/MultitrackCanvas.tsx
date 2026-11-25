@@ -28,6 +28,7 @@ import {
   updateDragSession,
   resolveDragCommand,
 } from './dragLogic';
+import { readLinearCanvasTokens, useLinearCanvasTheme } from '../utils/linearCanvasTheme';
 
 export interface MultitrackCanvasProps {
   timeline: TimelineDto;
@@ -64,6 +65,7 @@ export function MultitrackCanvas({
   const [scrollY, setScrollY] = useState<number>(0);
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [hoverTarget, setHoverTarget] = useState<HitTarget | null>(null);
+  const themeTick = useLinearCanvasTheme();
   const [canvasSize, setCanvasSize] = useState<{ width: number; height: number }>({
     width: 1000,
     height: 500,
@@ -130,9 +132,24 @@ export function MultitrackCanvas({
     ctx.scale(dpr, dpr);
 
     const { width, height } = canvasSize;
+    const tokens = readLinearCanvasTokens();
+    const trackSeriesColors = [
+      tokens.accentBlue,
+      tokens.accentSky,
+      tokens.accentTeal,
+      tokens.accentPurple,
+      tokens.accentOrange,
+    ];
+    const trackSeriesTints = [
+      tokens.tintBlue,
+      tokens.tintSky,
+      tokens.tintGreen,
+      tokens.tintPurple,
+      tokens.tintAmber,
+    ];
 
-    // 1. Background
-    ctx.fillStyle = '#090d16';
+    // 1. Background (--bg-surface)
+    ctx.fillStyle = tokens.bgSurface;
     ctx.fillRect(0, 0, width, height);
 
     // 2. Track Lanes Background & Horizontal Grid
@@ -140,12 +157,11 @@ export function MultitrackCanvas({
       const trackTop = RULER_HEIGHT + (index * TRACK_HEIGHT) - scrollY;
       if (trackTop + TRACK_HEIGHT < RULER_HEIGHT || trackTop > height) return;
 
-      // Alternating subtle lane shade
-      ctx.fillStyle = index % 2 === 0 ? '#0d1322' : '#0a0f1c';
+      ctx.fillStyle = index % 2 === 0 ? tokens.bgSurface : tokens.bgSurface2;
       ctx.fillRect(TRACK_HEADER_WIDTH, trackTop, width - TRACK_HEADER_WIDTH, TRACK_HEIGHT);
 
       // Track bottom border
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.07)';
+      ctx.strokeStyle = tokens.border;
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(0, trackTop + TRACK_HEIGHT);
@@ -153,74 +169,83 @@ export function MultitrackCanvas({
       ctx.stroke();
 
       // Track Header Column (180px)
-      ctx.fillStyle = '#0f172a';
+      ctx.fillStyle = tokens.bgSurface;
       ctx.fillRect(0, trackTop, TRACK_HEADER_WIDTH, TRACK_HEIGHT);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+      ctx.strokeStyle = tokens.border;
       ctx.strokeRect(0, trackTop, TRACK_HEADER_WIDTH, TRACK_HEIGHT);
 
       // Track Title & Index
-      ctx.fillStyle = '#f8fafc';
-      ctx.font = 'bold 11px system-ui, sans-serif';
+      ctx.fillStyle = tokens.text;
+      ctx.font = '600 11px Inter, system-ui, sans-serif';
       ctx.fillText(`${index + 1}. ${track.name}`, 12, trackTop + 20);
 
-      // Mute / Solo / Arm Status Pills
+      // Mute / Solo / Arm Flat Controls
       const drawPill = (label: string, active: boolean, color: string, x: number) => {
-        ctx.fillStyle = active ? color : 'rgba(255, 255, 255, 0.08)';
-        ctx.strokeStyle = active ? color : 'rgba(255, 255, 255, 0.15)';
+        ctx.fillStyle = active ? color : tokens.bgBarIdle;
+        ctx.strokeStyle = active ? color : tokens.borderStrong;
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.roundRect(x, trackTop + 32, 22, 16, 3);
+        ctx.roundRect(x, trackTop + 32, 22, 16, 4);
         ctx.fill();
         ctx.stroke();
 
-        ctx.fillStyle = active ? '#000000' : '#94a3b8';
-        ctx.font = 'bold 9px system-ui, sans-serif';
+        ctx.fillStyle = active ? tokens.textOnAccent : tokens.textMuted;
+        ctx.font = '600 9px Inter, system-ui, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(label, x + 11, trackTop + 44);
         ctx.textAlign = 'left';
       };
 
-      drawPill('M', track.muted, '#f43f5e', 10);
-      drawPill('S', track.solo, '#eab308', 34);
-      drawPill('R', track.armed, '#ef4444', 58);
+      drawPill('M', track.muted, tokens.accentRed, 10);
+      drawPill('S', track.solo, tokens.accentAmber, 34);
+      drawPill('R', track.armed, tokens.accentRed, 58);
 
-      // View Mode Selector Pills (Waveform, Spectrogram, Split)
-      const drawModePill = (label: string, active: boolean, color: string, x: number, w: number) => {
-        ctx.fillStyle = active ? `${color}33` : 'rgba(255, 255, 255, 0.05)';
-        ctx.strokeStyle = active ? color : 'rgba(255, 255, 255, 0.12)';
+      // View Mode Selector Controls (Waveform, Spectrogram, Dual)
+      const drawModePill = (
+        label: string,
+        active: boolean,
+        tint: string,
+        color: string,
+        x: number,
+        w: number,
+      ) => {
+        ctx.fillStyle = active ? tint : tokens.bgBarIdle;
+        ctx.strokeStyle = active ? color : tokens.border;
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.roundRect(x, trackTop + 32, w, 16, 3);
+        ctx.roundRect(x, trackTop + 32, w, 16, 4);
         ctx.fill();
         ctx.stroke();
 
-        ctx.fillStyle = active ? color : '#64748b';
-        ctx.font = 'bold 8.5px system-ui, sans-serif';
+        ctx.fillStyle = active ? color : tokens.textMuted;
+        ctx.font = '600 8.5px Inter, system-ui, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(label, x + w / 2, trackTop + 43.5);
         ctx.textAlign = 'left';
       };
 
       const currentMode = track.view_mode || 'waveform';
-      drawModePill('W', currentMode === 'waveform', '#38bdf8', 86, 18);
-      drawModePill('S', currentMode === 'spectrogram', '#f97316', 108, 18);
-      drawModePill('Dual', currentMode === 'split', '#a855f7', 130, 38);
+      drawModePill('W', currentMode === 'waveform', tokens.tintSky, tokens.accentSky, 86, 18);
+      drawModePill('S', currentMode === 'spectrogram', tokens.tintAmber, tokens.accentOrange, 108, 18);
+      drawModePill('Dual', currentMode === 'split', tokens.tintPurple, tokens.accentPurple, 130, 38);
 
       // Fader & Pan readouts
-      ctx.fillStyle = '#64748b';
-      ctx.font = '10px monospace';
+      ctx.fillStyle = tokens.textMuted;
+      ctx.font = '10px ui-monospace, monospace';
       ctx.fillText(`Vol: ${(track.gain >= 1 ? '+' : '')}${(20 * Math.log10(Math.max(0.001, track.gain))).toFixed(1)} dB`, 10, trackTop + 68);
       ctx.fillText(`Pan: ${track.pan === 0 ? 'C' : track.pan < 0 ? `L${Math.round(-track.pan * 100)}` : `R${Math.round(track.pan * 100)}`}`, 96, trackTop + 68);
     });
 
-    // 3. Vertical Grid Lines (Seconds & Bars)
+    // 3. Vertical Dotted Grid Lines
     const startTimeSecs = pixelsToTime(TRACK_HEADER_WIDTH, zoom, scrollX, TRACK_HEADER_WIDTH);
     const endTimeSecs = pixelsToTime(width, zoom, scrollX, TRACK_HEADER_WIDTH);
     const gridStepSecs = zoom > 150 ? 0.5 : zoom > 60 ? 1.0 : zoom > 20 ? 5.0 : 10.0;
 
     const firstGridSec = Math.floor(startTimeSecs / gridStepSecs) * gridStepSecs;
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+    ctx.save();
+    ctx.strokeStyle = tokens.border;
     ctx.lineWidth = 1;
+    ctx.setLineDash([1, 3]);
 
     for (let t = firstGridSec; t <= endTimeSecs; t += gridStepSecs) {
       const x = timeToPixels(t, zoom, scrollX, TRACK_HEADER_WIDTH);
@@ -229,6 +254,7 @@ export function MultitrackCanvas({
       ctx.lineTo(x, height);
       ctx.stroke();
     }
+    ctx.restore();
 
     // 4. Clips & Waveforms
     timeline.tracks.forEach((track, trackIndex) => {
@@ -258,18 +284,16 @@ export function MultitrackCanvas({
         const clipY = trackTop + 6;
         const clipH = TRACK_HEIGHT - 12;
         const viewMode = track.view_mode || 'waveform';
+        const seriesAccent = trackSeriesColors[trackIndex % trackSeriesColors.length];
+        const seriesTint = trackSeriesTints[trackIndex % trackSeriesTints.length];
 
-        // Clip Container Rounded Rectangle
+        // Flat Clip Container (4px radius, zero gradient)
         ctx.save();
         ctx.beginPath();
-        ctx.roundRect(clipStartX, clipY, clipWidth, clipH, 6);
+        ctx.roundRect(clipStartX, clipY, clipWidth, clipH, 4);
         ctx.clip();
 
-        // Clip Background Fill
-        const grad = ctx.createLinearGradient(clipStartX, clipY, clipStartX, clipY + clipH);
-        grad.addColorStop(0, isSelected ? 'rgba(6, 182, 212, 0.28)' : 'rgba(30, 41, 59, 0.7)');
-        grad.addColorStop(1, isSelected ? 'rgba(14, 116, 144, 0.35)' : 'rgba(15, 23, 42, 0.85)');
-        ctx.fillStyle = grad;
+        ctx.fillStyle = isSelected ? seriesTint : tokens.bgSurface2;
         ctx.fillRect(clipStartX, clipY, clipWidth, clipH);
 
         // Multi-view renderer: Waveform, Spectrogram, or Split
@@ -320,7 +344,7 @@ export function MultitrackCanvas({
 
           // In split mode, draw a subtle dividing rule between waveform & spectrogram
           if (viewMode === 'split') {
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.strokeStyle = tokens.borderStrong;
             ctx.lineWidth = 1;
             ctx.beginPath();
             ctx.moveTo(clipStartX, spectroY);
@@ -329,9 +353,9 @@ export function MultitrackCanvas({
           }
         }
 
-        // 2. Waveform Area (if waveform or split)
+        // 2. Flat Waveform Bars Area (if waveform or split)
         if (waveH > 0) {
-          ctx.strokeStyle = isSelected ? '#38bdf8' : '#06b6d4';
+          ctx.strokeStyle = seriesAccent;
           ctx.lineWidth = 1.5;
           ctx.beginPath();
           const midY = clipY + (waveH / 2);
@@ -351,15 +375,18 @@ export function MultitrackCanvas({
         // Fade-In Curve & Shading
         if (clip.fade_in_secs > 0) {
           const fadeInW = clip.fade_in_secs * zoom;
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+          ctx.save();
+          ctx.globalAlpha = 0.65;
+          ctx.fillStyle = tokens.bgBarIdle;
           ctx.beginPath();
           ctx.moveTo(clipStartX, clipY);
           ctx.lineTo(clipStartX, clipY + clipH);
           ctx.lineTo(clipStartX + fadeInW, clipY);
           ctx.closePath();
           ctx.fill();
+          ctx.restore();
 
-          ctx.strokeStyle = '#38bdf8';
+          ctx.strokeStyle = seriesAccent;
           ctx.lineWidth = 1;
           ctx.beginPath();
           ctx.moveTo(clipStartX, clipY + clipH);
@@ -371,15 +398,18 @@ export function MultitrackCanvas({
         if (clip.fade_out_secs > 0) {
           const fadeOutW = clip.fade_out_secs * zoom;
           const fadeOutStart = clipStartX + clipWidth - fadeOutW;
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+          ctx.save();
+          ctx.globalAlpha = 0.65;
+          ctx.fillStyle = tokens.bgBarIdle;
           ctx.beginPath();
           ctx.moveTo(fadeOutStart, clipY);
           ctx.lineTo(clipStartX + clipWidth, clipY + clipH);
           ctx.lineTo(clipStartX + clipWidth, clipY);
           ctx.closePath();
           ctx.fill();
+          ctx.restore();
 
-          ctx.strokeStyle = '#38bdf8';
+          ctx.strokeStyle = seriesAccent;
           ctx.lineWidth = 1;
           ctx.beginPath();
           ctx.moveTo(fadeOutStart, clipY);
@@ -387,9 +417,9 @@ export function MultitrackCanvas({
           ctx.stroke();
         }
 
-        // Volume Envelope line (Yellow/Amber)
+        // Volume Envelope line
         if (clip.envelope.length > 0) {
-          ctx.strokeStyle = '#fbbf24';
+          ctx.strokeStyle = tokens.accentAmber;
           ctx.lineWidth = 1.2;
           ctx.beginPath();
           clip.envelope.forEach((pt, pIdx) => {
@@ -401,26 +431,24 @@ export function MultitrackCanvas({
           ctx.stroke();
         }
 
-        // Pan Automation Envelope line (Cyan with Node markers)
+        // Pan Automation Envelope line
         if (clip.pan_envelope && clip.pan_envelope.length > 0) {
-          ctx.strokeStyle = '#06b6d4';
+          ctx.strokeStyle = tokens.accentSky;
           ctx.lineWidth = 1.5;
           ctx.beginPath();
           clip.pan_envelope.forEach((pt, pIdx) => {
             const ptX = clipStartX + (pt.offset_secs * zoom);
-            // Pan: -1 (L, top) to +1 (R, bottom)
             const ptY = clipY + (clipH / 2) + (pt.pan * (clipH * 0.35));
             if (pIdx === 0) ctx.moveTo(ptX, ptY);
             else ctx.lineTo(ptX, ptY);
           });
           ctx.stroke();
 
-          // Draw Pan Nodes
           clip.pan_envelope.forEach((pt) => {
             const ptX = clipStartX + (pt.offset_secs * zoom);
             const ptY = clipY + (clipH / 2) + (pt.pan * (clipH * 0.35));
-            ctx.fillStyle = '#ffffff';
-            ctx.strokeStyle = '#06b6d4';
+            ctx.fillStyle = tokens.bgSurface;
+            ctx.strokeStyle = tokens.accentSky;
             ctx.lineWidth = 1.5;
             ctx.beginPath();
             ctx.arc(ptX, ptY, 3, 0, Math.PI * 2);
@@ -430,31 +458,31 @@ export function MultitrackCanvas({
         }
 
         // Clip Title Bar & Slip badge
-        ctx.fillStyle = isSelected ? '#38bdf8' : '#94a3b8';
-        ctx.font = 'bold 10px monospace';
+        ctx.fillStyle = isSelected ? seriesAccent : tokens.text;
+        ctx.font = '600 10px Inter, system-ui, sans-serif';
         ctx.fillText(clip.name, clipStartX + 8, clipY + 14);
 
         if (clip.slip_offset_secs && clip.slip_offset_secs > 0) {
-          ctx.fillStyle = '#a855f7';
-          ctx.font = '9px monospace';
+          ctx.fillStyle = tokens.accentPurple;
+          ctx.font = '9px ui-monospace, monospace';
           ctx.fillText(`slip: +${clip.slip_offset_secs.toFixed(2)}s`, clipStartX + 8, clipY + 26);
         }
 
         ctx.restore();
 
-        // Clip Outline & Selection Ring
-        ctx.strokeStyle = isSelected ? '#00f0ff' : 'rgba(255, 255, 255, 0.2)';
-        ctx.lineWidth = isSelected ? 2 : 1;
+        // Clip Outline & Selection Ring (4px radius, 1px solid border)
+        ctx.strokeStyle = isSelected ? seriesAccent : tokens.borderStrong;
+        ctx.lineWidth = isSelected ? 1.5 : 1;
         ctx.beginPath();
-        ctx.roundRect(clipStartX, clipY, clipWidth, clipH, 6);
+        ctx.roundRect(clipStartX, clipY, clipWidth, clipH, 4);
         ctx.stroke();
 
-        // Slip drag ghost badge
+        // Slip drag badge
         if (dragState && dragState.mode === 'slip_clip' && dragState.target.clip?.id === clip.id) {
           const deltaSecs = dragState.snappedTimeSecs - dragState.startTimeSecs;
           ctx.save();
-          ctx.fillStyle = 'rgba(168, 85, 247, 0.9)';
-          ctx.strokeStyle = '#d8b4fe';
+          ctx.fillStyle = tokens.accentPurple;
+          ctx.strokeStyle = tokens.borderStrong;
           ctx.lineWidth = 1;
           const badgeX = clipStartX + clipWidth / 2 - 45;
           const badgeY = clipY + clipH / 2 - 10;
@@ -463,20 +491,20 @@ export function MultitrackCanvas({
           ctx.fill();
           ctx.stroke();
 
-          ctx.fillStyle = '#ffffff';
-          ctx.font = 'bold 10px monospace';
+          ctx.fillStyle = tokens.textOnAccent;
+          ctx.font = '600 10px ui-monospace, monospace';
           ctx.textAlign = 'center';
           ctx.fillText(`⇄ ${deltaSecs >= 0 ? '+' : ''}${deltaSecs.toFixed(3)}s`, badgeX + 45, badgeY + 14);
           ctx.restore();
         }
 
-        // Trim Handle indicators (left and right)
-        ctx.fillStyle = isSelected ? '#00f0ff' : 'rgba(255, 255, 255, 0.4)';
+        // Trim Handle indicators
+        ctx.fillStyle = isSelected ? seriesAccent : tokens.borderStrong;
         ctx.fillRect(clipStartX, clipY + clipH / 2 - 8, 3, 16);
         ctx.fillRect(clipStartX + clipWidth - 3, clipY + clipH / 2 - 8, 3, 16);
       });
 
-      // 2D Spectral Selection Bounding Box on Track (if active)
+      // 2D Spectral Selection Bounding Box on Track
       if (track.spectral_selection && (track.view_mode === 'spectrogram' || track.view_mode === 'split')) {
         const sel = track.spectral_selection;
         const selX1 = timeToPixels(sel.start_secs, zoom, scrollX, TRACK_HEADER_WIDTH);
@@ -486,7 +514,6 @@ export function MultitrackCanvas({
         const spectroY = track.view_mode === 'split' ? trackTop + (TRACK_HEIGHT * 0.48) : trackTop + 6;
         const spectroH = track.view_mode === 'split' ? TRACK_HEIGHT * 0.52 - 12 : TRACK_HEIGHT - 12;
 
-        // Logarithmic frequency to Y within track spectrogram bounds
         const minF = 20.0;
         const maxF = 20000.0;
         const f1Y = spectroY + (1.0 - Math.log(sel.f_max_hz / minF) / Math.log(maxF / minF)) * spectroH;
@@ -494,30 +521,32 @@ export function MultitrackCanvas({
         const selH = Math.max(4, f2Y - f1Y);
 
         ctx.save();
-        ctx.fillStyle = 'rgba(6, 182, 212, 0.22)';
+        ctx.globalAlpha = 0.25;
+        ctx.fillStyle = tokens.tintSky;
         ctx.fillRect(selX1, f1Y, selW, selH);
+        ctx.globalAlpha = 1;
 
-        ctx.strokeStyle = '#22d3ee';
+        ctx.strokeStyle = tokens.accentSky;
         ctx.lineWidth = 1.5;
         ctx.setLineDash([3, 2]);
         ctx.strokeRect(selX1, f1Y, selW, selH);
 
         // HUD Readout badge
         ctx.setLineDash([]);
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
-        ctx.strokeStyle = 'rgba(6, 182, 212, 0.6)';
+        ctx.fillStyle = tokens.bgSurface;
+        ctx.strokeStyle = tokens.borderStrong;
         ctx.lineWidth = 1;
         const hudW = 120;
         const hudH = 16;
         const hudX = Math.max(TRACK_HEADER_WIDTH + 4, selX1);
         const hudY = Math.max(trackTop + 2, f1Y - 18);
         ctx.beginPath();
-        ctx.roundRect(hudX, hudY, hudW, hudH, 3);
+        ctx.roundRect(hudX, hudY, hudW, hudH, 4);
         ctx.fill();
         ctx.stroke();
 
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 9px monospace';
+        ctx.fillStyle = tokens.accentSky;
+        ctx.font = '600 9px ui-monospace, monospace';
         ctx.textAlign = 'center';
         ctx.fillText(`fc:${Math.round(sel.center_freq_hz)}Hz Q:${sel.q_factor.toFixed(2)}`, hudX + hudW / 2, hudY + 11);
         ctx.textAlign = 'left';
@@ -529,33 +558,39 @@ export function MultitrackCanvas({
     if (timeline.selection) {
       const selX = timeToPixels(timeline.selection.start_secs, zoom, scrollX, TRACK_HEADER_WIDTH);
       const selW = Math.max(2, (timeline.selection.end_secs - timeline.selection.start_secs) * zoom);
-      ctx.fillStyle = 'rgba(6, 182, 212, 0.12)';
+      ctx.save();
+      ctx.globalAlpha = 0.35;
+      ctx.fillStyle = tokens.tintBlue;
       ctx.fillRect(selX, RULER_HEIGHT, selW, height - RULER_HEIGHT);
-      ctx.strokeStyle = 'rgba(6, 182, 212, 0.4)';
+      ctx.restore();
+      ctx.strokeStyle = tokens.accentBlue;
       ctx.strokeRect(selX, RULER_HEIGHT, selW, height - RULER_HEIGHT);
     }
 
-    // 6. Timecode Ruler & Markers
-    ctx.fillStyle = '#0f172a';
+    // 6. Dotted Timecode Ruler & Markers
+    ctx.fillStyle = tokens.bgSurface2;
     ctx.fillRect(0, 0, width, RULER_HEIGHT);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.strokeStyle = tokens.border;
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(0, RULER_HEIGHT);
     ctx.lineTo(width, RULER_HEIGHT);
     ctx.stroke();
 
-    // Ruler ticks & timecode labels
+    // Ruler dotted ticks & timecode labels
     for (let t = firstGridSec; t <= endTimeSecs; t += gridStepSecs) {
       const x = timeToPixels(t, zoom, scrollX, TRACK_HEADER_WIDTH);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.save();
+      ctx.strokeStyle = tokens.borderStrong;
+      ctx.setLineDash([1, 2]);
       ctx.beginPath();
       ctx.moveTo(x, RULER_HEIGHT - 10);
       ctx.lineTo(x, RULER_HEIGHT);
       ctx.stroke();
+      ctx.restore();
 
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = '10px monospace';
+      ctx.fillStyle = tokens.textMuted;
+      ctx.font = '10px ui-monospace, monospace';
       ctx.fillText(formatTimecode(t), x + 4, RULER_HEIGHT - 12);
     }
 
@@ -563,9 +598,9 @@ export function MultitrackCanvas({
     if (timeline.loop_range) {
       const loopX = timeToPixels(timeline.loop_range.start_secs, zoom, scrollX, TRACK_HEADER_WIDTH);
       const loopW = (timeline.loop_range.end_secs - timeline.loop_range.start_secs) * zoom;
-      ctx.fillStyle = 'rgba(245, 158, 11, 0.25)';
+      ctx.fillStyle = tokens.tintAmber;
       ctx.fillRect(loopX, 0, loopW, RULER_HEIGHT);
-      ctx.strokeStyle = '#f59e0b';
+      ctx.strokeStyle = tokens.accentAmber;
       ctx.lineWidth = 1.5;
       ctx.strokeRect(loopX, 0, loopW, RULER_HEIGHT);
     }
@@ -573,7 +608,7 @@ export function MultitrackCanvas({
     // Markers on Ruler
     timeline.markers.forEach((m) => {
       const mX = timeToPixels(m.time_secs, zoom, scrollX, TRACK_HEADER_WIDTH);
-      ctx.fillStyle = '#a855f7';
+      ctx.fillStyle = tokens.accentPurple;
       ctx.beginPath();
       ctx.moveTo(mX, 0);
       ctx.lineTo(mX + 6, 6);
@@ -584,25 +619,23 @@ export function MultitrackCanvas({
       ctx.closePath();
       ctx.fill();
 
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 9px system-ui';
+      ctx.fillStyle = tokens.text;
+      ctx.font = '600 9px Inter, system-ui, sans-serif';
       ctx.fillText(m.label, mX + 8, RULER_HEIGHT - 12);
     });
 
-    // 7. Playhead (Bright Cyan Line & Top Triangle Handle)
+    // 7. Linear Red Playhead & Top Triangle Handle
     const playheadX = timeToPixels(currentTimeSecs, zoom, scrollX, TRACK_HEADER_WIDTH);
     if (playheadX >= TRACK_HEADER_WIDTH && playheadX <= width) {
-      // Triangle Flag
-      ctx.fillStyle = isPlaying ? '#22c55e' : '#00f0ff';
+      ctx.fillStyle = tokens.accentRed;
       ctx.beginPath();
-      ctx.moveTo(playheadX - 6, 0);
-      ctx.lineTo(playheadX + 6, 0);
-      ctx.lineTo(playheadX, 10);
+      ctx.moveTo(playheadX - 5, 0);
+      ctx.lineTo(playheadX + 5, 0);
+      ctx.lineTo(playheadX, 9);
       ctx.closePath();
       ctx.fill();
 
-      // Playhead vertical beam
-      ctx.strokeStyle = isPlaying ? '#22c55e' : '#00f0ff';
+      ctx.strokeStyle = tokens.accentRed;
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(playheadX, 0);
@@ -610,10 +643,10 @@ export function MultitrackCanvas({
       ctx.stroke();
     }
 
-    // 8. Snap Line indicator if dragging and snapped
+    // 8. Snap Line indicator
     if (dragState && dragState.snappedTimeSecs !== dragState.currentTimeSecs) {
       const snapLineX = timeToPixels(dragState.snappedTimeSecs, zoom, scrollX, TRACK_HEADER_WIDTH);
-      ctx.strokeStyle = '#eab308';
+      ctx.strokeStyle = tokens.accentAmber;
       ctx.setLineDash([4, 4]);
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -622,7 +655,7 @@ export function MultitrackCanvas({
       ctx.stroke();
       ctx.setLineDash([]);
     }
-  }, [timeline, currentTimeSecs, isPlaying, zoom, scrollX, scrollY, dragState, canvasSize]);
+  }, [timeline, currentTimeSecs, isPlaying, zoom, scrollX, scrollY, dragState, canvasSize, themeTick]);
 
   // Pointer Interaction Handlers
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -766,7 +799,7 @@ export function MultitrackCanvas({
   return (
     <div
       ref={containerRef}
-      className="w-full h-full relative overflow-hidden select-none bg-[#090d16]"
+      className="w-full h-full relative overflow-hidden select-none bg-[var(--bg-surface)]"
       style={{ cursor: getCursorStyle() }}
     >
       <canvas

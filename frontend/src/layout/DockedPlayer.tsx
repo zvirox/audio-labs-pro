@@ -1,16 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
-  Play,
-  Pause,
-  Square,
   Circle,
+  Pause,
+  Play,
   Repeat,
+  Square,
   Volume2,
   VolumeX,
 } from 'lucide-react';
-import { Button } from '../kit/Button';
-import { Slider } from '../kit/Slider';
 import { Meter } from '../kit/Meter';
+import { Slider } from '../kit/Slider';
+import { formatTimecode } from '../timeline/timelineMath';
 
 export interface DockedPlayerProps {
   durationSecs?: number;
@@ -38,6 +38,7 @@ export function DockedPlayer({
   loopEnabled,
   peakL = 0.0,
   peakR = 0.0,
+  isClipping = false,
   onTogglePlay,
   onStop,
   onSeek,
@@ -98,146 +99,126 @@ export function DockedPlayer({
     }
   };
 
-  // Space key play/pause
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (
-        (e.target as HTMLElement).tagName === 'INPUT' ||
-        (e.target as HTMLElement).tagName === 'TEXTAREA'
-      ) {
-        return;
-      }
-      if (e.code === 'Space') {
-        e.preventDefault();
-        handlePlayToggle();
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handlePlayToggle]);
-
-  const formatTimecode = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    const millis = Math.floor((seconds % 1) * 100);
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${millis.toString().padStart(2, '0')}`;
-  };
-
   return (
     <footer
-      className="h-16 border-t border-[var(--color-border)] bg-[var(--color-surface)] px-4 flex items-center justify-between gap-4 z-30 select-none flex-shrink-0"
-      aria-label="Transport and Playback Bar"
+      aria-label="Global Transport Bar"
+      className="flex h-14 shrink-0 items-center justify-between gap-4 border-t border-[var(--border)] bg-[var(--bg-surface)] px-4 text-[var(--text)] select-none"
     >
-      {/* Left: Transport Buttons */}
-      <div className="flex items-center gap-2 flex-shrink-0">
-        {/* Play/Pause */}
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={handlePlayToggle}
-          leftIcon={
-            activePlaying ? (
-              <Pause className="w-4 h-4 fill-current" />
-            ) : (
-              <Play className="w-4 h-4 fill-current ml-0.5" />
-            )
-          }
-          title="Play / Pause transport (Space)"
-          aria-label={activePlaying ? 'Pause' : 'Play'}
-        >
-          {activePlaying ? 'Pause' : 'Play'}
-        </Button>
-
-        {/* Stop */}
-        <Button
-          variant="secondary"
-          size="sm"
+      {/* Left: Transport Controls */}
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
           onClick={handleStop}
-          leftIcon={<Square className="w-4 h-4" />}
-          title="Stop and return to 0:00"
           aria-label="Stop"
-        />
+          title="Stop (Shift+Space)"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--bg-surface-2)] text-[var(--text-muted)] hover:border-[var(--border-strong)] hover:text-[var(--text)] transition-colors duration-[var(--duration-quick)] cursor-pointer"
+        >
+          <Square className="h-3.5 w-3.5" />
+        </button>
 
-        {/* Record */}
-        <Button
-          variant={isRecording ? 'danger' : 'secondary'}
-          size="sm"
-          onClick={() => setIsRecording(!isRecording)}
-          leftIcon={<Circle className={`w-4 h-4 ${isRecording ? 'fill-current' : 'text-red-400'}`} />}
-          title="Arm recording (R)"
-          aria-label="Record"
-        />
+        <button
+          type="button"
+          onClick={handlePlayToggle}
+          aria-label={activePlaying ? 'Pause' : 'Play'}
+          title="Play / Pause (Space)"
+          className="inline-flex h-8 w-9 items-center justify-center rounded-md border border-[var(--accent-blue)] bg-[var(--accent-blue)] text-[var(--text-on-accent)] hover:bg-[var(--accent-blue-hover)] transition-colors duration-[var(--duration-quick)] cursor-pointer"
+        >
+          {activePlaying ? (
+            <Pause className="h-4 w-4 fill-current" />
+          ) : (
+            <Play className="ml-0.5 h-4 w-4 fill-current" />
+          )}
+        </button>
 
-        {/* Loop */}
-        <Button
-          variant={activeLooping ? 'primary' : 'ghost'}
-          size="sm"
+        <button
+          type="button"
+          onClick={() => setIsRecording((prev) => !prev)}
+          aria-label="Arm recording"
+          title="Record Arm"
+          className={`inline-flex h-8 w-8 items-center justify-center rounded-md border transition-colors duration-[var(--duration-quick)] cursor-pointer ${
+            isRecording
+              ? 'border-[var(--accent-red)] bg-[var(--tint-red)] text-[var(--accent-red)]'
+              : 'border-[var(--border)] bg-[var(--bg-surface-2)] text-[var(--text-muted)] hover:border-[var(--border-strong)] hover:text-[var(--accent-red)]'
+          }`}
+        >
+          <Circle className="h-3.5 w-3.5 fill-current" />
+        </button>
+
+        <button
+          type="button"
           onClick={handleLoopToggle}
-          leftIcon={<Repeat className="w-4 h-4" />}
-          title="Toggle loop playback (L)"
-          aria-label="Loop"
-        />
+          aria-label="Toggle Loop"
+          title="Loop (L)"
+          className={`inline-flex h-8 w-8 items-center justify-center rounded-md border transition-colors duration-[var(--duration-quick)] cursor-pointer ${
+            activeLooping
+              ? 'border-[var(--accent-blue)] bg-[var(--tint-blue)] text-[var(--accent-blue)]'
+              : 'border-[var(--border)] bg-[var(--bg-surface-2)] text-[var(--text-muted)] hover:border-[var(--border-strong)] hover:text-[var(--text)]'
+          }`}
+        >
+          <Repeat className="h-3.5 w-3.5" />
+        </button>
       </div>
 
-      {/* Center: Timecode & Timeline Scrubber */}
-      <div className="flex-1 max-w-2xl flex items-center gap-3">
-        {/* Digital Clock readout */}
-        <div className="px-2.5 py-1 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] font-mono text-xs font-medium text-[var(--color-accent)]">
+      {/* Center: Timecode & Scrub Bar */}
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <span className="w-20 shrink-0 text-right font-mono text-[12px] font-medium text-[var(--text)] tabular-nums">
           {formatTimecode(activeTime)}
-        </div>
-
-        {/* Interactive scrubber */}
-        <div className="flex-1">
-          <Slider
-            min={0}
-            max={durationSecs}
-            step={0.01}
-            value={activeTime}
-            onChange={handleSeek}
-            ariaLabel="Seek position"
-            formatValue={(v) => `${formatTimecode(v)} / ${formatTimecode(durationSecs)}`}
-          />
-        </div>
-
-        <div className="text-[11px] font-mono text-[var(--color-fg-muted)] whitespace-nowrap hidden sm:block">
-          {formatTimecode(durationSecs)} &bull; {sampleRate / 1000}kHz
-        </div>
+        </span>
+        <Slider
+          value={activeTime}
+          min={0}
+          max={Math.max(1, durationSecs)}
+          step={0.05}
+          ariaLabel="Playback timeline scrubber"
+          onChange={handleSeek}
+          className="flex-1"
+        />
+        <span className="w-20 shrink-0 font-mono text-[12px] text-[var(--text-muted)] tabular-nums">
+          {formatTimecode(durationSecs)}
+        </span>
       </div>
 
-      {/* Right: Master Output Volume & Stereo Meters */}
-      <div className="flex items-center gap-4 flex-shrink-0">
-        {/* Stereo LED Audio Meter */}
-        <div className="w-28 hidden md:block">
-          <Meter leftLevel={peakL} rightLevel={peakR} peakLeft={peakL} peakRight={peakR} showLabels={false} />
+      {/* Right: Meter, Sample Rate & Master Volume */}
+      <div className="hidden items-center gap-4 md:flex">
+        <div className="flex items-center gap-2">
+          <Meter
+            leftLevel={isMuted ? 0 : peakL}
+            rightLevel={isMuted ? 0 : peakR}
+            className="w-28"
+          />
+          {isClipping && (
+            <span className="rounded border border-[var(--accent-red)] bg-[var(--tint-red)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--accent-red)]">
+              CLIP
+            </span>
+          )}
         </div>
 
-        {/* Volume Fader */}
-        <div className="flex items-center gap-2 w-32">
+        <span className="rounded border border-[var(--border)] bg-[var(--bg-surface-2)] px-2 py-1 text-[11px] font-medium text-[var(--text-muted)] tabular-nums">
+          {(sampleRate / 1000).toFixed(1)} kHz
+        </span>
+
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setIsMuted(!isMuted)}
-            className="text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] p-1 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]"
-            title={isMuted ? 'Unmute master' : 'Mute master'}
-            aria-label={isMuted ? 'Unmute master' : 'Mute master'}
-            aria-pressed={isMuted}
+            onClick={() => setIsMuted((prev) => !prev)}
+            aria-label={isMuted ? 'Unmute master output' : 'Mute master output'}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--bg-surface-2)] hover:text-[var(--text)] cursor-pointer"
           >
             {isMuted || activeVolume === 0 ? (
-              <VolumeX className="w-4 h-4 text-red-400" />
+              <VolumeX className="h-3.5 w-3.5 text-[var(--accent-red)]" />
             ) : (
-              <Volume2 className="w-4 h-4" />
+              <Volume2 className="h-3.5 w-3.5" />
             )}
           </button>
-          <div className="flex-1">
-            <Slider
-              min={0}
-              max={1}
-              step={0.01}
-              value={isMuted ? 0 : activeVolume}
-              onChange={handleVolumeChange}
-              ariaLabel="Master volume"
-              formatValue={(v) => `${(v * 100).toFixed(0)}%`}
-            />
-          </div>
+          <Slider
+            value={isMuted ? 0 : activeVolume}
+            min={0}
+            max={1}
+            step={0.01}
+            ariaLabel="Master output volume"
+            onChange={handleVolumeChange}
+            className="w-24"
+          />
         </div>
       </div>
     </footer>

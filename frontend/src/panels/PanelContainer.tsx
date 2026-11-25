@@ -1,58 +1,16 @@
-import React, { useState, useRef, useEffect } from 'react';
-import {
-  ChevronDown,
-  ChevronUp,
-  X,
-  Maximize2,
-  Minimize2,
-  Sliders,
-  Play,
-  Layers,
-  FileAudio,
-  Mic,
-  Sparkles,
-  Cpu,
-  DownloadCloud,
-  Bot,
-  Info,
-} from 'lucide-react';
-import type { PanelState, PanelKind } from '../ipc/types';
+import React, { useEffect, useRef, useState } from 'react';
+import { GripHorizontal, X } from 'lucide-react';
+import type { PanelKind, PanelState } from '../ipc/types';
 import type { CanvasBounds } from '../layout/panelLayout';
 
 interface PanelContainerProps {
   panel: PanelState;
-  bounds?: CanvasBounds;
-  onUpdate: (updated: PanelState) => void;
+  bounds: CanvasBounds;
+  onUpdate: (next: PanelState) => void;
   onClose: (kind: PanelKind) => void;
   onFocus: (kind: PanelKind) => void;
   children: React.ReactNode;
 }
-
-const PANEL_ICONS: Record<PanelKind, React.ComponentType<{ className?: string }>> = {
-  mixer: Sliders,
-  transport: Play,
-  timeline: Layers,
-  inspector: Info,
-  media_bin: FileAudio,
-  voice_lab: Mic,
-  effects: Sparkles,
-  models: Cpu,
-  export_queue: DownloadCloud,
-  ai_activity: Bot,
-};
-
-const PANEL_TITLES: Record<PanelKind, string> = {
-  mixer: 'Master & Track Mixer',
-  transport: 'Transport Controls',
-  timeline: 'Multitrack Timeline',
-  inspector: 'Clip & Track Inspector',
-  media_bin: 'Media Bin & Sources',
-  voice_lab: 'Voice Lab & Cloner',
-  effects: 'DSP Effects Chain',
-  models: 'Neural Voice Models',
-  export_queue: 'Render & Export Queue',
-  ai_activity: 'MCP Autonomous Agent Logs',
-};
 
 export function PanelContainer({
   panel,
@@ -67,102 +25,41 @@ export function PanelContainer({
   const dragStartRef = useRef<{ mouseX: number; mouseY: number; startX: number; startY: number }>({
     mouseX: 0,
     mouseY: 0,
-    startX: panel.rect.x,
-    startY: panel.rect.y,
+    startX: 0,
+    startY: 0,
   });
   const resizeStartRef = useRef<{ mouseX: number; mouseY: number; startW: number; startH: number }>({
     mouseX: 0,
     mouseY: 0,
-    startW: panel.rect.width,
-    startH: panel.rect.height,
+    startW: 0,
+    startH: 0,
   });
 
-  const Icon = PANEL_ICONS[panel.kind] || Info;
-  const title = PANEL_TITLES[panel.kind] || panel.kind;
-
-  // Dragging logic
-  const handleMouseDownHeader = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('button')) return;
-    onFocus(panel.kind);
-    setIsDragging(true);
-    dragStartRef.current = {
-      mouseX: e.clientX,
-      mouseY: e.clientY,
-      startX: panel.rect.x,
-      startY: panel.rect.y,
-    };
-  };
-
   useEffect(() => {
-    if (!isDragging) return;
+    if (!isDragging && !isResizing) return;
 
-    const handleMouseMove = (e: MouseEvent) => {
-      const deltaX = e.clientX - dragStartRef.current.mouseX;
-      const deltaY = e.clientY - dragStartRef.current.mouseY;
-      const maxX = bounds ? Math.max(0, bounds.width - panel.rect.width) : Infinity;
-      const maxY = bounds ? Math.max(0, bounds.height - panel.rect.height) : Infinity;
-      const newX = Math.min(Math.max(0, dragStartRef.current.startX + deltaX), maxX);
-      const newY = Math.min(Math.max(0, dragStartRef.current.startY + deltaY), maxY);
+    function handleMouseMove(e: MouseEvent) {
+      if (isDragging) {
+        const dx = e.clientX - dragStartRef.current.mouseX;
+        const dy = e.clientY - dragStartRef.current.mouseY;
+        const maxX = Math.max(0, bounds.width - panel.rect.width);
+        const maxY = Math.max(0, bounds.height - panel.rect.height);
+        const nextX = Math.max(0, Math.min(maxX, dragStartRef.current.startX + dx));
+        const nextY = Math.max(0, Math.min(maxY, dragStartRef.current.startY + dy));
+        onUpdate({ ...panel, rect: { ...panel.rect, x: nextX, y: nextY } });
+      } else if (isResizing) {
+        const dx = e.clientX - resizeStartRef.current.mouseX;
+        const dy = e.clientY - resizeStartRef.current.mouseY;
+        const nextW = Math.max(260, Math.min(bounds.width - panel.rect.x, resizeStartRef.current.startW + dx));
+        const nextH = Math.max(180, Math.min(bounds.height - panel.rect.y, resizeStartRef.current.startH + dy));
+        onUpdate({ ...panel, rect: { ...panel.rect, width: nextW, height: nextH } });
+      }
+    }
 
-      onUpdate({
-        ...panel,
-        rect: {
-          ...panel.rect,
-          x: newX,
-          y: newY,
-        },
-      });
-    };
-
-    const handleMouseUp = () => {
+    function handleMouseUp() {
       setIsDragging(false);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging, panel, onUpdate, bounds]);
-
-  // Resizing logic
-  const handleMouseDownResize = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onFocus(panel.kind);
-    setIsResizing(true);
-    resizeStartRef.current = {
-      mouseX: e.clientX,
-      mouseY: e.clientY,
-      startW: panel.rect.width,
-      startH: panel.rect.height,
-    };
-  };
-
-  useEffect(() => {
-    if (!isResizing) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const deltaX = e.clientX - resizeStartRef.current.mouseX;
-      const deltaY = e.clientY - resizeStartRef.current.mouseY;
-      const maxW = bounds ? Math.max(260, bounds.width - panel.rect.x) : Infinity;
-      const maxH = bounds ? Math.max(140, bounds.height - panel.rect.y) : Infinity;
-      const newW = Math.min(Math.max(260, resizeStartRef.current.startW + deltaX), maxW);
-      const newH = Math.min(Math.max(140, resizeStartRef.current.startH + deltaY), maxH);
-
-      onUpdate({
-        ...panel,
-        rect: {
-          ...panel.rect,
-          width: newW,
-          height: newH,
-        },
-      });
-    };
-
-    const handleMouseUp = () => {
       setIsResizing(false);
-    };
+    }
 
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
@@ -170,82 +67,68 @@ export function PanelContainer({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizing, panel, onUpdate, bounds]);
-
-  if (!panel.open) return null;
+  }, [isDragging, isResizing, panel, bounds, onUpdate]);
 
   return (
-    <div
+    <section
       onMouseDown={() => onFocus(panel.kind)}
       style={{
-        transform: `translate3d(${panel.rect.x}px, ${panel.rect.y}px, 0)`,
-        width: `${panel.rect.width}px`,
-        height: panel.collapsed ? '36px' : `${panel.rect.height}px`,
+        left: panel.rect.x,
+        top: panel.rect.y,
+        width: panel.rect.width,
+        height: panel.rect.height,
         zIndex: panel.z,
       }}
-      className={`absolute top-0 left-0 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-2xl overflow-hidden flex flex-col transition-shadow ${
- isDragging ? ' ring-1 ring-[var(--color-accent)]' : ''
- }`}
+      className="absolute flex flex-col overflow-hidden rounded-lg border border-[var(--border-strong)] bg-[var(--bg-surface)] text-[var(--text)] shadow-[var(--shadow-card)]"
     >
-      {/* Title Bar / Drag Header */}
       <div
-        onMouseDown={handleMouseDownHeader}
-        className="h-9 px-3 bg-[var(--color-surface-2)] border-b border-[var(--color-border)] flex items-center justify-between cursor-move select-none"
+        onMouseDown={(e) => {
+          e.stopPropagation();
+          onFocus(panel.kind);
+          dragStartRef.current = {
+            mouseX: e.clientX,
+            mouseY: e.clientY,
+            startX: panel.rect.x,
+            startY: panel.rect.y,
+          };
+          setIsDragging(true);
+        }}
+        className="flex h-9 shrink-0 cursor-move items-center justify-between border-b border-[var(--border)] bg-[var(--bg-surface-2)] px-3 select-none"
       >
-        <div className="flex items-center gap-2 text-xs font-medium text-[var(--color-fg)] truncate">
-          <Icon className="w-4 h-4 text-[var(--color-accent)] flex-shrink-0" />
-          <span className="truncate">{title}</span>
+        <div className="flex items-center gap-2 text-[12px] font-semibold">
+          <GripHorizontal className="h-3.5 w-3.5 text-[var(--text-muted)]" />
+          <span className="capitalize">{panel.kind.replace('_', ' ')}</span>
         </div>
-
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => onUpdate({ ...panel, collapsed: !panel.collapsed })}
-            className="p-1 rounded text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] hover:bg-[var(--color-surface-3)]"
-            title={panel.collapsed ? 'Expand panel' : 'Collapse panel'}
-          >
-            {panel.collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-          </button>
-          <button
-            onClick={() =>
-              onUpdate({
-                ...panel,
-                docked: panel.docked ? null : 'right',
-              })
-            }
-            className="p-1 rounded text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] hover:bg-[var(--color-surface-3)]"
-            title={panel.docked ? 'Undock panel' : 'Dock panel right'}
-          >
-            {panel.docked ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-          </button>
-          <button
-            onClick={() => onClose(panel.kind)}
-            className="p-1 rounded text-[var(--color-fg-muted)] hover:text-red-400 hover:bg-[var(--color-surface-3)]"
-            title="Close panel"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose(panel.kind);
+          }}
+          aria-label={`Close ${panel.kind} panel`}
+          className="inline-flex h-6 w-6 items-center justify-center rounded text-[var(--text-muted)] hover:bg-[var(--bg-bar-idle)] hover:text-[var(--text)] cursor-pointer"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
       </div>
 
-      {/* Body Content */}
-      {!panel.collapsed && (
-        <div className="flex-1 overflow-auto p-4 text-xs text-[var(--color-fg)] relative">
-          {children}
+      <div className="min-h-0 flex-1 overflow-auto p-3">{children}</div>
 
-          {/* Bottom-right corner resize handle */}
-          <div
-            onMouseDown={handleMouseDownResize}
-            className="absolute bottom-1 right-1 w-4 h-4 cursor-se-resize text-[var(--color-fg-subtle)] hover:text-[var(--color-accent)]"
-            title="Resize panel"
-          >
-            <svg viewBox="0 0 6 6" className="w-full h-full fill-current">
-              <circle cx="5" cy="5" r="0.75" />
-              <circle cx="5" cy="2.5" r="0.75" />
-              <circle cx="2.5" cy="5" r="0.75" />
-            </svg>
-          </div>
-        </div>
-      )}
-    </div>
+      <div
+        onMouseDown={(e) => {
+          e.stopPropagation();
+          onFocus(panel.kind);
+          resizeStartRef.current = {
+            mouseX: e.clientX,
+            mouseY: e.clientY,
+            startW: panel.rect.width,
+            startH: panel.rect.height,
+          };
+          setIsResizing(true);
+        }}
+        title="Resize panel"
+        className="absolute bottom-0 right-0 h-3 w-3 cursor-nwse-resize border-r-2 border-b-2 border-[var(--border-strong)]"
+      />
+    </section>
   );
 }

@@ -1,13 +1,8 @@
-//! Compositor glass negotiation and tint fallback for Tauri 2.
+//! Window display inspection for the Tauri 2 desktop shell.
 //!
-//! KWin on X11 sets the atom `_KDE_NET_WM_BLUR_BEHIND_REGION` via safe `x11rb`
-//! on the window's X11 handle. Everywhere else (Wayland, GNOME, non-KDE X11),
-//! the app applies a translucent tint fallback (alpha >= 0.70) keeping text legible.
-//! Honoring the invariant from ADR 0012 and ADR 0013:
-//! - Hand-written code contains zero `unsafe`.
-//! - Wayland background-effect attachment remains out of scope.
-//! - Motion never encodes audio state.
-//! - `ALP_FORCE_TINT=1` forces tint fallback regardless of desktop compositor.
+//! The desktop shell uses a strictly solid, opaque Linear-style surface
+//! (`transparent: false`, zero compositor blur, zero translucent fill).
+//! Honors `unsafe_code = "deny"` using safe `raw-window-handle 0.6`.
 
 use std::fmt;
 
@@ -101,7 +96,7 @@ impl fmt::Display for GlassReport {
     }
 }
 
-/// Inspect the native Tauri WebviewWindow and configure KWin blur if applicable.
+/// Inspect the native Tauri WebviewWindow; compositor blur is intentionally disabled.
 pub fn probe<W: HasWindowHandle + HasDisplayHandle>(window: &W) -> GlassReport {
     let handle = window
         .window_handle()
@@ -125,25 +120,10 @@ pub fn probe<W: HasWindowHandle + HasDisplayHandle>(window: &W) -> GlassReport {
 
     let session = std::env::var("XDG_SESSION_TYPE").unwrap_or_else(|_| display.into());
     let desktop = std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_else(|_| "unknown".into());
-    let force_tint = std::env::var_os("ALP_FORCE_TINT").is_some();
 
-    let mut report = resolve(&session, &desktop, handle, force_tint);
+    let mut report = resolve(&session, &desktop, handle, true);
     report.handle = format!("{handle}/{display}");
-
-    if !force_tint && handle == "x11" && should_attempt_x11_blur(&desktop) {
-        match enable_x11_blur(window) {
-            Ok(()) => {
-                report.mode = GlassMode::CompositorBlur;
-                report.blur_available = true;
-                report.detail =
-                    "KWin X11 blur is active via _KDE_NET_WM_BLUR_BEHIND_REGION.".into();
-            }
-            Err(error) => {
-                report.detail = format!("X11 blur unavailable ({error}); tint fallback active.");
-            }
-        }
-    }
-
+    report.detail = "Opaque solid Linear window surface (blur disabled by design standard).".into();
     report
 }
 
@@ -151,57 +131,6 @@ pub fn probe<W: HasWindowHandle + HasDisplayHandle>(window: &W) -> GlassReport {
 #[must_use]
 pub fn should_attempt_x11_blur(desktop: &str) -> bool {
     desktop.to_ascii_lowercase().contains("kde") || desktop.to_ascii_lowercase().contains("plasma")
-}
-
-/// Safe KWin blur property application via `x11rb`.
-pub fn enable_x11_blur<W: HasWindowHandle>(window: &W) -> Result<(), String> {
-    use x11rb::connection::Connection;
-    use x11rb::protocol::xproto::{AtomEnum, ConnectionExt, PropMode};
-    use x11rb::wrapper::ConnectionExt as _;
-
-    let raw = window
-        .window_handle()
-        .map_err(|e| format!("no window handle available: {e}"))?
-        .as_raw();
-
-    let window_id = match raw {
-        RawWindowHandle::Xlib(handle) => u32::try_from(handle.window)
-            .map_err(|_| "Xlib window id does not fit in 32 bits".to_string())?,
-        RawWindowHandle::Xcb(handle) => handle.window.get(),
-        _ => return Err("window handle is not X11".into()),
-    };
-
-    let (conn, _screen) =
-        x11rb::connect(None).map_err(|e| format!("cannot open X11 connection: {e}"))?;
-
-    let geometry = conn
-        .get_geometry(window_id)
-        .map_err(|e| format!("cannot query X11 geometry: {e}"))?
-        .reply()
-        .map_err(|e| format!("cannot read X11 geometry: {e}"))?;
-
-    let atom = conn
-        .intern_atom(false, b"_KDE_NET_WM_BLUR_BEHIND_REGION")
-        .map_err(|e| format!("cannot intern blur atom: {e}"))?
-        .reply()
-        .map_err(|e| format!("cannot read blur atom: {e}"))?
-        .atom;
-
-    conn.change_property32(
-        PropMode::REPLACE,
-        window_id,
-        atom,
-        AtomEnum::CARDINAL,
-        &[0, 0, u32::from(geometry.width), u32::from(geometry.height)],
-    )
-    .map_err(|e| format!("cannot set blur property: {e}"))?
-    .check()
-    .map_err(|e| format!("blur property rejected: {e}"))?;
-
-    conn.flush()
-        .map_err(|e| format!("cannot flush X11 connection: {e}"))?;
-
-    Ok(())
 }
 
 /// Pure mode resolution, separated for deterministic unit testing.

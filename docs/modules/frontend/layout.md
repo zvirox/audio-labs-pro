@@ -1,40 +1,11 @@
 # `frontend/src/layout`
 
-## Purpose
+## Shell Geometry
 
-The dual-axis application shell structure for Audio Labs Pro. Provides persistent primary workspace switching, contextual sub-navigation, docked transport playback, and collapsible property inspection.
-
-## Public API
-
-- `PrimaryRail` — 56px vertical rail on the left housing the 7 primary workspaces, theme toggle, and utility shortcuts.
-- `SubtabTopBar` — 40px horizontal top bar displaying the active workspace title, contextual subtabs, and panel action menus.
-- `InspectorDrawer` — 280px collapsible drawer on the right toggled via `Ctrl+B` for fine-grained track and clip editing.
-- `DockedPlayer` — 64px bottom transport player bar featuring play/pause, stop, record, loop, digital timecode, timeline scrubber, and stereo meters.
-
-## Data flow
-
-1. Clicking an icon on the `PrimaryRail` updates the active workspace and triggers contextual subtab changes.
-2. Spacebar or player controls dispatch playback state changes and update the digital timecode display.
-3. Collapsing or expanding the inspector drawer adjusts the main canvas viewport width without altering floating panel coordinates.
-
-## Allowed dependencies
-
-- `frontend/src/kit`
-- `frontend/src/ipc/types`
-- Lucide React icons
-
-## Threading / real-time notes
-
-The transport player simulates real-time playback ticks at 100ms intervals when playing; in Phase M4 it binds directly to the `alp-engine` playhead anchor.
-
-## Error handling
-
-Drawer and rail boundaries are constrained to standard viewport dimensions, preventing clipping on smaller displays ($< 960$px).
-
-## Testing
-
-Tested across standard desktop display widths (1024px, 1280px, 1920px) under both Studio Dark and Light glass themes.
-
-## Known limits
-
-Docked player controls currently operate on demo timeline bounds (20.0s); full timeline length binding occurs with multitrack integration in Phase M6.
+- **Window:** Default `1280x800` (16:10), minimum `1024x640`, frameless solid opaque window (`decorations: false`, `transparent: false`, `shadow: true`).
+- **`TitleBar` (40 px):** Owns window drag, double-click maximize, `ThemeToggle`, and window controls (`WindowControls.tsx` retired).
+- **`PrimaryRail` / `Sidebar` (240 px expanded, 56 px collapsed):** Workspace switcher across Dashboard, Voice Studio, Multitrack DAW, Audiobook Lab, Video Dubbing, Batch & Repair, DSP & Effects, and Preferences.
+- **`Breadcrumb` + `SubtabTopBar`:** Dynamic breadcrumb trail, session revision state, workspace subtab switcher, and floating-panel controls.
+- **`InspectorDrawer` (280 px right drawer):** Toggleable (`Ctrl+B`) channel gain/pan strip, Mute/Solo/Arm buttons, segmented output meter, and loudness normalize toggle.
+- **`DockedPlayer` (56 px bottom transport):** Global Play/Pause/Stop/Record/Loop transport, timecode scrub slider, discrete segmented stereo peak meters, sample rate badge, and master gain slider.
+- **`panelLayout.ts`:** Window-resize bounds clamping and overlap auto-tidying (`tidyPanels`, `clampPanels`, `hasOverlap`).

@@ -1,37 +1,39 @@
 import React from 'react';
 
 export interface RangeTabsProps {
-  options?: string[];
-  active: string;
-  onChange: (tab: string) => void;
+  options: { id: string; label: string }[];
+  value: string;
+  onChange: (id: string) => void;
   className?: string;
 }
 
-const DEFAULT_OPTIONS = ['1W', '1M', '3W', 'YTD', 'Total'];
-
 export const RangeTabs: React.FC<RangeTabsProps> = ({
-  options = DEFAULT_OPTIONS,
-  active,
+  options,
+  value,
   onChange,
   className = '',
 }) => {
   return (
     <div
-      className={`inline-flex items-center gap-0.5 p-0.5 rounded-lg border border-[var(--border)] bg-[var(--bg-surface-2)] select-none ${className}`}
+      className={`inline-flex items-center rounded-md border border-[var(--border)] bg-[var(--bg-surface-2)] p-0.5 ${className}`}
+      role="tablist"
     >
-      {options.map((tab) => {
-        const isActive = tab === active;
+      {options.map((opt) => {
+        const isActive = opt.id === value;
         return (
           <button
-            key={tab}
-            onClick={() => onChange(tab)}
-            className={`px-2.5 py-1 text-xs rounded-md font-medium transition-all duration-150 cursor-pointer ${
+            key={opt.id}
+            type="button"
+            role="tab"
+            aria-selected={isActive}
+            onClick={() => onChange(opt.id)}
+            className={`rounded px-2.5 py-1 text-[12px] font-medium transition-colors duration-[var(--duration-quick)] [transition-timing-function:var(--ease-out-expo)] cursor-pointer ${
               isActive
-                ? 'bg-[var(--bg-surface)] text-[var(--text)] border border-[var(--border)] shadow-[0_1px_2px_rgb(16_24_40_/_5%)] dark:shadow-none'
-                : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-bar-idle)] border border-transparent'
+                ? 'bg-[var(--bg-surface)] text-[var(--text)] border border-[var(--border)]'
+                : 'border border-transparent text-[var(--text-muted)] hover:text-[var(--text)]'
             }`}
           >
-            {tab}
+            {opt.label}
           </button>
         );
       })}
