@@ -35,6 +35,13 @@ contents:
     dst: /usr/share/icons/hicolor/scalable/apps/audio-labs-pro.svg
   - src: LICENSE
     dst: /usr/share/doc/audio-labs-pro/LICENSE
+    packager: deb
+  - src: LICENSE
+    dst: /usr/share/doc/audio-labs-pro/LICENSE
+    packager: rpm
+  - src: LICENSE
+    dst: /usr/share/licenses/audio-labs-pro/LICENSE
+    packager: archlinux
 
 scripts:
   postinstall: packaging/scripts/postinstall.sh
