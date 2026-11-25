@@ -5,6 +5,8 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+## [0.1.0-beta.2] - 2026-11-25
+
 ### Changed & Locked
 - **Final Linear UI Implementation & Lock:** Completed exact Linear dark (`#050505` / `#111213`) and light (`#F3F4F6` / `#FFFFFF`) design system with `#3355FF` primary accent, self-hosted `InterVariable.ttf`, 40 px frameless `TitleBar` (reading version directly from `tauri.conf.json`, sole `ThemeToggle` on `ui-theme`), collapsible `Sidebar` (`240px`/`56px`), `Breadcrumb`, `LinearCard`/`StatCard`/`DataTable`/`LinearDialog`/`ProgressRow`/`RangeTabs`/`DonutLegend`, ECharts telemetry dashboard, discrete segmented `Meter` strips, and theme-reactive 2D audio canvases (`linearCanvasTheme.ts`).
 - **Compositor Blur Removed:** Disabled X11 KWin blur in `alp-desktop::glass` and locked window geometry at `1280x800` (min `1024x640`, opaque solid rendering) enforced by `npm --prefix frontend run check:linear`.

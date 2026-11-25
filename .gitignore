@@ -1,6 +1,10 @@
 /target
 /spikes/target
 spikes/**/gen/
+/release-dist/
+*.deb
+*.rpm
+*.pkg.tar.zst
 
 # Planning & status working notes (local only)
 /plan.md
