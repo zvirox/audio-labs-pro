@@ -59,13 +59,13 @@ export function Menu({ trigger, items, align = 'left' }: MenuProps) {
         <div
           ref={menuRef}
           role="menu"
-          className={`absolute top-full z-40 mt-1.5 min-w-[200px] rounded-lg border border-[var(--border-strong)] bg-[var(--bg-surface)] p-1 shadow-[var(--shadow-card)] ${
+          className={`absolute top-full z-40 mt-1.5 min-w-[200px] rounded-lg border border-border-strong bg-surface p-1 shadow-card ${
             align === 'right' ? 'right-0' : 'left-0'
           }`}
         >
           {items.map((item) => (
             <React.Fragment key={item.id}>
-              {item.dividerBefore && <div className="my-1 h-px bg-[var(--border)]" />}
+              {item.dividerBefore && <div className="my-1 h-px bg-border" />}
               <button
                 type="button"
                 role="menuitem"
@@ -77,16 +77,16 @@ export function Menu({ trigger, items, align = 'left' }: MenuProps) {
                 }}
                 className={`flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-1.5 text-left text-[13px] transition-colors duration-[var(--duration-quick)] disabled:opacity-50 disabled:pointer-events-none cursor-pointer ${
                   item.danger
-                    ? 'text-[var(--accent-red)] hover:bg-[var(--tint-red)]'
-                    : 'text-[var(--text)] hover:bg-[var(--bg-surface-2)]'
+                    ? 'text-red-text hover:bg-chip-red'
+                    : 'text-fg-2 hover:bg-hover hover:text-fg'
                 }`}
               >
                 <span className="flex items-center gap-2">
-                  {item.icon && <span className="shrink-0 text-[var(--text-muted)]">{item.icon}</span>}
+                  {item.icon && <span className="shrink-0 text-muted">{item.icon}</span>}
                   <span>{item.label}</span>
                 </span>
                 {item.shortcut && (
-                  <kbd className="rounded border border-[var(--border)] bg-[var(--bg-surface-2)] px-1 py-0.5 font-mono text-[10px] text-[var(--text-muted)]">
+                  <kbd className="rounded border border-border bg-surface-2 px-1 py-0.5 font-mono text-[10px] text-muted">
                     {item.shortcut}
                   </kbd>
                 )}

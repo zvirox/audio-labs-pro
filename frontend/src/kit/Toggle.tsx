@@ -38,9 +38,9 @@ export const Toggle = forwardRef<HTMLButtonElement, ToggleProps>(
       <div className={`flex items-center justify-between gap-3 ${className}`}>
         {(label || description) && (
           <label htmlFor={id} className="flex min-w-0 flex-col cursor-pointer">
-            {label && <span className="text-[13px] font-medium text-[var(--text)]">{label}</span>}
+            {label && <span className="text-[13px] font-medium text-fg-2">{label}</span>}
             {description && (
-              <span className="text-[12px] text-[var(--text-muted)]">{description}</span>
+              <span className="text-[12px] text-muted">{description}</span>
             )}
           </label>
         )}
@@ -52,16 +52,16 @@ export const Toggle = forwardRef<HTMLButtonElement, ToggleProps>(
           aria-checked={checked}
           disabled={disabled}
           onClick={() => onChange(!checked)}
-          className={`relative inline-flex shrink-0 items-center rounded-md border transition-colors duration-[var(--duration-quick)] [transition-timing-function:var(--ease-out-expo)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${trackClass} ${
+          className={`relative inline-flex shrink-0 items-center rounded-md border transition-colors duration-[var(--duration-quick)] [transition-timing-function:var(--ease-out-expo)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-text disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${trackClass} ${
             checked
-              ? 'border-[var(--accent-blue)] bg-[var(--accent-blue)]'
-              : 'border-[var(--border-strong)] bg-[var(--bg-bar-idle)]'
+              ? 'border-primary bg-primary'
+              : 'border-border-strong bg-track'
           }`}
           {...props}
         >
           <span
-            className={`inline-block rounded bg-[var(--bg-surface)] transition-transform duration-[var(--duration-quick)] [transition-timing-function:var(--ease-out-expo)] ${thumbClass} ${translateClass} ${
-              checked ? 'bg-[var(--text-on-accent)]' : 'bg-[var(--text)]'
+            className={`inline-block rounded transition-transform duration-[var(--duration-quick)] [transition-timing-function:var(--ease-out-expo)] ${thumbClass} ${translateClass} ${
+              checked ? 'bg-primary-fg' : 'bg-fg'
             }`}
           />
         </button>

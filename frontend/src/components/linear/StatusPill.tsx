@@ -8,24 +8,24 @@ export interface StatusPillProps {
 
 const VARIANT_STYLES: Record<NonNullable<StatusPillProps['variant']>, { chip: string; dot: string }> = {
   success: {
-    chip: 'bg-[var(--tint-green)] text-[var(--accent-green)] border-[var(--border)]',
-    dot: 'bg-[var(--accent-green)]',
+    chip: 'bg-chip-sky text-sky-text border-border',
+    dot: 'bg-sky',
   },
   warning: {
-    chip: 'bg-[var(--tint-amber)] text-[var(--accent-amber)] border-[var(--border)]',
-    dot: 'bg-[var(--accent-amber)]',
+    chip: 'bg-surface-2 text-amber border-border',
+    dot: 'bg-amber',
   },
   danger: {
-    chip: 'bg-[var(--tint-red)] text-[var(--accent-red)] border-[var(--border)]',
-    dot: 'bg-[var(--accent-red)]',
+    chip: 'bg-chip-red text-red-text border-border',
+    dot: 'bg-red',
   },
   info: {
-    chip: 'bg-[var(--tint-blue)] text-[var(--accent-blue)] border-[var(--border)]',
-    dot: 'bg-[var(--accent-blue)]',
+    chip: 'bg-primary-tint text-primary-text border-border',
+    dot: 'bg-primary',
   },
   neutral: {
-    chip: 'bg-[var(--bg-surface-2)] text-[var(--text-muted)] border-[var(--border)]',
-    dot: 'bg-[var(--text-muted)]',
+    chip: 'bg-surface-2 text-muted border-border',
+    dot: 'bg-faint',
   },
 };
 

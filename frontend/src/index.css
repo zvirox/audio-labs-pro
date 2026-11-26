@@ -1,34 +1,55 @@
 @import "tailwindcss";
+@import "./styles/linear-theme.css";
+@import "./styles/app-accent.css";
 @import "./tokens.css";
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 
-@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
-
-@theme {
+@theme inline {
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
   --font-mono: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
-
   --color-app: var(--bg-app);
+  --color-sidebar: var(--bg-sidebar);
   --color-surface: var(--bg-surface);
   --color-surface-2: var(--bg-surface-2);
+  --color-active: var(--bg-active);
+  --color-hover: var(--bg-hover);
+  --color-track: var(--bg-track);
   --color-bar-idle: var(--bg-bar-idle);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
-  --color-ink: var(--text);
-  --color-ink-muted: var(--text-muted);
-  --color-ink-faint: var(--text-faint);
-  --color-accent: var(--accent-blue);
-  --color-sky: var(--accent-sky);
-  --color-success: var(--accent-green);
-  --color-danger: var(--accent-red);
-  --color-warning: var(--accent-amber);
-  --color-teal: var(--accent-teal);
-  --color-pink: var(--accent-pink);
-  --color-purple: var(--accent-purple);
-  --color-orange: var(--accent-orange);
-
+  --color-grid: var(--chart-grid);
+  --color-fg: var(--text);
+  --color-fg-2: var(--text-secondary);
+  --color-muted: var(--text-muted);
+  --color-faint: var(--text-faint);
+  --color-blue: var(--blue);
+  --color-sky: var(--sky);
+  --color-sky-text: var(--sky-text);
+  --color-amber: var(--amber);
+  --color-pink: var(--pink);
+  --color-purple: var(--purple);
+  --color-orange: var(--orange);
+  --color-red: var(--red);
+  --color-red-text: var(--red-text);
+  --color-gray: var(--gray);
+  --color-chip-sky: var(--chip-sky);
+  --color-chip-red: var(--chip-red);
+  --color-close-hover: var(--close-hover);
+  --color-scrim: var(--scrim);
+  --color-chart-fade-up: var(--chart-fade-up);
+  --color-chart-fade-down: var(--chart-fade-down);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-fg: var(--primary-fg);
+  --color-primary-text: var(--primary-text);
+  --color-primary-tint: var(--primary-tint);
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
+}
+
+html {
+  font-size: 16px;
 }
 
 html,
@@ -40,6 +61,7 @@ body,
   padding: 0;
   user-select: none;
   font-family: var(--font-sans);
+  font-size: 13px;
   background-color: var(--bg-app);
   color: var(--text);
 }

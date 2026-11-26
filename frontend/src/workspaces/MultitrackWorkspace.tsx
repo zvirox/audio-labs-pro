@@ -377,20 +377,20 @@ export function MultitrackWorkspace({
             size="xs"
             onClick={handleDeleteSelected}
             disabled={!timeline.selected_clip_id}
-            leftIcon={<Trash2 className="w-4 h-4 text-[var(--accent-red)]" />}
+            leftIcon={<Trash2 className="w-4 h-4 text-red-text" />}
             title="Delete selected clip (Delete)"
           >
             Delete
           </Button>
 
-          <div className="h-4 w-[1px] bg-[var(--color-surface-2)] mx-1" />
+          <div className="h-4 w-[1px] bg-surface-2 mx-1" />
 
           {/* Magnetic Snapping Toggle */}
           <Button
             variant={snapEnabled ? 'primary' : 'secondary'}
             size="xs"
             onClick={() => setSnapEnabled(!snapEnabled)}
-            leftIcon={<Magnet className="w-4 h-4 text-[var(--color-fg-muted)]" />}
+            leftIcon={<Magnet className="w-4 h-4 text-muted" />}
             title="Toggle magnetic snapping to markers and clip edges (S)"
           >
             Snap
@@ -401,20 +401,20 @@ export function MultitrackWorkspace({
             variant={rippleEnabled ? 'primary' : 'secondary'}
             size="xs"
             onClick={() => setRippleEnabled(!rippleEnabled)}
-            leftIcon={<Waves className="w-4 h-4 text-[var(--accent-purple)]" />}
+            leftIcon={<Waves className="w-4 h-4 text-purple" />}
             title="Toggle automatic ripple editing on cuts and deletions (R)"
           >
             Ripple
           </Button>
 
-          <div className="h-4 w-[1px] bg-[var(--color-surface-2)] mx-1" />
+          <div className="h-4 w-[1px] bg-surface-2 mx-1" />
 
           {/* Global View Mode Switcher */}
-          <div className="flex items-center bg-[var(--color-bg)] border border-[var(--color-border)] rounded p-0.5 text-[10px] font-mono">
+          <div className="flex items-center bg-app border border-border rounded p-0.5 text-[10px] font-mono">
             <button
               type="button"
               onClick={() => handleSetAllViewModes('waveform')}
-              className="px-2 py-0.5 rounded text-[var(--color-fg-muted)] hover:text-[var(--color-accent)] hover:bg-[var(--color-surface-2)] transition-colors"
+              className="px-2 py-0.5 rounded text-muted hover:text-primary-text hover:bg-hover transition-colors"
               title="Switch all tracks to Waveform view"
             >
               Wave
@@ -422,7 +422,7 @@ export function MultitrackWorkspace({
             <button
               type="button"
               onClick={() => handleSetAllViewModes('spectrogram')}
-              className="px-2 py-0.5 rounded text-[var(--color-fg-muted)] hover:text-[var(--accent-orange)] hover:bg-[var(--color-surface-2)] transition-colors"
+              className="px-2 py-0.5 rounded text-muted hover:text-amber hover:bg-hover transition-colors"
               title="Switch all tracks to Spectrogram heatmap view"
             >
               Spectral
@@ -440,7 +440,7 @@ export function MultitrackWorkspace({
 
         {/* Center: Playhead Timecode & Status */}
         <div className="flex items-center gap-2 shrink-0">
-          <div className="font-mono text-xs font-medium text-[var(--accent-blue)] bg-[var(--bg-surface-2)] px-2 py-1 rounded border border-[var(--border)] tabular-nums">
+          <div className="font-mono text-xs font-medium text-primary-text bg-surface-2 px-2 py-1 rounded border border-border tabular-nums">
             {new Date(currentTimeSecs * 1000).toISOString().substring(14, 22)}
           </div>
           <span className="text-[11px] text-[var(--text-muted)] font-sans hidden xl:inline">

@@ -28,7 +28,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref,
   ) => {
     const baseClasses =
-      'inline-flex items-center justify-center font-medium font-sans select-none transition-colors duration-[var(--duration-quick)] [transition-timing-function:var(--ease-out-expo)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] disabled:opacity-50 disabled:pointer-events-none cursor-pointer';
+      'inline-flex items-center justify-center font-medium font-sans select-none transition-colors duration-[var(--duration-quick)] [transition-timing-function:var(--ease-out-expo)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-text disabled:opacity-50 disabled:pointer-events-none cursor-pointer';
 
     const sizeClasses = {
       xs: 'h-6 px-2 text-[11px] gap-1 rounded',
@@ -44,17 +44,17 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
     const variantClasses = {
       primary:
-        'bg-[var(--accent-blue)] text-[var(--text-on-accent)] border border-[var(--accent-blue)] hover:bg-[var(--accent-blue-hover)] active:bg-[var(--accent-blue-active)]',
+        'bg-primary text-primary-fg border border-primary hover:bg-primary-hover',
       secondary:
-        'bg-[var(--bg-surface-2)] text-[var(--text)] border border-[var(--border)] shadow-[var(--shadow-card)] hover:bg-[var(--bg-bar-idle)] hover:border-[var(--border-strong)]',
+        'bg-surface-2 text-fg border border-border shadow-card hover:bg-hover hover:border-border-strong',
       outline:
-        'bg-transparent text-[var(--text)] border border-[var(--border-strong)] hover:bg-[var(--bg-surface-2)]',
+        'bg-transparent text-fg border border-border-strong hover:bg-hover',
       ghost:
-        'bg-transparent text-[var(--text-muted)] border border-transparent hover:bg-[var(--bg-surface-2)] hover:text-[var(--text)]',
+        'bg-transparent text-fg-2 border border-transparent hover:bg-hover hover:text-fg',
       danger:
-        'bg-[var(--tint-red)] text-[var(--accent-red)] border border-[var(--accent-red)] hover:bg-[var(--bg-surface-2)]',
+        'bg-chip-red text-red-text border border-red hover:bg-surface-2',
       icon:
-        'bg-transparent text-[var(--text-muted)] border border-transparent hover:bg-[var(--bg-surface-2)] hover:text-[var(--text)]',
+        'bg-transparent text-muted border border-transparent hover:bg-hover hover:text-fg',
     }[variant];
 
     return (
@@ -73,7 +73,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {children}
         {!isLoading && rightIcon && <span className="shrink-0">{rightIcon}</span>}
         {shortcut && !isLoading && (
-          <kbd className="ml-1 hidden rounded border border-[var(--border)] bg-[var(--bg-surface)] px-1 py-0.5 font-mono text-[10px] leading-none text-[var(--text-muted)] sm:inline-block">
+          <kbd className="ml-1 hidden rounded border border-border bg-surface px-1 py-0.5 font-mono text-[10px] leading-none text-muted sm:inline-block">
             {shortcut}
           </kbd>
         )}

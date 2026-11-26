@@ -88,9 +88,9 @@ export function CapturesWorkspace({ onSeek }: CapturesWorkspaceProps) {
     <div className="space-y-6 max-w-6xl mx-auto p-2 pb-12 select-none">
       {/* Workspace Header */}
       <div>
-        <h2 className="text-xl font-medium text-[var(--color-fg)] flex items-center gap-2">
-          <Mic className="w-4 h-4 text-red-400" />
-          Captures & Transcript Editor
+        <h2 className="text-xl font-medium text-fg flex items-center gap-2">
+          <Mic className="w-4 h-4 text-red-text" />
+          Captures &amp; Transcript Editor
         </h2>
         <p className="text-xs text-[var(--color-fg-muted)] mt-1">
           Record vocal takes with real-time level auditing, speech-to-text transcription, and word-level non-destructive editing.
@@ -124,7 +124,7 @@ export function CapturesWorkspace({ onSeek }: CapturesWorkspaceProps) {
                     isRecording ? (
                       <Square className="w-4 h-4 fill-current" />
                     ) : (
-                      <Circle className="w-4 h-4 fill-current text-red-500" />
+                      <Circle className="w-4 h-4 fill-current text-red" />
                     )
                   }
                 >
@@ -200,13 +200,13 @@ export function CapturesWorkspace({ onSeek }: CapturesWorkspaceProps) {
                       onClick={() => handleWordClick(item, idx)}
                       className={`px-2 py-1 rounded-md text-xs font-medium transition-colors flex items-center gap-1 border cursor-pointer ${
                         isSelected
-                          ? 'bg-[var(--accent-blue)] text-[var(--text-on-accent)] border-[var(--accent-blue)]'
-                          : 'bg-[var(--bg-surface-2)] text-[var(--text)] border-[var(--border)] hover:bg-[var(--bg-bar-idle)] hover:border-[var(--border-strong)]'
+                          ? 'bg-primary text-primary-fg border-primary'
+                          : 'bg-surface-2 text-fg border-border hover:bg-hover hover:border-border-strong'
                       }`}
                       title={`${item.start_secs}s - ${item.end_secs}s (${(item.confidence * 100).toFixed(0)}% conf)`}
                     >
                       <span>{item.word}</span>
-                      <span className="text-[9px] text-[var(--text-muted)] font-mono">
+                      <span className="text-[9px] text-muted font-mono">
                         {item.start_secs}s
                       </span>
                     </button>
@@ -216,7 +216,7 @@ export function CapturesWorkspace({ onSeek }: CapturesWorkspaceProps) {
 
               {/* Word Action Bar */}
               {selectedWordIdx !== null && transcript[selectedWordIdx] && (
-                <div className="p-3 rounded-lg bg-[var(--tint-blue)] border border-[var(--border-strong)] flex items-center justify-between">
+                <div className="p-3 rounded-lg bg-primary-tint border border-border-strong flex items-center justify-between">
                   <div className="space-y-0.5 font-mono text-[11px]">
                     <span className="text-[var(--color-accent)] font-medium text-sm">
                       &ldquo;{transcript[selectedWordIdx].word}&rdquo;

@@ -49,7 +49,7 @@ export function Tooltip({
       {visible && (
         <div
           role="tooltip"
-          className={`pointer-events-none absolute z-50 whitespace-nowrap rounded border border-[var(--border-strong)] bg-[var(--bg-surface)] px-2 py-1 text-[12px] font-medium text-[var(--text)] shadow-[var(--shadow-card)] ${posClass}`}
+          className={`pointer-events-none absolute z-50 whitespace-nowrap rounded border border-border-strong bg-surface-2 px-2 py-1 text-[12px] font-medium text-fg shadow-card ${posClass}`}
         >
           {content}
         </div>

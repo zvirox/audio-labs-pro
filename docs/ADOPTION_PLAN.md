@@ -23,7 +23,7 @@
 - [x] **M3–M4:** UI kit (`frontend/src/kit/`), dual-axis navigation shell, real-time transport state synchronization, segmented meters, and zoomable 60 FPS peak-pyramid `WaveformCanvas`.
 - [x] **M5–M6:** All workspaces ported (`Dashboard`, `Voices`, `Generate`, `Multitrack`, `Stories`, `Captures`, `Effects`, `Models`, `Settings`) plus non-linear `MultitrackCanvas` and `SpectrogramCanvas`.
 - [x] **M7–M8:** Full AI/MCP parity wired into `alp-desktop`, Starship plugin bridge added, legacy `iced` crates (`alp-ui`, `alp-ui-kit`) deleted, legacy manual `deb/`/`rpm/`/`flatpak/` removed in favor of unified `packaging/nfpm.yaml` + `.github/workflows/release.yml` (`.deb`, `.rpm`, `.pkg.tar.zst`).
-- [x] **Linear UI Lock:** Finalized opaque Linear dark (`#050505`) and light (`#F3F4F6`) system with `#3355FF` primary blue accent, self-hosted Inter font, `TitleBar` (`1280x800`, min `1024x640`, sole `ThemeToggle`), collapsible `Sidebar` (`240px`/`56px`), `Breadcrumb`, `LinearCard`/`StatCard`/`DataTable`/`LinearDialog`/`ProgressRow`/`RangeTabs`/`DonutLegend`, ECharts telemetry, and enforced `check:linear` CI guard.
+- [x] **Linear UI Lock:** Finalized shared Linear dark (`#1C1C1C` / `#292929`) and light (`#F8F9FA` / `#FFFFFF`) system with **Magenta** primary accent (`#C026D3` / `#A21CAF`), zero green/teal, chart-free UI (`echarts` removed), self-hosted Inter font, `TitleBar` (`1280x800`, min `1024x640`, sole `ThemeToggle`), collapsible `Sidebar` (`240px`/`56px`), `Breadcrumb`, `LinearCard`/`StatCard`/`DataTable`/`LinearDialog`/`ProgressRow`/`RangeTabs`/`DonutLegend`, and enforced `check:linear` CI guard.
 
 ---
 

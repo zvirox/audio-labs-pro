@@ -67,7 +67,7 @@ export function ModelsWorkspace() {
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-[var(--text)] text-sm">{model.name}</span>
                       {model.is_builtin && (
-                        <span className="px-1.5 py-0.5 rounded bg-[var(--tint-blue)] text-[var(--accent-blue)] border border-[var(--border-strong)] font-mono text-[10px]">
+                        <span className="px-1.5 py-0.5 rounded bg-primary-tint text-primary-text border border-border-strong font-mono text-[10px]">
                           Built-in
                         </span>
                       )}
@@ -75,10 +75,10 @@ export function ModelsWorkspace() {
                     <span
                       className={`px-2 py-0.5 rounded font-mono text-[11px] font-medium border ${
                         model.status === 'verified'
-                          ? 'bg-[var(--tint-green)] text-[var(--accent-green)] border-[var(--border-strong)]'
+                          ? 'bg-chip-sky text-sky-text border-border-strong'
                           : model.status === 'installed'
-                          ? 'bg-[var(--tint-blue)] text-[var(--accent-blue)] border-[var(--border-strong)]'
-                          : 'bg-[var(--tint-amber)] text-[var(--accent-amber)] border-[var(--accent-amber)]'
+                          ? 'bg-primary-tint text-primary-text border-border-strong'
+                          : 'bg-surface-2 text-amber border-amber'
                       }`}
                     >
                       {model.status.toUpperCase()}

@@ -263,11 +263,11 @@ export function SpectrogramCanvas({
 
       ctx.save();
       ctx.globalAlpha = 0.25;
-      ctx.fillStyle = tokens.tintSky;
+      ctx.fillStyle = tokens.chipSky;
       ctx.fillRect(x1, y1, selW, selH);
       ctx.globalAlpha = 1;
 
-      ctx.strokeStyle = tokens.accentSky;
+      ctx.strokeStyle = tokens.sky;
       ctx.lineWidth = 1.5;
       ctx.setLineDash([4, 2]);
       ctx.strokeRect(x1, y1, selW, selH);
@@ -275,7 +275,7 @@ export function SpectrogramCanvas({
       // Corner grab handles
       const handleSize = 6;
       ctx.fillStyle = tokens.bgSurface;
-      ctx.strokeStyle = tokens.accentSky;
+      ctx.strokeStyle = tokens.sky;
       ctx.lineWidth = 1;
       ctx.setLineDash([]);
 
@@ -448,19 +448,19 @@ export function SpectrogramCanvas({
   return (
     <div
       ref={containerRef}
-      className={`relative w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface-2)] overflow-hidden select-none ${className}`}
+      className={`relative w-full rounded-lg border border-border bg-surface-2 overflow-hidden select-none ${className}`}
       style={{ height }}
     >
       {/* Top Toolbar: Palette selector, HUD badge, Clear */}
       <div className="absolute top-2 left-2 right-2 flex items-center justify-between z-10 pointer-events-none">
         <div className="flex items-center gap-2 pointer-events-auto">
           {clipName && (
-            <span className="text-[11px] font-medium text-[var(--text)] bg-[var(--bg-surface)] border border-[var(--border)] px-2 py-0.5 rounded">
+            <span className="text-[11px] font-medium text-fg bg-surface border border-border px-2 py-0.5 rounded">
               {clipName}
             </span>
           )}
           {/* Palette switcher */}
-          <div className="flex items-center bg-[var(--bg-surface)] border border-[var(--border)] rounded-md p-0.5 text-[11px] font-medium">
+          <div className="flex items-center bg-surface border border-border rounded-md p-0.5 text-[11px] font-medium">
             {(['magma', 'inferno', 'viridis'] as SpectrogramPalette[]).map((pal) => (
               <button
                 key={pal}
@@ -468,8 +468,8 @@ export function SpectrogramCanvas({
                 onClick={() => setActivePalette(pal)}
                 className={`px-1.5 py-0.5 rounded capitalize transition-colors cursor-pointer ${
                   activePalette === pal
-                    ? 'bg-[var(--tint-blue)] text-[var(--accent-blue)] font-medium border border-[var(--border-strong)]'
-                    : 'text-[var(--text-muted)] hover:text-[var(--text)] border border-transparent'
+                    ? 'bg-active text-primary-text font-medium border border-border-strong'
+                    : 'text-muted hover:text-fg border border-transparent'
                 }`}
               >
                 {pal}
@@ -480,30 +480,30 @@ export function SpectrogramCanvas({
 
         {/* 2D Spectral Selection HUD */}
         {activeBox && (
-          <div className="pointer-events-auto flex items-center gap-2.5 bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded px-2.5 py-1 text-[11px] font-mono text-[var(--text)]">
-            <span className="text-[var(--text-muted)]">Δt:</span>
-            <span className="font-medium text-[var(--text)]">
+          <div className="pointer-events-auto flex items-center gap-2.5 bg-surface border border-border-strong rounded px-2.5 py-1 text-[11px] font-mono text-fg">
+            <span className="text-muted">Δt:</span>
+            <span className="font-medium text-fg">
               {(activeBox.t2 - activeBox.t1).toFixed(2)}s
             </span>
-            <span className="text-[var(--text-muted)]">|</span>
-            <span className="text-[var(--text-muted)]">Range:</span>
-            <span className="font-medium text-[var(--text)]">
+            <span className="text-muted">|</span>
+            <span className="text-muted">Range:</span>
+            <span className="font-medium text-fg">
               {activeBox.f1 >= 1000 ? `${(activeBox.f1 / 1000).toFixed(1)}k` : Math.round(activeBox.f1)}
               {' → '}
               {activeBox.f2 >= 1000 ? `${(activeBox.f2 / 1000).toFixed(1)}k` : Math.round(activeBox.f2)}Hz
             </span>
-            <span className="text-[var(--text-muted)]">|</span>
-            <span className="text-[var(--text-muted)]">fc:</span>
-            <span className="font-medium text-[var(--text-muted)]">
+            <span className="text-muted">|</span>
+            <span className="text-muted">fc:</span>
+            <span className="font-medium text-muted">
               {activeBox.fc >= 1000 ? `${(activeBox.fc / 1000).toFixed(2)} kHz` : `${Math.round(activeBox.fc)} Hz`}
             </span>
-            <span className="text-[var(--color-fg-muted)]">|</span>
-            <span className="text-[var(--color-fg-muted)]">Q:</span>
-            <span className="font-medium text-[var(--color-fg-muted)]">{activeBox.q.toFixed(2)}</span>
+            <span className="text-muted">|</span>
+            <span className="text-muted">Q:</span>
+            <span className="font-medium text-muted">{activeBox.q.toFixed(2)}</span>
             <button
               type="button"
               onClick={handleClearSelection}
-              className="ml-1 text-[var(--color-fg-muted)] hover:text-rose-400 transition-colors"
+              className="ml-1 text-muted hover:text-red-text transition-colors cursor-pointer"
               title="Clear spectral selection"
             >
               ✕

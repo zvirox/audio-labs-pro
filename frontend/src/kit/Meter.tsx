@@ -20,11 +20,12 @@ function toLinearNormalized(val: number): number {
   return Math.max(0, Math.min(1, val));
 }
 
+/** Discrete flat meter segment ramp: sky (low) -> amber (mid) -> red (high). Zero green. */
 function segmentColorClass(index: number): string {
   const ratio = (index + 1) / SEGMENT_COUNT;
-  if (ratio > 0.85) return 'bg-[var(--accent-red)]';
-  if (ratio > 0.7) return 'bg-[var(--accent-amber)]';
-  return 'bg-[var(--accent-green)]';
+  if (ratio > 0.85) return 'bg-red';
+  if (ratio > 0.7) return 'bg-amber';
+  return 'bg-sky';
 }
 
 function SegmentedBar({
@@ -50,7 +51,7 @@ function SegmentedBar({
       }
     >
       {showLabel && (
-        <span className="font-mono text-[10px] font-medium text-[var(--text-muted)] tabular-nums">
+        <span className="font-mono text-[10px] font-medium text-muted tabular-nums">
           {label}
         </span>
       )}
@@ -62,8 +63,8 @@ function SegmentedBar({
         aria-valuenow={Math.round(level * 100)}
         className={
           vertical
-            ? 'flex h-24 w-2 flex-col-reverse gap-0.5 rounded bg-[var(--bg-surface-2)] p-0.5 border border-[var(--border)]'
-            : 'flex h-2.5 flex-1 items-center gap-0.5 rounded bg-[var(--bg-surface-2)] p-0.5 border border-[var(--border)]'
+            ? 'flex h-24 w-2 flex-col-reverse gap-0.5 rounded bg-surface-2 p-0.5 border border-border'
+            : 'flex h-2.5 flex-1 items-center gap-0.5 rounded bg-surface-2 p-0.5 border border-border'
         }
       >
         {Array.from({ length: SEGMENT_COUNT }, (_, idx) => {
@@ -72,7 +73,7 @@ function SegmentedBar({
             <span
               key={idx}
               className={`rounded-[1px] ${vertical ? 'w-full flex-1' : 'h-full flex-1'} ${
-                isActive ? segmentColorClass(idx) : 'bg-[var(--bg-bar-idle)]'
+                isActive ? segmentColorClass(idx) : 'bg-track'
               }`}
             />
           );

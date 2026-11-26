@@ -169,15 +169,15 @@ export function StoriesWorkspace() {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-[var(--text-muted)] font-medium w-4">#{idx + 1}</span>
-                        <span className="font-medium text-[var(--accent-blue)]">{line.speaker}</span>
+                        <span className="font-mono text-muted font-medium w-4">#{idx + 1}</span>
+                        <span className="font-medium text-primary-text">{line.speaker}</span>
                       </div>
 
                       <span
                         className={`px-2 py-0.5 rounded font-mono text-[10px] font-medium border ${
                           line.status === 'ready'
-                            ? 'bg-[var(--tint-green)] text-[var(--accent-green)] border-[var(--border-strong)]'
-                            : 'bg-[var(--bg-surface-2)] text-[var(--text-muted)] border-[var(--border)]'
+                            ? 'bg-chip-sky text-sky-text border-border-strong'
+                            : 'bg-surface-2 text-muted border-border'
                         }`}
                       >
                         {line.status}

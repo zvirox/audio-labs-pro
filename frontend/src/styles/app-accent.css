@@ -1,0 +1,15 @@
+/* src/styles/app-accent.css : Audio Labs Pro (Magenta). The only styling file that differs between apps. */
+:root, [data-theme="light"] {
+  --primary: #A21CAF;
+  --primary-hover: #8F199A;
+  --primary-fg: #FFFFFF;
+  --primary-text: #A21CAF;
+  --primary-tint: #F8EFF9;
+}
+[data-theme="dark"] {
+  --primary: #C026D3;
+  --primary-hover: #A921BA;
+  --primary-fg: #FFFFFF;
+  --primary-text: #E879F9;
+  --primary-tint: #331D36;
+}

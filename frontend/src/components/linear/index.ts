@@ -11,4 +11,3 @@ export * from './ThemeToggle';
 export * from './TitleBar';
 export * from './Sidebar';
 export * from './Breadcrumb';
-export * from './echarts-linear-theme';
