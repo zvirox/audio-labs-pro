@@ -13,6 +13,7 @@ pub mod limiter;
 pub mod loudness;
 pub mod repair;
 pub mod spectral;
+pub mod true_peak;
 pub mod voice;
 
 use alp_core::CoreError;
@@ -30,6 +31,7 @@ pub use repair::{
 pub use spectral::{
     FrequencyScale, SpectrogramConfig, SpectrogramData, SpectrogramEngine, WindowType,
 };
+pub use true_peak::{TRUE_PEAK_OVERSAMPLING, measure_true_peak_dbfs};
 pub use voice::{DeClick, DeEsser, DeHum};
 
 /// An audio processor that can run live or offline.

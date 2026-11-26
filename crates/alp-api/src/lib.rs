@@ -5,6 +5,7 @@
 //! voice synthesis, transcription, and mastering export.
 
 pub mod analysis_ops;
+pub mod acx_qa;
 pub mod audiobook;
 pub mod audit;
 pub mod checkpoint;
@@ -27,6 +28,10 @@ pub mod types;
 pub mod voice;
 
 pub use alp_media::ExportPreset;
+pub use acx_qa::{
+    ACX_NOISE_FLOOR_MAX_DBFS, ACX_RMS_MAX_DBFS, ACX_RMS_MIN_DBFS, ACX_TRUE_PEAK_MAX_DBFS,
+    AcxChapterInput, AcxChapterQa, AcxQaReport, analyze_acx_chapters,
+};
 pub use audiobook::AudiobookEncodeReport;
 pub use audit::{AuditEntry, AuditLogger};
 pub use checkpoint::{Checkpoint, CheckpointManager};
