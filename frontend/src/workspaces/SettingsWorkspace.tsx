@@ -185,14 +185,14 @@ export function SettingsWorkspace({
         </p>
       </div>
 
-      {/* Pending Client Approval Banner */}
+        {/* Pending Client Approval Banner */}
       {pendingApproval && (
-        <div className="p-4 rounded-lg bg-[var(--tint-amber)] border border-[var(--accent-amber)] flex items-center justify-between gap-4">
+        <div className="p-4 rounded-lg bg-surface-2 border border-amber flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <AlertCircle className="w-4 h-4 text-[var(--accent-amber)] shrink-0" />
+            <AlertCircle className="w-4 h-4 text-amber shrink-0" />
             <div>
-              <div className="font-medium text-[var(--text)] text-[13px]">
-                AI Client Connection Request: <span className="font-mono text-[var(--accent-blue)]">"{pendingApproval}"</span>
+              <div className="font-medium text-fg text-[13px]">
+                AI Client Connection Request: <span className="font-mono text-primary-text">"{pendingApproval}"</span>
               </div>
               <div className="text-xs text-[var(--color-fg-muted)]">
                 A local agent authenticated with your session token and requests attachment to this workspace.
@@ -286,16 +286,16 @@ export function SettingsWorkspace({
             </div>
 
             {/* Surface Verification Readout */}
-            <div className="p-3 rounded-lg bg-[var(--bg-surface-2)] border border-[var(--border)] space-y-1.5 font-mono text-[11px]">
+            <div className="p-3 rounded-lg bg-surface-2 border border-border space-y-1.5 font-mono text-[11px]">
               <div className="flex items-center justify-between">
-                <span className="text-[var(--text-muted)]">Desktop Session:</span>
-                <span className="text-[var(--accent-blue)] font-medium">{glass?.desktop || 'Linux'} ({glass?.session || 'X11/Wayland'})</span>
+                <span className="text-muted">Desktop Session:</span>
+                <span className="text-primary-text font-medium">{glass?.desktop || 'Linux'} ({glass?.session || 'X11/Wayland'})</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-[var(--text-muted)]">Surface Policy:</span>
-                <span className="text-[var(--text)] font-medium">Opaque Solid (Linear Standard)</span>
+                <span className="text-muted">Surface Policy:</span>
+                <span className="text-fg font-medium">Opaque Solid (Linear Standard)</span>
               </div>
-              <div className="text-[var(--text-muted)] text-[10px] pt-1">
+              <div className="text-muted text-[10px] pt-1">
                 {glass?.detail || 'Opaque solid Linear window surface (compositor blur disabled).'}
               </div>
             </div>
@@ -306,27 +306,27 @@ export function SettingsWorkspace({
         <Card title="AI Agent Control & Security" subtitle="Model Context Protocol (MCP) live socket host">
           <div className="space-y-4 text-xs">
             {/* Status & Toggle Header */}
-            <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--bg-surface-2)] border border-[var(--border)]">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-surface-2 border border-border">
               <div className="flex items-center gap-2.5">
                 <div
                   className={`w-2.5 h-2.5 rounded-full ${
-                    aiStatus?.enabled ? 'bg-[var(--accent-green)]' : 'bg-[var(--text-faint)]'
+                    aiStatus?.enabled ? 'bg-sky' : 'bg-faint'
                   }`}
                 />
                 <div>
-                  <div className="font-medium text-[var(--text)] flex items-center gap-2">
+                  <div className="font-medium text-fg flex items-center gap-2">
                     <span>MCP Attach Host</span>
                     <span
                       className={`text-[10px] px-2 py-0.5 rounded font-mono font-medium border ${
                         aiStatus?.enabled
-                          ? 'bg-[var(--tint-green)] text-[var(--accent-green)] border-[var(--border-strong)]'
-                          : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border-[var(--border)]'
+                          ? 'bg-chip-sky text-sky-text border-border-strong'
+                          : 'bg-surface text-muted border-border'
                       }`}
                     >
                       {aiStatus?.enabled ? 'ACTIVE' : 'STANDBY'}
                     </span>
                   </div>
-                  <div className="text-[11px] text-[var(--text-muted)] font-mono mt-0.5 truncate max-w-xs">
+                  <div className="text-[11px] text-muted font-mono mt-0.5 truncate max-w-xs">
                     {aiStatus?.enabled
                       ? aiStatus.socket_path || '$XDG_RUNTIME_DIR/alp/control.sock'
                       : 'Unix socket standby'}
@@ -346,8 +346,8 @@ export function SettingsWorkspace({
             {/* Permission Tier Selector */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-[var(--text-muted)] font-medium">Permission Tier</label>
-                <span className="text-[var(--text-muted)] text-[11px]">Enforced on all tool calls</span>
+                <label className="text-muted font-medium">Permission Tier</label>
+                <span className="text-muted text-[11px]">Enforced on all tool calls</span>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {(['observe', 'edit', 'export'] as const).map((tier) => (
@@ -357,8 +357,8 @@ export function SettingsWorkspace({
                     onClick={() => handleTierChange(tier)}
                     className={`py-2 px-3 rounded-md font-medium text-center capitalize border transition-colors cursor-pointer ${
                       aiStatus?.tier === tier
-                        ? 'bg-[var(--tint-blue)] text-[var(--accent-blue)] border-[var(--border-strong)]'
-                        : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border-[var(--border)] hover:text-[var(--text)]'
+                        ? 'bg-primary-tint text-primary-text border-border-strong'
+                        : 'bg-surface text-muted border-border hover:text-fg'
                     }`}
                   >
                     {tier}
@@ -398,7 +398,7 @@ export function SettingsWorkspace({
                   <button
                     type="button"
                     onClick={handleCopyCommand}
-                    className="flex items-center gap-1 text-[var(--color-accent)] hover:text-cyan-200 text-[10px] underline"
+                    className="flex items-center gap-1 text-primary-text hover:text-fg text-[10px] underline cursor-pointer"
                   >
                     <Terminal className="w-4 h-4" />
                     <span>{copiedCmd ? 'Command Copied!' : 'Copy Shell Command'}</span>
@@ -497,10 +497,10 @@ export function SettingsWorkspace({
                     <span
                       className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${
                         log.committed
-                          ? 'bg-[var(--tint-green)] text-[var(--accent-green)] border-[var(--border-strong)]'
+                          ? 'bg-chip-sky text-sky-text border-border-strong'
                           : log.outcome.startsWith('refused')
-                          ? 'bg-[var(--tint-red)] text-[var(--accent-red)] border-[var(--accent-red)]'
-                          : 'bg-[var(--bg-surface-2)] text-[var(--text-muted)] border-[var(--border)]'
+                          ? 'bg-chip-red text-red-text border-red'
+                          : 'bg-surface-2 text-muted border-border'
                       }`}
                     >
                       {log.outcome}
@@ -543,7 +543,7 @@ export function SettingsWorkspace({
             </Button>
           </div>
           {exportNotice && (
-            <div className="p-2.5 rounded-lg bg-[var(--tint-blue)] border border-[var(--border-strong)] text-[var(--accent-blue)] font-mono text-[11px]">
+            <div className="p-2.5 rounded-lg bg-primary-tint border border-border-strong text-primary-text font-mono text-[11px]">
               {exportNotice}
             </div>
           )}

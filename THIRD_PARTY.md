@@ -72,7 +72,6 @@ editing, **P4-P8** used by multitrack, DSP, TTS, dictation, and voice profiles,
 | react-dom | ^19.3.1 | MIT | M2 | Web DOM rendering |
 | cmdk | ^1.1.1 | MIT | M3 | Accessible, unstyled command palette primitive (`Ctrl+K`) |
 | lucide-react | ^1.78.0 | ISC | M3 | Clean, consistent studio iconography |
-| echarts | ^5.x | Apache-2.0 | Linear UI | High-density DSP & I/O telemetry charts (`echarts-linear-theme.ts`) |
 | tailwindcss | ^4.3.5 | MIT | M2 | Utility-first CSS engine powering locked opaque Linear UI tokens |
 | @tailwindcss/vite | ^4.3.5 | MIT | M2 | Vite integration plugin for Tailwind CSS v4 |
 | typescript | ^7.0.2 | Apache-2.0 | M2 | Static type safety and IPC interface contracts |

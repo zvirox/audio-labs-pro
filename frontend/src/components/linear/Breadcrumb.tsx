@@ -50,17 +50,17 @@ export function Breadcrumb({
   return (
     <div
       data-testid="linear-breadcrumb"
-      className="flex h-11 shrink-0 items-center justify-between gap-4 border-b border-[var(--border)] bg-[var(--bg-surface)] px-4"
+      className="flex h-11 shrink-0 items-center justify-between gap-4 border-b border-border bg-app px-4"
     >
       {/* Left: Linear Breadcrumb Path + Session State */}
       <div className="flex min-w-0 items-center gap-1.5 text-[13px]">
-        <span className="shrink-0 font-medium text-[var(--text-muted)]">Audio Labs Pro</span>
-        <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[var(--text-faint)]" />
-        <span className="truncate font-semibold text-[var(--text)]">{workspaceName}</span>
+        <span className="shrink-0 font-medium text-muted">Audio Labs Pro</span>
+        <ChevronRight className="h-3.5 w-3.5 shrink-0 text-faint" />
+        <span className="truncate font-semibold text-fg">{workspaceName}</span>
         {subtabLabel && (
           <>
-            <ChevronRight className="hidden md:inline h-3.5 w-3.5 shrink-0 text-[var(--text-faint)]" />
-            <span className="hidden md:inline truncate font-medium text-[var(--text-muted)]">
+            <ChevronRight className="hidden md:inline h-3.5 w-3.5 shrink-0 text-faint" />
+            <span className="hidden md:inline truncate font-medium text-muted">
               {subtabLabel}
             </span>
           </>
@@ -72,12 +72,12 @@ export function Breadcrumb({
             className="whitespace-nowrap"
           />
           {revision !== undefined && (
-            <span className="whitespace-nowrap rounded border border-[var(--border)] bg-[var(--bg-surface-2)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--text-muted)] tabular-nums">
+            <span className="whitespace-nowrap rounded border border-border bg-surface-2 px-1.5 py-0.5 font-mono text-[11px] text-muted tabular-nums">
               rev {revision}
             </span>
           )}
           {isDirty && (
-            <span className="whitespace-nowrap rounded border border-[var(--border)] bg-[var(--tint-amber)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--accent-amber)]">
+            <span className="whitespace-nowrap rounded border border-amber bg-surface-2 px-1.5 py-0.5 text-[11px] font-medium text-amber">
               Unsaved
             </span>
           )}

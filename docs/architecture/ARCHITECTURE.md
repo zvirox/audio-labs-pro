@@ -22,7 +22,7 @@ alp-session               Framework-agnostic UI session bridge: workspace state,
   ├── alp-cli             Headless CLI automation (`alp`)
   ├── alp-mcp             JSON-RPC stdio/UNIX socket server (68 tools across Observe/Edit/Export) + Starship bridge
   └── alp-desktop         Tauri v2 shell (`audio-labs-pro`), frameless opaque Linear window, IPC commands & events
-        └── frontend/     React 19 + TypeScript + Vite 8 + Tailwind CSS v4 + ECharts + cmdk Linear UI
+        └── frontend/     React 19 + TypeScript + Vite 8 + Tailwind CSS v4 + cmdk Linear UI
 ```
 
 ---
@@ -35,7 +35,7 @@ alp-session               Framework-agnostic UI session bridge: workspace state,
 4. **Framework-Agnostic Session Kernel (`alp-session`):** All application state, panel layout clamping, transport synchronization, and AI attach approval logic live in `alp-session` so `alp-desktop` (Tauri) and `alp-mcp` operate over identical invariants.
 5. **Final Locked Linear UI (`frontend/` + `alp-desktop`):**
    - Frameless desktop window (`1280x800` default, `1024x640` minimum, `decorations: false`, `transparent: false`, `shadow: true`) with opaque surfaces and zero compositor/X11 blur (`crates/alp-desktop/src/glass.rs` enforces opaque fallback).
-   - Strict token hierarchy (`frontend/src/tokens.css`, `index.css`) supporting dark (`#050505` base / `#111213` surface) and light (`#F3F4F6` base / `#FFFFFF` surface) themes persisted under `ui-theme`, switched exclusively from `TitleBar` (`Ctrl+D`), with self-hosted `InterVariable.ttf` and zero glass/blur/glow/translucency enforced by `npm run check:linear`.
+   - Strict token hierarchy (`frontend/src/styles/linear-theme.css`, `app-accent.css`, `index.css`) using the shared Tessera-sampled Linear palette (`#1C1C1C` / `#292929` dark, `#F8F9FA` / `#FFFFFF` light) with **Magenta** primary accent (`#C026D3` / `#A21CAF`), zero green/teal, chart-free UI, persisted under `ui-theme`, switched exclusively from `TitleBar` (`Ctrl+D`), with self-hosted `InterVariable.ttf` enforced by `npm run check:linear`.
 6. **Starship Control Bridge:** `alp-mcp::starship` integrates `starship-plugin` to expose Audio Labs Pro health and session status over `$XDG_RUNTIME_DIR/starship/bridges/alp.sock`.
 
 ---

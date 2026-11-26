@@ -28,7 +28,7 @@ Audio Labs Pro combines a pure Rust core audio/ML backend with a Tauri v2 + Reac
 | Framework & Build | React 19, TypeScript, Vite 8, `@tailwindcss/vite` (Tailwind CSS v4) |
 | Window Chrome & Shell | Tauri v2 Window APIs (`TitleBar` 40 px with single `ThemeToggle`, collapsible `Sidebar`, `Breadcrumb`, `SubtabTopBar`, `DockedPlayer`) |
 | Icons & Command Palette | `lucide-react`, `cmdk` |
-| Charts & Telemetry | `echarts` configured with `echarts-linear-theme.ts` (`getLinearChartPalette`, `buildLinearEChartsOption`) |
+| Telemetry & Status | Chart-free DOM cards, `StatCard`, `ProgressRow`, `DonutLegend`, `DataTable` (ECharts removed) |
 | Custom 2D Canvases | Hardware-accelerated HTML5 Canvas 2D (`MultitrackCanvas`, `WaveformCanvas`, `SpectrogramCanvas`) reading CSS variables dynamically on theme change |
 | Motion | `motion` + CSS 150 ms `cubic-bezier(0.16, 1, 0.3, 1)` curves, respecting `reduce-motion` |
 | Fonts | Self-hosted `InterVariable.ttf` bundled in `frontend/src/assets/fonts/` (`tabular-nums` for telemetry metrics; monospace reserved strictly for timecodes and logs) |

@@ -57,7 +57,7 @@ export function LinearDialog({
     >
       {/* Solid dimmed scrim */}
       <div
-        className="fixed inset-0 bg-[var(--bg-app)] opacity-80"
+        className="fixed inset-0 bg-scrim"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -65,15 +65,15 @@ export function LinearDialog({
         ref={panelRef}
         tabIndex={-1}
         level="modal"
-        className={`relative z-10 flex w-full flex-col overflow-hidden bg-[var(--bg-surface)] border-[var(--border-strong)] outline-none ${maxWidthClass} ${className}`}
+        className={`relative z-10 flex w-full flex-col overflow-hidden bg-surface border-border-strong outline-none ${maxWidthClass} ${className}`}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-[var(--border)] px-5 py-4">
+        <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div className="min-w-0">
-            <h2 id={titleId} className="text-[16px] font-semibold text-[var(--text)]">
+            <h2 id={titleId} className="text-[16px] font-semibold text-fg">
               {title}
             </h2>
             {description && (
-              <p id={descriptionId} className="mt-1 text-[13px] text-[var(--text-muted)]">
+              <p id={descriptionId} className="mt-1 text-[13px] text-muted">
                 {description}
               </p>
             )}
@@ -82,16 +82,16 @@ export function LinearDialog({
             type="button"
             onClick={onClose}
             aria-label="Close dialog"
-            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--bg-surface-2)] hover:text-[var(--text)] transition-colors duration-[var(--duration-quick)] cursor-pointer"
+            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg transition-colors duration-[var(--duration-quick)] cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="max-h-[70vh] overflow-y-auto px-5 py-4 text-[13px] text-[var(--text)]">
+        <div className="max-h-[70vh] overflow-y-auto px-5 py-4 text-[13px] text-fg-2">
           {children}
         </div>
         {footer && (
-          <div className="flex items-center justify-end gap-2 border-t border-[var(--border)] bg-[var(--bg-surface-2)] px-5 py-3">
+          <div className="flex items-center justify-end gap-2 border-t border-border bg-surface-2 px-5 py-3">
             {footer}
           </div>
         )}

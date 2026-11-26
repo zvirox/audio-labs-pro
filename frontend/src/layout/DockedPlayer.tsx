@@ -102,7 +102,7 @@ export function DockedPlayer({
   return (
     <footer
       aria-label="Global Transport Bar"
-      className="flex h-14 shrink-0 items-center justify-between gap-4 border-t border-[var(--border)] bg-[var(--bg-surface)] px-4 text-[var(--text)] select-none"
+      className="flex h-14 shrink-0 items-center justify-between gap-4 border-t border-border bg-surface px-4 text-fg select-none"
     >
       {/* Left: Transport Controls */}
       <div className="flex items-center gap-1.5">
@@ -111,7 +111,7 @@ export function DockedPlayer({
           onClick={handleStop}
           aria-label="Stop"
           title="Stop (Shift+Space)"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--bg-surface-2)] text-[var(--text-muted)] hover:border-[var(--border-strong)] hover:text-[var(--text)] transition-colors duration-[var(--duration-quick)] cursor-pointer"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface-2 text-muted hover:border-border-strong hover:bg-hover hover:text-fg transition-colors duration-[var(--duration-quick)] cursor-pointer"
         >
           <Square className="h-3.5 w-3.5" />
         </button>
@@ -121,7 +121,7 @@ export function DockedPlayer({
           onClick={handlePlayToggle}
           aria-label={activePlaying ? 'Pause' : 'Play'}
           title="Play / Pause (Space)"
-          className="inline-flex h-8 w-9 items-center justify-center rounded-md border border-[var(--accent-blue)] bg-[var(--accent-blue)] text-[var(--text-on-accent)] hover:bg-[var(--accent-blue-hover)] transition-colors duration-[var(--duration-quick)] cursor-pointer"
+          className="inline-flex h-8 w-9 items-center justify-center rounded-md border border-primary bg-primary text-primary-fg hover:bg-primary-hover transition-colors duration-[var(--duration-quick)] cursor-pointer"
         >
           {activePlaying ? (
             <Pause className="h-4 w-4 fill-current" />
@@ -137,8 +137,8 @@ export function DockedPlayer({
           title="Record Arm"
           className={`inline-flex h-8 w-8 items-center justify-center rounded-md border transition-colors duration-[var(--duration-quick)] cursor-pointer ${
             isRecording
-              ? 'border-[var(--accent-red)] bg-[var(--tint-red)] text-[var(--accent-red)]'
-              : 'border-[var(--border)] bg-[var(--bg-surface-2)] text-[var(--text-muted)] hover:border-[var(--border-strong)] hover:text-[var(--accent-red)]'
+              ? 'border-red bg-chip-red text-red-text'
+              : 'border-border bg-surface-2 text-muted hover:border-border-strong hover:bg-hover hover:text-red-text'
           }`}
         >
           <Circle className="h-3.5 w-3.5 fill-current" />
@@ -151,8 +151,8 @@ export function DockedPlayer({
           title="Loop (L)"
           className={`inline-flex h-8 w-8 items-center justify-center rounded-md border transition-colors duration-[var(--duration-quick)] cursor-pointer ${
             activeLooping
-              ? 'border-[var(--accent-blue)] bg-[var(--tint-blue)] text-[var(--accent-blue)]'
-              : 'border-[var(--border)] bg-[var(--bg-surface-2)] text-[var(--text-muted)] hover:border-[var(--border-strong)] hover:text-[var(--text)]'
+              ? 'border-primary bg-primary-tint text-primary-text'
+              : 'border-border bg-surface-2 text-muted hover:border-border-strong hover:bg-hover hover:text-fg'
           }`}
         >
           <Repeat className="h-3.5 w-3.5" />
@@ -161,7 +161,7 @@ export function DockedPlayer({
 
       {/* Center: Timecode & Scrub Bar */}
       <div className="flex min-w-0 flex-1 items-center gap-3">
-        <span className="w-20 shrink-0 text-right font-mono text-[12px] font-medium text-[var(--text)] tabular-nums">
+        <span className="w-20 shrink-0 text-right font-mono text-[12px] font-medium text-fg tabular-nums">
           {formatTimecode(activeTime)}
         </span>
         <Slider
@@ -173,7 +173,7 @@ export function DockedPlayer({
           onChange={handleSeek}
           className="flex-1"
         />
-        <span className="w-20 shrink-0 font-mono text-[12px] text-[var(--text-muted)] tabular-nums">
+        <span className="w-20 shrink-0 font-mono text-[12px] text-muted tabular-nums">
           {formatTimecode(durationSecs)}
         </span>
       </div>
@@ -187,13 +187,13 @@ export function DockedPlayer({
             className="w-28"
           />
           {isClipping && (
-            <span className="rounded border border-[var(--accent-red)] bg-[var(--tint-red)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--accent-red)]">
+            <span className="rounded border border-red bg-chip-red px-1.5 py-0.5 text-[10px] font-semibold text-red-text">
               CLIP
             </span>
           )}
         </div>
 
-        <span className="rounded border border-[var(--border)] bg-[var(--bg-surface-2)] px-2 py-1 text-[11px] font-medium text-[var(--text-muted)] tabular-nums">
+        <span className="rounded border border-border bg-surface-2 px-2 py-1 text-[11px] font-medium text-muted tabular-nums">
           {(sampleRate / 1000).toFixed(1)} kHz
         </span>
 
@@ -202,10 +202,10 @@ export function DockedPlayer({
             type="button"
             onClick={() => setIsMuted((prev) => !prev)}
             aria-label={isMuted ? 'Unmute master output' : 'Mute master output'}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--bg-surface-2)] hover:text-[var(--text)] cursor-pointer"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg cursor-pointer"
           >
             {isMuted || activeVolume === 0 ? (
-              <VolumeX className="h-3.5 w-3.5 text-[var(--accent-red)]" />
+              <VolumeX className="h-3.5 w-3.5 text-red-text" />
             ) : (
               <Volume2 className="h-3.5 w-3.5" />
             )}

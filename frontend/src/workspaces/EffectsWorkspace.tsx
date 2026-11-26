@@ -65,30 +65,30 @@ export function EffectsWorkspace() {
 
       {/* Signal Path Metrics Banner */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="p-4 rounded-lg bg-[var(--bg-surface)] border border-[var(--border)] flex items-center justify-between">
+        <div className="p-4 rounded-lg bg-surface border border-border flex items-center justify-between">
           <div>
-            <div className="text-[11px] text-[var(--text-muted)] font-medium">Active Cleanup Stages</div>
-            <div className="text-lg font-medium font-sans text-[var(--accent-blue)] mt-0.5 tabular-nums">
+            <div className="text-[11px] text-muted font-medium">Active Cleanup Stages</div>
+            <div className="text-lg font-medium font-sans text-primary-text mt-0.5 tabular-nums">
               {enabledCount} / {stages.length} Active
             </div>
           </div>
-          <Activity className="w-6 h-6 text-[var(--accent-blue)]" />
+          <Activity className="w-6 h-6 text-primary-text" />
         </div>
 
-        <div className="p-4 rounded-lg bg-[var(--bg-surface)] border border-[var(--border)] flex items-center justify-between">
+        <div className="p-4 rounded-lg bg-surface border border-border flex items-center justify-between">
           <div>
-            <div className="text-[11px] text-[var(--text-muted)] font-medium">Mastering Target</div>
-            <div className="text-lg font-medium font-sans text-[var(--text)] mt-0.5 tabular-nums">-16.0 LUFS</div>
+            <div className="text-[11px] text-muted font-medium">Mastering Target</div>
+            <div className="text-lg font-medium font-sans text-fg mt-0.5 tabular-nums">-16.0 LUFS</div>
           </div>
-          <Sliders className="w-6 h-6 text-[var(--text-muted)]" />
+          <Sliders className="w-6 h-6 text-muted" />
         </div>
 
-        <div className="p-4 rounded-lg bg-[var(--bg-surface)] border border-[var(--border)] flex items-center justify-between">
+        <div className="p-4 rounded-lg bg-surface border border-border flex items-center justify-between">
           <div>
-            <div className="text-[11px] text-[var(--text-muted)] font-medium">True Peak Ceiling</div>
-            <div className="text-lg font-medium font-sans text-[var(--text)] mt-0.5 tabular-nums">-1.0 dBFS</div>
+            <div className="text-[11px] text-muted font-medium">True Peak Ceiling</div>
+            <div className="text-lg font-medium font-sans text-fg mt-0.5 tabular-nums">-1.0 dBFS</div>
           </div>
-          <Check className="w-6 h-6 text-[var(--accent-green)]" />
+          <Check className="w-6 h-6 text-sky" />
         </div>
       </div>
 
@@ -124,8 +124,8 @@ export function EffectsWorkspace() {
                         onClick={() => toggleStage(stage.id)}
                         className={`p-1.5 rounded-md border transition-colors ${
                           stage.enabled
-                            ? 'bg-[var(--tint-blue)] text-[var(--accent-blue)] border-[var(--border-strong)]'
-                            : 'bg-[var(--bg-surface-2)] text-[var(--text-faint)] border-[var(--border)]'
+                            ? 'bg-primary-tint text-primary-text border-border-strong'
+                            : 'bg-surface-2 text-faint border-border'
                         }`}
                         title={stage.enabled ? 'Bypass stage' : 'Enable stage'}
                       >
@@ -207,7 +207,7 @@ export function EffectsWorkspace() {
                         {plugin.vendor} · {plugin.category}
                       </div>
                     </div>
-                    <span className="px-2 py-0.5 rounded font-mono text-[10px] font-medium bg-[var(--tint-purple)] text-[var(--accent-purple)] border border-[var(--border-strong)]">
+                    <span className="px-2 py-0.5 rounded font-mono text-[10px] font-medium bg-surface-2 text-purple border border-border-strong">
                       {plugin.format}
                     </span>
                   </div>

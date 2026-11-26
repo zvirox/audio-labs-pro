@@ -27,16 +27,16 @@ export function DataTable<T>({
 }: DataTableProps<T>) {
   return (
     <div
-      className={`overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] ${className}`}
+      className={`overflow-hidden rounded-lg border border-border bg-surface shadow-card ${className}`}
     >
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-left">
           <thead>
-            <tr className="border-b border-[var(--border)] bg-[var(--bg-surface-2)]">
+            <tr className="border-b border-border bg-surface-2">
               {columns.map((col) => (
                 <th
                   key={col.key}
-                  className={`px-3.5 py-2.5 text-[12px] font-medium uppercase tracking-wider text-[var(--text-muted)] ${
+                  className={`px-3.5 py-2.5 text-[12px] font-medium uppercase tracking-wider text-muted ${
                     col.align === 'right' ? 'text-right' : 'text-left'
                   } ${col.widthClass ?? ''}`}
                 >
@@ -45,12 +45,12 @@ export function DataTable<T>({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-[var(--border)]">
+          <tbody className="divide-y divide-border">
             {rows.length === 0 ? (
               <tr>
                 <td
                   colSpan={columns.length}
-                  className="px-4 py-8 text-center text-[13px] text-[var(--text-muted)]"
+                  className="px-4 py-8 text-center text-[13px] text-muted"
                 >
                   {emptyText}
                 </td>
@@ -61,15 +61,13 @@ export function DataTable<T>({
                   key={rowKey(row)}
                   onClick={onRowClick ? () => onRowClick(row) : undefined}
                   className={`transition-colors duration-[var(--duration-quick)] ${
-                    onRowClick
-                      ? 'cursor-pointer hover:bg-[var(--bg-surface-2)]'
-                      : 'hover:bg-[var(--bg-surface-2)]'
+                    onRowClick ? 'cursor-pointer hover:bg-hover' : 'hover:bg-hover'
                   }`}
                 >
                   {columns.map((col) => (
                     <td
                       key={col.key}
-                      className={`px-3.5 py-2.5 text-[13px] text-[var(--text)] ${
+                      className={`px-3.5 py-2.5 text-[13px] text-fg-2 ${
                         col.align === 'right' ? 'text-right tabular-nums' : 'text-left'
                       }`}
                     >

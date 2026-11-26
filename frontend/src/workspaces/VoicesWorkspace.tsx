@@ -98,7 +98,7 @@ export function VoicesWorkspace() {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-[var(--tint-blue)] text-[var(--accent-blue)] flex items-center justify-center font-medium text-xs">
+                        <div className="w-7 h-7 rounded-full bg-primary-tint text-primary-text flex items-center justify-center font-medium text-xs">
                           {profile.name.charAt(0)}
                         </div>
                         <div>
@@ -153,7 +153,7 @@ export function VoicesWorkspace() {
               <div className="space-y-6 text-xs">
                 {/* Consent Badge if Cloned */}
                 {activeProfile.consent && (
-                  <div className="p-3 rounded-lg bg-[var(--tint-green)] border border-[var(--border-strong)] flex items-start gap-3">
+                  <div className="p-3 rounded-lg bg-chip-sky border border-border-strong flex items-start gap-3">
                     <ShieldCheck className="w-4 h-4 text-[var(--color-fg-muted)] flex-shrink-0 mt-0.5" />
                     <div className="space-y-0.5 text-[var(--color-fg-muted)]">
                       <div className="font-medium text-[var(--color-fg-muted)]">Verified Legal Consent Record</div>

@@ -28,36 +28,36 @@ export function InspectorDrawer({
   return (
     <aside
       aria-label="Context Inspector"
-      className="flex w-[280px] shrink-0 flex-col border-l border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text)]"
+      className="flex w-[280px] shrink-0 flex-col border-l border-border bg-surface text-fg"
     >
-      <div className="flex h-11 items-center justify-between border-b border-[var(--border)] px-4">
+      <div className="flex h-11 items-center justify-between border-b border-border px-4">
         <div className="flex items-center gap-2">
-          <Sliders className="h-3.5 w-3.5 text-[var(--accent-blue)]" />
+          <Sliders className="h-3.5 w-3.5 text-primary-text" />
           <span className="text-[13px] font-semibold">Inspector</span>
         </div>
         <button
           type="button"
           onClick={onClose}
           aria-label="Close inspector"
-          className="inline-flex h-6 w-6 items-center justify-center rounded text-[var(--text-muted)] hover:bg-[var(--bg-surface-2)] hover:text-[var(--text)] cursor-pointer"
+          className="inline-flex h-6 w-6 items-center justify-center rounded text-muted hover:bg-hover hover:text-fg cursor-pointer"
         >
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
 
       <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
-        <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-surface-2)] p-3">
-          <div className="text-[11px] font-medium uppercase tracking-wider text-[var(--text-faint)]">
+        <div className="rounded-lg border border-border bg-surface-2 p-3">
+          <div className="text-[11px] font-medium uppercase tracking-wider text-faint">
             Active Studio
           </div>
-          <div className="mt-1 text-[13px] font-semibold text-[var(--text)]">
+          <div className="mt-1 text-[13px] font-semibold text-fg">
             {activeWorkspaceName}
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 rounded-lg border border-[var(--border)] bg-[var(--bg-surface-2)] p-3">
-          <div className="flex items-center gap-1.5 text-[12px] font-semibold text-[var(--text)]">
-            <Volume2 className="h-3.5 w-3.5 text-[var(--accent-sky)]" />
+        <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface-2 p-3">
+          <div className="flex items-center gap-1.5 text-[12px] font-semibold text-fg">
+            <Volume2 className="h-3.5 w-3.5 text-sky" />
             <span>Channel Strip</span>
           </div>
 
@@ -91,14 +91,16 @@ export function InspectorDrawer({
           <div className="grid grid-cols-3 gap-1.5 pt-1">
             <Button
               size="sm"
-              variant={isMuted ? 'danger' : 'secondary'}
+              variant={isMuted ? 'secondary' : 'secondary'}
+              className={isMuted ? 'border-amber text-amber' : ''}
               onClick={() => setIsMuted((prev) => !prev)}
             >
               Mute
             </Button>
             <Button
               size="sm"
-              variant={isSolo ? 'primary' : 'secondary'}
+              variant="secondary"
+              className={isSolo ? 'border-sky bg-chip-sky text-sky-text' : ''}
               onClick={() => setIsSolo((prev) => !prev)}
             >
               Solo
@@ -113,8 +115,8 @@ export function InspectorDrawer({
           </div>
         </div>
 
-        <div className="flex flex-col gap-2.5 rounded-lg border border-[var(--border)] bg-[var(--bg-surface-2)] p-3">
-          <div className="text-[12px] font-semibold text-[var(--text)]">Output Level</div>
+        <div className="flex flex-col gap-2.5 rounded-lg border border-border bg-surface-2 p-3">
+          <div className="text-[12px] font-semibold text-fg">Output Level</div>
           <Meter leftLevel={isMuted ? 0 : 0.62} rightLevel={isMuted ? 0 : 0.58} showLabels />
           <Toggle
             checked={normalized}

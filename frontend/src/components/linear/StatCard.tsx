@@ -23,31 +23,31 @@ export const StatCard: React.FC<StatCardProps> = ({
 }) => {
   const deltaStyle =
     delta?.trend === 'up'
-      ? 'bg-[var(--tint-green)] text-[var(--accent-green)]'
+      ? 'bg-chip-sky text-sky-text'
       : delta?.trend === 'down'
-      ? 'bg-[var(--tint-red)] text-[var(--accent-red)]'
-      : 'bg-[var(--bg-surface-2)] text-[var(--text-muted)]';
+      ? 'bg-chip-red text-red-text'
+      : 'bg-surface-2 text-muted';
 
   return (
     <LinearCard level={1} className={`flex flex-col justify-between gap-2 p-4 ${className}`}>
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[12px] font-medium uppercase tracking-wider text-[var(--text-muted)]">
+        <span className="text-[12px] font-medium uppercase tracking-wider text-muted">
           {label}
         </span>
         {icon && (
-          <div className="flex h-7 w-7 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--tint-blue)] text-[var(--accent-blue)]">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md border border-border bg-primary-tint text-primary-text">
             {icon}
           </div>
         )}
       </div>
 
       <div className="flex items-baseline justify-between gap-2">
-        <span className="whitespace-nowrap font-sans text-[24px] xl:text-[28px] font-semibold leading-none tracking-tight text-[var(--text)] tabular-nums">
+        <span className="whitespace-nowrap font-sans text-[24px] xl:text-[28px] font-semibold leading-none tracking-tight text-fg tabular-nums">
           {value}
         </span>
         {delta && (
           <span
-            className={`inline-flex shrink-0 whitespace-nowrap items-center rounded border border-[var(--border)] px-1.5 py-0.5 text-[11px] font-medium leading-none tabular-nums ${deltaStyle}`}
+            className={`inline-flex shrink-0 whitespace-nowrap items-center rounded border border-border px-1.5 py-0.5 text-[11px] font-medium leading-none tabular-nums ${deltaStyle}`}
           >
             {delta.value}
           </span>
@@ -55,7 +55,7 @@ export const StatCard: React.FC<StatCardProps> = ({
       </div>
 
       {subtitle && (
-        <span className="truncate text-[12px] text-[var(--text-muted)]">{subtitle}</span>
+        <span className="truncate text-[12px] text-muted">{subtitle}</span>
       )}
     </LinearCard>
   );

@@ -82,7 +82,7 @@ export function ThemeToggle({ className = '' }: ThemeToggleProps) {
       title={isDark ? 'Switch to light theme (Ctrl+D)' : 'Switch to dark theme (Ctrl+D)'}
       aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
       data-testid="titlebar-theme-toggle"
-      className={`inline-flex h-7 w-7 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--bg-surface-2)] hover:text-[var(--text)] transition-colors duration-[var(--duration-quick)] [transition-timing-function:var(--ease-out-expo)] cursor-pointer ${className}`}
+      className={`inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg transition-colors duration-[var(--duration-quick)] [transition-timing-function:var(--ease-out-expo)] cursor-pointer ${className}`}
     >
       {isDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
     </button>

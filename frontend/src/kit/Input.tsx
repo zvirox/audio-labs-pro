@@ -35,14 +35,14 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="text-[12px] font-medium text-[var(--text-muted)]"
+            className="text-[12px] font-medium text-muted"
           >
             {label}
           </label>
         )}
         <div className="relative flex items-center">
           {leftIcon && (
-            <span className="pointer-events-none absolute left-2.5 text-[var(--text-muted)]">
+            <span className="pointer-events-none absolute left-2.5 text-muted">
               {leftIcon}
             </span>
           )}
@@ -50,10 +50,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             id={inputId}
             value={value}
-            className={`h-8 w-full rounded-md border bg-[var(--bg-surface-2)] text-[13px] text-[var(--text)] placeholder:text-[var(--text-faint)] transition-colors duration-[var(--duration-quick)] focus:outline-none focus:ring-2 focus:ring-[var(--color-focus)] disabled:opacity-50 ${
+            className={`h-8 w-full rounded-md border bg-surface-2 text-[13px] text-fg placeholder:text-faint transition-colors duration-[var(--duration-quick)] focus:outline-none focus:ring-2 focus:ring-primary-text disabled:opacity-50 ${
               errorMessage
-                ? 'border-[var(--accent-red)] focus:border-[var(--accent-red)]'
-                : 'border-[var(--border)] hover:border-[var(--border-strong)] focus:border-[var(--accent-blue)]'
+                ? 'border-red focus:border-red'
+                : 'border-border hover:border-border-strong focus:border-primary'
             } ${leftIcon ? 'pl-8' : 'px-3'} ${
               rightIcon || (onClear && hasValue) ? 'pr-8' : 'pr-3'
             }`}
@@ -64,22 +64,22 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               type="button"
               onClick={onClear}
               aria-label="Clear input"
-              className="absolute right-2 rounded p-0.5 text-[var(--text-muted)] hover:bg-[var(--bg-bar-idle)] hover:text-[var(--text)] cursor-pointer"
+              className="absolute right-2 rounded p-0.5 text-muted hover:bg-hover hover:text-fg cursor-pointer"
             >
               <X className="h-3.5 w-3.5" />
             </button>
           ) : (
             rightIcon && (
-              <span className="pointer-events-none absolute right-2.5 text-[var(--text-muted)]">
+              <span className="pointer-events-none absolute right-2.5 text-muted">
                 {rightIcon}
               </span>
             )
           )}
         </div>
         {errorMessage ? (
-          <p className="text-[12px] text-[var(--accent-red)]">{errorMessage}</p>
+          <p className="text-[12px] text-red-text">{errorMessage}</p>
         ) : (
-          helperText && <p className="text-[12px] text-[var(--text-faint)]">{helperText}</p>
+          helperText && <p className="text-[12px] text-faint">{helperText}</p>
         )}
       </div>
     );

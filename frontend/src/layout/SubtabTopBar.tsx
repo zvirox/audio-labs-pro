@@ -15,7 +15,7 @@ export function SubtabTopBar({
 
   return (
     <nav
-      className="flex h-10 shrink-0 items-center border-b border-[var(--border)] bg-[var(--bg-surface-2)] px-4 select-none"
+      className="flex h-10 shrink-0 items-center border-b border-border bg-surface-2 px-4 select-none"
       aria-label="Sub-navigation Bar"
     >
       <Tabs

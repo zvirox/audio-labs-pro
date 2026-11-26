@@ -1,7 +1,7 @@
 # Audio Labs Pro — Master Verification & Engineering Checklist
 
-> Last verified against codebase: `v0.1.0-beta.1` (12 Rust crates, `frontend/` Tauri v2 + React 19 Linear UI, `packaging/nfpm.yaml`).
-> **UI Policy:** The **Linear UI** (solid opaque surfaces, `#050505` dark / `#F3F4F6` light, `#3355FF` primary blue accent, self-hosted Inter, `check:linear` enforced) is **final and locked**. No further UI style redesigns are planned.
+> Last verified against codebase: `v0.1.0-beta.2` (12 Rust crates, `frontend/` Tauri v2 + React 19 Linear UI, `packaging/nfpm.yaml`).
+> **UI Policy:** The **Linear UI** (shared Tessera-sampled matte palette `#1C1C1C` dark / `#F8F9FA` light, **Magenta** primary accent `#C026D3`/`#A21CAF`, zero green/teal, chart-free, self-hosted Inter, `check:linear` enforced) is **final and locked** per [DESIGN.md](DESIGN.md). No further UI style redesigns are planned.
 
 ---
 
@@ -16,7 +16,7 @@
 | Voice & Neural Inference (`alp-voice`, `alp-infer`) | **Core Complete** | Kokoro/Kitten/StyleTTS2, Qwen3-TTS cloning + mandatory consent attestation, Moonshine STT, VAD, pronunciation lexicon, GGUF/ONNX download & SHA-256 verification |
 | Audio Plugins (`alp-plugin`) | **CLAP + LV2 Complete** | System scanner (`~/.clap`, `/usr/lib/clap`, LV2 bundles), sandboxing, parameter presets |
 | Session Bridge & AI Control (`alp-session`, `alp-mcp`, `alp-cli`) | **Complete** | Tauri IPC commands, 68 MCP tools across Observe/Edit/Export tiers, Starship Control bridge (`alp.sock`), live UNIX socket host |
-| Desktop Shell & Locked Linear UI (`alp-desktop`, `frontend/`) | **Complete & Locked** | Tauri v2 frameless window (`1280x800`, min `1024x640`, opaque solid surface), TitleBar/Sidebar/Breadcrumb shell, 9 workspaces, Multitrack + Spectrogram canvases, ECharts telemetry, `check:linear` gate |
+| Desktop Shell & Locked Linear UI (`alp-desktop`, `frontend/`) | **Complete & Locked** | Tauri v2 frameless window (`1280x800`, min `1024x640`, opaque solid surface), TitleBar/Sidebar/Breadcrumb shell, 9 workspaces, Multitrack + Spectrogram canvases, chart-free engine telemetry, `check:linear` gate |
 | Packaging & Release (`packaging/nfpm.yaml`, `.github/workflows/`) | **Complete** | Multi-distro `.deb`, `.rpm`, and Arch `.pkg.tar.zst` via `nfpm`; CI + `v0.1.0-beta.1` release pipeline |
 
 ---
@@ -35,7 +35,7 @@
 - [x] **Linear UI Finalization & Lock:**
   - [x] `TitleBar` (40 px, app mark + version from `tauri.conf.json`, sole `ThemeToggle` storing `ui-theme`, clean drag region, minimize/maximize/`#E5484D` close).
   - [x] Collapsible `Sidebar` (240 px / 56 px, 36 px items, workspace switcher), `Breadcrumb`, `SubtabTopBar`, `InspectorDrawer`, `DockedPlayer`, `CommandPalette` (cmdk), `ShortcutsModal`.
-  - [x] Strict solid opaque tokens (`--bg-app`, `--bg-surface`, `--bg-surface-2`, `--accent-blue: #3355FF`, `--accent-sky: #38B6F0`, precomputed `--tint-*`), self-hosted Inter font, `tabular-nums` stats/tables, flat discrete segmented `Meter` strips.
+  - [x] Shared matte palette tokens (`styles/linear-theme.css` + Magenta `styles/app-accent.css`, `#1C1C1C`/`#292929` dark, `#F8F9FA`/`#FFFFFF` light, zero green/teal), self-hosted Inter font, `tabular-nums` stats/tables, flat discrete segmented `Meter` strips (`--sky` -> `--amber` -> `--red`).
   - [x] Zero compositor blur (`glass.rs` forces opaque solid surface; KWin X11 blur removed), zero translucent fills, zero glow/gradients, zero dark shadows, verified by `npm run check:linear`.
 
 ---

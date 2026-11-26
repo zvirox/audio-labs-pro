@@ -31,7 +31,7 @@ export function Tabs({
     return (
       <div
         role="tablist"
-        className={`inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--bg-surface-2)] p-0.5 ${className}`}
+        className={`inline-flex items-center gap-1 rounded-md border border-border bg-surface-2 p-0.5 ${className}`}
       >
         {items.map((item) => {
           const isActive = item.id === activeId;
@@ -45,14 +45,14 @@ export function Tabs({
               onClick={() => !item.disabled && onChange(item.id)}
               className={`inline-flex items-center gap-1.5 rounded font-medium transition-colors duration-[var(--duration-quick)] [transition-timing-function:var(--ease-out-expo)] disabled:opacity-40 cursor-pointer ${heightClass} ${
                 isActive
-                  ? 'border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text)]'
-                  : 'border border-transparent text-[var(--text-muted)] hover:text-[var(--text)]'
+                  ? 'border border-border-strong bg-active text-fg'
+                  : 'border border-transparent text-muted hover:text-fg'
               }`}
             >
               {item.icon}
               <span>{item.label}</span>
               {item.badge !== undefined && (
-                <span className="rounded border border-[var(--border)] bg-[var(--bg-surface-2)] px-1.5 py-0.5 text-[10px] font-medium leading-none tabular-nums text-[var(--text-muted)]">
+                <span className="rounded border border-border bg-surface-2 px-1.5 py-0.5 text-[10px] font-medium leading-none tabular-nums text-muted">
                   {item.badge}
                 </span>
               )}
@@ -66,7 +66,7 @@ export function Tabs({
   return (
     <div
       role="tablist"
-      className={`flex items-center gap-1 border-b border-[var(--border)] ${className}`}
+      className={`flex items-center gap-1 border-b border-border ${className}`}
     >
       {items.map((item) => {
         const isActive = item.id === activeId;
@@ -80,14 +80,14 @@ export function Tabs({
             onClick={() => !item.disabled && onChange(item.id)}
             className={`relative -mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-[13px] font-medium transition-colors duration-[var(--duration-quick)] [transition-timing-function:var(--ease-out-expo)] disabled:opacity-40 cursor-pointer ${
               isActive
-                ? 'border-[var(--accent-blue)] text-[var(--text)]'
-                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text)]'
+                ? 'border-primary-text text-primary-text'
+                : 'border-transparent text-muted hover:text-fg'
             }`}
           >
             {item.icon}
             <span>{item.label}</span>
             {item.badge !== undefined && (
-              <span className="rounded border border-[var(--border)] bg-[var(--bg-surface-2)] px-1.5 py-0.5 text-[10px] font-medium leading-none tabular-nums text-[var(--text-muted)]">
+              <span className="rounded border border-border bg-surface-2 px-1.5 py-0.5 text-[10px] font-medium leading-none tabular-nums text-muted">
                 {item.badge}
               </span>
             )}

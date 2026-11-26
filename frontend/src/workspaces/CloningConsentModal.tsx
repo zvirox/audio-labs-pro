@@ -84,8 +84,8 @@ export function CloningConsentModal({ open, onClose, onCreated }: CloningConsent
     >
       <div className="space-y-5 text-xs">
         {/* Safety Warning Banner */}
-        <div className="p-3 rounded-lg bg-[var(--tint-amber)] border border-[var(--accent-amber)] flex items-start gap-3">
-          <ShieldAlert className="w-4 h-4 text-[var(--accent-amber)] flex-shrink-0 mt-0.5" />
+        <div className="p-3 rounded-lg bg-surface-2 border border-amber flex items-start gap-3">
+          <ShieldAlert className="w-4 h-4 text-amber flex-shrink-0 mt-0.5" />
           <div className="space-y-1 text-[var(--color-fg-muted)]">
             <div className="font-medium text-[var(--color-fg-muted)]">Mandatory Human Consent Record</div>
             <p className="text-[11px] leading-relaxed">
@@ -101,8 +101,8 @@ export function CloningConsentModal({ open, onClose, onCreated }: CloningConsent
             onClick={() => setSourceTab('record')}
             className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 font-medium transition-colors cursor-pointer ${
               sourceTab === 'record'
-                ? 'bg-[var(--tint-blue)] text-[var(--accent-blue)] border border-[var(--border-strong)]'
-                : 'text-[var(--text-muted)] hover:text-[var(--text)] border border-transparent'
+                ? 'bg-primary-tint text-primary-text border border-border-strong'
+                : 'text-muted hover:text-fg border border-transparent'
             }`}
           >
             <Mic className="w-4 h-4" />
@@ -113,8 +113,8 @@ export function CloningConsentModal({ open, onClose, onCreated }: CloningConsent
             onClick={() => setSourceTab('upload')}
             className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 font-medium transition-colors cursor-pointer ${
               sourceTab === 'upload'
-                ? 'bg-[var(--tint-blue)] text-[var(--accent-blue)] border border-[var(--border-strong)]'
-                : 'text-[var(--text-muted)] hover:text-[var(--text)] border border-transparent'
+                ? 'bg-primary-tint text-primary-text border border-border-strong'
+                : 'text-muted hover:text-fg border border-transparent'
             }`}
           >
             <Upload className="w-4 h-4" />
@@ -177,16 +177,16 @@ export function CloningConsentModal({ open, onClose, onCreated }: CloningConsent
               type="checkbox"
               checked={consentAcknowledged}
               onChange={(e) => setConsentAcknowledged(e.target.checked)}
-              className="mt-0.5 rounded border-[var(--border-strong)] bg-[var(--bg-surface)] text-[var(--accent-blue)] focus:ring-[var(--color-focus)]"
+              className="mt-0.5 rounded border-border-strong bg-surface text-primary focus:ring-primary-text"
             />
-            <span className="text-[var(--text)] text-xs leading-relaxed select-none">
-              <strong className="text-[var(--accent-blue)]">Human Legal Attestation:</strong> I declare under penalty of terms violation that the speaker has given explicit permission to clone their voice for use in this workstation.
+            <span className="text-fg text-xs leading-relaxed select-none">
+              <strong className="text-primary-text">Human Legal Attestation:</strong> I declare under penalty of terms violation that the speaker has given explicit permission to clone their voice for use in this workstation.
             </span>
           </label>
         </div>
 
         {error && (
-          <div className="p-2.5 rounded-lg bg-[var(--tint-red)] border border-[var(--accent-red)] text-[var(--accent-red)] flex items-center gap-2">
+          <div className="p-2.5 rounded-lg bg-chip-red border border-red text-red-text flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
             <span>{error}</span>
           </div>

@@ -19,17 +19,16 @@ export const LinearCard = forwardRef<HTMLDivElement, LinearCardProps>(({
       ? 3
       : 1;
 
-  // Solid, flat, border-only surfaces per Linear specification. No shadow in dark mode.
   const levelStyles = {
-    1: 'bg-[var(--bg-surface)] border-[var(--border)] shadow-[var(--shadow-card)]',
-    2: 'bg-[var(--bg-surface-2)] border-[var(--border)] shadow-[var(--shadow-card)]',
-    3: 'bg-[var(--bg-surface-2)] border-[var(--border-strong)] shadow-[var(--shadow-card)]',
+    1: 'bg-surface border-border shadow-card',
+    2: 'bg-surface-2 border-border shadow-card',
+    3: 'bg-surface border-border-strong shadow-card',
   }[normalizedLevel];
 
   return (
     <div
       ref={ref}
-      className={`rounded-lg border transition-colors duration-[var(--duration-quick)] [transition-timing-function:var(--ease-out-expo)] hover:border-[var(--border-strong)] text-[var(--text)] ${levelStyles} ${className}`}
+      className={`rounded-lg border transition-colors duration-[var(--duration-quick)] [transition-timing-function:var(--ease-out-expo)] hover:border-border-strong text-fg ${levelStyles} ${className}`}
       {...props}
     >
       {children}

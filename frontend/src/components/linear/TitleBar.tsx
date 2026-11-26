@@ -10,7 +10,7 @@ export interface TitleBarProps {
 }
 
 function getDefaultVersion(): string {
-  const raw = typeof __APP_VERSION__ !== 'undefined' && __APP_VERSION__ ? __APP_VERSION__ : '0.1.0-beta.1';
+  const raw = typeof __APP_VERSION__ !== 'undefined' && __APP_VERSION__ ? __APP_VERSION__ : '0.1.0-beta.2';
   return raw.startsWith('v') ? raw : `v${raw}`;
 }
 
@@ -96,7 +96,7 @@ export function TitleBar({
 
   return (
     <header
-      className={`flex h-10 shrink-0 select-none items-center justify-between border-b border-[var(--border)] bg-[var(--bg-surface)] px-3 text-[var(--text)] ${className}`}
+      className={`flex h-10 shrink-0 select-none items-center justify-between border-b border-border bg-app px-3 text-fg ${className}`}
       data-testid="linear-titlebar"
     >
       {/* Left: 20px app logo, app name, version tag */}
@@ -108,7 +108,7 @@ export function TitleBar({
       >
         <svg
           viewBox="0 0 20 20"
-          className="h-5 w-5 shrink-0 text-[var(--accent-blue)]"
+          className="h-5 w-5 shrink-0 text-primary-text"
           fill="none"
           aria-hidden="true"
         >
@@ -120,10 +120,10 @@ export function TitleBar({
             strokeLinecap="round"
           />
         </svg>
-        <span className="text-[13px] font-semibold tracking-tight text-[var(--text)]">
+        <span className="text-[13px] font-semibold tracking-tight text-fg">
           {appName}
         </span>
-        <span className="rounded border border-[var(--border)] bg-[var(--bg-surface-2)] px-1.5 py-0.5 text-[11px] font-medium leading-none text-[var(--text-muted)] tabular-nums">
+        <span className="rounded border border-border bg-surface-2 px-1.5 py-0.5 text-[11px] font-medium leading-none text-muted tabular-nums">
           {version}
         </span>
       </div>
@@ -139,13 +139,13 @@ export function TitleBar({
       {/* Right: ThemeToggle, divider, minimize, maximize/restore, close */}
       <div className="flex items-center gap-0.5">
         <ThemeToggle />
-        <div className="mx-1.5 h-4 w-px bg-[var(--border)]" aria-hidden="true" />
+        <div className="mx-1.5 h-4 w-px bg-border" aria-hidden="true" />
         <button
           type="button"
           onClick={handleMinimize}
           aria-label="Minimize window"
           title="Minimize"
-          className="inline-flex h-7 w-8 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--bg-surface-2)] hover:text-[var(--text)] transition-colors duration-[var(--duration-quick)] [transition-timing-function:var(--ease-out-expo)] cursor-pointer"
+          className="inline-flex h-7 w-8 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg transition-colors duration-[var(--duration-quick)] [transition-timing-function:var(--ease-out-expo)] cursor-pointer"
         >
           <Minus className="h-3.5 w-3.5" />
         </button>
@@ -154,7 +154,7 @@ export function TitleBar({
           onClick={handleToggleMaximize}
           aria-label={isMaximized ? 'Restore window' : 'Maximize window'}
           title={isMaximized ? 'Restore' : 'Maximize'}
-          className="inline-flex h-7 w-8 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--bg-surface-2)] hover:text-[var(--text)] transition-colors duration-[var(--duration-quick)] [transition-timing-function:var(--ease-out-expo)] cursor-pointer"
+          className="inline-flex h-7 w-8 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg transition-colors duration-[var(--duration-quick)] [transition-timing-function:var(--ease-out-expo)] cursor-pointer"
         >
           {isMaximized ? <Copy className="h-3 w-3" /> : <Square className="h-3 w-3" />}
         </button>
@@ -163,7 +163,7 @@ export function TitleBar({
           onClick={handleClose}
           aria-label="Close window"
           title="Close"
-          className="inline-flex h-7 w-8 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--color-close-hover)] hover:text-[var(--text-on-accent)] transition-colors duration-[var(--duration-quick)] [transition-timing-function:var(--ease-out-expo)] cursor-pointer"
+          className="inline-flex h-7 w-8 items-center justify-center rounded-md text-muted hover:bg-close-hover hover:text-primary-fg transition-colors duration-[var(--duration-quick)] [transition-timing-function:var(--ease-out-expo)] cursor-pointer"
         >
           <X className="h-3.5 w-3.5" />
         </button>

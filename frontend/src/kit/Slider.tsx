@@ -41,24 +41,24 @@ export const Slider = forwardRef<HTMLInputElement, SliderProps>(
       <div className={`flex flex-col gap-1.5 ${className}`}>
         {(label || ariaLabel) && label && (
           <div className="flex items-center justify-between text-[12px]">
-            <label htmlFor={id} className="font-medium text-[var(--text-muted)]">
+            <label htmlFor={id} className="font-medium text-muted">
               {label}
             </label>
-            <span className="font-sans text-[12px] font-medium text-[var(--text)] tabular-nums">
+            <span className="font-sans text-[12px] font-medium text-fg tabular-nums">
               {displayVal}
             </span>
           </div>
         )}
         <div className="relative flex h-5 items-center">
-          <div className="h-1.5 w-full overflow-hidden rounded bg-[var(--bg-bar-idle)]">
+          <div className="h-1.5 w-full overflow-hidden rounded bg-track">
             <div
-              className="h-full bg-[var(--accent-blue)]"
+              className="h-full bg-primary"
               style={{ width: `${pct}%` }}
             />
           </div>
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded border border-[var(--border-strong)] bg-[var(--bg-surface)]"
+            className="pointer-events-none absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded border border-border-strong bg-surface"
             style={{ left: `${pct}%` }}
           />
           <input

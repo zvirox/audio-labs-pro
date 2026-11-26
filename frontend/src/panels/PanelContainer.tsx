@@ -79,7 +79,7 @@ export function PanelContainer({
         height: panel.rect.height,
         zIndex: panel.z,
       }}
-      className="absolute flex flex-col overflow-hidden rounded-lg border border-[var(--border-strong)] bg-[var(--bg-surface)] text-[var(--text)] shadow-[var(--shadow-card)]"
+      className="absolute flex flex-col overflow-hidden rounded-lg border border-border-strong bg-surface text-fg shadow-card"
     >
       <div
         onMouseDown={(e) => {
@@ -93,10 +93,10 @@ export function PanelContainer({
           };
           setIsDragging(true);
         }}
-        className="flex h-9 shrink-0 cursor-move items-center justify-between border-b border-[var(--border)] bg-[var(--bg-surface-2)] px-3 select-none"
+        className="flex h-9 shrink-0 cursor-move items-center justify-between border-b border-border bg-surface-2 px-3 select-none"
       >
         <div className="flex items-center gap-2 text-[12px] font-semibold">
-          <GripHorizontal className="h-3.5 w-3.5 text-[var(--text-muted)]" />
+          <GripHorizontal className="h-3.5 w-3.5 text-muted" />
           <span className="capitalize">{panel.kind.replace('_', ' ')}</span>
         </div>
         <button
@@ -106,7 +106,7 @@ export function PanelContainer({
             onClose(panel.kind);
           }}
           aria-label={`Close ${panel.kind} panel`}
-          className="inline-flex h-6 w-6 items-center justify-center rounded text-[var(--text-muted)] hover:bg-[var(--bg-bar-idle)] hover:text-[var(--text)] cursor-pointer"
+          className="inline-flex h-6 w-6 items-center justify-center rounded text-muted hover:bg-hover hover:text-fg cursor-pointer"
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -127,7 +127,7 @@ export function PanelContainer({
           setIsResizing(true);
         }}
         title="Resize panel"
-        className="absolute bottom-0 right-0 h-3 w-3 cursor-nwse-resize border-r-2 border-b-2 border-[var(--border-strong)]"
+        className="absolute bottom-0 right-0 h-3 w-3 cursor-nwse-resize border-r-2 border-b-2 border-border-strong"
       />
     </section>
   );

@@ -134,18 +134,18 @@ export function MultitrackCanvas({
     const { width, height } = canvasSize;
     const tokens = readLinearCanvasTokens();
     const trackSeriesColors = [
-      tokens.accentBlue,
-      tokens.accentSky,
-      tokens.accentTeal,
-      tokens.accentPurple,
-      tokens.accentOrange,
+      tokens.primary,
+      tokens.sky,
+      tokens.amber,
+      tokens.pink,
+      tokens.purple,
     ];
     const trackSeriesTints = [
-      tokens.tintBlue,
-      tokens.tintSky,
-      tokens.tintGreen,
-      tokens.tintPurple,
-      tokens.tintAmber,
+      tokens.primaryTint,
+      tokens.chipSky,
+      tokens.bgSurface2,
+      tokens.primaryTint,
+      tokens.bgSurface2,
     ];
 
     // 1. Background (--bg-surface)
@@ -169,7 +169,7 @@ export function MultitrackCanvas({
       ctx.stroke();
 
       // Track Header Column (180px)
-      ctx.fillStyle = tokens.bgSurface;
+      ctx.fillStyle = tokens.bgSidebar;
       ctx.fillRect(0, trackTop, TRACK_HEADER_WIDTH, TRACK_HEIGHT);
       ctx.strokeStyle = tokens.border;
       ctx.strokeRect(0, trackTop, TRACK_HEADER_WIDTH, TRACK_HEIGHT);
@@ -179,9 +179,9 @@ export function MultitrackCanvas({
       ctx.font = '600 11px Inter, system-ui, sans-serif';
       ctx.fillText(`${index + 1}. ${track.name}`, 12, trackTop + 20);
 
-      // Mute / Solo / Arm Flat Controls
+      // Mute / Solo / Arm Flat Controls (Mute: --amber, Solo: --sky, Arm: --red)
       const drawPill = (label: string, active: boolean, color: string, x: number) => {
-        ctx.fillStyle = active ? color : tokens.bgBarIdle;
+        ctx.fillStyle = active ? color : tokens.bgTrack;
         ctx.strokeStyle = active ? color : tokens.borderStrong;
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -189,16 +189,16 @@ export function MultitrackCanvas({
         ctx.fill();
         ctx.stroke();
 
-        ctx.fillStyle = active ? tokens.textOnAccent : tokens.textMuted;
+        ctx.fillStyle = active ? tokens.primaryFg : tokens.textMuted;
         ctx.font = '600 9px Inter, system-ui, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(label, x + 11, trackTop + 44);
         ctx.textAlign = 'left';
       };
 
-      drawPill('M', track.muted, tokens.accentRed, 10);
-      drawPill('S', track.solo, tokens.accentAmber, 34);
-      drawPill('R', track.armed, tokens.accentRed, 58);
+      drawPill('M', track.muted, tokens.amber, 10);
+      drawPill('S', track.solo, tokens.sky, 34);
+      drawPill('R', track.armed, tokens.red, 58);
 
       // View Mode Selector Controls (Waveform, Spectrogram, Dual)
       const drawModePill = (
@@ -209,7 +209,7 @@ export function MultitrackCanvas({
         x: number,
         w: number,
       ) => {
-        ctx.fillStyle = active ? tint : tokens.bgBarIdle;
+        ctx.fillStyle = active ? tint : tokens.bgTrack;
         ctx.strokeStyle = active ? color : tokens.border;
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -225,9 +225,9 @@ export function MultitrackCanvas({
       };
 
       const currentMode = track.view_mode || 'waveform';
-      drawModePill('W', currentMode === 'waveform', tokens.tintSky, tokens.accentSky, 86, 18);
-      drawModePill('S', currentMode === 'spectrogram', tokens.tintAmber, tokens.accentOrange, 108, 18);
-      drawModePill('Dual', currentMode === 'split', tokens.tintPurple, tokens.accentPurple, 130, 38);
+      drawModePill('W', currentMode === 'waveform', tokens.chipSky, tokens.sky, 86, 18);
+      drawModePill('S', currentMode === 'spectrogram', tokens.bgSurface2, tokens.amber, 108, 18);
+      drawModePill('Dual', currentMode === 'split', tokens.primaryTint, tokens.purple, 130, 38);
 
       // Fader & Pan readouts
       ctx.fillStyle = tokens.textMuted;
@@ -301,45 +301,51 @@ export function MultitrackCanvas({
         const spectroH = viewMode === 'split' ? clipH * 0.52 : viewMode === 'spectrogram' ? clipH : 0;
         const spectroY = viewMode === 'split' ? clipY + waveH : clipY;
 
-        // 1. Spectrogram Area (if spectrogram or split)
+        // 1. Spectrogram Area (if spectrogram or split, ImageData raster without CSS rgb() literals)
         if (spectroH > 0) {
-          const numCols = Math.min(Math.floor(clipWidth / 4), 80);
+          const numCols = Math.max(1, Math.min(Math.floor(clipWidth / 4), 80));
           const numRows = 16;
-          const colW = clipWidth / numCols;
-          const rowH = spectroH / numRows;
+          const off = document.createElement('canvas');
+          off.width = numCols;
+          off.height = numRows;
+          const offCtx = off.getContext('2d');
+          if (offCtx) {
+            const imgData = offCtx.createImageData(numCols, numRows);
+            const px = imgData.data;
+            for (let c = 0; c < numCols; c++) {
+              const progress = c / numCols;
+              for (let r = 0; r < numRows; r++) {
+                const freqFrac = (numRows - 1 - r) / numRows;
+                const harmonic1 = Math.exp(-Math.pow((freqFrac - 0.2) / 0.1, 2));
+                const harmonic2 = 0.7 * Math.exp(-Math.pow((freqFrac - 0.4) / 0.12, 2));
+                const harmonic3 = 0.4 * Math.exp(-Math.pow((freqFrac - 0.7) / 0.15, 2));
+                const modulation = 0.6 + 0.4 * Math.sin(progress * Math.PI * 6 + r * 0.5);
+                const intensity = Math.min(1.0, (harmonic1 + harmonic2 + harmonic3) * modulation);
 
-          for (let c = 0; c < numCols; c++) {
-            const colX = clipStartX + c * colW;
-            const progress = (c / numCols);
-            for (let r = 0; r < numRows; r++) {
-              // Higher rows are higher frequency
-              const freqFrac = (numRows - 1 - r) / numRows;
-              // Synthetic harmonic energy calculation
-              const harmonic1 = Math.exp(-Math.pow((freqFrac - 0.2) / 0.1, 2));
-              const harmonic2 = 0.7 * Math.exp(-Math.pow((freqFrac - 0.4) / 0.12, 2));
-              const harmonic3 = 0.4 * Math.exp(-Math.pow((freqFrac - 0.7) / 0.15, 2));
-              const modulation = 0.6 + 0.4 * Math.sin(progress * Math.PI * 6 + r * 0.5);
-              const intensity = Math.min(1.0, (harmonic1 + harmonic2 + harmonic3) * modulation);
+                let rCol = 0, gCol = 0, bCol = 4;
+                if (intensity < 0.25) {
+                  const t = intensity / 0.25;
+                  rCol = Math.round(t * 81); gCol = Math.round(t * 18); bCol = Math.round(4 + t * 120);
+                } else if (intensity < 0.6) {
+                  const t = (intensity - 0.25) / 0.35;
+                  rCol = Math.round(81 + t * 102); gCol = Math.round(18 + t * 37); bCol = Math.round(124 - t * 3);
+                } else if (intensity < 0.85) {
+                  const t = (intensity - 0.6) / 0.25;
+                  rCol = Math.round(183 + t * 69); gCol = Math.round(55 + t * 82); bCol = Math.round(121 - t * 24);
+                } else {
+                  const t = (intensity - 0.85) / 0.15;
+                  rCol = Math.round(252 + t * 3); gCol = Math.round(137 + t * 118); bCol = Math.round(97 + t * 158);
+                }
 
-              // Magma color interpolation: dark purple -> magenta -> orange -> yellow
-              let rCol = 0, gCol = 0, bCol = 4;
-              if (intensity < 0.25) {
-                const t = intensity / 0.25;
-                rCol = Math.round(t * 81); gCol = Math.round(t * 18); bCol = Math.round(4 + t * 120);
-              } else if (intensity < 0.6) {
-                const t = (intensity - 0.25) / 0.35;
-                rCol = Math.round(81 + t * 102); gCol = Math.round(18 + t * 37); bCol = Math.round(124 - t * 3);
-              } else if (intensity < 0.85) {
-                const t = (intensity - 0.6) / 0.25;
-                rCol = Math.round(183 + t * 69); gCol = Math.round(55 + t * 82); bCol = Math.round(121 - t * 24);
-              } else {
-                const t = (intensity - 0.85) / 0.15;
-                rCol = Math.round(252 + t * 3); gCol = Math.round(137 + t * 118); bCol = Math.round(97 + t * 158);
+                const idx = (r * numCols + c) * 4;
+                px[idx] = rCol;
+                px[idx + 1] = gCol;
+                px[idx + 2] = bCol;
+                px[idx + 3] = 255;
               }
-
-              ctx.fillStyle = `rgb(${rCol}, ${gCol}, ${bCol})`;
-              ctx.fillRect(colX, spectroY + r * rowH, colW + 0.5, rowH + 0.5);
             }
+            offCtx.putImageData(imgData, 0, 0);
+            ctx.drawImage(off, clipStartX, spectroY, clipWidth, spectroH);
           }
 
           // In split mode, draw a subtle dividing rule between waveform & spectrogram
@@ -353,9 +359,9 @@ export function MultitrackCanvas({
           }
         }
 
-        // 2. Flat Waveform Bars Area (if waveform or split)
+        // 2. Flat Waveform Bars Area (Section 5: --sky)
         if (waveH > 0) {
-          ctx.strokeStyle = seriesAccent;
+          ctx.strokeStyle = tokens.sky;
           ctx.lineWidth = 1.5;
           ctx.beginPath();
           const midY = clipY + (waveH / 2);
@@ -377,7 +383,7 @@ export function MultitrackCanvas({
           const fadeInW = clip.fade_in_secs * zoom;
           ctx.save();
           ctx.globalAlpha = 0.65;
-          ctx.fillStyle = tokens.bgBarIdle;
+          ctx.fillStyle = tokens.bgTrack;
           ctx.beginPath();
           ctx.moveTo(clipStartX, clipY);
           ctx.lineTo(clipStartX, clipY + clipH);
@@ -400,7 +406,7 @@ export function MultitrackCanvas({
           const fadeOutStart = clipStartX + clipWidth - fadeOutW;
           ctx.save();
           ctx.globalAlpha = 0.65;
-          ctx.fillStyle = tokens.bgBarIdle;
+          ctx.fillStyle = tokens.bgTrack;
           ctx.beginPath();
           ctx.moveTo(fadeOutStart, clipY);
           ctx.lineTo(clipStartX + clipWidth, clipY + clipH);
@@ -419,7 +425,7 @@ export function MultitrackCanvas({
 
         // Volume Envelope line
         if (clip.envelope.length > 0) {
-          ctx.strokeStyle = tokens.accentAmber;
+          ctx.strokeStyle = tokens.amber;
           ctx.lineWidth = 1.2;
           ctx.beginPath();
           clip.envelope.forEach((pt, pIdx) => {
@@ -433,7 +439,7 @@ export function MultitrackCanvas({
 
         // Pan Automation Envelope line
         if (clip.pan_envelope && clip.pan_envelope.length > 0) {
-          ctx.strokeStyle = tokens.accentSky;
+          ctx.strokeStyle = tokens.sky;
           ctx.lineWidth = 1.5;
           ctx.beginPath();
           clip.pan_envelope.forEach((pt, pIdx) => {
@@ -448,7 +454,7 @@ export function MultitrackCanvas({
             const ptX = clipStartX + (pt.offset_secs * zoom);
             const ptY = clipY + (clipH / 2) + (pt.pan * (clipH * 0.35));
             ctx.fillStyle = tokens.bgSurface;
-            ctx.strokeStyle = tokens.accentSky;
+            ctx.strokeStyle = tokens.sky;
             ctx.lineWidth = 1.5;
             ctx.beginPath();
             ctx.arc(ptX, ptY, 3, 0, Math.PI * 2);
@@ -458,20 +464,20 @@ export function MultitrackCanvas({
         }
 
         // Clip Title Bar & Slip badge
-        ctx.fillStyle = isSelected ? seriesAccent : tokens.text;
+        ctx.fillStyle = isSelected ? tokens.primaryText : tokens.text;
         ctx.font = '600 10px Inter, system-ui, sans-serif';
         ctx.fillText(clip.name, clipStartX + 8, clipY + 14);
 
         if (clip.slip_offset_secs && clip.slip_offset_secs > 0) {
-          ctx.fillStyle = tokens.accentPurple;
+          ctx.fillStyle = tokens.purple;
           ctx.font = '9px ui-monospace, monospace';
           ctx.fillText(`slip: +${clip.slip_offset_secs.toFixed(2)}s`, clipStartX + 8, clipY + 26);
         }
 
         ctx.restore();
 
-        // Clip Outline & Selection Ring (4px radius, 1px solid border)
-        ctx.strokeStyle = isSelected ? seriesAccent : tokens.borderStrong;
+        // Clip Outline & Selection Ring (4px radius, 1px solid border; selected = --primary)
+        ctx.strokeStyle = isSelected ? tokens.primary : seriesAccent;
         ctx.lineWidth = isSelected ? 1.5 : 1;
         ctx.beginPath();
         ctx.roundRect(clipStartX, clipY, clipWidth, clipH, 4);
@@ -481,7 +487,7 @@ export function MultitrackCanvas({
         if (dragState && dragState.mode === 'slip_clip' && dragState.target.clip?.id === clip.id) {
           const deltaSecs = dragState.snappedTimeSecs - dragState.startTimeSecs;
           ctx.save();
-          ctx.fillStyle = tokens.accentPurple;
+          ctx.fillStyle = tokens.purple;
           ctx.strokeStyle = tokens.borderStrong;
           ctx.lineWidth = 1;
           const badgeX = clipStartX + clipWidth / 2 - 45;
@@ -491,7 +497,7 @@ export function MultitrackCanvas({
           ctx.fill();
           ctx.stroke();
 
-          ctx.fillStyle = tokens.textOnAccent;
+          ctx.fillStyle = tokens.primaryFg;
           ctx.font = '600 10px ui-monospace, monospace';
           ctx.textAlign = 'center';
           ctx.fillText(`⇄ ${deltaSecs >= 0 ? '+' : ''}${deltaSecs.toFixed(3)}s`, badgeX + 45, badgeY + 14);
@@ -499,7 +505,7 @@ export function MultitrackCanvas({
         }
 
         // Trim Handle indicators
-        ctx.fillStyle = isSelected ? seriesAccent : tokens.borderStrong;
+        ctx.fillStyle = isSelected ? tokens.primary : tokens.borderStrong;
         ctx.fillRect(clipStartX, clipY + clipH / 2 - 8, 3, 16);
         ctx.fillRect(clipStartX + clipWidth - 3, clipY + clipH / 2 - 8, 3, 16);
       });
@@ -522,11 +528,11 @@ export function MultitrackCanvas({
 
         ctx.save();
         ctx.globalAlpha = 0.25;
-        ctx.fillStyle = tokens.tintSky;
+        ctx.fillStyle = tokens.chipSky;
         ctx.fillRect(selX1, f1Y, selW, selH);
         ctx.globalAlpha = 1;
 
-        ctx.strokeStyle = tokens.accentSky;
+        ctx.strokeStyle = tokens.sky;
         ctx.lineWidth = 1.5;
         ctx.setLineDash([3, 2]);
         ctx.strokeRect(selX1, f1Y, selW, selH);
@@ -545,7 +551,7 @@ export function MultitrackCanvas({
         ctx.fill();
         ctx.stroke();
 
-        ctx.fillStyle = tokens.accentSky;
+        ctx.fillStyle = tokens.skyText;
         ctx.font = '600 9px ui-monospace, monospace';
         ctx.textAlign = 'center';
         ctx.fillText(`fc:${Math.round(sel.center_freq_hz)}Hz Q:${sel.q_factor.toFixed(2)}`, hudX + hudW / 2, hudY + 11);
@@ -560,10 +566,10 @@ export function MultitrackCanvas({
       const selW = Math.max(2, (timeline.selection.end_secs - timeline.selection.start_secs) * zoom);
       ctx.save();
       ctx.globalAlpha = 0.35;
-      ctx.fillStyle = tokens.tintBlue;
+      ctx.fillStyle = tokens.primaryTint;
       ctx.fillRect(selX, RULER_HEIGHT, selW, height - RULER_HEIGHT);
       ctx.restore();
-      ctx.strokeStyle = tokens.accentBlue;
+      ctx.strokeStyle = tokens.primary;
       ctx.strokeRect(selX, RULER_HEIGHT, selW, height - RULER_HEIGHT);
     }
 
@@ -598,9 +604,9 @@ export function MultitrackCanvas({
     if (timeline.loop_range) {
       const loopX = timeToPixels(timeline.loop_range.start_secs, zoom, scrollX, TRACK_HEADER_WIDTH);
       const loopW = (timeline.loop_range.end_secs - timeline.loop_range.start_secs) * zoom;
-      ctx.fillStyle = tokens.tintAmber;
+      ctx.fillStyle = tokens.primaryTint;
       ctx.fillRect(loopX, 0, loopW, RULER_HEIGHT);
-      ctx.strokeStyle = tokens.accentAmber;
+      ctx.strokeStyle = tokens.amber;
       ctx.lineWidth = 1.5;
       ctx.strokeRect(loopX, 0, loopW, RULER_HEIGHT);
     }
@@ -608,7 +614,7 @@ export function MultitrackCanvas({
     // Markers on Ruler
     timeline.markers.forEach((m) => {
       const mX = timeToPixels(m.time_secs, zoom, scrollX, TRACK_HEADER_WIDTH);
-      ctx.fillStyle = tokens.accentPurple;
+      ctx.fillStyle = tokens.purple;
       ctx.beginPath();
       ctx.moveTo(mX, 0);
       ctx.lineTo(mX + 6, 6);
@@ -627,7 +633,7 @@ export function MultitrackCanvas({
     // 7. Linear Red Playhead & Top Triangle Handle
     const playheadX = timeToPixels(currentTimeSecs, zoom, scrollX, TRACK_HEADER_WIDTH);
     if (playheadX >= TRACK_HEADER_WIDTH && playheadX <= width) {
-      ctx.fillStyle = tokens.accentRed;
+      ctx.fillStyle = tokens.red;
       ctx.beginPath();
       ctx.moveTo(playheadX - 5, 0);
       ctx.lineTo(playheadX + 5, 0);
@@ -635,7 +641,7 @@ export function MultitrackCanvas({
       ctx.closePath();
       ctx.fill();
 
-      ctx.strokeStyle = tokens.accentRed;
+      ctx.strokeStyle = tokens.red;
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(playheadX, 0);
@@ -646,7 +652,7 @@ export function MultitrackCanvas({
     // 8. Snap Line indicator
     if (dragState && dragState.snappedTimeSecs !== dragState.currentTimeSecs) {
       const snapLineX = timeToPixels(dragState.snappedTimeSecs, zoom, scrollX, TRACK_HEADER_WIDTH);
-      ctx.strokeStyle = tokens.accentAmber;
+      ctx.strokeStyle = tokens.amber;
       ctx.setLineDash([4, 4]);
       ctx.lineWidth = 1;
       ctx.beginPath();

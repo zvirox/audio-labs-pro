@@ -139,9 +139,9 @@ export function WaveformCanvas({
     if (selectionEnd > selectionStart) {
       const selX1 = ((selectionStart - viewStart) / viewDuration) * width;
       const selX2 = ((selectionEnd - viewStart) / viewDuration) * width;
-      ctx.fillStyle = tokens.tintSky;
+      ctx.fillStyle = tokens.chipSky;
       ctx.fillRect(selX1, waveTop, selX2 - selX1, waveHeight);
-      ctx.strokeStyle = tokens.accentSky;
+      ctx.strokeStyle = tokens.sky;
       ctx.strokeRect(selX1, waveTop, selX2 - selX1, waveHeight);
     }
 
@@ -149,11 +149,11 @@ export function WaveformCanvas({
     if (loopEnabled && loopEnd > loopStart) {
       const loopX1 = ((loopStart - viewStart) / viewDuration) * width;
       const loopX2 = ((loopEnd - viewStart) / viewDuration) * width;
-      ctx.fillStyle = tokens.tintPurple;
+      ctx.fillStyle = tokens.primaryTint;
       ctx.fillRect(loopX1, waveTop, loopX2 - loopX1, waveHeight);
 
       // Loop boundary markers
-      ctx.strokeStyle = tokens.accentPurple;
+      ctx.strokeStyle = tokens.primary;
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(loopX1, waveTop);
@@ -168,7 +168,7 @@ export function WaveformCanvas({
       const bucketSamples = activeLevel.bucket_samples;
       const totalPairs = activeLevel.pairs.length;
 
-      ctx.fillStyle = accentColor || tokens.accentSky;
+      ctx.fillStyle = accentColor || tokens.sky;
 
       const visibleStartFrame = viewStart * peaks.sample_rate;
       const visibleEndFrame = (viewStart + viewDuration) * peaks.sample_rate;
@@ -240,7 +240,7 @@ export function WaveformCanvas({
     // 6. Red Playhead Line & Cursor Flag (zero glow)
     const playheadX = ((currentTime - viewStart) / viewDuration) * width;
     if (playheadX >= 0 && playheadX <= width) {
-      ctx.strokeStyle = tokens.accentRed;
+      ctx.strokeStyle = tokens.red;
       ctx.lineWidth = 1.5;
 
       ctx.beginPath();
@@ -248,7 +248,7 @@ export function WaveformCanvas({
       ctx.lineTo(playheadX, canvasHeight);
       ctx.stroke();
 
-      ctx.fillStyle = tokens.accentRed;
+      ctx.fillStyle = tokens.red;
       ctx.beginPath();
       ctx.moveTo(playheadX - 5, 0);
       ctx.lineTo(playheadX + 5, 0);
@@ -368,7 +368,7 @@ export function WaveformCanvas({
   };
 
   return (
-    <div ref={containerRef} className="relative w-full flex flex-col select-none bg-[var(--bg-surface-2)] rounded-lg border border-[var(--border)] overflow-hidden">
+    <div ref={containerRef} className="relative w-full flex flex-col select-none bg-surface-2 rounded-lg border border-border overflow-hidden">
       {/* Waveform Canvas */}
       <canvas
         ref={canvasRef}
@@ -384,15 +384,15 @@ export function WaveformCanvas({
 
       {/* Viewport Telemetry Overlay */}
       <div className="absolute top-2 right-3 flex items-center gap-2 pointer-events-none text-[11px] font-mono">
-        <span className="px-1.5 py-0.5 rounded bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border)] tabular-nums">
+        <span className="px-1.5 py-0.5 rounded bg-surface text-muted border border-border tabular-nums">
           Level: {activeLevel?.bucket_samples} spl ({peaks.levels.indexOf(activeLevel)})
         </span>
         {isPlaying && (
           <span
             className={`px-1.5 py-0.5 rounded font-medium border tabular-nums ${
               fps >= 55
-                ? 'bg-[var(--bg-surface)] text-[var(--text-muted)] border-[var(--border-strong)]'
-                : 'bg-[var(--tint-amber)] text-[var(--accent-amber)] border-[var(--accent-amber)]'
+                ? 'bg-surface text-muted border-border-strong'
+                : 'bg-surface-2 text-amber border-amber'
             }`}
           >
             {fps} FPS
