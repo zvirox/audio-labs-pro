@@ -10,8 +10,11 @@ publish.workspace = true
 
 [dependencies]
 alp-core.workspace = true
+bytes.workspace = true
 flacenc.workspace = true
 hound.workspace = true
+mp4.workspace = true
+oxideav-aac.workspace = true
 rubato.workspace = true
 symphonia.workspace = true
 thiserror.workspace = true

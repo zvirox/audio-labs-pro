@@ -10,6 +10,7 @@ mod decode;
 mod dither;
 mod error;
 mod export;
+mod m4b;
 mod pcm;
 mod peaks;
 mod resample;
@@ -22,6 +23,9 @@ pub use decode::{MediaInfo, decode, decode_path, probe};
 pub use dither::DitherMode;
 pub use error::MediaError;
 pub use export::{AudioMetadata, ExportFormat, ExportPreset, ExportReport, ExportSettings, export};
+pub use m4b::{
+    CoverFormat, M4bChapter, M4bCover, M4bExportReport, M4bMetadata, export_m4b,
+};
 pub use pcm::PcmBuffer;
 pub use peaks::{
     BASE_BUCKET, CACHE_MAGIC, CACHE_VERSION, LEVEL_COUNT, PeakBuilder, PeakLevel, PeakPyramid,

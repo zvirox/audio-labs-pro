@@ -22,6 +22,9 @@ editing, **P4-P8** used by multitrack, DSP, TTS, dictation, and voice profiles,
 | rtrb | 0.4.0 | MIT OR Apache-2.0 | P1 | lock-free SPSC ring buffer |
 | symphonia | 0.6.1 | MPL-2.0 | P1 | decoding (unmodified; file-level copyleft only) |
 | hound | 3.5.1 | Apache-2.0 | P1 | WAV read/write |
+| mp4 | 0.14.0 | MIT | P1 | ISO-BMFF/M4B container writer |
+| oxideav-aac | 0.1.7 | MIT | P1 | Pure-Rust AAC-LC encoder for M4B audio |
+| bytes | 1.x | MIT | P1 | Byte buffers for MP4 samples |
 | rubato | 5.0.1 | MIT OR Apache-2.0 | P1 | offline FFT resampling |
 | crane-core | 26.9.0 | MIT | P0 | validated Candle Qwen3-TTS neural cloning runtime, pinned exactly |
 | ort | 2.0.0-rc.15 | MIT OR Apache-2.0 | P0 | ONNX Runtime bindings; Phase 6 |
