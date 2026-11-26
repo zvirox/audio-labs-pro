@@ -24,6 +24,7 @@ pub mod sandbox;
 pub mod script_voice_ops;
 pub mod session;
 pub mod smart_edit_ops;
+pub mod studio_ops;
 pub mod track_clip_ops;
 pub mod types;
 pub mod voice;
@@ -48,6 +49,10 @@ pub use project_ops::{HistoryEntry, ProjectListItem};
 pub use sandbox::WorkspaceSandbox;
 pub use script_voice_ops::{ScriptGenerateReport, ScriptLine, ScriptRegenerateReport};
 pub use session::{ApiSession, AttachedProjectState};
+pub use studio_ops::{
+    AcxChapterFileDto, EqBandDto, EqResponseDto, M4bChapterDto, M4bExportRequestDto,
+    M4bMetadataDto, compute_eq_response,
+};
 pub use track_clip_ops::{
     BatchOp, ClipSlipReport, EditBatchReport, PanEnvelopeReport, SpectralSelectionReport,
     ViewModeReport,
