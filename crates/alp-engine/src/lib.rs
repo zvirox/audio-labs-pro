@@ -9,6 +9,7 @@ mod command;
 mod device;
 mod error;
 mod insert_rack;
+mod macro_chain;
 mod mixer;
 mod render;
 mod scene;
@@ -26,6 +27,10 @@ pub use device::{
 pub use error::EngineError;
 pub use insert_rack::{
     INSERT_PARAM_COUNT, InsertRack, InsertRackControl, InsertSlotInfo, MAX_INSERT_SLOTS,
+    effect_from_ref,
+};
+pub use macro_chain::{
+    MacroChain, MacroFileResult, MacroReport, MacroRequest, MacroStep, process_directory,
 };
 pub use mixer::{Mixer, TrackMeter, TrackMeterBank};
 pub use render::{DEFAULT_BLOCK_FRAMES, RenderReport, render_scene, render_scene_to_wav};

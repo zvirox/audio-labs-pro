@@ -139,6 +139,21 @@ impl InsertEffect {
         }
     }
 
+    fn into_boxed(self) -> Box<dyn Effect> {
+        match self {
+            Self::Gain(effect) => Box::new(effect),
+            Self::Eq(effect) => Box::new(effect),
+            Self::Compressor(effect) => Box::new(effect),
+            Self::Limiter(effect) => Box::new(effect),
+            Self::DeEsser(effect) => Box::new(effect),
+            Self::DeHum(effect) => Box::new(effect),
+            Self::DeClick(effect) => Box::new(effect),
+            Self::Gate(effect) => Box::new(effect),
+            Self::Notch(effect) => Box::new(effect),
+            Self::Harmonic(effect) => Box::new(effect),
+        }
+    }
+
     fn apply_param(&mut self, index: usize, value: f32) {
         match self {
             Self::Gain(effect) if index == 0 => {
@@ -337,6 +352,14 @@ fn build_effect(effect: &EffectRef) -> (InsertEffect, Vec<(String, f32)>) {
             )
         }
     }
+}
+
+/// Build a boxed DSP effect from an `EffectRef` for offline chains.
+///
+/// Unknown kinds fall back to unity gain (matching live insert behaviour).
+#[must_use]
+pub fn effect_from_ref(effect: &EffectRef) -> Box<dyn alp_dsp::Effect> {
+    build_effect(effect).0.into_boxed()
 }
 
 impl InsertRack {
