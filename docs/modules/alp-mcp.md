@@ -33,12 +33,12 @@ Malformed JSON returns standard JSON-RPC errors. Tool-domain failures return `is
 
 ## Testing
 
-`cargo test -p alp-mcp` covers the shared catalog, schemas, dispatch, tools, limits and headless workflows. `alp-ui` production-socket tests exercise the shared dispatcher using attached workers, live history, media-source audio reconciliation, operator/AI notifications, conflict refusal, revocation and structural edit latency.
+`cargo test -p alp-mcp` covers the shared catalog, schemas, dispatch, tools, limits and headless workflows. Live attach tests exercise the shared dispatcher against attached workers, including history, media-source reconciliation, conflict refusal and revocation. `bash scripts/mcp-eval.sh` runs the 8 legacy suites plus 25 named Phase 18 scenarios over real stdio and writes `target/mcp_eval_results.json`.
 
 ## Known limits
 
 - Stdio is implemented; Streamable HTTP is not.
 - Attach currently serializes calls per connection and does not implement general cancellation or request pipelining.
 - MCP initialization/cancellation behavior, true per-call timeouts and bounded concurrent jobs remain incomplete.
-- No `outputSchema`, ~20 KB text cap, or full evaluation/golden-artifact suite yet.
+- No `outputSchema` or ~20 KB text cap yet; the 25-scenario evaluation/convergence suite lives in `scripts/mcp_eval_scenarios.py`.
 - Latency metadata measures request-to-live-commit/view-model readiness, not actual pixel/audio presentation.

@@ -9,10 +9,7 @@ use serde_json::{Value, json};
 use crate::protocol::ToolCallResult;
 
 /// Parse and dispatch a DSP macro batch call.
-pub(crate) fn dispatch_dsp_macro(
-    session: &mut ApiSession,
-    arguments: &Value,
-) -> ToolCallResult {
+pub(crate) fn dispatch_dsp_macro(session: &mut ApiSession, arguments: &Value) -> ToolCallResult {
     let input_dir = arguments
         .get("input_dir")
         .and_then(Value::as_str)
@@ -39,15 +36,14 @@ pub(crate) fn dispatch_dsp_macro(
             return ToolCallResult::failure("each step requires effect_id");
         };
         let params = step.get("params").cloned().unwrap_or_else(|| json!({}));
-        let params: std::collections::BTreeMap<String, f64> =
-            match serde_json::from_value(params) {
-                Ok(params) => params,
-                Err(error) => {
-                    return ToolCallResult::failure(format!(
-                        "invalid parameters for {effect_id}: {error}"
-                    ));
-                }
-            };
+        let params: std::collections::BTreeMap<String, f64> = match serde_json::from_value(params) {
+            Ok(params) => params,
+            Err(error) => {
+                return ToolCallResult::failure(format!(
+                    "invalid parameters for {effect_id}: {error}"
+                ));
+            }
+        };
         steps.push(MacroStep {
             effect_id: effect_id.to_owned(),
             params,

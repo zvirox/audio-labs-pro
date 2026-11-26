@@ -12,6 +12,11 @@ versions follow the release milestones in the build plan.
   parenting bridge, offline `MacroChain` directory batches with the
   `dsp_macro_execute` MCP job tool, and batch macro controls in Effects.
 
+- **Phase 18 — Long-Horizon Verification & Fuzzing.** 25 named MCP scenarios
+  with deterministic convergence and deep rollback checks, a machine-readable
+  eval report, an ignored 24-hour-equivalent playback soak, and proptest
+  harnesses for project JSON, sample blocks and media decoders.
+
 ### Added
 
 - **Phase 16 — Neural Stem Separation & Video Dubbing Pipeline.** WSOLA
@@ -139,7 +144,7 @@ versions follow the release milestones in the build plan.
 - **Phase 16 (`v0.1.0-beta.1`):** Audiobook Studio with EPUB/Markdown ingestion, multi-character cast tagging, cadence pacing rules, and M4B container packaging with QuickTime chapter markers.
 - **Phase 17 (`v0.1.0-beta.2`):** Video Dubbing with Demucs v4 4-stem separation, sync-locked label tracks (SRT/VTT), speech-to-speech dubbing with rate fitting, and FFmpeg video remux.
 - **Phase 18 (`v0.1.0-beta.3`):** VST3 plugin hosting engine, native X11/Wayland plugin window embedding, and scriptable DSP macro batch processing.
-- **Phase 19 (`v1.0.0-rc.1` / `v1.0.0`):** Full MCP autonomous agent tool coverage across all studio features, multi-step eval benchmarks, 24-hour stability soaks, and multi-distro release packaging.
+- **Phase 19 (`v1.0.0-rc.1` / `v1.0.0`):** Full MCP autonomous agent tool coverage across all studio features and multi-distro release packaging (eval/soak work was pulled forward into Phase 18).
 - Complete roadmap and execution checklists: see [`docs/ADOPTION_PLAN.md`](docs/ADOPTION_PLAN.md) and [`REAVSA.md`](REAVSA.md).
 
 ## [0.0.1-alpha.7] - 2026-11-23

@@ -225,6 +225,7 @@ dependencies = [
  "hound",
  "mp4",
  "oxideav-aac",
+ "proptest",
  "rubato",
  "serde",
  "symphonia",

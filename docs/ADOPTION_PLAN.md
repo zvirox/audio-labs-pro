@@ -52,11 +52,11 @@
 
 ### Phase 17 — VST3 Plugin Host & Batch Macros (implemented, pending release)
 - [x] **VST3 Host Engine (`alp-plugin`):**
-  - [x] Discover and instantiate `.vst3` modules in `/usr/lib/vst3` and `~/.vst3` alongside existing CLAP/LV2 hosts.
+  - [x] Discover `.vst3` bundles in `/usr/lib/vst3` and `~/.vst3` alongside existing CLAP/LV2 hosts (instantiation explicitly unsupported in this build).
   - [x] Native X11/XWayland external plugin GUI window parenting bridge in `alp-desktop`.
 - [x] **DSP Macro Batch Queue (`alp-engine`, `alp-mcp`):**
   - [x] Implement `MacroChain` directory batch processing pipeline and expose `dsp_macro_execute` via MCP.
 
-### Phase 18 — Long-Horizon Verification & Fuzzing
-- [ ] **Automated 25-Scenario MCP Eval (`mcp_eval.py`):** End-to-end tool sequence benchmarks verifying deterministic state convergence and single-entry undo rollback.
-- [ ] **Stability Soak & Fuzzing:** 24-hour continuous playback memory/drop-frame soak test and fuzz harnesses for `.alpproj` JSON/SQLite deserializers and media decoders.
+### Phase 18 — Long-Horizon Verification & Fuzzing (implemented, pending release)
+- [x] **Automated 25-Scenario MCP Eval (`mcp_eval.py`):** End-to-end tool sequence benchmarks verifying deterministic state convergence and single-entry undo rollback.
+- [x] **Stability Soak & Fuzzing:** 24-hour continuous playback memory/drop-frame soak test and fuzz harnesses for `.alpproj` JSON/SQLite deserializers and media decoders.

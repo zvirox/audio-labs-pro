@@ -4,9 +4,9 @@
 //! attached operation never gets a reduced or separately maintained tool list.
 
 mod dispatch;
-mod macro_dispatch;
 pub mod limits;
 pub mod live;
+mod macro_dispatch;
 pub mod protocol;
 pub mod server;
 pub mod starship;

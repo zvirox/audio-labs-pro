@@ -48,5 +48,5 @@
 
 
 ### Verification, Soak & QA
-- [ ] Automated 25-scenario MCP evaluation benchmark suite with full rollback verification (`mcp_eval.py`).
-- [ ] 24-hour continuous multitrack playback soak test and decoder/project parser fuzzing targets.
+- [x] 25-scenario MCP evaluation suite with convergence, single-entry undo and full rollback verification (`scripts/mcp_eval_scenarios.py`).
+- [x] 24-hour-equivalent playback soak, project/block and media decoder fuzz targets (`scripts/phase18-demo.sh`).
