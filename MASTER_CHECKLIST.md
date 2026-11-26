@@ -32,6 +32,7 @@
 - [x] **Phase 10 (MCP Host & Starship Bridge):** 68 typed tools (`tool_defs.rs`), Observe / Edit / Export permission tiers, token auth, UI attach approval flow, audit JSONL log, `starship.rs` Unix socket plugin registration (`$XDG_RUNTIME_DIR/starship/bridges/alp.sock`).
 - [x] **Phase 11 (Plugin Hosting):** CLAP and LV2 plugin discovery and real-time host integration in `alp-plugin`.
 - [x] **M0–M8 (Tauri v2 Migration & Legacy Removal):** Full cutover from `iced` (`alp-ui` / `alp-ui-kit` removed) to Tauri v2 + React 19 + TypeScript; unified Linux packaging via `packaging/nfpm.yaml` (`.deb`, `.rpm`, `.pkg.tar.zst`).
+- [x] **Phase 14 (Spectral Repair & Insert Racks):** `alp-dsp::repair` notch/harmonic STFT effects, `alp-engine::insert_rack` with 8 lock-free controlled slots, and `EffectsWorkspace` native magnitude/phase curve from real `Coefficients::response` telemetry.
 - [x] **Linear UI Finalization & Lock:**
   - [x] `TitleBar` (40 px, app mark + version from `tauri.conf.json`, sole `ThemeToggle` storing `ui-theme`, clean drag region, minimize/maximize/`#E5484D` close).
   - [x] Collapsible `Sidebar` (240 px / 56 px, 36 px items, workspace switcher), `Breadcrumb`, `SubtabTopBar`, `InspectorDrawer`, `DockedPlayer`, `CommandPalette` (cmdk), `ShortcutsModal`.
@@ -41,11 +42,6 @@
 ---
 
 ## Remaining Work (Actually Pending Features)
-
-### DSP & Spectral Repair (Next Functional Extensions)
-- [ ] Real-time per-track `InsertRack` effect slot routing (up to 8 live insert slots per track in `alp-engine`).
-- [ ] Spectral notch & harmonic suppressor filter DSP (`SpectralNotchFilter`, `HarmonicSuppressor` acting on 2D `SpectralSelection` boxes).
-- [ ] Live graphical EQ frequency-response & phase curve overlay in `EffectsWorkspace` wired to real `BiquadChain` telemetry.
 
 ### Production Workflows (Audiobooks, Video Dubbing & External Plugins)
 - [ ] Native M4B audiobook packaging muxer (`chpl` chapter atoms + cover art + ID3 tags) in `alp-media`.

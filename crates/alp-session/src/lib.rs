@@ -9,6 +9,7 @@
 //! - [`TransportController`]: audio playback coordination, meter streaming, and peak pyramids.
 
 pub mod ai;
+pub mod effects;
 pub mod jobs;
 pub mod panels;
 pub mod session;
@@ -21,6 +22,7 @@ pub use alp_api::PermissionTier;
 pub use alp_api::ProjectSummary;
 pub use alp_api::control::ApprovalDecision;
 pub use alp_dsp::spectral::{FrequencyScale, SpectrogramConfig, SpectrogramData, WindowType};
+pub use effects::{BiquadBandDto, BiquadResponseDto, compute_biquad_response};
 pub use jobs::{Job, JobQueue, JobReporter, JobStatus};
 pub use panels::{DockSide, PanelKind, PanelManager, PanelRect, PanelState, Point, Size};
 pub use session::{EditSession, ImportedAudio, NORMALIZE_TARGET};

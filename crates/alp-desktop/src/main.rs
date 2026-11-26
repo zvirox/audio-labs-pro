@@ -11,18 +11,18 @@ use alp_session::AiEvent;
 use tauri::{Emitter, Manager};
 
 use crate::commands::{
-    SessionRevisionPayload, get_ai_activity_log, get_ai_status, get_benchmark_1hour_peaks,
-    get_clip_spectrogram, get_glass_report, get_project_summary, get_timeline_state,
-    get_transport_state, get_waveform_peaks, get_workspace_state, pause_transport, play_transport,
-    reset_workspace_layout, respond_ai_approval, save_workspace_state, seek_transport,
-    set_ai_permission_tier, set_transport_loop, set_transport_volume, stop_transport,
-    subscribe_meters, timeline_add_marker, timeline_copy, timeline_cut, timeline_delete_selected,
-    timeline_move_clip, timeline_paste, timeline_redo, timeline_remove_marker,
-    timeline_select_clip, timeline_set_clip_envelope, timeline_set_clip_fades,
-    timeline_set_clip_pan_envelope, timeline_set_loop_range, timeline_set_selection,
-    timeline_set_spectral_selection, timeline_set_track_view_mode, timeline_slip_clip,
-    timeline_split_clip, timeline_trim_clip, timeline_undo, toggle_ai_control, trigger_demo_edit,
-    undo_ai_change,
+    SessionRevisionPayload, effects_get_response, get_ai_activity_log, get_ai_status,
+    get_benchmark_1hour_peaks, get_clip_spectrogram, get_glass_report, get_project_summary,
+    get_timeline_state, get_transport_state, get_waveform_peaks, get_workspace_state,
+    pause_transport, play_transport, reset_workspace_layout, respond_ai_approval,
+    save_workspace_state, seek_transport, set_ai_permission_tier, set_transport_loop,
+    set_transport_volume, stop_transport, subscribe_meters, timeline_add_marker, timeline_copy,
+    timeline_cut, timeline_delete_selected, timeline_move_clip, timeline_paste, timeline_redo,
+    timeline_remove_marker, timeline_select_clip, timeline_set_clip_envelope,
+    timeline_set_clip_fades, timeline_set_clip_pan_envelope, timeline_set_loop_range,
+    timeline_set_selection, timeline_set_spectral_selection, timeline_set_track_view_mode,
+    timeline_slip_clip, timeline_split_clip, timeline_trim_clip, timeline_undo, toggle_ai_control,
+    trigger_demo_edit, undo_ai_change,
 };
 use crate::glass::probe;
 use crate::state::AppState;
@@ -108,6 +108,7 @@ fn main() {
             set_transport_loop,
             get_transport_state,
             get_waveform_peaks,
+            effects_get_response,
             get_benchmark_1hour_peaks,
             subscribe_meters,
             get_timeline_state,

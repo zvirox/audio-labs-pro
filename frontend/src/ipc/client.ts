@@ -20,6 +20,8 @@ import type {
   VoiceProfile,
   ConsentRecord,
   EffectStage,
+  BiquadBandDto,
+  BiquadResponseDto,
   DiscoveredPlugin,
   CaptureTake,
   TranscriptWord,
@@ -654,6 +656,60 @@ export async function getEffectsChain(): Promise<EffectStage[]> {
       params: { ceiling: -1.0, release: 50 },
     },
   ];
+}
+
+function mockBiquadResponse(
+  bands: BiquadBandDto[],
+  sampleRate: number,
+  points: number,
+): BiquadResponseDto {
+  const frequencies_hz: number[] = [];
+  const magnitude_db: number[] = [];
+  const phase_deg: number[] = [];
+  const minHz = 20;
+  const maxHz = Math.min(20_000, sampleRate * 0.495);
+  for (let i = 0; i < points; i += 1) {
+    const frequency = minHz * (maxHz / minHz) ** (i / Math.max(1, points - 1));
+    let db = 0;
+    let phase = 0;
+    for (const band of bands) {
+      if (!band.enabled || band.frequency_hz <= 0) continue;
+      const ratio = Math.log2(frequency / band.frequency_hz);
+      const width = Math.max(0.35, 1 / Math.max(band.q, 0.1));
+      const bell = Math.max(0, 1 - Math.abs(ratio) / width) ** 2;
+      if (band.filter_type === 'lowpass') {
+        if (ratio > 0) db -= Math.min(48, 18 * ratio);
+        phase -= Math.min(90, ratio * 45);
+      } else if (band.filter_type === 'highpass') {
+        if (ratio < 0) db += Math.max(-48, 18 * ratio);
+        phase += Math.min(90, -ratio * 45);
+      } else if (band.filter_type === 'notch') {
+        db -= 40 * bell;
+      } else {
+        db += band.gain_db * bell;
+      }
+    }
+    frequencies_hz.push(frequency);
+    magnitude_db.push(Math.max(-120, Math.min(24, db)));
+    phase_deg.push(Math.max(-360, Math.min(360, phase)));
+  }
+  return { frequencies_hz, magnitude_db, phase_deg };
+}
+
+/** Real biquad magnitude/phase response from the desktop mix engine. */
+export async function getEffectsResponse(
+  bands: BiquadBandDto[],
+  sampleRate = 48_000,
+  points = 160,
+): Promise<BiquadResponseDto> {
+  if (isTauriEnvironment()) {
+    return invoke<BiquadResponseDto>('effects_get_response', {
+      bands,
+      sampleRate,
+      points,
+    });
+  }
+  return mockBiquadResponse(bands, sampleRate, points);
 }
 
 export async function getDiscoveredPlugins(): Promise<DiscoveredPlugin[]> {

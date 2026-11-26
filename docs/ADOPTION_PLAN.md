@@ -29,13 +29,13 @@
 
 ## 2. Active Backlog (What Is Truly Pending)
 
-### Phase 14 — Advanced Spectral Repair & Track Insert Racks
-- [ ] **Real-Time Track Insert Racks (`alp-engine` & `frontend/`):**
-  - [ ] Implement `InsertRack` in `crates/alp-engine/src/insert_rack.rs` (up to 8 live non-destructive insert slots per track with lock-free parameter updates).
-  - [ ] Connect `EffectsWorkspace` EQ/dynamics controls directly to active `BiquadChain` magnitude/phase curve telemetry.
-- [ ] **Targeted 2D Spectral Repair (`alp-dsp`):**
-  - [ ] Implement `SpectralNotchFilter` to attenuate narrow-band tones inside selected `[t1..t2, f1..f2]` spectral boxes.
-  - [ ] Implement `HarmonicSuppressor` for automated fundamental + harmonic overtone attenuation.
+### Phase 14 — Advanced Spectral Repair & Track Insert Racks (implemented, pending release)
+- [x] **Real-Time Track Insert Racks (`alp-engine` & `frontend/`):**
+  - [x] Implement `InsertRack` in `crates/alp-engine/src/insert_rack.rs` (up to 8 live non-destructive insert slots per track with lock-free parameter updates).
+  - [x] Connect `EffectsWorkspace` EQ/dynamics controls directly to active `BiquadChain` magnitude/phase curve telemetry.
+- [x] **Targeted 2D Spectral Repair (`alp-dsp`):**
+  - [x] Implement `SpectralNotchFilter` to attenuate narrow-band tones inside selected `[t1..t2, f1..f2]` spectral boxes.
+  - [x] Implement `HarmonicSuppressor` for automated fundamental + harmonic overtone attenuation.
 
 ### Phase 15 — Audiobook Mastering & Native M4B Packaging
 - [ ] **ACX Automated QA Report:**

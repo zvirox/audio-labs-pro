@@ -8,10 +8,11 @@ use tauri::ipc::Channel;
 use tauri::{AppHandle, Emitter, State};
 
 use alp_session::{
-    AiActivityEntry, AiControlStatus, ApprovalDecision, FrequencyScale, MeterFrame, PanelManager,
-    PermissionTier, PersistedWorkspace, ProjectSummary, Size, SpectralSelectionDto,
-    SpectrogramConfig, SpectrogramData, TimelineDto, TimelinePanPointDto, TransportController,
-    TransportState, WaveformPeaksDto, WindowType,
+    AiActivityEntry, AiControlStatus, ApprovalDecision, BiquadBandDto, BiquadResponseDto,
+    FrequencyScale, MeterFrame, PanelManager, PermissionTier, PersistedWorkspace, ProjectSummary,
+    Size, SpectralSelectionDto, SpectrogramConfig, SpectrogramData, TimelineDto,
+    TimelinePanPointDto, TransportController, TransportState, WaveformPeaksDto, WindowType,
+    compute_biquad_response,
 };
 
 use crate::glass::GlassReport;
@@ -568,6 +569,26 @@ pub fn get_clip_spectrogram(
     }
 
     session.compute_clip_spectrogram_by_id(&clip_id, Some(config))
+}
+
+/// Compute the real biquad magnitude/phase response for the active EQ chain.
+#[tauri::command]
+pub fn effects_get_response(
+    bands: Vec<BiquadBandDto>,
+    sample_rate: Option<u32>,
+    points: Option<usize>,
+    state: State<'_, AppState>,
+) -> Result<BiquadResponseDto, String> {
+    let rate = if let Some(rate) = sample_rate {
+        rate
+    } else {
+        let session = state
+            .session
+            .lock()
+            .map_err(|e| format!("session lock poisoned: {e}"))?;
+        session.project_summary().sample_rate
+    };
+    Ok(compute_biquad_response(&bands, rate, points.unwrap_or(160)))
 }
 
 /// Set view mode (waveform, spectrogram, or split) for a track.

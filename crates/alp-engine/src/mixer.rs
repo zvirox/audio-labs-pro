@@ -189,7 +189,8 @@ impl Mixer {
             .collect();
         let track_count = track_meter_bank.track_ids.len();
         let channels = usize::from(scene.channels());
-        let mut track_insert_racks: Vec<Option<InsertRack>> = (0..track_count).map(|_| None).collect();
+        let mut track_insert_racks: Vec<Option<InsertRack>> =
+            (0..track_count).map(|_| None).collect();
         for (track_id, effects) in scene.insert_racks() {
             if let Some(index) = track_meter_bank
                 .track_ids
@@ -231,10 +232,7 @@ impl Mixer {
 
     /// Lock-free control handle for a track's insert rack, when one exists.
     #[must_use]
-    pub fn insert_control(
-        &self,
-        track_id: alp_core::TrackId,
-    ) -> Option<InsertRackControl> {
+    pub fn insert_control(&self, track_id: alp_core::TrackId) -> Option<InsertRackControl> {
         self.track_meter_bank
             .track_ids
             .iter()
@@ -376,7 +374,8 @@ impl Mixer {
                 if source_channels == 1 {
                     let value = source_samples[source_index] * gain * polarity;
                     for channel in 0..channels {
-                        destination[offset + channel] += value * pan_gain(clip.pan, channel, channels);
+                        destination[offset + channel] +=
+                            value * pan_gain(clip.pan, channel, channels);
                     }
                     if let Some(meter_index) = meter_index
                         && !use_rack

@@ -9,8 +9,14 @@ import { useState, useEffect } from 'react';
 import { Card } from '../kit/Card';
 import { Button } from '../kit/Button';
 import { Slider } from '../kit/Slider';
-import { getEffectsChain, getDiscoveredPlugins } from '../ipc/client';
-import type { EffectStage, DiscoveredPlugin } from '../ipc/types';
+import { getEffectsChain, getDiscoveredPlugins, getEffectsResponse } from '../ipc/client';
+import type {
+  EffectStage,
+  DiscoveredPlugin,
+  BiquadBandDto,
+  BiquadResponseDto,
+} from '../ipc/types';
+import { FrequencyResponseCanvas } from '../components/FrequencyResponseCanvas';
 import {
   Wand2,
   Sliders,
@@ -25,6 +31,7 @@ export function EffectsWorkspace() {
   const [plugins, setPlugins] = useState<DiscoveredPlugin[]>([]);
   const [isRescanning, setIsRescanning] = useState<boolean>(false);
   const [activeStageId, setActiveStageId] = useState<string>('parametric_eq');
+  const [response, setResponse] = useState<BiquadResponseDto | null>(null);
 
   useEffect(() => {
     getEffectsChain().then((s) => {
@@ -49,6 +56,54 @@ export function EffectsWorkspace() {
 
   const activeStage = stages.find((s) => s.id === activeStageId) || stages[0];
   const enabledCount = stages.filter((s) => s.enabled).length;
+
+  const bandsForStage = (stage: EffectStage | undefined): BiquadBandDto[] => {
+    if (!stage) return [];
+    if (stage.id === 'parametric_eq') {
+      return [
+        { filter_type: 'lowshelf', frequency_hz: 120, q: 0.7, gain_db: stage.params.lowGain ?? 0, enabled: stage.enabled },
+        { filter_type: 'peaking', frequency_hz: 1_000, q: 1, gain_db: stage.params.midGain ?? 0, enabled: stage.enabled },
+        { filter_type: 'highshelf', frequency_hz: stage.params.highFreq ?? 8_500, q: 0.7, gain_db: stage.params.highGain ?? 0, enabled: stage.enabled },
+      ];
+    }
+    const frequency = stage.params.frequency ?? stage.params.freq ?? stage.params.highFreq ?? 1_000;
+    const gain = stage.params.gain ?? stage.params.reduction ?? stage.params.threshold ?? 0;
+    return [
+      { filter_type: 'peaking', frequency_hz: frequency, q: 1, gain_db: gain, enabled: stage.enabled },
+    ];
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    getEffectsResponse(bandsForStage(activeStage))
+      .then((data) => {
+        if (!cancelled) setResponse(data);
+      })
+      .catch((error) => console.error('Failed to compute EQ response:', error));
+    return () => {
+      cancelled = true;
+    };
+  }, [activeStage]);
+
+  const setParam = (key: string, value: number) => {
+    setStages((prev) =>
+      prev.map((stage) =>
+        stage.id === activeStageId
+          ? { ...stage, params: { ...stage.params, [key]: value } }
+          : stage
+      )
+    );
+  };
+
+  const sliderFor = (name: string) => {
+    if (name.toLowerCase().includes('freq')) {
+      return { min: 20, max: 20_000, step: 10, unit: 'Hz' };
+    }
+    if (name.toLowerCase().includes('sensitivity') || name.toLowerCase().includes('ratio')) {
+      return { min: 0, max: 12, step: 0.1, unit: '' };
+    }
+    return { min: -36, max: 12, step: 0.5, unit: 'dB' };
+  };
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto p-2 pb-12 select-none">
@@ -146,19 +201,22 @@ export function EffectsWorkspace() {
             <Card title={`${activeStage.name} Parameters`} subtitle={`Stage Category: ${activeStage.category}`}>
               <div className="space-y-4 text-xs">
                 <div className="grid grid-cols-2 gap-4">
-                  {Object.entries(activeStage.params).map(([paramName, paramVal]) => (
-                    <div key={paramName}>
-                      <Slider
-                        label={paramName}
-                        min={paramName.includes('Freq') ? 20 : -36}
-                        max={paramName.includes('Freq') ? 20000 : 12}
-                        step={0.5}
-                        value={paramVal}
-                        onChange={() => {}}
-                        unit={paramName.includes('Freq') ? 'Hz' : 'dB'}
-                      />
-                    </div>
-                  ))}
+                  {Object.entries(activeStage.params).map(([paramName, paramVal]) => {
+                    const config = sliderFor(paramName);
+                    return (
+                      <div key={paramName}>
+                        <Slider
+                          label={paramName}
+                          min={config.min}
+                          max={config.max}
+                          step={config.step}
+                          value={paramVal}
+                          onChange={(value) => setParam(paramName, value)}
+                          unit={config.unit}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
 
                 <div className="pt-3 border-t border-[var(--color-border)] flex items-center justify-between text-[11px] text-[var(--color-fg-muted)] font-mono">
@@ -170,6 +228,14 @@ export function EffectsWorkspace() {
               </div>
             </Card>
           )}
+
+          {/* Real biquad response curve from alp-dsp */}
+          <Card
+            title="Frequency response"
+            subtitle="Computed from the active BiquadChain coefficients"
+          >
+            <FrequencyResponseCanvas response={response} />
+          </Card>
 
           {/* Hosted CLAP / LV2 Plugins Card */}
           <Card title="Hosted Plugins (CLAP / LV2)" subtitle={`${plugins.length} discovered native Linux audio plugins`}>

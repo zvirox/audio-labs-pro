@@ -11,8 +11,8 @@ use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 use alp_core::EffectRef;
 use alp_dsp::{
-    Compressor, DeClick, DeEsser, DeHum, Effect, FilterType, Gain, HarmonicSuppressor, Limiter,
-    NoiseGate, ParametricEq, SpectralNotchFilter, EqBand,
+    Compressor, DeClick, DeEsser, DeHum, Effect, EqBand, FilterType, Gain, HarmonicSuppressor,
+    Limiter, NoiseGate, ParametricEq, SpectralNotchFilter,
 };
 
 /// Maximum insert slots per track.
@@ -141,7 +141,10 @@ impl InsertEffect {
 
     fn apply_param(&mut self, index: usize, value: f32) {
         match self {
-            Self::Gain(effect) if index == 0 => *effect = Gain::new(value.max(0.0)).unwrap_or_else(|_| Gain::new(1.0).expect("unity gain")),
+            Self::Gain(effect) if index == 0 => {
+                *effect = Gain::new(value.max(0.0))
+                    .unwrap_or_else(|_| Gain::new(1.0).expect("unity gain"))
+            }
             Self::Eq(effect) if index < 3 => {
                 let (frequency, q, gain) = match index {
                     0 => (value, 1.0, 0.0),
@@ -200,7 +203,10 @@ fn build_effect(effect: &EffectRef) -> (InsertEffect, Vec<(String, f32)>) {
 
     match effect.kind.as_str() {
         "gain" => (
-            InsertEffect::Gain(Gain::new(read(params, "gain", 1.0).max(0.0)).unwrap_or_else(|_| Gain::new(1.0).expect("unity gain"))),
+            InsertEffect::Gain(
+                Gain::new(read(params, "gain", 1.0).max(0.0))
+                    .unwrap_or_else(|_| Gain::new(1.0).expect("unity gain")),
+            ),
             named(&[("gain", 1.0)]),
         ),
         "eq" | "parametric_eq" => {
@@ -212,7 +218,11 @@ fn build_effect(effect: &EffectRef) -> (InsertEffect, Vec<(String, f32)>) {
             )]);
             (
                 InsertEffect::Eq(band),
-                named(&[("band0_frequency_hz", 1_000.0), ("band0_q", 1.0), ("band0_gain_db", 0.0)]),
+                named(&[
+                    ("band0_frequency_hz", 1_000.0),
+                    ("band0_q", 1.0),
+                    ("band0_gain_db", 0.0),
+                ]),
             )
         }
         "compressor" => (
@@ -227,7 +237,14 @@ fn build_effect(effect: &EffectRef) -> (InsertEffect, Vec<(String, f32)>) {
                 )
                 .unwrap_or_else(|_| Compressor::voice_default()),
             ),
-            named(&[("threshold_db", -18.0), ("ratio", 3.0), ("attack_ms", 10.0), ("release_ms", 100.0), ("knee_db", 4.0), ("makeup_db", 2.0)]),
+            named(&[
+                ("threshold_db", -18.0),
+                ("ratio", 3.0),
+                ("attack_ms", 10.0),
+                ("release_ms", 100.0),
+                ("knee_db", 4.0),
+                ("makeup_db", 2.0),
+            ]),
         ),
         "limiter" => (
             InsertEffect::Limiter(
@@ -238,7 +255,11 @@ fn build_effect(effect: &EffectRef) -> (InsertEffect, Vec<(String, f32)>) {
                 )
                 .unwrap_or_else(|_| Limiter::new(-1.0, 1.0, 100.0).expect("valid limiter")),
             ),
-            named(&[("ceiling_db", -1.0), ("attack_ms", 1.0), ("release_ms", 100.0)]),
+            named(&[
+                ("ceiling_db", -1.0),
+                ("attack_ms", 1.0),
+                ("release_ms", 100.0),
+            ]),
         ),
         "de_esser" => (
             InsertEffect::DeEsser(
@@ -249,7 +270,11 @@ fn build_effect(effect: &EffectRef) -> (InsertEffect, Vec<(String, f32)>) {
                 )
                 .unwrap_or_else(|_| DeEsser::new(6_000.0, -24.0, 3.0).expect("valid de-esser")),
             ),
-            named(&[("frequency_hz", 6_000.0), ("threshold_db", -24.0), ("ratio", 3.0)]),
+            named(&[
+                ("frequency_hz", 6_000.0),
+                ("threshold_db", -24.0),
+                ("ratio", 3.0),
+            ]),
         ),
         "de_hum" => (
             InsertEffect::DeHum(DeHum::new(read(params, "mains_hz", 50.0))),
@@ -270,7 +295,13 @@ fn build_effect(effect: &EffectRef) -> (InsertEffect, Vec<(String, f32)>) {
                 )
                 .unwrap_or_else(|_| NoiseGate::voice_default()),
             ),
-            named(&[("threshold_db", -40.0), ("attack_ms", 5.0), ("hold_ms", 50.0), ("release_ms", 120.0), ("attenuation_db", 24.0)]),
+            named(&[
+                ("threshold_db", -40.0),
+                ("attack_ms", 5.0),
+                ("hold_ms", 50.0),
+                ("release_ms", 120.0),
+                ("attenuation_db", 24.0),
+            ]),
         ),
         "spectral_notch" => (
             InsertEffect::Notch(SpectralNotchFilter::new(
@@ -278,7 +309,11 @@ fn build_effect(effect: &EffectRef) -> (InsertEffect, Vec<(String, f32)>) {
                 read(params, "bandwidth_q", 8.0).max(0.5),
                 read(params, "reduction_db", 24.0).max(0.0),
             )),
-            named(&[("center_hz", 1_000.0), ("bandwidth_q", 8.0), ("reduction_db", 24.0)]),
+            named(&[
+                ("center_hz", 1_000.0),
+                ("bandwidth_q", 8.0),
+                ("reduction_db", 24.0),
+            ]),
         ),
         "harmonic_suppressor" => (
             InsertEffect::Harmonic(HarmonicSuppressor::new(
@@ -287,7 +322,12 @@ fn build_effect(effect: &EffectRef) -> (InsertEffect, Vec<(String, f32)>) {
                 read(params, "bandwidth_q", 8.0).max(0.5),
                 read(params, "reduction_db", 24.0).max(0.0),
             )),
-            named(&[("fundamental_hz", 220.0), ("harmonics", 4.0), ("bandwidth_q", 8.0), ("reduction_db", 24.0)]),
+            named(&[
+                ("fundamental_hz", 220.0),
+                ("harmonics", 4.0),
+                ("bandwidth_q", 8.0),
+                ("reduction_db", 24.0),
+            ]),
         ),
         _ => {
             tracing::warn!(kind = %effect.kind, "unknown insert effect; using unity gain");

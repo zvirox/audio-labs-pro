@@ -5,6 +5,14 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+### Added
+
+- **Phase 14 — Advanced Spectral Repair & Track Insert Racks.** `alp-dsp::repair` adds
+  `SpectralNotchFilter` and `HarmonicSuppressor` with preallocated STFT masking;
+  `alp-engine::insert_rack` adds eight lock-free per-track insert slots; and
+  `EffectsWorkspace` renders a native magnitude/phase curve from real `Coefficients::response`
+  telemetry via `effects_get_response`.
+
 ## [0.1.0-beta.3] - 2026-11-26
 
 ### Changed & Verified

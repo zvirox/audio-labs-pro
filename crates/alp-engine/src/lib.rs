@@ -25,7 +25,7 @@ pub use device::{
 };
 pub use error::EngineError;
 pub use insert_rack::{
-    INSERT_PARAM_COUNT, MAX_INSERT_SLOTS, InsertRack, InsertRackControl, InsertSlotInfo,
+    INSERT_PARAM_COUNT, InsertRack, InsertRackControl, InsertSlotInfo, MAX_INSERT_SLOTS,
 };
 pub use mixer::{Mixer, TrackMeter, TrackMeterBank};
 pub use render::{DEFAULT_BLOCK_FRAMES, RenderReport, render_scene, render_scene_to_wav};

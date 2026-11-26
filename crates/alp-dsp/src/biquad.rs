@@ -151,6 +151,43 @@ impl Coefficients {
             a2: a2 * inv_a0,
         }
     }
+
+    /// Evaluate the complex frequency response `H(e^jw)` at `frequency_hz`.
+    ///
+    /// Returns `(magnitude_db, phase_degrees)`. The magnitude is clamped to a
+    /// `-120..24 dB` display range; phase is wrapped to `(-180, 180]`.
+    #[must_use]
+    pub fn response(&self, sample_rate: u32, frequency_hz: f32) -> (f32, f32) {
+        if sample_rate == 0 || !frequency_hz.is_finite() || frequency_hz <= 0.0 {
+            return (0.0, 0.0);
+        }
+        let omega = 2.0 * PI * (frequency_hz / sample_rate as f32);
+        let cos_w = omega.cos();
+        let sin_w = omega.sin();
+        let cos_2w = (2.0 * omega).cos();
+        let sin_2w = (2.0 * omega).sin();
+
+        let numerator_re = self.b0 + self.b1 * cos_w + self.b2 * cos_2w;
+        let numerator_im = -self.b1 * sin_w - self.b2 * sin_2w;
+        let denominator_re = 1.0 + self.a1 * cos_w + self.a2 * cos_2w;
+        let denominator_im = -self.a1 * sin_w - self.a2 * sin_2w;
+
+        let numerator_power = numerator_re * numerator_re + numerator_im * numerator_im;
+        let denominator_power = denominator_re * denominator_re + denominator_im * denominator_im;
+        let magnitude = (numerator_power / denominator_power.max(1e-12))
+            .sqrt()
+            .max(1e-6);
+        let magnitude_db = (20.0 * magnitude.log10()).clamp(-120.0, 24.0);
+        let mut phase =
+            (numerator_im.atan2(numerator_re) - denominator_im.atan2(denominator_re)) * 180.0 / PI;
+        while phase <= -180.0 {
+            phase += 360.0;
+        }
+        while phase > 180.0 {
+            phase -= 360.0;
+        }
+        (magnitude_db, phase)
+    }
 }
 
 /// Single-channel biquad filter state.
@@ -270,6 +307,28 @@ impl Biquad {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn frequency_response_matches_filter_shape() {
+        let low_pass = Coefficients::design(FilterType::LowPass, 48_000, 1_000.0, 0.707, 0.0);
+        let (low_db, _) = low_pass.response(48_000, 100.0);
+        let (high_db, _) = low_pass.response(48_000, 10_000.0);
+        assert!(
+            (low_db).abs() < 1.0,
+            "passband should be near unity, got {low_db}"
+        );
+        assert!(
+            high_db < -20.0,
+            "stopband should be attenuated, got {high_db}"
+        );
+
+        let notch = Coefficients::design(FilterType::Notch, 48_000, 1_000.0, 8.0, 0.0);
+        let (notch_db, _) = notch.response(48_000, 1_000.0);
+        assert!(
+            notch_db < -30.0,
+            "notch centre should be deep, got {notch_db}"
+        );
+    }
 
     #[test]
     fn high_pass_attenuates_low_frequencies() {

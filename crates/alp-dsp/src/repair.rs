@@ -13,8 +13,8 @@ use std::sync::Arc;
 use realfft::num_complex::Complex32;
 use realfft::{ComplexToReal, RealFftPlanner, RealToComplex};
 
-use crate::denoise::{SPECTRAL_BINS, SPECTRAL_FFT_SIZE, SPECTRAL_HOP_SIZE};
 use crate::Effect;
+use crate::denoise::{SPECTRAL_BINS, SPECTRAL_FFT_SIZE, SPECTRAL_HOP_SIZE};
 
 /// Which repair mask is applied to the selected region.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -225,11 +225,7 @@ impl SpectralRepair {
         let r2c = planner.plan_fft_forward(SPECTRAL_FFT_SIZE);
         let c2r = planner.plan_fft_inverse(SPECTRAL_FFT_SIZE);
         let window = (0..SPECTRAL_FFT_SIZE)
-            .map(|i| {
-                0.5
-                    * (1.0
-                        - (2.0 * PI * i as f32 / SPECTRAL_FFT_SIZE as f32).cos())
-            })
+            .map(|i| 0.5 * (1.0 - (2.0 * PI * i as f32 / SPECTRAL_FFT_SIZE as f32).cos()))
             .collect();
         let scratch = RepairScratch::new(r2c.as_ref(), c2r.as_ref());
 
@@ -489,12 +485,7 @@ pub struct HarmonicSuppressor(SpectralRepair);
 impl HarmonicSuppressor {
     /// Create a suppressor for `fundamental_hz` and its first `harmonics` partials.
     #[must_use]
-    pub fn new(
-        fundamental_hz: f32,
-        harmonics: usize,
-        bandwidth_q: f32,
-        reduction_db: f32,
-    ) -> Self {
+    pub fn new(fundamental_hz: f32, harmonics: usize, bandwidth_q: f32, reduction_db: f32) -> Self {
         Self(SpectralRepair::harmonic(
             fundamental_hz,
             harmonics,

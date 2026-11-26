@@ -7,7 +7,9 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use alp_core::{EffectRef, EnvelopePoint, FrameRange, Project, SourceId, frames_to_secs, secs_to_frames};
+use alp_core::{
+    EffectRef, EnvelopePoint, FrameRange, Project, SourceId, frames_to_secs, secs_to_frames,
+};
 use alp_media::{PcmBuffer, resample};
 
 use crate::error::EngineError;
@@ -319,10 +321,7 @@ impl MixScene {
 
     /// Attach per-track insert descriptors to a scene.
     #[must_use]
-    pub fn with_insert_racks(
-        mut self,
-        racks: Vec<(alp_core::TrackId, Vec<EffectRef>)>,
-    ) -> Self {
+    pub fn with_insert_racks(mut self, racks: Vec<(alp_core::TrackId, Vec<EffectRef>)>) -> Self {
         self.insert_racks = racks;
         self
     }

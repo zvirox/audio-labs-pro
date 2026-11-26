@@ -8,7 +8,7 @@ Audio EQ Cookbook for standard equalizer and filter shapes.
 ## Public API
 
 - `FilterType`: `HighPass`, `LowPass`, `Peaking`, `LowShelf`, `HighShelf`, `Notch`, `BandPass`
-- `Coefficients`: `identity`, `design`
+- `Coefficients`: `identity`, `design`, `response` (magnitude dB + phase degrees at a frequency)
 - `ChannelState`: per-channel filter delay registers
 - `Biquad`: `new`, `prepare`, `set_parameters`, `reset`, `process`
 

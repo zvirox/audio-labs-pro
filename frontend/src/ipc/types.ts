@@ -180,6 +180,20 @@ export interface EffectStage {
   params: Record<string, number>;
 }
 
+export interface BiquadBandDto {
+  filter_type: string;
+  frequency_hz: number;
+  q: number;
+  gain_db: number;
+  enabled: boolean;
+}
+
+export interface BiquadResponseDto {
+  frequencies_hz: number[];
+  magnitude_db: number[];
+  phase_deg: number[];
+}
+
 export interface DiscoveredPlugin {
   id: string;
   name: string;

@@ -36,7 +36,7 @@ designed to run without allocation, locks, logging or syscalls.
 
 ## Allowed dependencies
 
-`alp-core` and `alp-media`. External crates are `cpal`, `rtrb`, `hound`,
+`alp-core`, `alp-dsp`, and `alp-media`. External crates are `cpal`, `rtrb`, `hound`,
 `thiserror` and `tracing`. It must never depend on UI, voice or inference.
 
 ## Threading / real-time notes
