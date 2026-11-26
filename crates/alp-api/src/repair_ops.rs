@@ -4,9 +4,7 @@
 //! used by the real-time engine, but run entirely on an automation worker.
 
 use alp_dsp::{Effect, HarmonicSuppressor, SpectralNotchFilter};
-use alp_media::{
-    ExportSettings, WavBitDepth, decode, export, time_stretch,
-};
+use alp_media::{ExportSettings, WavBitDepth, decode, export, time_stretch};
 use serde::{Deserialize, Serialize};
 
 use crate::{ApiError, PermissionTier, session::ApiSession};
@@ -96,9 +94,7 @@ fn repair_effect(request: &SpectralRepairRequestDto) -> Result<Box<dyn Effect>, 
                 ));
             }
             if request.harmonics == 0 || request.harmonics > 64 {
-                return Err(ApiError::Validation(
-                    "harmonics must be in 1..=64".into(),
-                ));
+                return Err(ApiError::Validation("harmonics must be in 1..=64".into()));
             }
             Ok(Box::new(HarmonicSuppressor::new(
                 request.fundamental_hz,
@@ -155,7 +151,11 @@ impl ApiSession {
         let pcm = decode(&input)?;
         let stretched = time_stretch(&pcm, request.ratio)?;
         let duration_secs = stretched.duration_secs();
-        export(&output, &stretched, &ExportSettings::wav(WavBitDepth::Int16))?;
+        export(
+            &output,
+            &stretched,
+            &ExportSettings::wav(WavBitDepth::Int16),
+        )?;
         Ok(TimeStretchReport {
             path: output.display().to_string(),
             ratio: request.ratio,

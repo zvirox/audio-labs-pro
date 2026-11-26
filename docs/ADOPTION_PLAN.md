@@ -65,3 +65,8 @@
 - [x] **Studio MCP Coverage:** `effects_response`, `acx_qa_analyze`, `audiobook_export_m4b`, `marker_remove`, `loop_range_set` and `clip_trim` bring the advertised surface to 75 tools, with end-to-end Suite 9 checks.
 - [x] **Packaging Parity:** `alp-mcp` is built by `release.yml` and installed by `nfpm.yaml`; `scripts/phase19-release-check.sh` performs a local deb/rpm/archlinux dry-run and SHA256SUMS verification.
 - [ ] **Version Bump & External Signing:** promotion to `v1.0.0-rc.1` (workspace/Tauri/frontend versions, changelog entry) and GPG signing remain release-cut steps delegated to the external release workflow.
+
+### Post-Roadmap — Extended MCP Coverage
+- [x] Four additional Export tools: `dubbing_fit_rate`, `dubbing_remux`, `dsp_spectral_repair` and `dsp_time_stretch`; advertised surface is now 79 tools with Suite 10 checks.
+- [ ] Live transport tools (play/pause/seek) require session/control-bridge plumbing and are not exposed through MCP.
+- [ ] Demucs stem separation remains unavailable through MCP because `alp-mcp` cannot depend on `alp-infer` and no model weights are bundled.

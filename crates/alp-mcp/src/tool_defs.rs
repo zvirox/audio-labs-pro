@@ -961,6 +961,66 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
             }),
         });
         tools.push(McpTool {
+            name: "dubbing_fit_rate".into(),
+            description: "Fit a rendered take to a dialogue window with WSOLA rate adjustment and write a WAV. Paths must be inside the workspace.".into(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "audio_path": { "type": "string" },
+                    "target_duration_secs": { "type": "number" },
+                    "output_path": { "type": "string" }
+                },
+                "required": ["audio_path", "target_duration_secs", "output_path"]
+            }),
+        });
+        tools.push(McpTool {
+            name: "dubbing_remux".into(),
+            description: "Remux a video with a dubbed audio track without re-encoding video (requires ffmpeg/ffprobe). Paths must be inside the workspace.".into(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "video_path": { "type": "string" },
+                    "audio_path": { "type": "string" },
+                    "output_path": { "type": "string" },
+                    "subtitle_path": { "type": "string", "description": "Optional side file, not burned in" }
+                },
+                "required": ["video_path", "output_path"]
+            }),
+        });
+        tools.push(McpTool {
+            name: "dsp_spectral_repair".into(),
+            description: "Offline spectral repair of a WAV: notch a narrow band or suppress a fundamental and its overtones, writing a new WAV.".into(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "input_path": { "type": "string" },
+                    "output_path": { "type": "string" },
+                    "mode": { "type": "string", "enum": ["notch", "harmonic"] },
+                    "center_hz": { "type": "number", "description": "Notch centre, default 1000" },
+                    "fundamental_hz": { "type": "number", "description": "Harmonic fundamental, default 220" },
+                    "harmonics": { "type": "integer", "description": "1..=64, default 4" },
+                    "bandwidth_q": { "type": "number", "description": "Default 12" },
+                    "reduction_db": { "type": "number", "description": "Default 24" }
+                },
+                "required": ["input_path", "output_path", "mode"]
+            }),
+        });
+        tools.push(McpTool {
+            name: "dsp_time_stretch".into(),
+            description:
+                "Offline WSOLA time stretch of a WAV (0 < ratio <= 4) without changing pitch."
+                    .into(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "input_path": { "type": "string" },
+                    "output_path": { "type": "string" },
+                    "ratio": { "type": "number" }
+                },
+                "required": ["input_path", "output_path", "ratio"]
+            }),
+        });
+        tools.push(McpTool {
             name: "audiobook_export_m4b".into(),
             description: "Export a rendered master audio file as a chaptered M4B audiobook with optional cover art and metadata. Paths must be inside the workspace.".into(),
             input_schema: json!({
@@ -1078,6 +1138,12 @@ pub fn metadata_for(name: &str) -> ToolMetadata {
     let read = ToolAnnotations::read_only();
     let add = ToolAnnotations::additive();
     let destroy = ToolAnnotations::destructive();
+    let export_add = ToolAnnotations {
+        read_only: false,
+        destructive: true,
+        idempotent: false,
+        open_world: false,
+    };
 
     let (title, annotations) = match name {
         // --- Phase 19 studio coverage ---
@@ -1095,6 +1161,10 @@ pub fn metadata_for(name: &str) -> ToolMetadata {
         "marker_remove" => ("Remove Marker", destroy),
         "loop_range_set" => ("Set Loop Range", add),
         "clip_trim" => ("Trim Clip", destroy),
+        "dubbing_fit_rate" => ("Fit Dubbing Take", export_add),
+        "dubbing_remux" => ("Remux Dubbed Video", export_add),
+        "dsp_spectral_repair" => ("Spectral Repair", export_add),
+        "dsp_time_stretch" => ("Time Stretch Audio", export_add),
         // --- Projects & history ---
         "project_list" => ("List Projects", read),
         "project_info" => ("Project Summary", read),

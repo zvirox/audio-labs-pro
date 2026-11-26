@@ -3,6 +3,7 @@
 //! Both the headless binary and the desktop attach bridge use this dispatcher;
 //! attached operation never gets a reduced or separately maintained tool list.
 
+mod coverage_ext_dispatch;
 mod dispatch;
 pub mod limits;
 pub mod live;

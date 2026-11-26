@@ -22,6 +22,10 @@ versions follow the release milestones in the build plan.
   surface to 75 tools; `alp-mcp` is now built and packaged for release; a local
   nfpm/checksum acceptance script validates deb/rpm/archlinux artifacts.
 
+- **Extended MCP Coverage.** Four more Export tools (`dubbing_fit_rate`,
+  `dubbing_remux`, `dsp_spectral_repair`, `dsp_time_stretch`) bring the surface
+  to 79 tools, with end-to-end Suite 10 checks.
+
 ### Added
 
 - **Phase 16 — Neural Stem Separation & Video Dubbing Pipeline.** WSOLA

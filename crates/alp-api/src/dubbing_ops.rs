@@ -4,7 +4,9 @@
 //! never contact the inference daemon. Stem separation stays out of this crate
 //! because `alp-api` may not depend on `alp-infer`.
 
-use alp_media::{ExportSettings, RemuxReport, RemuxRequest, VideoRemuxer, WavBitDepth, decode, export};
+use alp_media::{
+    ExportSettings, RemuxReport, RemuxRequest, VideoRemuxer, WavBitDepth, decode, export,
+};
 use alp_voice::{FitPlan, fit_take};
 use serde::{Deserialize, Serialize};
 
@@ -61,11 +63,7 @@ impl ApiSession {
         let output = self.sandbox.validate_path(&request.output_path)?;
         let take = decode(&input)?;
         let (fitted, plan) = fit_take(&take, request.target_duration_secs)?;
-        export(
-            &output,
-            &fitted,
-            &ExportSettings::wav(WavBitDepth::Int16),
-        )?;
+        export(&output, &fitted, &ExportSettings::wav(WavBitDepth::Int16))?;
         Ok(DubbingFitReport {
             path: output.display().to_string(),
             duration_secs: fitted.duration_secs(),

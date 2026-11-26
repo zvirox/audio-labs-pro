@@ -718,6 +718,115 @@ class EvaluationSuite:
             client.close()
 
 
+    def run_suite_10_extended_coverage(self, work_dir):
+        print("\n--- Suite 10: Extended Dubbing & Repair Coverage ---")
+        client = McpClient(self.bin_path, work_dir, tier="export", client_id="eval-coverage")
+        expected = {
+            "dubbing_fit_rate",
+            "dubbing_remux",
+            "dsp_spectral_repair",
+            "dsp_time_stretch",
+        }
+        try:
+            tools = {tool["name"] for tool in client.rpc("tools/list").get("tools", [])}
+            self.record(
+                "Suite 10",
+                "four extended studio tools are advertised",
+                expected.issubset(tools),
+                f"missing={sorted(expected - tools)}",
+            )
+
+            tone = Path(work_dir) / "coverage_tone.wav"
+            with wave.open(str(tone), "wb") as wav:
+                wav.setnchannels(1)
+                wav.setsampwidth(2)
+                wav.setframerate(48000)
+                wav.writeframes(
+                    b"".join(
+                        struct.pack("<h", int(9000 * math.sin(2 * math.pi * 1000 * i / 48000)))
+                        for i in range(4800)
+                    )
+                )
+
+            notched = Path(work_dir) / "coverage_notch.wav"
+            result = client.rpc(
+                "tools/call",
+                {
+                    "name": "dsp_spectral_repair",
+                    "arguments": {
+                        "input_path": str(tone),
+                        "output_path": str(notched),
+                        "mode": "notch",
+                        "center_hz": 1000.0,
+                    },
+                },
+            )
+            self.record(
+                "Suite 10",
+                "dsp_spectral_repair writes a repaired WAV",
+                result.get("isError") is not True and notched.is_file(),
+                f"exists={notched.is_file()}",
+            )
+
+            stretched = Path(work_dir) / "coverage_stretch.wav"
+            result = client.rpc(
+                "tools/call",
+                {
+                    "name": "dsp_time_stretch",
+                    "arguments": {
+                        "input_path": str(tone),
+                        "output_path": str(stretched),
+                        "ratio": 1.25,
+                    },
+                },
+            )
+            self.record(
+                "Suite 10",
+                "dsp_time_stretch writes a stretched WAV",
+                result.get("isError") is not True and stretched.is_file(),
+                f"exists={stretched.is_file()}",
+            )
+
+            fitted = Path(work_dir) / "coverage_fit.wav"
+            result = client.rpc(
+                "tools/call",
+                {
+                    "name": "dubbing_fit_rate",
+                    "arguments": {
+                        "audio_path": str(tone),
+                        "output_path": str(fitted),
+                        "target_duration_secs": 0.08,
+                    },
+                },
+            )
+            self.record(
+                "Suite 10",
+                "dubbing_fit_rate writes a fitted WAV",
+                result.get("isError") is not True and fitted.is_file(),
+                f"exists={fitted.is_file()}",
+            )
+
+            result = client.rpc(
+                "tools/call",
+                {
+                    "name": "dubbing_remux",
+                    "arguments": {
+                        "video_path": str(Path(work_dir) / "missing.mp4"),
+                        "output_path": str(Path(work_dir) / "coverage_out.mp4"),
+                    },
+                },
+                expect_error=True,
+            )
+            self.record(
+                "Suite 10",
+                "dubbing_remux reports a missing source without panicking",
+                result.get("isError") is True,
+                "missing source returned a tool error",
+            )
+        finally:
+            client.close()
+
+
 def main():
     if len(sys.argv) < 2:
         print("Usage: mcp_eval.py <PATH_TO_ALP_MCP_BIN>")
@@ -762,6 +871,7 @@ def main():
         )
 
         suite.run_suite_9_phase19_studio_tools(work_dir)
+        suite.run_suite_10_extended_coverage(work_dir)
 
         total = suite.passed_tests + suite.failed_tests
         pass_pct = (suite.passed_tests / total * 100.0) if total > 0 else 0.0

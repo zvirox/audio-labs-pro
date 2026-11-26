@@ -1442,6 +1442,16 @@ pub fn dispatch(session: &mut ApiSession, tool_name: &str, arguments: &Value) ->
         "marker_remove" => crate::studio_dispatch::dispatch_marker_remove(session, arguments),
         "loop_range_set" => crate::studio_dispatch::dispatch_loop_range_set(session, arguments),
         "clip_trim" => crate::studio_dispatch::dispatch_clip_trim(session, arguments),
+        "dubbing_fit_rate" => {
+            crate::coverage_ext_dispatch::dispatch_dubbing_fit_rate(session, arguments)
+        }
+        "dubbing_remux" => crate::coverage_ext_dispatch::dispatch_dubbing_remux(session, arguments),
+        "dsp_spectral_repair" => {
+            crate::coverage_ext_dispatch::dispatch_dsp_spectral_repair(session, arguments)
+        }
+        "dsp_time_stretch" => {
+            crate::coverage_ext_dispatch::dispatch_dsp_time_stretch(session, arguments)
+        }
         _ => ToolCallResult::failure(format!("tool '{tool_name}' not recognized")),
     }
 }

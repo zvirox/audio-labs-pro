@@ -15,7 +15,7 @@
 | DSP & Spectral Engine (`alp-dsp`) | **Core Complete** | Parametric EQ, biquads, compressor/gate/de-esser, true-peak limiter, LUFS meter, RNNoise + spectral denoiser (`denoise.rs`), STFT spectrogram & 2D spectral selection (`spectral.rs`) |
 | Voice & Neural Inference (`alp-voice`, `alp-infer`) | **Core Complete** | Kokoro/Kitten/StyleTTS2, Qwen3-TTS cloning + mandatory consent attestation, Moonshine STT, VAD, pronunciation lexicon, GGUF/ONNX download & SHA-256 verification |
 | Audio Plugins (`alp-plugin`) | **CLAP + LV2 Complete** | System scanner (`~/.clap`, `/usr/lib/clap`, LV2 bundles), sandboxing, parameter presets |
-| Session Bridge & AI Control (`alp-session`, `alp-mcp`, `alp-cli`) | **Complete** | Tauri IPC commands, 75 MCP tools across Observe/Edit/Export tiers, Starship Control bridge (`alp.sock`), live UNIX socket host |
+| Session Bridge & AI Control (`alp-session`, `alp-mcp`, `alp-cli`) | **Complete** | Tauri IPC commands, 79 MCP tools across Observe/Edit/Export tiers, Starship Control bridge (`alp.sock`), live UNIX socket host |
 | Desktop Shell & Locked Linear UI (`alp-desktop`, `frontend/`) | **Complete & Locked** | Tauri v2 frameless window (`1280x800`, min `1024x640`, opaque solid surface), TitleBar/Sidebar/Breadcrumb shell, 9 workspaces, Multitrack + Spectrogram canvases, chart-free engine telemetry, `check:linear` gate |
 | Packaging & Release (`packaging/nfpm.yaml`, `.github/workflows/`) | **Complete** | Multi-distro `.deb`, `.rpm`, and Arch `.pkg.tar.zst` via `nfpm`; CI + `v0.1.0-beta.1` release pipeline |
 

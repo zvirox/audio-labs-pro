@@ -38,7 +38,7 @@ def _scenario_table():
     return [
         ("S01", "initialize handshake", _s01),
         ("S02", "server capabilities discovery", _s02),
-        ("S03", "tool catalog has 75 advertised tools", _s03),
+        ("S03", "tool catalog has 79 advertised tools", _s03),
         ("S04", "project resource is served", _s04),
         ("S05", "workflow prompts are served", _s05),
         ("S06", "Observe tier denies mutation", _s06),
@@ -98,7 +98,7 @@ def _s02(client, ctx, factory, record):
 def _s03(client, ctx, factory, record):
     tools = (client.rpc("tools/list").get("tools") or [])
     ctx["tool_names"] = [tool.get("name") for tool in tools]
-    return len(tools) >= 75, f"advertised tools={len(tools)}"
+    return len(tools) >= 79, f"advertised tools={len(tools)}"
 
 
 def _s04(client, ctx, factory, record):

@@ -40,9 +40,7 @@ pub use alp_media::ExportPreset;
 pub use audiobook::AudiobookEncodeReport;
 pub use audit::{AuditEntry, AuditLogger};
 pub use checkpoint::{Checkpoint, CheckpointManager};
-pub use dubbing_ops::{
-    DubbingFitReport, DubbingFitRequestDto, DubbingRemuxRequestDto,
-};
+pub use dubbing_ops::{DubbingFitReport, DubbingFitRequestDto, DubbingRemuxRequestDto};
 pub use error::ApiError;
 pub use jobs::{JobInfo, JobManager, JobState};
 pub use macro_ops::MacroJobReport;
