@@ -19,6 +19,9 @@ use alp_session::{
 };
 
 use crate::glass::GlassReport;
+use crate::plugin_window::{
+    PluginWindowInfo, embed_editor, release_editor,
+};
 use crate::state::AppState;
 
 /// Payload emitted when the project revision changes.
@@ -592,6 +595,45 @@ pub fn effects_get_response(
         session.project_summary().sample_rate
     };
     Ok(compute_biquad_response(&bands, rate, points.unwrap_or(160)))
+}
+
+/// Parent a native plugin editor window under the studio window (X11 only).
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub fn plugin_editor_open(
+    plugin_id: String,
+    xid: u32,
+    x: i16,
+    y: i16,
+    width: u32,
+    height: u32,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let mut registry = state
+        .plugin_windows
+        .lock()
+        .map_err(|error| format!("plugin window lock poisoned: {error}"))?;
+    embed_editor(&mut registry, plugin_id, xid, x, y, width, height)
+}
+
+/// Unmap and forget a native plugin editor window.
+#[tauri::command]
+pub fn plugin_editor_close(plugin_id: String, state: State<'_, AppState>) -> Result<(), String> {
+    let mut registry = state
+        .plugin_windows
+        .lock()
+        .map_err(|error| format!("plugin window lock poisoned: {error}"))?;
+    release_editor(&mut registry, &plugin_id)
+}
+
+/// List currently hosted native plugin editor windows.
+#[tauri::command]
+pub fn plugin_editor_list(state: State<'_, AppState>) -> Result<Vec<PluginWindowInfo>, String> {
+    let registry = state
+        .plugin_windows
+        .lock()
+        .map_err(|error| format!("plugin window lock poisoned: {error}"))?;
+    Ok(registry.list())
 }
 
 /// Separate a mixed audio file into four stems via the inference daemon.

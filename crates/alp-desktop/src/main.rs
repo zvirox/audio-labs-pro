@@ -5,6 +5,7 @@
 
 mod commands;
 mod glass;
+mod plugin_window;
 mod state;
 
 use alp_session::AiEvent;
@@ -23,7 +24,8 @@ use crate::commands::{
     timeline_set_clip_envelope, timeline_set_clip_fades, timeline_set_clip_pan_envelope,
     timeline_set_loop_range, timeline_set_selection, timeline_set_spectral_selection,
     timeline_set_track_view_mode, timeline_slip_clip, timeline_split_clip, timeline_trim_clip,
-    timeline_undo, toggle_ai_control, trigger_demo_edit, undo_ai_change,
+    timeline_undo, toggle_ai_control, trigger_demo_edit, undo_ai_change, plugin_editor_close,
+    plugin_editor_list, plugin_editor_open,
 };
 use crate::glass::probe;
 use crate::state::AppState;
@@ -42,6 +44,15 @@ fn main() {
                 tracing::info!("Compositor glass report: {}", report);
                 if let Ok(mut glass) = state_for_setup.glass.lock() {
                     *glass = report;
+                }
+                match crate::plugin_window::host_window_id(&window) {
+                    Ok(xid) => {
+                        if let Ok(mut registry) = state_for_setup.plugin_windows.lock() {
+                            registry.set_host_xid(xid);
+                        }
+                        tracing::info!("captured X11 host window id {xid} for plugin editors");
+                    }
+                    Err(error) => tracing::info!("native plugin editors unavailable: {error}"),
                 }
             } else {
                 tracing::warn!("Main webview window not found during setup");
@@ -145,6 +156,9 @@ fn main() {
             respond_ai_approval,
             get_ai_activity_log,
             undo_ai_change,
+            plugin_editor_open,
+            plugin_editor_close,
+            plugin_editor_list,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Audio Labs Pro desktop shell");

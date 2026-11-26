@@ -8,6 +8,7 @@ use std::sync::{Arc, Mutex};
 use alp_session::{AiControlManager, EditSession, PersistedWorkspace, Size, TransportController};
 
 use crate::glass::GlassReport;
+use crate::plugin_window::PluginWindowRegistry;
 
 /// Shared application state passed to Tauri command handlers.
 #[derive(Clone)]
@@ -17,6 +18,7 @@ pub struct AppState {
     pub glass: Arc<Mutex<GlassReport>>,
     pub transport: Arc<Mutex<TransportController>>,
     pub ai: Arc<Mutex<AiControlManager>>,
+    pub plugin_windows: Arc<Mutex<PluginWindowRegistry>>,
 }
 
 impl AppState {
@@ -33,6 +35,7 @@ impl AppState {
             glass: Arc::new(Mutex::new(GlassReport::pending())),
             transport: Arc::new(Mutex::new(TransportController::new(duration, sample_rate))),
             ai: Arc::new(Mutex::new(AiControlManager::default())),
+            plugin_windows: Arc::new(Mutex::new(PluginWindowRegistry::new())),
         }
     }
 }
