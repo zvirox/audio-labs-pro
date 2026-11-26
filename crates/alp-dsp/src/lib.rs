@@ -11,6 +11,7 @@ pub mod dynamics;
 pub mod eq;
 pub mod limiter;
 pub mod loudness;
+pub mod repair;
 pub mod spectral;
 pub mod voice;
 
@@ -23,6 +24,9 @@ pub use dynamics::{Compressor, NoiseGate};
 pub use eq::{EqBand, ParametricEq};
 pub use limiter::Limiter;
 pub use loudness::{KWeighting, calculate_normalization_gain, measure_lufs};
+pub use repair::{
+    HarmonicSuppressor, RepairMode, SpectralNotchFilter, SpectralRepair, SpectralRepairConfig,
+};
 pub use spectral::{
     FrequencyScale, SpectrogramConfig, SpectrogramData, SpectrogramEngine, WindowType,
 };

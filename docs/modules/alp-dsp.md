@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the digital signal processing effect boundaries and real-time audio processors shared by live playback, offline rendering, and the command-line interface. Provides biquad filtering, parametric EQ, dynamics (compressor, noise gate, limiter), specialized vocal cleanup (de-esser, de-hum, de-click), ITU-R BS.1770 LUFS loudness metering, and composable effect chains.
+Defines the digital signal processing effect boundaries and real-time audio processors shared by live playback, offline rendering, and the command-line interface. Provides biquad filtering, parametric EQ, dynamics (compressor, noise gate, limiter), specialized vocal cleanup (de-esser, de-hum, de-click), targeted spectral repair (notch and harmonic suppression), ITU-R BS.1770 LUFS loudness metering, and composable effect chains.
 
 ## Public API
 
@@ -18,6 +18,7 @@ Defines the digital signal processing effect boundaries and real-time audio proc
 - `DeClick`: transient derivative spike detector and polynomial interpolator
 - `KWeighting`, `measure_lufs`, `calculate_normalization_gain`: BS.1770 loudness measurement and normalization
 - `spectral`: `SpectrogramEngine`, `SpectrogramConfig`, `SpectrogramData`, `WindowType`, `FrequencyScale` for high-resolution STFT spectrogram analysis
+- `repair`: `SpectralNotchFilter`, `HarmonicSuppressor`, `SpectralRepair` for targeted 2D spectral attenuation
 - `EffectChain`, `VoiceCleanup`: composite effect execution and one-click vocal cleanup chain
 
 ## Data flow
