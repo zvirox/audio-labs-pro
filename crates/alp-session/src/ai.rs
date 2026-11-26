@@ -21,10 +21,12 @@ use alp_core::SourceId;
 use alp_engine::SourceAudio;
 use alp_mcp::limits::Limits;
 use alp_mcp::{JsonRpcRequest, JsonRpcResponse, McpServer, ToolCallResult, live};
+
+mod transport_control;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::EditSession;
+use crate::{EditSession, TransportController};
 
 /// Status descriptor for the AI control socket and attached client bridge.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -510,6 +512,7 @@ pub struct AiControlManager {
     trusted: Arc<Mutex<BTreeSet<String>>>,
     mcp: AttachedMcpState,
     tier: PermissionTier,
+    transport: Option<Arc<Mutex<TransportController>>>,
     last_publication: Option<String>,
     socket_path: Option<PathBuf>,
     token: Option<String>,
@@ -536,6 +539,7 @@ impl AiControlManager {
             trusted: Arc::new(Mutex::new(trusted)),
             mcp: AttachedMcpState::default(),
             tier: PermissionTier::Edit,
+            transport: None,
             last_publication: None,
             socket_path: None,
             token: None,
@@ -554,6 +558,12 @@ impl AiControlManager {
     #[must_use]
     pub fn tier(&self) -> PermissionTier {
         self.tier
+    }
+
+    /// Attach the live transport controller so `transport_*` MCP tools can
+    /// control real playback instead of returning a headless-only error.
+    pub fn set_transport(&mut self, transport: Arc<Mutex<TransportController>>) {
+        self.transport = Some(transport);
     }
 
     /// Update the permission tier.
@@ -826,6 +836,12 @@ impl AiControlManager {
                 "the operator stopped AI control",
             ));
             return;
+        }
+        if let Ok(request) = serde_json::from_value::<JsonRpcRequest>(message.clone()) {
+            if live::tool_name(&request).is_some_and(|name| name.starts_with("transport_")) {
+                transport_control::handle_transport_call(self, &request, &response, session);
+                return;
+            }
         }
         let Some(state) = session.attached_project_state() else {
             let _ = response.send(ControlResponse::error(

@@ -48,6 +48,7 @@ pub struct AiControlManager {
     pub fn is_enabled(&self) -> bool;
     pub fn tier(&self) -> PermissionTier;
     pub fn set_tier(&mut self, tier: PermissionTier);
+    pub fn set_transport(&mut self, transport: Arc<Mutex<TransportController>>);
     pub fn start(&mut self, runtime_dir: &Path, tier: PermissionTier) -> Result<AiControlStatus, String>;
     pub fn stop(&mut self, reason: &str);
     pub fn status(&self) -> AiControlStatus;
@@ -62,9 +63,10 @@ pub struct AiControlManager {
 1. **Host Initialization:** Operator triggers AI attach. `start()` creates `$XDG_RUNTIME_DIR/alp/control.sock` with permission 0600 and generates an in-memory random session token.
 2. **Client Attachment:** External CLI or desktop tool (`alp-mcp --attach`) connects to the socket and sends `ControlRequest::Authenticate`.
 3. **Approval:** If client is in `trusted_clients`, connection is approved immediately. Otherwise, `AiEvent::ApprovalRequired` notifies the operator for a Session/Always/Deny decision.
-4. **Scratch Execution:** Incoming tool calls (`ControlRequest::Mcp`) are dispatched to dedicated worker threads (`alp-attached-mcp-{client_id}`). Each worker executes against an ephemeral `ApiSession` snapshot bound to the project's base revision.
-5. **Atomic Commit:** On tool completion, `PreparedTransaction::Edit` is sent back to `AiControlManager`. During `tick()`, if base revision matches `EditSession::revision()`, changes commit atomically as one undo step.
-6. **Publication:** Committed changes are published to socket subscribers via `ControlHost::publish` and emitted to the UI via `AiEvent::RevisionChanged`.
+4. **Live Transport Interception:** `transport_*` tools are parsed on the UI tick thread, checked against the permission tier, and applied to the injected `TransportController`; no project snapshot or revision commit is involved.
+5. **Scratch Execution:** Other incoming tool calls (`ControlRequest::Mcp`) are dispatched to dedicated worker threads (`alp-attached-mcp-{client_id}`). Each worker executes against an ephemeral `ApiSession` snapshot bound to the project's base revision.
+6. **Atomic Commit:** On tool completion, `PreparedTransaction::Edit` is sent back to `AiControlManager`. During `tick()`, if base revision matches `EditSession::revision()`, changes commit atomically as one undo step.
+7. **Publication:** Committed changes are published to socket subscribers via `ControlHost::publish` and emitted to the UI via `AiEvent::RevisionChanged`.
 
 ## Allowed dependencies
 
@@ -82,6 +84,7 @@ pub struct AiControlManager {
 - Each connected client runs on background worker thread `alp-control-client` and `alp-attached-mcp-{client_id}`.
 - Neither the audio rendering thread nor the Tauri webview thread ever blocks on client I/O.
 - `AiControlManager::tick()` runs non-blockingly via `try_recv()` (bounded to at most 64 requests per tick).
+- Transport tools are handled inside that same tick through `ai::transport_control`; the transport mutex is held only for one command.
 - Audio decoding for attached imports runs on worker threads before committing to the live session.
 
 ## Error handling

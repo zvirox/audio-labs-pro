@@ -35,6 +35,9 @@ fn main() {
     tracing::info!("Starting Audio Labs Pro desktop shell (Phase M7)...");
 
     let app_state = AppState::new_demo();
+    if let Ok(mut ai) = app_state.ai.lock() {
+        ai.set_transport(std::sync::Arc::clone(&app_state.transport));
+    }
     let state_for_setup = app_state.clone();
 
     tauri::Builder::default()
