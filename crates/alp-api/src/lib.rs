@@ -16,6 +16,7 @@ pub mod error;
 pub mod export_ops;
 pub mod job_ops;
 pub mod jobs;
+pub mod macro_ops;
 pub mod media;
 pub mod paging;
 pub mod project_ops;
@@ -32,11 +33,13 @@ pub use acx_qa::{
     AcxChapterInput, AcxChapterQa, AcxQaReport, analyze_acx_chapters,
 };
 pub use alp_media::ExportPreset;
+pub use alp_engine::{MacroRequest, MacroStep};
 pub use audiobook::AudiobookEncodeReport;
 pub use audit::{AuditEntry, AuditLogger};
 pub use checkpoint::{Checkpoint, CheckpointManager};
 pub use error::ApiError;
 pub use jobs::{JobInfo, JobManager, JobState};
+pub use macro_ops::MacroJobReport;
 pub use media::{ClipPlacementReport, MediaImportReport, MediaListReport, MediaSummary};
 pub use paging::{
     DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, Page, PageRequest, decode_cursor, encode_cursor,

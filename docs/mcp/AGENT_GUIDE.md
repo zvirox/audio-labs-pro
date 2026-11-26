@@ -25,4 +25,5 @@ Best practices and protocol conventions for AI models interacting with Audio Lab
 4. range_delete        -> cut silent gaps or unwanted sections with ripple editing
 5. analyze_loudness    -> verify integrated loudness moved closer to -16 LUFS
 6. export_audio        -> render master with "podcast" or "voice_over" preset
+7. dsp_macro_execute   -> batch-process a directory of files with a DSP macro chain (poll with job_status)
 ```

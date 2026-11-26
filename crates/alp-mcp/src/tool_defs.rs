@@ -848,6 +848,33 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
                 "required": ["script_json"]
             }),
         });
+        tools.push(McpTool {
+            name: "dsp_macro_execute".into(),
+            description: "Run an offline DSP macro over a directory of audio files as a cancellable job. Effects use the built-in catalog ids (gain, parametric_eq, compressor, limiter, de_esser, de_hum, de_click, noise_gate, spectral_notch, harmonic_suppressor). Returns a job_id plus the per-file report.".into(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "input_dir": { "type": "string", "description": "Workspace directory containing source audio files" },
+                    "output_dir": { "type": "string", "description": "Workspace directory for exported WAV results" },
+                    "pattern": { "type": "string", "description": "Optional filename substring filter" },
+                    "overwrite": { "type": "boolean", "description": "Replace existing outputs (default false)" },
+                    "steps": {
+                        "type": "array",
+                        "minItems": 1,
+                        "description": "Ordered DSP effects",
+                        "items": {
+                            "type": "object",
+                            "required": ["effect_id"],
+                            "properties": {
+                                "effect_id": { "type": "string", "description": "Built-in effect id" },
+                                "params": { "type": "object", "description": "Effect parameters by name" }
+                            }
+                        }
+                    }
+                },
+                "required": ["input_dir", "output_dir", "steps"]
+            }),
+        });
     }
 
     for tool in &mut tools {
@@ -1040,6 +1067,15 @@ pub fn metadata_for(name: &str) -> ToolMetadata {
                 destructive: true,
                 idempotent: false,
                 open_world: false,
+            },
+        ),
+        "dsp_macro_execute" => (
+            "Run DSP Macro Batch",
+            ToolAnnotations {
+                read_only: false,
+                destructive: true,
+                idempotent: false,
+                open_world: true,
             },
         ),
         // --- Jobs ---

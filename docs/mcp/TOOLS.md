@@ -1,8 +1,7 @@
 # Audio Labs Pro — MCP Tool Reference
 
-All 63 tools exposed by `alp-mcp` (58 at `v0.0.1-alpha.5`; alpha.6 adds
-`voice_profile_update`, `voice_profile_lock`, `voice_profile_unlock`, `tts_batch`,
-`audiobook_encode`). Tools are filtered by the session's
+All 69 tools exposed by `alp-mcp` (58 at `v0.0.1-alpha.5`; later phases add
+profile/batch, audiobook, dubbing and macro batch tools). Tools are filtered by the session's
 permission tier (`Observe` < `Edit` < `Export`), and every call is audited.
 
 Conventions used below:
@@ -232,6 +231,7 @@ Engines run daemon-first and results always name what actually ran:
 | `export_presets` | Observe | — | `{ presets: [{ id, label, description, sample_rate, bit_depth }] }` |
 | `export_audio` | Export | `preset`, `output_path` | `{ exported_path, … }` |
 | `audiobook_encode` (alpha.6) | Export | `script_json`, `output_path?` | `{ track_id, master_path, segment_count, total_duration_secs, job_id }` |
+| `dsp_macro_execute` (phase 17) | Export | `input_dir`, `output_dir`, `steps`, `pattern?`, `overwrite?` | `{ job_id, report }` |
 | `export_stems` | Export | `output_dir`, `preset?` | `[StemExportReport]` |
 | `export_transcript` | Export | `format`, `path` | `{ format, path, duration_secs, engine, segments, text }` |
 | `preview_render` | Observe | `start_secs`, `duration_secs` | `{ start_secs, duration_secs, sample_rate, channels, peak, preview_path }` |
@@ -262,7 +262,7 @@ Engines run daemon-first and results always name what actually ran:
 | `job_cancel` | Same as job | `job_id` | `{ cancelled: true }` |
 
 Jobs are created by `tts_generate`, `tts_script_generate`, `tts_batch`
-(alpha.6), `audiobook_encode` (alpha.6) and `transcribe`. Their report carries
+(alpha.6), `audiobook_encode` (alpha.6), `dsp_macro_execute` (phase 17) and `transcribe`. Their report carries
 `job_id`; the work has already completed by the time the call returns, so
 polling shows `completed` with the produced artefact in `detail`. Cancelling a
 completed or unknown job is an error. `tts_batch` and `audiobook_encode` check
