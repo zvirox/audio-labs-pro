@@ -18,5 +18,6 @@ jobs:
       build_cmd: cargo build --release --locked -p alp-desktop -p alp-cli -p alp-infer
       binary_path: target/release/audio-labs-pro
       runs_on: ubuntu-24.04
+      smoke_ubuntu22: false
       nfpm_config: packaging/nfpm.yaml
     secrets: inherit
