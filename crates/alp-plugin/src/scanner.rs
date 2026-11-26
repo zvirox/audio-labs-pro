@@ -8,6 +8,7 @@ use tracing::{info, warn};
 use crate::clap::scan_clap_file;
 use crate::error::PluginError;
 use crate::lv2::scan_lv2_bundle;
+use crate::vst3::scan_vst3_bundle;
 use crate::types::PluginDescriptor;
 
 /// Plugin scanner managing discovery paths and metadata caching.
@@ -15,6 +16,7 @@ use crate::types::PluginDescriptor;
 pub struct PluginScanner {
     clap_paths: Vec<PathBuf>,
     lv2_paths: Vec<PathBuf>,
+    vst3_paths: Vec<PathBuf>,
     cache_path: Option<PathBuf>,
 }
 
@@ -58,6 +60,21 @@ impl PluginScanner {
             }
         }
 
+        let mut vst3_paths = vec![
+            PathBuf::from("/usr/lib/vst3"),
+            PathBuf::from("/usr/local/lib/vst3"),
+        ];
+        if let Ok(home) = env::var("HOME") {
+            vst3_paths.push(PathBuf::from(home).join(".vst3"));
+        }
+        if let Ok(custom) = env::var("VST3_PATH") {
+            for p in custom.split(':') {
+                if !p.is_empty() {
+                    vst3_paths.push(PathBuf::from(p));
+                }
+            }
+        }
+
         let cache_path = if let Ok(cache_home) = env::var("XDG_CACHE_HOME") {
             Some(PathBuf::from(cache_home).join("alp").join("plugins.json"))
         } else if let Ok(home) = env::var("HOME") {
@@ -74,6 +91,7 @@ impl PluginScanner {
         Self {
             clap_paths,
             lv2_paths,
+            vst3_paths,
             cache_path,
         }
     }
@@ -82,7 +100,8 @@ impl PluginScanner {
     pub fn add_search_path(&mut self, path: impl AsRef<Path>) {
         let p = path.as_ref().to_path_buf();
         self.clap_paths.push(p.clone());
-        self.lv2_paths.push(p);
+        self.lv2_paths.push(p.clone());
+        self.vst3_paths.push(p);
     }
 
     /// Set an explicit cache file path.
@@ -90,7 +109,7 @@ impl PluginScanner {
         self.cache_path = Some(path.as_ref().to_path_buf());
     }
 
-    /// Scan all configured paths for CLAP and LV2 plugins.
+    /// Scan all configured paths for CLAP, LV2 and VST3 plugins.
     pub fn scan(&self) -> Vec<PluginDescriptor> {
         let mut descriptors = Vec::new();
 
@@ -105,6 +124,13 @@ impl PluginScanner {
         for dir in &self.lv2_paths {
             if dir.is_dir() {
                 self.scan_lv2_dir(dir, &mut descriptors);
+            }
+        }
+
+        // 3. Scan VST3 bundle paths
+        for dir in &self.vst3_paths {
+            if dir.is_dir() {
+                self.scan_vst3_dir(dir, &mut descriptors);
             }
         }
 
@@ -144,6 +170,23 @@ impl PluginScanner {
                     match scan_lv2_bundle(&p) {
                         Ok(mut descs) => results.append(&mut descs),
                         Err(err) => warn!("failed scanning LV2 bundle {}: {err}", p.display()),
+                    }
+                }
+            }
+        }
+    }
+
+    fn scan_vst3_dir(&self, dir: &Path, results: &mut Vec<PluginDescriptor>) {
+        if let Ok(entries) = fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let p = entry.path();
+                if p.is_dir()
+                    && p.extension()
+                        .is_some_and(|ext| ext.eq_ignore_ascii_case("vst3"))
+                {
+                    match scan_vst3_bundle(&p) {
+                        Ok(descriptor) => results.push(descriptor),
+                        Err(err) => warn!("failed scanning VST3 bundle {}: {err}", p.display()),
                     }
                 }
             }

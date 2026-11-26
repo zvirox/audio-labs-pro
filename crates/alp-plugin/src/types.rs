@@ -11,6 +11,8 @@ pub enum PluginFormat {
     Clap,
     /// LV2 Linux Audio standard.
     Lv2,
+    /// VST3 bundle standard (discovery only in this build).
+    Vst3,
 }
 
 impl PluginFormat {
@@ -20,6 +22,7 @@ impl PluginFormat {
         match self {
             Self::Clap => "CLAP",
             Self::Lv2 => "LV2",
+            Self::Vst3 => "VST3",
         }
     }
 
@@ -29,6 +32,7 @@ impl PluginFormat {
         match self {
             Self::Clap => "clap",
             Self::Lv2 => "lv2",
+            Self::Vst3 => "vst3",
         }
     }
 }

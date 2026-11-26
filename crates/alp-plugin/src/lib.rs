@@ -12,9 +12,11 @@ pub mod instance;
 pub mod lv2;
 pub mod scanner;
 pub mod types;
+pub mod vst3;
 
 pub use error::PluginError;
 pub use host::{PluginHost, TrackPluginChain};
 pub use instance::ActivePlugin;
 pub use scanner::PluginScanner;
 pub use types::{PluginCategory, PluginDescriptor, PluginFormat, PluginParameter, ProcessContext};
+pub use vst3::{instantiation_error, scan_vst3_bundle};

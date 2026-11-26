@@ -60,6 +60,9 @@ impl ActivePlugin {
                     Ok(lv2_inst) => BackendInstance::Lv2(lv2_inst),
                     Err(_) => BackendInstance::Stub { gain: 1.0 },
                 },
+                // Discovery is supported, but the VST3 C++ COM ABI host is not
+                // implemented. Fail explicitly rather than pretending to load.
+                PluginFormat::Vst3 => return Err(crate::vst3::instantiation_error(desc)),
             }
         } else {
             BackendInstance::Stub { gain: 1.0 }
