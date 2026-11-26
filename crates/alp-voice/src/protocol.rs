@@ -50,6 +50,13 @@ pub enum InferRequest {
         id: u64,
         request: crate::design::VoiceDesignRequest,
     },
+    /// Request four-stem separation for a mixed audio buffer.
+    SeparateStems {
+        id: u64,
+        sample_rate: u32,
+        channels: u16,
+        samples: Vec<f32>,
+    },
     /// Cooperatively cancel an in-flight synthesis request.
     Cancel { id: u64 },
     /// Request the inference worker to shut down gracefully.
@@ -77,6 +84,9 @@ pub struct InferStatus {
     /// while the dependency-free acoustic clone backend is active.
     #[serde(default)]
     pub active_clone_model: Option<String>,
+    /// Stem-separation tier: `demucs-4stem` after a compatible model load.
+    #[serde(default)]
+    pub active_stem_model: Option<String>,
 }
 
 /// Response messages sent from `alp-infer` to the client.
@@ -92,6 +102,9 @@ pub enum InferResponse {
         /// Clone engine identity, absent in replies from older workers.
         #[serde(default)]
         active_clone_model: Option<String>,
+        /// Stem-separation engine identity, absent in older replies.
+        #[serde(default)]
+        active_stem_model: Option<String>,
     },
     /// Streaming progress update (0.0 to 1.0) for an ongoing request.
     Progress { id: u64, progress: f32 },
@@ -106,6 +119,15 @@ pub enum InferResponse {
     Transcript {
         id: u64,
         segments: Vec<crate::TranscriptSegment>,
+    },
+    /// Four isolated stems in `["vocals", "drums", "bass", "other"]` order.
+    Stems {
+        id: u64,
+        sample_rate: u32,
+        channels: u16,
+        stems: Vec<Vec<f32>>,
+        /// Stable names in `stems` order.
+        names: Vec<String>,
     },
     /// Designed voice profile.
     VoiceDesigned {
@@ -158,6 +180,7 @@ mod tests {
                 ready: true,
                 active_stt_model: None,
                 active_clone_model: None,
+                active_stem_model: None,
             }
         );
     }

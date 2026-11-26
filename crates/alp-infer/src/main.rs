@@ -7,6 +7,7 @@
 
 #[cfg(test)]
 mod gguf;
+mod demucs;
 mod kitten;
 mod kokoro;
 mod moonshine;
@@ -182,9 +183,11 @@ struct Worker {
     engine: TtsEngine,
     stt: SttEngine,
     clone: CloneEngine,
+    stem: Option<demucs::DemucsEngine>,
     active_model: Option<String>,
     active_stt: Option<String>,
     active_clone: Option<String>,
+    active_stem: Option<String>,
 }
 
 impl Worker {
@@ -193,9 +196,11 @@ impl Worker {
             engine: TtsEngine::Builtin(BuiltinAcousticBackend::new()),
             stt: SttEngine::Builtin(BuiltinSttBackend::new()),
             clone: CloneEngine::Acoustic(AcousticCloneBackend::new()),
+            stem: None,
             active_model: Some("builtin-acoustic".into()),
             active_stt: None,
             active_clone: None,
+            active_stem: None,
         }
     }
 
@@ -206,6 +211,7 @@ impl Worker {
             ready: true,
             active_stt_model: self.active_stt.clone(),
             active_clone_model: self.active_clone.clone(),
+            active_stem_model: self.active_stem.clone(),
         }
     }
 
@@ -217,6 +223,7 @@ impl Worker {
             ready: false,
             active_stt_model: self.active_stt.clone(),
             active_clone_model: self.active_clone.clone(),
+            active_stem_model: self.active_stem.clone(),
         }
     }
 
@@ -228,6 +235,11 @@ impl Worker {
     fn load_model(&mut self, model_id: &str) -> InferResponse {
         let dir = if model_id == qwen3::MODEL_ID {
             std::env::var_os("ALP_QWEN3_DIR").map_or_else(
+                || ModelManager::new().model_dir(&ModelId::new(model_id)),
+                PathBuf::from,
+            )
+        } else if model_id == demucs::MODEL_ID {
+            std::env::var_os("ALP_DEMUCS_DIR").map_or_else(
                 || ModelManager::new().model_dir(&ModelId::new(model_id)),
                 PathBuf::from,
             )
@@ -298,6 +310,31 @@ impl Worker {
                             .as_deref()
                             .unwrap_or("the acoustic clone tier")
                     );
+                    self.declined()
+                }
+            };
+        }
+
+        // Stem separation slot: a Demucs-style ONNX export loads independently
+        // of TTS/STT/clone tiers and only serves `SeparateStems`.
+        if model_id == demucs::MODEL_ID {
+            let loaded = match demucs::DemucsEngine::from_environment() {
+                Some(result) => result,
+                None => demucs::DemucsEngine::load(model_dir),
+            };
+            return match loaded {
+                Ok(engine) => {
+                    eprintln!(
+                        "worker: {model_id} loaded; four-stem separation active ({} Hz, {} channel input)",
+                        engine.manifest().sample_rate,
+                        if engine.manifest().stereo { 2 } else { 1 }
+                    );
+                    self.stem = Some(engine);
+                    self.active_stem = Some(model_id.to_owned());
+                    self.status()
+                }
+                Err(error) => {
+                    eprintln!("worker: loading {model_id} failed: {error}");
                     self.declined()
                 }
             };
@@ -511,6 +548,52 @@ fn handle_client(mut stream: UnixStream, worker: &mut Worker, running: Arc<Atomi
                     break;
                 }
             }
+            InferRequest::SeparateStems {
+                id,
+                sample_rate,
+                channels,
+                samples,
+            } => {
+                let _ =
+                    write_message(&mut stream, &InferResponse::Progress { id, progress: 0.2 });
+                let outcome = (|| -> Result<[PcmBuffer; 4], VoiceError> {
+                    let engine = worker.stem.as_ref().ok_or_else(|| {
+                        VoiceError::Unavailable(
+                            "demucs-4stem model is not loaded; call LoadModel first".into(),
+                        )
+                    })?;
+                    let pcm = PcmBuffer::new(sample_rate, channels, samples)
+                        .map_err(|error| VoiceError::Backend(error.to_string()))?;
+                    engine.separate(&pcm)
+                })();
+                match outcome {
+                    Ok(stems) => {
+                        let _ = write_message(
+                            &mut stream,
+                            &InferResponse::Progress { id, progress: 1.0 },
+                        );
+                        let resp = InferResponse::Stems {
+                            id,
+                            sample_rate: stems[0].sample_rate(),
+                            channels: stems[0].channels(),
+                            stems: stems.iter().map(|stem| stem.samples().to_vec()).collect(),
+                            names: demucs::STEM_NAMES.iter().map(|name| (*name).to_owned()).collect(),
+                        };
+                        if write_message(&mut stream, &resp).is_err() {
+                            break;
+                        }
+                    }
+                    Err(error) => {
+                        let resp = InferResponse::Error {
+                            id,
+                            message: error.to_string(),
+                        };
+                        if write_message(&mut stream, &resp).is_err() {
+                            break;
+                        }
+                    }
+                }
+            }
             InferRequest::Cancel { id } => {
                 let _ = write_message(
                     &mut stream,
@@ -682,6 +765,7 @@ mod tests {
                 ready: true,
                 active_stt_model: None,
                 active_clone_model: None,
+                active_stem_model: None,
             }
         );
     }
@@ -698,6 +782,7 @@ mod tests {
                 ready: false,
                 active_stt_model: None,
                 active_clone_model: None,
+                active_stem_model: None,
             }
         );
 
@@ -717,6 +802,7 @@ mod tests {
                 ready: false,
                 active_stt_model: None,
                 active_clone_model: None,
+                active_stem_model: None,
             }
         );
 
@@ -728,6 +814,7 @@ mod tests {
                 ready: true,
                 active_stt_model: None,
                 active_clone_model: None,
+                active_stem_model: None,
             }
         );
     }
@@ -745,6 +832,7 @@ mod tests {
                 ready: false,
                 active_stt_model: None,
                 active_clone_model: None,
+                active_stem_model: None,
             }
         );
         let request = TtsRequest {
@@ -769,6 +857,7 @@ mod tests {
                 ready: false,
                 active_stt_model: None,
                 active_clone_model: None,
+                active_stem_model: None,
             }
         );
 
@@ -784,6 +873,7 @@ mod tests {
                 ready: false,
                 active_stt_model: None,
                 active_clone_model: None,
+                active_stem_model: None,
             }
         );
     }
@@ -815,6 +905,7 @@ mod tests {
                 ready: false,
                 active_stt_model: None,
                 active_clone_model: None,
+                active_stem_model: None,
             }
         );
     }
@@ -850,6 +941,7 @@ mod tests {
                 ready: true,
                 active_stt_model: None,
                 active_clone_model: None,
+                active_stem_model: None,
             }
         );
 
@@ -861,6 +953,7 @@ mod tests {
                 ready: true,
                 active_stt_model: Some("moonshine-tiny".into()),
                 active_clone_model: None,
+                active_stem_model: None,
             }
         );
 
@@ -887,6 +980,7 @@ mod tests {
                 ready: true,
                 active_stt_model: Some("moonshine-tiny".into()),
                 active_clone_model: None,
+                active_stem_model: None,
             }
         );
     }
@@ -902,6 +996,7 @@ mod tests {
                 ready: false,
                 active_stt_model: None,
                 active_clone_model: None,
+                active_stem_model: None,
             }
         );
 

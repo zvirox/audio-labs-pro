@@ -98,11 +98,13 @@ impl InferClient {
                 ready,
                 active_stt_model,
                 active_clone_model,
+                active_stem_model,
             } => Ok(InferStatus {
                 active_model,
                 ready,
                 active_stt_model,
                 active_clone_model,
+                active_stem_model,
             }),
             other => Err(CoreError::validation(format!(
                 "unexpected response: {other:?}"
@@ -136,11 +138,13 @@ impl InferClient {
                 ready,
                 active_stt_model,
                 active_clone_model,
+                active_stem_model,
             } => Ok(InferStatus {
                 active_model,
                 ready,
                 active_stt_model,
                 active_clone_model,
+                active_stem_model,
             }),
             other => Err(CoreError::validation(format!(
                 "unexpected response: {other:?}"
@@ -251,6 +255,64 @@ impl InferClient {
                 } if resp_id == id => {
                     return Err(VoiceError::Backend(message));
                 }
+                InferResponse::Progress { .. } => {}
+                _ => {}
+            }
+        }
+    }
+
+    /// Request four-stem separation from a loaded Demucs-style model.
+    ///
+    /// Returns stems in `["vocals", "drums", "bass", "other"]` order.
+    pub fn separate_stems(&self, pcm: &PcmBuffer) -> Result<[PcmBuffer; 4], VoiceError> {
+        let mut stream = UnixStream::connect(&self.socket_path)
+            .map_err(|e| VoiceError::Unavailable(format!("alp-infer daemon unreachable: {e}")))?;
+        let id = self.next_id.fetch_add(1, Ordering::SeqCst);
+        write_message(
+            &mut stream,
+            &InferRequest::SeparateStems {
+                id,
+                sample_rate: pcm.sample_rate(),
+                channels: pcm.channels(),
+                samples: pcm.samples().to_vec(),
+            },
+        )
+        .map_err(|e| VoiceError::Backend(e.to_string()))?;
+
+        loop {
+            let resp: InferResponse = read_message(&mut stream)
+                .map_err(|e| VoiceError::Backend(format!("IPC read failed: {e}")))?;
+            match resp {
+                InferResponse::Stems {
+                    id: resp_id,
+                    sample_rate,
+                    channels,
+                    stems,
+                    names: _,
+                } if resp_id == id => {
+                    let mut buffers = stems.into_iter().map(|samples| {
+                        PcmBuffer::new(sample_rate, channels, samples)
+                            .map_err(|error| VoiceError::Backend(error.to_string()))
+                    });
+                    return Ok([
+                        buffers.next().transpose()?.ok_or_else(|| {
+                            VoiceError::Backend("daemon returned fewer than four stems".into())
+                        })?,
+                        buffers.next().transpose()?.ok_or_else(|| {
+                            VoiceError::Backend("daemon returned fewer than four stems".into())
+                        })?,
+                        buffers.next().transpose()?.ok_or_else(|| {
+                            VoiceError::Backend("daemon returned fewer than four stems".into())
+                        })?,
+                        buffers.next().transpose()?.ok_or_else(|| {
+                            VoiceError::Backend("daemon returned fewer than four stems".into())
+                        })?,
+                    ]);
+                }
+                InferResponse::Error {
+                    id: resp_id,
+                    message,
+                } if resp_id == id => return Err(VoiceError::Backend(message)),
                 InferResponse::Progress { .. } => {}
                 _ => {}
             }
@@ -537,6 +599,7 @@ mod tests {
                 ready: true,
                 active_stt_model: Some("moonshine-tiny".into()),
                 active_clone_model: Some("qwen3-tts".into()),
+                active_stem_model: None,
             },
             2,
         );
@@ -562,6 +625,7 @@ mod tests {
                 ready: false,
                 active_stt_model: None,
                 active_clone_model: None,
+                active_stem_model: None,
             },
             2,
         );
