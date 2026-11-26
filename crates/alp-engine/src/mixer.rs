@@ -4,6 +4,7 @@
 //! It performs no allocation, takes no locks, does no logging and never touches
 //! the filesystem. All buffers and cursors are allocated by [`Mixer::new`].
 
+use crate::insert_rack::{InsertRack, InsertRackControl};
 use crate::scene::MixScene;
 use alp_core::EnvelopePoint;
 use std::sync::Arc;
@@ -142,6 +143,10 @@ pub struct Mixer {
     track_sum: Vec<f64>,
     track_samples: Vec<u64>,
     master_plugin_chain: Option<alp_plugin::TrackPluginChain>,
+    /// Optional per-track insert rack, aligned with `track_meter_bank.track_ids`.
+    track_insert_racks: Vec<Option<InsertRack>>,
+    /// Per-track scratch used to apply inserts before the master sum.
+    track_scratch: Vec<Vec<f32>>,
 }
 
 impl Mixer {
@@ -183,6 +188,19 @@ impl Mixer {
             })
             .collect();
         let track_count = track_meter_bank.track_ids.len();
+        let channels = usize::from(scene.channels());
+        let mut track_insert_racks: Vec<Option<InsertRack>> = (0..track_count).map(|_| None).collect();
+        for (track_id, effects) in scene.insert_racks() {
+            if let Some(index) = track_meter_bank
+                .track_ids
+                .iter()
+                .position(|id| id == track_id)
+            {
+                let rack = InsertRack::from_effects(effects, scene.sample_rate(), scene.channels());
+                track_insert_racks[index] = Some(rack);
+            }
+        }
+        let track_scratch = vec![Vec::with_capacity(4096 * channels); track_count];
         Self {
             scene,
             position: 0,
@@ -195,6 +213,8 @@ impl Mixer {
             track_sum: vec![0.0; track_count],
             track_samples: vec![0; track_count],
             master_plugin_chain: None,
+            track_insert_racks,
+            track_scratch,
         }
     }
 
@@ -207,6 +227,20 @@ impl Mixer {
     #[must_use]
     pub fn track_meters(&self) -> Arc<TrackMeterBank> {
         Arc::clone(&self.track_meter_bank)
+    }
+
+    /// Lock-free control handle for a track's insert rack, when one exists.
+    #[must_use]
+    pub fn insert_control(
+        &self,
+        track_id: alp_core::TrackId,
+    ) -> Option<InsertRackControl> {
+        self.track_meter_bank
+            .track_ids
+            .iter()
+            .position(|id| *id == track_id)
+            .and_then(|index| self.track_insert_racks.get(index))
+            .and_then(|rack| rack.as_ref().map(InsertRack::control))
     }
 
     /// Current timeline position in frames.
@@ -262,15 +296,41 @@ impl Mixer {
         if frames == 0 {
             return 0;
         }
-        self.track_peak.fill(0.0);
-        self.track_sum.fill(0.0);
-        let start = self.position;
+
+        let Self {
+            scene,
+            position,
+            envelope_cursors,
+            master_gain,
+            master_limiter,
+            track_meter_indices,
+            track_meter_bank,
+            track_peak,
+            track_sum,
+            track_samples,
+            master_plugin_chain,
+            track_insert_racks,
+            track_scratch,
+        } = self;
+
+        track_peak.fill(0.0);
+        track_sum.fill(0.0);
+        let start = *position;
         let end = start
             .saturating_add(frames as u64)
-            .min(self.scene.total_frames());
+            .min(scene.total_frames());
+        let written_frames = end.saturating_sub(start) as usize;
+        let written_samples = written_frames * channels;
 
-        for (clip_index, clip) in self.scene.clips().iter().enumerate() {
-            let meter_index = self.track_meter_indices[clip_index];
+        for scratch in track_scratch.iter_mut() {
+            scratch.resize(written_samples, 0.0);
+            scratch[..written_samples].fill(0.0);
+        }
+
+        for (clip_index, clip) in scene.clips().iter().enumerate() {
+            let meter_index = track_meter_indices[clip_index];
+            let use_rack = meter_index
+                .is_some_and(|index| track_insert_racks.get(index).is_some_and(Option::is_some));
             let clip_start = clip.timeline_start;
             let clip_end = clip.timeline_end();
             let overlap_start = start.max(clip_start);
@@ -282,7 +342,12 @@ impl Mixer {
             let source_channels = usize::from(clip.source.channels());
             let source_samples = clip.source.samples();
             let clip_len = clip.len();
-            let cursor = &mut self.envelope_cursors[clip_index];
+            let cursor = &mut envelope_cursors[clip_index];
+            let destination: &mut [f32] = if use_rack {
+                &mut track_scratch[meter_index.expect("checked above")][..written_samples]
+            } else {
+                &mut out[..written_samples]
+            };
 
             for timeline_frame in overlap_start..overlap_end {
                 let clip_frame = timeline_frame - clip_start;
@@ -307,18 +372,19 @@ impl Mixer {
                 gain *= envelope_gain(&clip.envelope, cursor, clip_frame);
                 let polarity = if clip.inverted { -1.0 } else { 1.0 };
 
-                let destination = (timeline_frame - start) as usize * channels;
+                let offset = (timeline_frame - start) as usize * channels;
                 if source_channels == 1 {
                     let value = source_samples[source_index] * gain * polarity;
                     for channel in 0..channels {
-                        out[destination + channel] += value * pan_gain(clip.pan, channel, channels);
+                        destination[offset + channel] += value * pan_gain(clip.pan, channel, channels);
                     }
-                    if let Some(meter_index) = meter_index {
+                    if let Some(meter_index) = meter_index
+                        && !use_rack
+                    {
                         let channel_value = (value * pan_gain(clip.pan, 0, channels)).abs();
-                        self.track_peak[meter_index] =
-                            self.track_peak[meter_index].max(channel_value);
-                        self.track_sum[meter_index] += f64::from(value) * f64::from(value);
-                        self.track_samples[meter_index] += 1;
+                        track_peak[meter_index] = track_peak[meter_index].max(channel_value);
+                        track_sum[meter_index] += f64::from(value) * f64::from(value);
+                        track_samples[meter_index] += 1;
                     }
                 } else {
                     for channel in 0..channels.min(source_channels) {
@@ -326,46 +392,62 @@ impl Mixer {
                             * gain
                             * polarity
                             * pan_gain(clip.pan, channel, channels);
-                        out[destination + channel] += value;
-                        if let Some(meter_index) = meter_index {
-                            self.track_peak[meter_index] =
-                                self.track_peak[meter_index].max(value.abs());
-                            self.track_sum[meter_index] += f64::from(value) * f64::from(value);
-                            self.track_samples[meter_index] += 1;
+                        destination[offset + channel] += value;
+                        if let Some(meter_index) = meter_index
+                            && !use_rack
+                        {
+                            track_peak[meter_index] = track_peak[meter_index].max(value.abs());
+                            track_sum[meter_index] += f64::from(value) * f64::from(value);
+                            track_samples[meter_index] += 1;
                         }
                     }
                 }
             }
         }
 
-        let written_frames = end.saturating_sub(start) as usize;
-        let written_samples = written_frames * channels;
-        if self.master_gain != 1.0 {
+        // Apply each track's insert rack, then sum the processed track into the
+        // master bus. Meters now reflect the post-insert signal for racked tracks.
+        for (index, rack) in track_insert_racks.iter_mut().enumerate() {
+            let Some(rack) = rack else { continue };
+            let scratch = &mut track_scratch[index][..written_samples];
+            rack.process(scratch);
+            for (sample, value) in out[..written_samples].iter_mut().zip(scratch.iter()) {
+                *sample += *value;
+            }
+            let mut peak = 0.0f32;
+            let mut sum = 0.0f64;
+            for &value in scratch.iter() {
+                peak = peak.max(value.abs());
+                sum += f64::from(value) * f64::from(value);
+            }
+            track_peak[index] = peak;
+            track_sum[index] = sum;
+            track_samples[index] += written_frames as u64;
+        }
+
+        if *master_gain != 1.0 {
             for sample in &mut out[..written_samples] {
-                *sample *= self.master_gain;
+                *sample *= *master_gain;
             }
         }
-        if let Some(chain) = &mut self.master_plugin_chain {
+        if let Some(chain) = master_plugin_chain {
             let ctx = alp_plugin::ProcessContext {
-                sample_rate: self.scene.sample_rate(),
+                sample_rate: scene.sample_rate(),
                 num_frames: written_frames,
                 frame_position: start,
                 is_playing: true,
             };
             let _ = chain.process_interleaved(&mut out[..written_samples], channels, &ctx);
         }
-        if let Some(limiter) = &mut self.master_limiter {
+        if let Some(limiter) = master_limiter {
             limiter.process(&mut out[..written_samples]);
         }
 
-        for (clip_index, track_meter_index) in self.track_meter_indices.iter().enumerate() {
-            if let Some(meter_index) = track_meter_index {
-                let peak = self.track_peak[*meter_index];
-                let frame_count = written_frames.max(1) as u64;
-                let rms = (self.track_sum[*meter_index] / frame_count as f64).sqrt() as f32;
-                let _ = clip_index;
-                self.track_meter_bank.track_meters[*meter_index].update(peak, rms.clamp(0.0, 1.0));
-            }
+        for meter_index in track_meter_indices.iter().flatten() {
+            let peak = track_peak[*meter_index];
+            let frame_count = written_frames.max(1) as u64;
+            let rms = (track_sum[*meter_index] / frame_count as f64).sqrt() as f32;
+            track_meter_bank.track_meters[*meter_index].update(peak, rms.clamp(0.0, 1.0));
         }
         let (master_peak, master_rms) = if written_samples == 0 {
             (0.0, 0.0)
@@ -379,11 +461,11 @@ impl Mixer {
             let rms = (sum / written_samples as f64).sqrt() as f32;
             (peak, rms)
         };
-        self.track_meter_bank.master.update(master_peak, master_rms);
+        track_meter_bank.master.update(master_peak, master_rms);
 
-        self.track_peak.fill(0.0);
-        self.track_sum.fill(0.0);
-        self.position = end;
+        track_peak.fill(0.0);
+        track_sum.fill(0.0);
+        *position = end;
         frames
     }
 }
@@ -459,6 +541,31 @@ mod tests {
             pan: 0.0,
             track_id: None,
         }
+    }
+
+    #[test]
+    fn applies_track_insert_rack_to_render() {
+        use alp_core::EffectRef;
+
+        let track_id = alp_core::TrackId::from_u128(7);
+        let mut prepared_clip = clip(0, 100, 0, 1.0);
+        prepared_clip.track_id = Some(track_id);
+        let mut effect = EffectRef::new("gain", "gain");
+        effect.params.insert("gain".into(), 0.5);
+
+        let scene = MixScene::new(48_000, 1, vec![prepared_clip])
+            .expect("scene")
+            .with_insert_racks(vec![(track_id, vec![effect])]);
+        let mut mixer = Mixer::new(scene);
+        let mut output = vec![0.0f32; 100];
+        mixer.render_into(&mut output);
+
+        assert!(
+            (output[0] - 0.5).abs() < 1e-6,
+            "unit input through a 0.5 gain insert should render 0.5, got {}",
+            output[0]
+        );
+        assert!(mixer.insert_control(track_id).is_some());
     }
 
     #[test]

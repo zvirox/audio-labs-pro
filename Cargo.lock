@@ -169,6 +169,7 @@ name = "alp-engine"
 version = "0.1.0-beta.3"
 dependencies = [
  "alp-core",
+ "alp-dsp",
  "alp-media",
  "alp-plugin",
  "cpal",

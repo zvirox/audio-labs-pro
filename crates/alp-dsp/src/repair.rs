@@ -518,6 +518,11 @@ impl HarmonicSuppressor {
         self.0.set_reduction_db(db);
     }
 
+    /// Change the overtone bandwidth Q while the processor is live.
+    pub fn set_bandwidth_q(&mut self, q: f32) {
+        self.0.set_bandwidth_q(q);
+    }
+
     /// Enable or disable the suppressor.
     pub fn set_enabled(&mut self, enabled: bool) {
         self.0.set_enabled(enabled);

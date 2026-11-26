@@ -8,6 +8,7 @@ mod capture;
 mod command;
 mod device;
 mod error;
+mod insert_rack;
 mod mixer;
 mod render;
 mod scene;
@@ -23,6 +24,9 @@ pub use device::{
     play_scene, play_scene_live,
 };
 pub use error::EngineError;
+pub use insert_rack::{
+    INSERT_PARAM_COUNT, MAX_INSERT_SLOTS, InsertRack, InsertRackControl, InsertSlotInfo,
+};
 pub use mixer::{Mixer, TrackMeter, TrackMeterBank};
 pub use render::{DEFAULT_BLOCK_FRAMES, RenderReport, render_scene, render_scene_to_wav};
 pub use scene::{MixScene, SceneClip, SourceAudio};

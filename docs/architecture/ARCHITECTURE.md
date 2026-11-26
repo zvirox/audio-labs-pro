@@ -12,7 +12,7 @@ alp-core                  Domain model: Project, Track, Clip, Fade, Envelope, Bl
   ├── alp-dsp             Parametric EQ, biquads, compressor/limiter, LUFS, RNNoise/spectral denoise, STFT spectrogram
   └── alp-plugin          CLAP & LV2 plugin discovery, sandboxing, and parameter state
         │
-alp-engine                cpal/PipeWire/ALSA live audio loop, lock-free mixer, capture, offline renderer
+alp-engine                cpal/PipeWire/ALSA live audio loop, lock-free mixer with alp-dsp insert racks, capture, offline renderer
 alp-voice                 Voice cloning consent & curation, lexicon, VAD, scripts, STT & synthesis orchestration
 alp-infer                 Isolated inference subprocess daemon (Kokoro, Kitten, StyleTTS2, Qwen3, Moonshine, GGUF)
         │

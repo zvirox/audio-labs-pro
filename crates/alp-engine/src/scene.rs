@@ -7,7 +7,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use alp_core::{EnvelopePoint, FrameRange, Project, SourceId, frames_to_secs, secs_to_frames};
+use alp_core::{EffectRef, EnvelopePoint, FrameRange, Project, SourceId, frames_to_secs, secs_to_frames};
 use alp_media::{PcmBuffer, resample};
 
 use crate::error::EngineError;
@@ -137,6 +137,8 @@ pub struct MixScene {
     channels: u16,
     clips: Vec<SceneClip>,
     total_frames: u64,
+    /// Per-track insert descriptors, keyed by source `TrackId`.
+    insert_racks: Vec<(alp_core::TrackId, Vec<EffectRef>)>,
 }
 
 impl MixScene {
@@ -178,6 +180,7 @@ impl MixScene {
             channels,
             clips,
             total_frames,
+            insert_racks: Vec::new(),
         })
     }
 
@@ -208,6 +211,7 @@ impl MixScene {
     ) -> Result<Self, EngineError> {
         let any_solo = project.tracks.iter().any(|track| track.solo);
         let mut clips = Vec::new();
+        let mut insert_racks = Vec::new();
         let mut resampled_cache: HashMap<SourceId, Arc<SourceAudio>> = HashMap::new();
 
         for track in &project.tracks {
@@ -218,6 +222,9 @@ impl MixScene {
             }
             if track.muted || (any_solo && !track.solo) {
                 continue;
+            }
+            if !track.effects.is_empty() {
+                insert_racks.push((track.id, track.effects.clone()));
             }
             for clip in &track.clips {
                 let source = sources
@@ -307,7 +314,23 @@ impl MixScene {
             }
         }
 
-        Self::new(project.sample_rate, 2, clips)
+        Ok(Self::new(project.sample_rate, 2, clips)?.with_insert_racks(insert_racks))
+    }
+
+    /// Attach per-track insert descriptors to a scene.
+    #[must_use]
+    pub fn with_insert_racks(
+        mut self,
+        racks: Vec<(alp_core::TrackId, Vec<EffectRef>)>,
+    ) -> Self {
+        self.insert_racks = racks;
+        self
+    }
+
+    /// Per-track insert effect descriptors.
+    #[must_use]
+    pub fn insert_racks(&self) -> &[(alp_core::TrackId, Vec<EffectRef>)] {
+        &self.insert_racks
     }
 
     /// Sorted, unique timeline-track ids represented by this scene.
@@ -411,7 +434,8 @@ impl MixScene {
                 track_id: clip.track_id,
             });
         }
-        Self::new(target_rate, self.channels, clips)
+        Ok(Self::new(target_rate, self.channels, clips)?
+            .with_insert_racks(self.insert_racks.clone()))
     }
 }
 

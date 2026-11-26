@@ -16,7 +16,7 @@ ALLOWED = {
     "alp-media": {"alp-core"},
     "alp-dsp": {"alp-core"},
     "alp-plugin": {"alp-core"},
-    "alp-engine": {"alp-core", "alp-media", "alp-plugin"},
+    "alp-engine": {"alp-core", "alp-dsp", "alp-media", "alp-plugin"},
     "alp-voice": {"alp-core", "alp-media"},
     "alp-infer": {"alp-core", "alp-media", "alp-voice"},
     "alp-api": {"alp-core", "alp-dsp", "alp-engine", "alp-media", "alp-plugin", "alp-voice"},
