@@ -8,11 +8,12 @@ use tauri::ipc::Channel;
 use tauri::{AppHandle, Emitter, State};
 
 use alp_session::{
-    AiActivityEntry, AiControlStatus, ApprovalDecision, BiquadBandDto, BiquadResponseDto,
-    FrequencyScale, MeterFrame, PanelManager, PermissionTier, PersistedWorkspace, ProjectSummary,
-    Size, SpectralSelectionDto, SpectrogramConfig, SpectrogramData, TimelineDto,
-    TimelinePanPointDto, TransportController, TransportState, WaveformPeaksDto, WindowType,
-    compute_biquad_response,
+    AcxChapterFileDto, AcxQaReport, AiActivityEntry, AiControlStatus, ApprovalDecision,
+    BiquadBandDto, BiquadResponseDto, FrequencyScale, M4bExportReport, M4bExportRequestDto,
+    MeterFrame, PanelManager, PermissionTier, PersistedWorkspace, ProjectSummary, Size,
+    SpectralSelectionDto, SpectrogramConfig, SpectrogramData, TimelineDto, TimelinePanPointDto,
+    TransportController, TransportState, WaveformPeaksDto, WindowType, analyze_acx_files,
+    compute_biquad_response, export_audiobook_m4b,
 };
 
 use crate::glass::GlassReport;
@@ -589,6 +590,18 @@ pub fn effects_get_response(
         session.project_summary().sample_rate
     };
     Ok(compute_biquad_response(&bands, rate, points.unwrap_or(160)))
+}
+
+/// Analyse chapter audio files against ACX publication targets.
+#[tauri::command]
+pub fn audiobook_acx_analyze(chapters: Vec<AcxChapterFileDto>) -> Result<AcxQaReport, String> {
+    analyze_acx_files(&chapters)
+}
+
+/// Export a rendered master as a chaptered M4B audiobook.
+#[tauri::command]
+pub fn audiobook_export_m4b(request: M4bExportRequestDto) -> Result<M4bExportReport, String> {
+    export_audiobook_m4b(&request)
 }
 
 /// Set view mode (waveform, spectrogram, or split) for a track.

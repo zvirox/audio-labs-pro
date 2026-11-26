@@ -8,14 +8,23 @@
 import { useState, useEffect } from 'react';
 import { Card } from '../kit/Card';
 import { Button } from '../kit/Button';
-import { getStories, getVoiceProfiles } from '../ipc/client';
-import type { StoryScript, StoryLine, VoiceProfile } from '../ipc/types';
+import { Input } from '../kit/Input';
+import { analyzeAcxChapters, exportAudiobookM4b, getStories, getVoiceProfiles } from '../ipc/client';
+import type {
+  StoryScript,
+  StoryLine,
+  VoiceProfile,
+  AcxQaReport,
+  M4bExportReport,
+} from '../ipc/types';
 import {
   BookOpen,
   Plus,
   Layers,
   Sparkles,
   CheckCircle2,
+  ShieldCheck,
+  FileAudio,
 } from 'lucide-react';
 
 export function StoriesWorkspace() {
@@ -26,6 +35,13 @@ export function StoriesWorkspace() {
   const [newLineSpeaker, setNewLineSpeaker] = useState<string>('Studio Narrator (Acoustic)');
   const [isRenderingAll, setIsRenderingAll] = useState<boolean>(false);
   const [stitchNotice, setStitchNotice] = useState<string | null>(null);
+  const [masterPath, setMasterPath] = useState<string>('');
+  const [coverPath, setCoverPath] = useState<string>('');
+  const [acxReport, setAcxReport] = useState<AcxQaReport | null>(null);
+  const [m4bReport, setM4bReport] = useState<M4bExportReport | null>(null);
+  const [isChecking, setIsChecking] = useState<boolean>(false);
+  const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [masterNotice, setMasterNotice] = useState<string | null>(null);
 
   useEffect(() => {
     getStories().then((s) => {
@@ -86,6 +102,63 @@ export function StoriesWorkspace() {
     setTimeout(() => setStitchNotice(null), 4000);
   };
 
+  const bookChapters = () => {
+    if (!activeStory) return [];
+    const duration =
+      activeStory.lines.reduce((total, line) => total + (line.take_duration || 0), 0) ||
+      activeStory.lines.length * 4;
+    return [{ title: activeStory.title, start_secs: 0, duration_secs: duration }];
+  };
+
+  const handleAcxCheck = async () => {
+    if (!activeStory || !masterPath.trim()) {
+      setMasterNotice('Set a rendered master WAV path first');
+      return;
+    }
+    setIsChecking(true);
+    try {
+      setAcxReport(
+        await analyzeAcxChapters([
+          { title: activeStory.title, audio_path: masterPath.trim() },
+        ])
+      );
+      setMasterNotice(null);
+    } catch (error) {
+      setMasterNotice(`ACX check failed: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  const handleExportM4b = async () => {
+    if (!activeStory || !masterPath.trim()) {
+      setMasterNotice('Set a rendered master WAV path first');
+      return;
+    }
+    setIsExporting(true);
+    try {
+      const report = await exportAudiobookM4b({
+        output_path: masterPath.trim().replace(/\.[^.]+$/, '') + '.m4b',
+        master_audio_path: masterPath.trim(),
+        chapters: bookChapters(),
+        cover_path: coverPath.trim() || null,
+        metadata: {
+          title: activeStory.title,
+          narrator: '',
+          series: '',
+          series_number: null,
+          comment: '',
+        },
+      });
+      setM4bReport(report);
+      setMasterNotice(null);
+    } catch (error) {
+      setMasterNotice(`M4B export failed: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto p-2 pb-12 select-none">
       {/* Workspace Header */}
@@ -128,6 +201,12 @@ export function StoriesWorkspace() {
         </div>
       )}
 
+      {masterNotice && (
+        <div className="p-3 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border-strong)] text-amber text-xs font-mono">
+          {masterNotice}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Stories & Chapters (4 cols) */}
         <div className="lg:col-span-4 space-y-4">
@@ -149,6 +228,83 @@ export function StoriesWorkspace() {
                   </div>
                 </div>
               ))}
+            </div>
+          </Card>
+
+          <Card title="Audiobook Mastering" subtitle="ACX compliance and native M4B export">
+            <div className="space-y-3 text-xs">
+              <Input
+                label="Rendered master WAV"
+                placeholder="/path/to/book-master.wav"
+                value={masterPath}
+                onChange={(event) => setMasterPath(event.target.value)}
+              />
+              <Input
+                label="Cover art (optional)"
+                placeholder="/path/to/cover.jpg"
+                value={coverPath}
+                onChange={(event) => setCoverPath(event.target.value)}
+              />
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="xs"
+                  onClick={handleAcxCheck}
+                  disabled={isChecking}
+                  leftIcon={<ShieldCheck className="w-4 h-4" />}
+                >
+                  {isChecking ? 'Checking...' : 'ACX Check'}
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="xs"
+                  onClick={handleExportM4b}
+                  disabled={isExporting}
+                  leftIcon={<FileAudio className="w-4 h-4" />}
+                >
+                  {isExporting ? 'Exporting...' : 'Export M4B'}
+                </Button>
+              </div>
+
+              {acxReport && (
+                <div className="space-y-2 pt-2 border-t border-[var(--color-border)]">
+                  <div className="text-[11px] font-mono text-[var(--color-fg-muted)]">
+                    {acxReport.compliant_count}/{acxReport.total_count} chapters compliant
+                  </div>
+                  {acxReport.chapters.map((chapter) => (
+                    <div
+                      key={chapter.title}
+                      className="p-2 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] space-y-1"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-[var(--color-fg)]">{chapter.title}</span>
+                        <span
+                          className={
+                            chapter.compliant
+                              ? 'text-sky-text font-mono text-[10px]'
+                              : 'text-red font-mono text-[10px]'
+                          }
+                        >
+                          {chapter.compliant ? 'PASS' : 'REVIEW'}
+                        </span>
+                      </div>
+                      <div className="font-mono text-[10px] text-[var(--color-fg-muted)]">
+                        RMS {chapter.rms_dbfs.toFixed(1)} · peak {chapter.true_peak_dbfs.toFixed(1)} · floor {chapter.noise_floor_dbfs.toFixed(1)}
+                      </div>
+                      {chapter.failures.map((failure) => (
+                        <div key={failure} className="text-[10px] text-amber">{failure}</div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {m4bReport && (
+                <div className="pt-2 border-t border-[var(--color-border)] font-mono text-[10px] text-[var(--color-fg-muted)] space-y-1">
+                  <div>Exported {m4bReport.chapter_count} chapter(s), {m4bReport.frames} AAC frames</div>
+                  <div className="truncate" title={m4bReport.path}>{m4bReport.path}</div>
+                </div>
+              )}
             </div>
           </Card>
         </div>

@@ -37,11 +37,11 @@
   - [x] Implement `SpectralNotchFilter` to attenuate narrow-band tones inside selected `[t1..t2, f1..f2]` spectral boxes.
   - [x] Implement `HarmonicSuppressor` for automated fundamental + harmonic overtone attenuation.
 
-### Phase 15 — Audiobook Mastering & Native M4B Packaging
-- [ ] **ACX Automated QA Report:**
-  - [ ] Batch chapter validation checking RMS (`-23` to `-18 dB`), peak ceiling (`<= -3.0 dB`), and floor (`<= -60 dB`) with JSON/UI compliance report.
-- [ ] **Native M4B Muxer (`alp-media`):**
-  - [ ] Encode AAC audiobook container with `chpl` chapter atoms, cover artwork (JPEG/PNG), and narrator/series metadata tags.
+### Phase 15 — Audiobook Mastering & Native M4B Packaging (implemented, pending release)
+- [x] **ACX Automated QA Report:**
+  - [x] Batch chapter validation checking RMS (`-23` to `-18 dB`), peak ceiling (`<= -3.0 dB`), and floor (`<= -60 dB`) with JSON/UI compliance report.
+- [x] **Native M4B Muxer (`alp-media`):**
+  - [x] Encode AAC audiobook container with `chpl` chapter atoms, cover artwork (JPEG/PNG), and narrator/series metadata tags.
 
 ### Phase 16 — Neural Stem Separation & Video Dubbing Pipeline
 - [ ] **Stem Separation (`alp-infer`):**

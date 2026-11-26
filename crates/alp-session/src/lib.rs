@@ -9,6 +9,7 @@
 //! - [`TransportController`]: audio playback coordination, meter streaming, and peak pyramids.
 
 pub mod ai;
+pub mod audiobook_mastering;
 pub mod effects;
 pub mod jobs;
 pub mod panels;
@@ -18,10 +19,16 @@ pub mod transport;
 pub mod workspace;
 
 pub use ai::{AiActivityEntry, AiControlManager, AiControlStatus, AiEvent};
+pub use alp_api::AcxQaReport;
 pub use alp_api::PermissionTier;
 pub use alp_api::ProjectSummary;
 pub use alp_api::control::ApprovalDecision;
 pub use alp_dsp::spectral::{FrequencyScale, SpectrogramConfig, SpectrogramData, WindowType};
+pub use alp_media::M4bExportReport;
+pub use audiobook_mastering::{
+    AcxChapterFileDto, M4bChapterDto, M4bExportRequestDto, M4bMetadataDto, analyze_acx_files,
+    export_audiobook_m4b,
+};
 pub use effects::{BiquadBandDto, BiquadResponseDto, compute_biquad_response};
 pub use jobs::{Job, JobQueue, JobReporter, JobStatus};
 pub use panels::{DockSide, PanelKind, PanelManager, PanelRect, PanelState, Point, Size};

@@ -226,6 +226,7 @@ dependencies = [
  "mp4",
  "oxideav-aac",
  "rubato",
+ "serde",
  "symphonia",
  "tempfile",
  "thiserror 2.0.21",

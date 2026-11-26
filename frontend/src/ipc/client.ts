@@ -26,6 +26,10 @@ import type {
   CaptureTake,
   TranscriptWord,
   StoryScript,
+  AcxChapterFileDto,
+  AcxQaReport,
+  M4bExportRequestDto,
+  M4bExportReport,
   TimelineDto,
   TimelineClipDto,
   TrackViewMode,
@@ -824,6 +828,48 @@ export async function getStories(): Promise<StoryScript[]> {
       ],
     },
   ];
+}
+
+export async function analyzeAcxChapters(
+  chapters: AcxChapterFileDto[],
+): Promise<AcxQaReport> {
+  if (isTauriEnvironment()) {
+    return invoke<AcxQaReport>('audiobook_acx_analyze', { chapters });
+  }
+  const results = chapters.map((chapter, index) => ({
+    title: chapter.title,
+    rms_dbfs: -20 + index * 0.2,
+    true_peak_dbfs: -6.5,
+    noise_floor_dbfs: -62,
+    compliant: true,
+    failures: [],
+  }));
+  return {
+    chapters: results,
+    compliant_count: results.length,
+    total_count: results.length,
+    all_compliant: results.length > 0,
+  };
+}
+
+export async function exportAudiobookM4b(
+  request: M4bExportRequestDto,
+): Promise<M4bExportReport> {
+  if (isTauriEnvironment()) {
+    return invoke<M4bExportReport>('audiobook_export_m4b', { request });
+  }
+  const duration = request.chapters.reduce(
+    (total, chapter) => total + chapter.duration_secs,
+    0,
+  );
+  return {
+    path: request.output_path,
+    frames: Math.max(1, Math.round(duration * 48)),
+    duration_secs: duration,
+    bitrate: 64_000,
+    chapter_count: request.chapters.length,
+    has_cover: Boolean(request.cover_path),
+  };
 }
 
 // Mock timeline state for browser testing

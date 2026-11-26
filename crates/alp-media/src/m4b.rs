@@ -10,11 +10,12 @@ use std::path::Path;
 use alp_core::write_atomic;
 use bytes::Bytes;
 use mp4::{
-    AacConfig, AudioObjectType, ChannelConfig, Mp4Config, Mp4Sample, Mp4Writer, MediaConfig,
+    AacConfig, AudioObjectType, ChannelConfig, MediaConfig, Mp4Config, Mp4Sample, Mp4Writer,
     SampleFreqIndex, TrackConfig,
 };
 use oxideav_aac::adts::AdtsHeader;
 use oxideav_aac::encoder::{EncoderConfig, StreamEncoder};
+use serde::{Deserialize, Serialize};
 
 use crate::error::MediaError;
 use crate::pcm::PcmBuffer;
@@ -79,7 +80,7 @@ pub struct M4bChapter {
 }
 
 /// Result of an M4B export.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct M4bExportReport {
     /// Destination path.
     pub path: String,
@@ -98,8 +99,18 @@ pub struct M4bExportReport {
 fn aac_sample_rate(sample_rate: u32) -> bool {
     matches!(
         sample_rate,
-        96_000 | 88_200 | 64_000 | 48_000 | 44_100 | 32_000 | 24_000 | 22_050 | 16_000
-            | 12_000 | 11_025 | 8_000
+        96_000
+            | 88_200
+            | 64_000
+            | 48_000
+            | 44_100
+            | 32_000
+            | 24_000
+            | 22_050
+            | 16_000
+            | 12_000
+            | 11_025
+            | 8_000
     )
 }
 
@@ -154,7 +165,9 @@ fn chapters_box(chapters: &[M4bChapter]) -> Vec<u8> {
     payload.extend_from_slice(&[0, 0, 0]); // flags
     payload.extend_from_slice(&(chapters.len() as u32).to_be_bytes());
     for chapter in chapters {
-        let start = (chapter.start_secs * CHAPTER_TIMESCALE as f64).round().max(0.0) as u64;
+        let start = (chapter.start_secs * CHAPTER_TIMESCALE as f64)
+            .round()
+            .max(0.0) as u64;
         let duration = (chapter.duration_secs * CHAPTER_TIMESCALE as f64)
             .round()
             .max(0.0) as u64;
@@ -275,13 +288,23 @@ pub fn export_m4b(
         .map_err(|error| MediaError::Encode(format!("AAC encoder setup failed: {error:?}")))?;
 
     let config = Mp4Config {
-        major_brand: "isom".parse().map_err(|e| MediaError::Encode(format!("{e:?}")))?,
+        major_brand: "isom"
+            .parse()
+            .map_err(|e| MediaError::Encode(format!("{e:?}")))?,
         minor_version: 512,
         compatible_brands: vec![
-            "isom".parse().map_err(|e| MediaError::Encode(format!("{e:?}")))?,
-            "iso2".parse().map_err(|e| MediaError::Encode(format!("{e:?}")))?,
-            "mp41".parse().map_err(|e| MediaError::Encode(format!("{e:?}")))?,
-            "M4B ".parse().map_err(|e| MediaError::Encode(format!("{e:?}")))?,
+            "isom"
+                .parse()
+                .map_err(|e| MediaError::Encode(format!("{e:?}")))?,
+            "iso2"
+                .parse()
+                .map_err(|e| MediaError::Encode(format!("{e:?}")))?,
+            "mp41"
+                .parse()
+                .map_err(|e| MediaError::Encode(format!("{e:?}")))?,
+            "M4B "
+                .parse()
+                .map_err(|e| MediaError::Encode(format!("{e:?}")))?,
         ],
         timescale: sample_rate,
     };

@@ -7,6 +7,14 @@ versions follow the release milestones in the build plan.
 
 ### Added
 
+- **Phase 15 — Audiobook Mastering & Native M4B Packaging.** ACX chapter QA
+  (RMS -23..-18 dBFS, true peak <= -3 dBFS, noise floor <= -60 dBFS) with a
+  native true-peak estimator; a pure-Rust M4B exporter with AAC-LC audio,
+  `chpl` chapter atoms, JPEG/PNG `covr` artwork and narrator/series `ilst` tags;
+  Tauri commands and Stories workspace controls for both flows.
+
+### Added
+
 - **Phase 14 — Advanced Spectral Repair & Track Insert Racks.** `alp-dsp::repair` adds
   `SpectralNotchFilter` and `HarmonicSuppressor` with preallocated STFT masking;
   `alp-engine::insert_rack` adds eight lock-free per-track insert slots; and

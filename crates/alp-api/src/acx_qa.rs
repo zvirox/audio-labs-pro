@@ -82,11 +82,8 @@ pub fn analyze_acx_chapters(chapters: &[AcxChapterInput<'_>]) -> AcxQaReport {
         .iter()
         .map(|chapter| {
             let rms = rms_dbfs(chapter.samples);
-            let peak = measure_true_peak_dbfs(
-                chapter.samples,
-                chapter.sample_rate,
-                chapter.channels,
-            );
+            let peak =
+                measure_true_peak_dbfs(chapter.samples, chapter.sample_rate, chapter.channels);
             let floor = level_stats(chapter.samples, chapter.sample_rate, chapter.channels)
                 .noise_floor_dbfs;
             let mut failures = Vec::new();
@@ -180,7 +177,12 @@ mod tests {
         }]);
         let chapter = &report.chapters[0];
         assert!(!chapter.compliant);
-        assert_eq!(chapter.failures.len(), 3, "failures: {:?}", chapter.failures);
+        assert_eq!(
+            chapter.failures.len(),
+            3,
+            "failures: {:?}",
+            chapter.failures
+        );
     }
 
     #[test]

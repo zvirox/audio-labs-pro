@@ -235,6 +235,58 @@ export interface StoryScript {
   lines: StoryLine[];
 }
 
+export interface AcxChapterFileDto {
+  title: string;
+  audio_path: string;
+}
+
+export interface AcxChapterQa {
+  title: string;
+  rms_dbfs: number;
+  true_peak_dbfs: number;
+  noise_floor_dbfs: number;
+  compliant: boolean;
+  failures: string[];
+}
+
+export interface AcxQaReport {
+  chapters: AcxChapterQa[];
+  compliant_count: number;
+  total_count: number;
+  all_compliant: boolean;
+}
+
+export interface M4bChapterDto {
+  title: string;
+  start_secs: number;
+  duration_secs: number;
+}
+
+export interface M4bMetadataDto {
+  title: string;
+  narrator: string;
+  series: string;
+  series_number: number | null;
+  comment: string;
+}
+
+export interface M4bExportRequestDto {
+  output_path: string;
+  master_audio_path: string;
+  chapters: M4bChapterDto[];
+  cover_path: string | null;
+  metadata: M4bMetadataDto;
+}
+
+export interface M4bExportReport {
+  path: string;
+  frames: number;
+  duration_secs: number;
+  bitrate: number;
+  chapter_count: number;
+  has_cover: boolean;
+}
+
 export type PermissionTier = 'observe' | 'edit' | 'export';
 
 export interface AiControlStatus {
