@@ -12,6 +12,7 @@ pub mod manager;
 pub mod model;
 pub mod profile;
 pub mod protocol;
+pub mod rate_fitting;
 pub mod reference;
 pub mod script;
 pub mod sha256;
@@ -39,6 +40,9 @@ pub use model::{
 };
 pub use profile::{ConsentRecord, ProfileStore, VoiceParams, VoiceProfile};
 pub use protocol::{InferRequest, InferResponse, InferStatus, default_socket_path};
+pub use rate_fitting::{
+    DEFAULT_MAX_SPEED, DEFAULT_MIN_SPEED, FitPlan, FitWindow, fit_take, plan_fit,
+};
 pub use reference::{ReferenceQualityReport, analyze_reference_quality};
 pub use script::{LineStatus, Script, ScriptLine};
 pub use stt::{BuiltinSttBackend, DictationEvent, DictationSession};

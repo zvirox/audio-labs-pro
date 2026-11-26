@@ -15,6 +15,7 @@ mod pcm;
 mod peaks;
 mod resample;
 mod synthetic;
+mod time_stretch;
 mod wav;
 
 pub use cache::{CacheStatus, PeakCache};
@@ -30,6 +31,7 @@ pub use peaks::{
 };
 pub use resample::resample;
 pub use synthetic::write_test_tone;
+pub use time_stretch::time_stretch;
 pub use wav::{WavBitDepth, write_wav};
 
 /// Peak cache directory name inside a project.
