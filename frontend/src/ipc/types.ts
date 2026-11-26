@@ -287,6 +287,56 @@ export interface M4bExportReport {
   has_cover: boolean;
 }
 
+export interface StemSeparationRequestDto {
+  audio_path: string;
+  output_dir: string;
+}
+
+export interface StemFileDto {
+  name: string;
+  path: string;
+}
+
+export interface StemSeparationReport {
+  stems: StemFileDto[];
+  sample_rate: number;
+}
+
+export interface RateFitRequestDto {
+  audio_path: string;
+  target_duration_secs: number;
+  output_path: string;
+}
+
+export interface FitPlanDto {
+  current_duration_secs: number;
+  target_duration_secs: number;
+  recommended_speed: number;
+  stretch_ratio: number;
+  uses_wsola: boolean;
+  within_tts_range: boolean;
+}
+
+export interface RateFitReport {
+  path: string;
+  duration_secs: number;
+  plan: FitPlanDto;
+}
+
+export interface VideoRemuxRequestDto {
+  video_path: string;
+  audio_path: string | null;
+  output_path: string;
+  subtitle_path: string | null;
+}
+
+export interface RemuxReport {
+  output_path: string;
+  duration_secs: number | null;
+  video_stream_copied: boolean;
+  audio_codec: string;
+}
+
 export type PermissionTier = 'observe' | 'edit' | 'export';
 
 export interface AiControlStatus {

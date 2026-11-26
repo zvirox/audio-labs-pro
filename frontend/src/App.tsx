@@ -42,6 +42,7 @@ import {
   StoriesWorkspace,
   MultitrackWorkspace,
   DashboardWorkspace,
+  DubbingWorkspace,
 } from './workspaces';
 
 import {
@@ -548,7 +549,7 @@ function renderActiveWorkspace(
       return <CapturesWorkspace onSeek={transport.seek} />;
 
     case 'dubbing':
-      return <GenerateWorkspace />;
+      return <DubbingWorkspace subtab={subtab} />;
 
     case 'multitrack':
     default:

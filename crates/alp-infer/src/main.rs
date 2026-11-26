@@ -5,9 +5,9 @@
 //! daemon's lifetime: a loaded neural model is reused across connections, and
 //! the builtin tier serves requests before (and after) any model load.
 
+mod demucs;
 #[cfg(test)]
 mod gguf;
-mod demucs;
 mod kitten;
 mod kokoro;
 mod moonshine;
@@ -554,8 +554,7 @@ fn handle_client(mut stream: UnixStream, worker: &mut Worker, running: Arc<Atomi
                 channels,
                 samples,
             } => {
-                let _ =
-                    write_message(&mut stream, &InferResponse::Progress { id, progress: 0.2 });
+                let _ = write_message(&mut stream, &InferResponse::Progress { id, progress: 0.2 });
                 let outcome = (|| -> Result<[PcmBuffer; 4], VoiceError> {
                     let engine = worker.stem.as_ref().ok_or_else(|| {
                         VoiceError::Unavailable(
@@ -577,7 +576,10 @@ fn handle_client(mut stream: UnixStream, worker: &mut Worker, running: Arc<Atomi
                             sample_rate: stems[0].sample_rate(),
                             channels: stems[0].channels(),
                             stems: stems.iter().map(|stem| stem.samples().to_vec()).collect(),
-                            names: demucs::STEM_NAMES.iter().map(|name| (*name).to_owned()).collect(),
+                            names: demucs::STEM_NAMES
+                                .iter()
+                                .map(|name| (*name).to_owned())
+                                .collect(),
                         };
                         if write_message(&mut stream, &resp).is_err() {
                             break;

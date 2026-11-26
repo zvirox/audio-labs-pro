@@ -43,12 +43,12 @@
 - [x] **Native M4B Muxer (`alp-media`):**
   - [x] Encode AAC audiobook container with `chpl` chapter atoms, cover artwork (JPEG/PNG), and narrator/series metadata tags.
 
-### Phase 16 — Neural Stem Separation & Video Dubbing Pipeline
-- [ ] **Stem Separation (`alp-infer`):**
-  - [ ] Add ONNX Demucs runner producing 4 isolated stems (`vocals`, `drums`, `bass`, `other`) loaded directly onto multitrack lanes.
-- [ ] **WSOLA Rate Fitting & Video Remux (`alp-voice`, `alp-media`):**
-  - [ ] Implement `FitPlanner` (`rate_fitting.rs`) time-stretching translated TTS takes to match reference subtitle/dialog windows.
-  - [ ] Implement `VideoRemuxer` (`video_sync.rs`) for MP4/MKV audio extraction and lossless video stream copy (`-c:v copy`) remuxing, plus dedicated Dubbing Studio UI controls.
+### Phase 16 — Neural Stem Separation & Video Dubbing Pipeline (implemented, pending release)
+- [x] **Stem Separation (`alp-infer`):**
+  - [x] Add ONNX Demucs runner producing 4 isolated stems (`vocals`, `drums`, `bass`, `other`) loaded directly onto multitrack lanes.
+- [x] **WSOLA Rate Fitting & Video Remux (`alp-voice`, `alp-media`):**
+  - [x] Implement `FitPlanner` (`rate_fitting.rs`) time-stretching translated TTS takes to match reference subtitle/dialog windows.
+  - [x] Implement `VideoRemuxer` (`video_sync.rs`) for MP4/MKV audio extraction and lossless video stream copy (`-c:v copy`) remuxing, plus dedicated Dubbing Studio UI controls.
 
 ### Phase 17 — VST3 Plugin Host & Batch Macros
 - [ ] **VST3 Host Engine (`alp-plugin`):**

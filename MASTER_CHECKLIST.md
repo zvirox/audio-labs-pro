@@ -32,6 +32,7 @@
 - [x] **Phase 10 (MCP Host & Starship Bridge):** 68 typed tools (`tool_defs.rs`), Observe / Edit / Export permission tiers, token auth, UI attach approval flow, audit JSONL log, `starship.rs` Unix socket plugin registration (`$XDG_RUNTIME_DIR/starship/bridges/alp.sock`).
 - [x] **Phase 11 (Plugin Hosting):** CLAP and LV2 plugin discovery and real-time host integration in `alp-plugin`.
 - [x] **M0–M8 (Tauri v2 Migration & Legacy Removal):** Full cutover from `iced` (`alp-ui` / `alp-ui-kit` removed) to Tauri v2 + React 19 + TypeScript; unified Linux packaging via `packaging/nfpm.yaml` (`.deb`, `.rpm`, `.pkg.tar.zst`).
+- [x] **Phase 16 (Dubbing Pipeline):** WSOLA time-stretch + `FitPlanner`, ffmpeg stream-copy remux, model-gated 4-stem ONNX runner with daemon protocol, and a dedicated Dubbing Studio workspace.
 - [x] **Phase 15 (Audiobook Mastering):** ACX chapter QA with true-peak estimation, native M4B export with AAC/chapters/cover/tags, and UI/IPC exposure in Stories workspace.
 - [x] **Phase 14 (Spectral Repair & Insert Racks):** `alp-dsp::repair` notch/harmonic STFT effects, `alp-engine::insert_rack` with 8 lock-free controlled slots, and `EffectsWorkspace` native magnitude/phase curve from real `Coefficients::response` telemetry.
 - [x] **Linear UI Finalization & Lock:**
@@ -44,9 +45,7 @@
 
 ## Remaining Work (Actually Pending Features)
 
-### Production Workflows (Video Dubbing & External Plugins)
-- [ ] `DemucsRunner` neural stem separation (`alp-infer`) splitting vocals/drums/bass/other into multitrack stems.
-- [ ] WSOLA speech-rate fitting (`FitPlanner` in `alp-voice`) & video demux/remux pipeline (`VideoRemuxer` in `alp-media`).
+### Production Workflows (External Plugins)
 - [ ] VST3 plugin host backend (`alp-plugin/src/vst3`) and native plugin editor GUI window embedding.
 - [ ] Batch `MacroChain` directory queue runner + `dsp_macro_execute` MCP tool.
 

@@ -90,11 +90,7 @@ pub fn time_stretch(buffer: &PcmBuffer, ratio: f32) -> Result<PcmBuffer, MediaEr
 
 fn hann_window(length: usize) -> Vec<f32> {
     (0..length)
-        .map(|i| {
-            0.5
-                * (1.0
-                    - (std::f32::consts::TAU * i as f32 / length as f32).cos())
-        })
+        .map(|i| 0.5 * (1.0 - (std::f32::consts::TAU * i as f32 / length as f32).cos()))
         .collect()
 }
 

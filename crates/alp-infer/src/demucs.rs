@@ -52,9 +52,8 @@ impl DemucsEngine {
                 manifest_path.display()
             ))
         })?;
-        let manifest: DemucsManifest = serde_json::from_str(&text).map_err(|error| {
-            VoiceError::Backend(format!("invalid Demucs manifest: {error}"))
-        })?;
+        let manifest: DemucsManifest = serde_json::from_str(&text)
+            .map_err(|error| VoiceError::Backend(format!("invalid Demucs manifest: {error}")))?;
         if manifest.sample_rate == 0 {
             return Err(VoiceError::Backend(
                 "Demucs manifest sample_rate must be non-zero".into(),
@@ -103,8 +102,7 @@ impl DemucsEngine {
 
     /// Load from the `ALP_DEMUCS_DIR` environment override, when set.
     pub fn from_environment() -> Option<Result<Self, VoiceError>> {
-        std::env::var_os("ALP_DEMUCS_DIR")
-            .map(|dir| Self::load(Path::new(&PathBuf::from(dir))))
+        std::env::var_os("ALP_DEMUCS_DIR").map(|dir| Self::load(Path::new(&PathBuf::from(dir))))
     }
 
     /// Manifest this engine was loaded with.
@@ -132,7 +130,9 @@ impl DemucsEngine {
         let channels = if self.manifest.stereo { 2 } else { 1 };
         let frames = prepared.frames() as usize;
         if frames == 0 {
-            return Err(VoiceError::Backend("cannot separate an empty buffer".into()));
+            return Err(VoiceError::Backend(
+                "cannot separate an empty buffer".into(),
+            ));
         }
         let mut interleaved = Vec::with_capacity(frames * channels);
         let source = prepared.samples();
@@ -155,10 +155,8 @@ impl DemucsEngine {
                 planar[channel * frames + frame] = interleaved[frame * channels + channel];
             }
         }
-        let waveform = Tensor::from_array(
-            (vec![1, channels as i64, frames as i64], planar),
-        )
-        .map_err(|error| VoiceError::Backend(format!("waveform tensor failed: {error}")))?;
+        let waveform = Tensor::from_array((vec![1, channels as i64, frames as i64], planar))
+            .map_err(|error| VoiceError::Backend(format!("waveform tensor failed: {error}")))?;
 
         let mut session = self
             .session
@@ -200,8 +198,9 @@ impl DemucsEngine {
             let restored = if source_rate == model_rate {
                 pcm
             } else {
-                resample(&pcm, source_rate)
-                    .map_err(|error| VoiceError::Backend(format!("stem resample failed: {error}")))?
+                resample(&pcm, source_rate).map_err(|error| {
+                    VoiceError::Backend(format!("stem resample failed: {error}"))
+                })?
             };
             stems.push(restored);
         }
@@ -222,7 +221,9 @@ mod tests {
     #[test]
     fn missing_manifest_is_reported() {
         let dir = tempfile::tempdir().expect("tempdir");
-        let error = DemucsEngine::load(dir.path()).err().expect("missing manifest");
+        let error = DemucsEngine::load(dir.path())
+            .err()
+            .expect("missing manifest");
         assert!(error.to_string().contains("missing Demucs manifest"));
     }
 

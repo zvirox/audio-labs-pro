@@ -30,6 +30,12 @@ import type {
   AcxQaReport,
   M4bExportRequestDto,
   M4bExportReport,
+  StemSeparationRequestDto,
+  StemSeparationReport,
+  RateFitRequestDto,
+  RateFitReport,
+  VideoRemuxRequestDto,
+  RemuxReport,
   TimelineDto,
   TimelineClipDto,
   TrackViewMode,
@@ -869,6 +875,53 @@ export async function exportAudiobookM4b(
     bitrate: 64_000,
     chapter_count: request.chapters.length,
     has_cover: Boolean(request.cover_path),
+  };
+}
+
+export async function separateStems(
+  request: StemSeparationRequestDto,
+): Promise<StemSeparationReport> {
+  if (isTauriEnvironment()) {
+    return invoke<StemSeparationReport>('dubbing_separate_stems', { request });
+  }
+  return {
+    stems: ['vocals', 'drums', 'bass', 'other'].map((name) => ({
+      name,
+      path: `${request.output_dir}/${name}.wav`,
+    })),
+    sample_rate: 48_000,
+  };
+}
+
+export async function fitRate(request: RateFitRequestDto): Promise<RateFitReport> {
+  if (isTauriEnvironment()) {
+    return invoke<RateFitReport>('dubbing_fit_rate', { request });
+  }
+  return {
+    path: request.output_path,
+    duration_secs: request.target_duration_secs,
+    plan: {
+      current_duration_secs: request.target_duration_secs,
+      target_duration_secs: request.target_duration_secs,
+      recommended_speed: 1,
+      stretch_ratio: 1,
+      uses_wsola: false,
+      within_tts_range: true,
+    },
+  };
+}
+
+export async function remuxVideo(
+  request: VideoRemuxRequestDto,
+): Promise<RemuxReport> {
+  if (isTauriEnvironment()) {
+    return invoke<RemuxReport>('dubbing_remux', { request });
+  }
+  return {
+    output_path: request.output_path,
+    duration_secs: null,
+    video_stream_copied: true,
+    audio_codec: 'aac',
   };
 }
 

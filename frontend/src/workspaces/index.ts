@@ -14,3 +14,4 @@ export * from './CapturesWorkspace';
 export * from './StoriesWorkspace';
 export * from './MultitrackWorkspace';
 export * from './DashboardWorkspace';
+export * from './DubbingWorkspace';

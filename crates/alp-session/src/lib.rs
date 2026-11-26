@@ -10,6 +10,7 @@
 
 pub mod ai;
 pub mod audiobook_mastering;
+pub mod dubbing;
 pub mod effects;
 pub mod jobs;
 pub mod panels;
@@ -24,10 +25,14 @@ pub use alp_api::PermissionTier;
 pub use alp_api::ProjectSummary;
 pub use alp_api::control::ApprovalDecision;
 pub use alp_dsp::spectral::{FrequencyScale, SpectrogramConfig, SpectrogramData, WindowType};
-pub use alp_media::M4bExportReport;
+pub use alp_media::{M4bExportReport, RemuxReport};
 pub use audiobook_mastering::{
     AcxChapterFileDto, M4bChapterDto, M4bExportRequestDto, M4bMetadataDto, analyze_acx_files,
     export_audiobook_m4b,
+};
+pub use dubbing::{
+    DUB_STEM_NAMES, RateFitReport, RateFitRequestDto, StemFileDto, StemSeparationReport,
+    StemSeparationRequestDto, VideoRemuxRequestDto, fit_rate, remux_video, separate_stems,
 };
 pub use effects::{BiquadBandDto, BiquadResponseDto, compute_biquad_response};
 pub use jobs::{Job, JobQueue, JobReporter, JobStatus};

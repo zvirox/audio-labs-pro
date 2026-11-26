@@ -7,6 +7,13 @@ versions follow the release milestones in the build plan.
 
 ### Added
 
+- **Phase 16 — Neural Stem Separation & Video Dubbing Pipeline.** WSOLA
+  pitch-preserving time stretching with `FitPlanner` rate fitting, ffmpeg-backed
+  stream-copy video remux, a model-gated four-stem ONNX runner with daemon
+  protocol (`SeparateStems`/`Stems`), and a dedicated Dubbing Studio workspace.
+
+### Added
+
 - **Phase 15 — Audiobook Mastering & Native M4B Packaging.** ACX chapter QA
   (RMS -23..-18 dBFS, true peak <= -3 dBFS, noise floor <= -60 dBFS) with a
   native true-peak estimator; a pure-Rust M4B exporter with AAC-LC audio,

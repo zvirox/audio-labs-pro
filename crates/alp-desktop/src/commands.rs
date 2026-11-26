@@ -10,10 +10,12 @@ use tauri::{AppHandle, Emitter, State};
 use alp_session::{
     AcxChapterFileDto, AcxQaReport, AiActivityEntry, AiControlStatus, ApprovalDecision,
     BiquadBandDto, BiquadResponseDto, FrequencyScale, M4bExportReport, M4bExportRequestDto,
-    MeterFrame, PanelManager, PermissionTier, PersistedWorkspace, ProjectSummary, Size,
-    SpectralSelectionDto, SpectrogramConfig, SpectrogramData, TimelineDto, TimelinePanPointDto,
-    TransportController, TransportState, WaveformPeaksDto, WindowType, analyze_acx_files,
-    compute_biquad_response, export_audiobook_m4b,
+    MeterFrame, PanelManager, PermissionTier, PersistedWorkspace, ProjectSummary, RateFitReport,
+    RateFitRequestDto, RemuxReport, Size, SpectralSelectionDto, SpectrogramConfig, SpectrogramData,
+    StemSeparationReport, StemSeparationRequestDto, TimelineDto, TimelinePanPointDto,
+    TransportController, TransportState, VideoRemuxRequestDto, WaveformPeaksDto, WindowType,
+    analyze_acx_files, compute_biquad_response, export_audiobook_m4b, fit_rate, remux_video,
+    separate_stems,
 };
 
 use crate::glass::GlassReport;
@@ -590,6 +592,26 @@ pub fn effects_get_response(
         session.project_summary().sample_rate
     };
     Ok(compute_biquad_response(&bands, rate, points.unwrap_or(160)))
+}
+
+/// Separate a mixed audio file into four stems via the inference daemon.
+#[tauri::command]
+pub fn dubbing_separate_stems(
+    request: StemSeparationRequestDto,
+) -> Result<StemSeparationReport, String> {
+    separate_stems(&request)
+}
+
+/// Fit a rendered take to a target dialogue window.
+#[tauri::command]
+pub fn dubbing_fit_rate(request: RateFitRequestDto) -> Result<RateFitReport, String> {
+    fit_rate(&request)
+}
+
+/// Remux a video with a dubbed audio track without re-encoding video.
+#[tauri::command]
+pub fn dubbing_remux(request: VideoRemuxRequestDto) -> Result<RemuxReport, String> {
+    remux_video(&request)
 }
 
 /// Analyse chapter audio files against ACX publication targets.

@@ -123,12 +123,7 @@ impl VideoRemuxer {
     pub fn extract_audio(&self, video_path: impl AsRef<Path>) -> Result<PcmBuffer, MediaError> {
         let temp = temp_target(&video_path.as_ref().with_extension("extracted.wav"));
         let result = Command::new(&self.ffmpeg)
-            .args([
-                "-y",
-                "-v",
-                "error",
-                "-i",
-            ])
+            .args(["-y", "-v", "error", "-i"])
             .arg(video_path.as_ref())
             .args(["-vn", "-ac", "2", "-ar", "48000", "-c:a", "pcm_s16le"])
             .arg(&temp)
@@ -172,10 +167,7 @@ impl VideoRemuxer {
         })?;
         if let Some(subtitle) = &request.subtitle_path {
             let side = Path::new(&request.output_path).with_extension("srt");
-            write_atomic(
-                &side,
-                &std::fs::read(subtitle).map_err(MediaError::Io)?,
-            )?;
+            write_atomic(&side, &std::fs::read(subtitle).map_err(MediaError::Io)?)?;
         }
         Ok(RemuxReport {
             output_path: request.output_path.clone(),
@@ -260,6 +252,10 @@ mod tests {
     fn ffmpeg_availability_is_reported() {
         let remuxer = VideoRemuxer::new();
         let available = remuxer.is_available();
-        assert_eq!(available, remuxer.is_available(), "availability must be stable");
+        assert_eq!(
+            available,
+            remuxer.is_available(),
+            "availability must be stable"
+        );
     }
 }
