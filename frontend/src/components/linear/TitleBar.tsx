@@ -10,7 +10,7 @@ export interface TitleBarProps {
 }
 
 function getDefaultVersion(): string {
-  const raw = typeof __APP_VERSION__ !== 'undefined' && __APP_VERSION__ ? __APP_VERSION__ : '0.1.0-beta.2';
+  const raw = typeof __APP_VERSION__ !== 'undefined' && __APP_VERSION__ ? __APP_VERSION__ : '0.1.0-beta.3';
   return raw.startsWith('v') ? raw : `v${raw}`;
 }
 

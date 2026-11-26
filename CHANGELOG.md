@@ -5,6 +5,14 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+## [0.1.0-beta.3] - 2026-11-26
+
+### Changed & Verified
+- **Shared Linear Palette (`SHA-256` Parity):** Adopted the shared Tessera-sampled matte palette in `frontend/src/styles/linear-theme.css` (`#1C1C1C` / `#292929` dark surfaces, `#F8F9FA` / `#FFFFFF` light surfaces, `.shadow-card` card elevation, and unified semantic roles).
+- **Magenta Primary Accent (`frontend/src/styles/app-accent.css`):** Locked Audio Labs Pro's Magenta primary (`#A21CAF` light / `#C026D3` dark, `#E879F9` text, `#F8EFF9` / `#331D36` tint) while preserving layout, window geometry, and `40px` `TitleBar`.
+- **Chart & Green/Teal Removal:** Uninstalled `echarts`, deleted `echarts-linear-theme.ts`, replaced Dashboard telemetry charts/sparklines with non-chart engine status and allocation panels, and eliminated all green/teal hues (`--sky`/`--sky-text`/`--chip-sky` for online/healthy/done/waveforms, `--amber` for mute/warnings, `--red` for playhead/record-arm/errors).
+- **Strict Enforcement & Documentation:** Upgraded `frontend/scripts/check-linear.mjs` to a 9-rule gate and added `DESIGN.md`, `AGENTS.md`, and `docs/color-audit.md`.
+
 ## [0.1.0-beta.2] - 2026-11-25
 
 ### Changed & Locked
