@@ -1,6 +1,6 @@
 # Audio Labs Pro — Master Engineering Roadmap & Feature Plan
 
-> **Current Release Baseline:** `v0.1.0-beta.3`
+> **Current Release Baseline:** `v0.1.0-beta.4`
 > **Architecture Status:** 12 Rust workspace crates + Tauri v2 + React 19 TypeScript frontend (`frontend/`).
 > **UI Policy:** **The Linear UI design system is FINAL and LOCKED.** No glassmorphism, no KWin/compositor blur, no frosted translucent layers, and no alternative UI themes are planned. All frontend changes must pass `npm --prefix frontend run check:linear`.
 
@@ -29,7 +29,7 @@
 
 ## 2. Active Backlog (What Is Truly Pending)
 
-### Phase 14 — Advanced Spectral Repair & Track Insert Racks (implemented, pending release)
+### Phase 14 — Advanced Spectral Repair & Track Insert Racks (released in v0.1.0-beta.4)
 - [x] **Real-Time Track Insert Racks (`alp-engine` & `frontend/`):**
   - [x] Implement `InsertRack` in `crates/alp-engine/src/insert_rack.rs` (up to 8 live non-destructive insert slots per track with lock-free parameter updates).
   - [x] Connect `EffectsWorkspace` EQ/dynamics controls directly to active `BiquadChain` magnitude/phase curve telemetry.
@@ -37,31 +37,31 @@
   - [x] Implement `SpectralNotchFilter` to attenuate narrow-band tones inside selected `[t1..t2, f1..f2]` spectral boxes.
   - [x] Implement `HarmonicSuppressor` for automated fundamental + harmonic overtone attenuation.
 
-### Phase 15 — Audiobook Mastering & Native M4B Packaging (implemented, pending release)
+### Phase 15 — Audiobook Mastering & Native M4B Packaging (released in v0.1.0-beta.4)
 - [x] **ACX Automated QA Report:**
   - [x] Batch chapter validation checking RMS (`-23` to `-18 dB`), peak ceiling (`<= -3.0 dB`), and floor (`<= -60 dB`) with JSON/UI compliance report.
 - [x] **Native M4B Muxer (`alp-media`):**
   - [x] Encode AAC audiobook container with `chpl` chapter atoms, cover artwork (JPEG/PNG), and narrator/series metadata tags.
 
-### Phase 16 — Neural Stem Separation & Video Dubbing Pipeline (implemented, pending release)
+### Phase 16 — Neural Stem Separation & Video Dubbing Pipeline (released in v0.1.0-beta.4)
 - [x] **Stem Separation (`alp-infer`):**
   - [x] Add ONNX Demucs runner producing 4 isolated stems (`vocals`, `drums`, `bass`, `other`) loaded directly onto multitrack lanes.
 - [x] **WSOLA Rate Fitting & Video Remux (`alp-voice`, `alp-media`):**
   - [x] Implement `FitPlanner` (`rate_fitting.rs`) time-stretching translated TTS takes to match reference subtitle/dialog windows.
   - [x] Implement `VideoRemuxer` (`video_sync.rs`) for MP4/MKV audio extraction and lossless video stream copy (`-c:v copy`) remuxing, plus dedicated Dubbing Studio UI controls.
 
-### Phase 17 — VST3 Plugin Host & Batch Macros (implemented, pending release)
+### Phase 17 — VST3 Plugin Host & Batch Macros (released in v0.1.0-beta.4)
 - [x] **VST3 Host Engine (`alp-plugin`):**
   - [x] Discover `.vst3` bundles in `/usr/lib/vst3` and `~/.vst3` alongside existing CLAP/LV2 hosts (instantiation explicitly unsupported in this build).
   - [x] Native X11/XWayland external plugin GUI window parenting bridge in `alp-desktop`.
 - [x] **DSP Macro Batch Queue (`alp-engine`, `alp-mcp`):**
   - [x] Implement `MacroChain` directory batch processing pipeline and expose `dsp_macro_execute` via MCP.
 
-### Phase 18 — Long-Horizon Verification & Fuzzing (implemented, pending release)
+### Phase 18 — Long-Horizon Verification & Fuzzing (released in v0.1.0-beta.4)
 - [x] **Automated 25-Scenario MCP Eval (`mcp_eval.py`):** End-to-end tool sequence benchmarks verifying deterministic state convergence and single-entry undo rollback.
 - [x] **Stability Soak & Fuzzing:** 24-hour continuous playback memory/drop-frame soak test and fuzz harnesses for `.alpproj` JSON/SQLite deserializers and media decoders.
 
-### Phase 19 — Release Readiness & MCP Coverage (implemented, pending release)
+### Phase 19 — Release Readiness & MCP Coverage (released in v0.1.0-beta.4)
 - [x] **Studio MCP Coverage:** `effects_response`, `acx_qa_analyze`, `audiobook_export_m4b`, `marker_remove`, `loop_range_set` and `clip_trim` bring the advertised surface to 75 tools, with end-to-end Suite 9 checks.
 - [x] **Packaging Parity:** `alp-mcp` is built by `release.yml` and installed by `nfpm.yaml`; `scripts/phase19-release-check.sh` performs a local deb/rpm/archlinux dry-run and SHA256SUMS verification.
 - [ ] **Version Bump & External Signing:** promotion to `v1.0.0-rc.1` (workspace/Tauri/frontend versions, changelog entry) and GPG signing remain release-cut steps delegated to the external release workflow.

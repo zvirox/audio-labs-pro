@@ -5,6 +5,12 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+## [0.1.0-beta.4] - 2026-11-26
+
+This release merges Phases 14–19, the extended MCP coverage work and the
+live transport bridge. The MCP surface grows from 68 to 86 tools; all changes
+remain compatible with the locked Linear UI.
+
 ### Added
 
 - **Phase 17 — VST3 Plugin Host & Batch Macros.** VST3 bundle discovery with

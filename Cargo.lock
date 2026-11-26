@@ -89,7 +89,7 @@ checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 
 [[package]]
 name = "alp-api"
-version = "0.1.0-beta.3"
+version = "0.1.0-beta.4"
 dependencies = [
  "alp-core",
  "alp-dsp",
@@ -108,7 +108,7 @@ dependencies = [
 
 [[package]]
 name = "alp-cli"
-version = "0.1.0-beta.3"
+version = "0.1.0-beta.4"
 dependencies = [
  "alp-core",
  "alp-dsp",
@@ -125,7 +125,7 @@ dependencies = [
 
 [[package]]
 name = "alp-core"
-version = "0.1.0-beta.3"
+version = "0.1.0-beta.4"
 dependencies = [
  "dirs 7.0.0",
  "proptest",
@@ -140,7 +140,7 @@ dependencies = [
 
 [[package]]
 name = "alp-desktop"
-version = "0.1.0-beta.3"
+version = "0.1.0-beta.4"
 dependencies = [
  "alp-session",
  "raw-window-handle",
@@ -156,7 +156,7 @@ dependencies = [
 
 [[package]]
 name = "alp-dsp"
-version = "0.1.0-beta.3"
+version = "0.1.0-beta.4"
 dependencies = [
  "alp-core",
  "nnnoiseless",
@@ -166,7 +166,7 @@ dependencies = [
 
 [[package]]
 name = "alp-engine"
-version = "0.1.0-beta.3"
+version = "0.1.0-beta.4"
 dependencies = [
  "alp-core",
  "alp-dsp",
@@ -184,7 +184,7 @@ dependencies = [
 
 [[package]]
 name = "alp-infer"
-version = "0.1.0-beta.3"
+version = "0.1.0-beta.4"
 dependencies = [
  "alp-core",
  "alp-media",
@@ -200,7 +200,7 @@ dependencies = [
 
 [[package]]
 name = "alp-mcp"
-version = "0.1.0-beta.3"
+version = "0.1.0-beta.4"
 dependencies = [
  "alp-api",
  "alp-core",
@@ -217,7 +217,7 @@ dependencies = [
 
 [[package]]
 name = "alp-media"
-version = "0.1.0-beta.3"
+version = "0.1.0-beta.4"
 dependencies = [
  "alp-core",
  "bytes",
@@ -236,7 +236,7 @@ dependencies = [
 
 [[package]]
 name = "alp-plugin"
-version = "0.1.0-beta.3"
+version = "0.1.0-beta.4"
 dependencies = [
  "alp-core",
  "libloading 0.8.9",
@@ -250,7 +250,7 @@ dependencies = [
 
 [[package]]
 name = "alp-session"
-version = "0.1.0-beta.3"
+version = "0.1.0-beta.4"
 dependencies = [
  "alp-api",
  "alp-core",
@@ -267,7 +267,7 @@ dependencies = [
 
 [[package]]
 name = "alp-voice"
-version = "0.1.0-beta.3"
+version = "0.1.0-beta.4"
 dependencies = [
  "alp-core",
  "alp-media",

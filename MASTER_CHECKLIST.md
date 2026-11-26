@@ -1,6 +1,6 @@
 # Audio Labs Pro — Master Verification & Engineering Checklist
 
-> Last verified against codebase: `v0.1.0-beta.3` (12 Rust crates, `frontend/` Tauri v2 + React 19 Linear UI, `packaging/nfpm.yaml`).
+> Last verified against codebase: `v0.1.0-beta.4` (12 Rust crates, `frontend/` Tauri v2 + React 19 Linear UI, `packaging/nfpm.yaml`).
 > **UI Policy:** The **Linear UI** (shared Tessera-sampled matte palette `#1C1C1C` dark / `#F8F9FA` light, **Magenta** primary accent `#C026D3`/`#A21CAF`, zero green/teal, chart-free, self-hosted Inter, `check:linear` enforced) is **final and locked** per [DESIGN.md](DESIGN.md). No further UI style redesigns are planned.
 
 ---

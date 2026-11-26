@@ -1,6 +1,6 @@
 # Release & Packaging Audit — Audio Labs Pro
 
-**Verified State:** `v0.1.0-beta.3`  
+**Verified State:** `v0.1.0-beta.4`  
 **Repository:** `audio-labs-pro` (`https://github.com/zvirox/audio-labs-pro`)
 
 ---
@@ -30,8 +30,8 @@ Desktop metadata installed under `/usr/share/`:
 
 | Manifest / Target | Value |
 |---|---|
-| Workspace `Cargo.toml` | `0.1.0-beta.3` |
-| `crates/alp-desktop/tauri.conf.json` | `0.1.0-beta.3` (`identifier: "io.github.zvirox.audio-labs-pro"`) |
-| `frontend/package.json` | `0.1.0-beta.3` (TitleBar reads `__APP_VERSION__` from `tauri.conf.json`) |
+| Workspace `Cargo.toml` | `0.1.0-beta.4` |
+| `crates/alp-desktop/tauri.conf.json` | `0.1.0-beta.4` (`identifier: "io.github.zvirox.audio-labs-pro"`) |
+| `frontend/package.json` | `0.1.0-beta.4` (TitleBar reads `__APP_VERSION__` from `tauri.conf.json`) |
 | Primary GUI binary | `audio-labs-pro` (`crates/alp-desktop/Cargo.toml`) |
 | Companion binaries | `alp-cli`, `alp-infer`, `alp-mcp` |
