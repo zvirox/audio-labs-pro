@@ -11,6 +11,7 @@ pub mod audit;
 pub mod checkpoint;
 #[cfg(target_os = "linux")]
 pub mod control;
+pub mod dubbing_ops;
 pub mod effect_ops;
 pub mod error;
 pub mod export_ops;
@@ -20,6 +21,7 @@ pub mod macro_ops;
 pub mod media;
 pub mod paging;
 pub mod project_ops;
+pub mod repair_ops;
 pub mod sandbox;
 pub mod script_voice_ops;
 pub mod session;
@@ -38,6 +40,9 @@ pub use alp_media::ExportPreset;
 pub use audiobook::AudiobookEncodeReport;
 pub use audit::{AuditEntry, AuditLogger};
 pub use checkpoint::{Checkpoint, CheckpointManager};
+pub use dubbing_ops::{
+    DubbingFitReport, DubbingFitRequestDto, DubbingRemuxRequestDto,
+};
 pub use error::ApiError;
 pub use jobs::{JobInfo, JobManager, JobState};
 pub use macro_ops::MacroJobReport;
@@ -46,6 +51,9 @@ pub use paging::{
     DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, Page, PageRequest, decode_cursor, encode_cursor,
 };
 pub use project_ops::{HistoryEntry, ProjectListItem};
+pub use repair_ops::{
+    SpectralRepairReport, SpectralRepairRequestDto, TimeStretchReport, TimeStretchRequestDto,
+};
 pub use sandbox::WorkspaceSandbox;
 pub use script_voice_ops::{ScriptGenerateReport, ScriptLine, ScriptRegenerateReport};
 pub use session::{ApiSession, AttachedProjectState};
