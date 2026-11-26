@@ -16,7 +16,7 @@ Welcome to the engineering, architectural, and user documentation for **Audio La
 ## Architecture & Locked UI Standard
 
 - [**System Architecture**](architecture/ARCHITECTURE.md) — 12-crate Rust DAG, isolated `alp-infer`, `alp-session`, `alp-desktop`, and `frontend/`
-- [**Technology Stack**](architecture/STACK.md) — Rust 2021/2024 + Tauri v2 + React 19 + Tailwind CSS v4 + ECharts + `nfpm`
+- [**Technology Stack**](architecture/STACK.md) — Rust 2021/2024 + Tauri v2 + React 19 + Tailwind CSS v4 + Canvas 2D + `nfpm`
 - [**UI Migration & Locked Standard**](architecture/UI_MIGRATION.md) — Permanent locked Linear Design System specification and M0–M8 completion record
 - [**Architecture Decision Records (ADRs)**](adr/) — Architectural history (`0001`–`0029`)
 

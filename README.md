@@ -220,7 +220,7 @@ Official Linux releases ship exclusively as native `.deb`, `.rpm`, and `.pkg.tar
 | **Plugin Hosting** | CLAP & LV2 | External open audio effect integration |
 | **Desktop Shell** | Tauri 2 | Native Linux windowing and file system integration |
 | **Frontend UI** | React 19 + TypeScript + Tailwind CSS v4 | Matte dark multitrack timeline and voice studio controls |
-| **Visuals & State** | Apache ECharts 6 + Zustand | Metering graphs and reactive studio state |
+| **Visuals & State** | Native Canvas 2D + Zustand | Token-only meters, waveforms and reactive studio state |
 | **Automation Bridge** | `alp-mcp` + `starship-plugin` | Local socket tools for Starship Control |
 
 ---

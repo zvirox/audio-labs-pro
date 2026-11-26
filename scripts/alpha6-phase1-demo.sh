@@ -58,7 +58,7 @@ rpc("initialize", req_id=1)
 print("2. Discovering tools...")
 tools_res = rpc("tools/list", req_id=2)
 names = [t["name"] for t in tools_res["tools"]]
-assert len(names) == 63, f"expected the 63-tool alpha.6 surface, got {len(names)}"
+assert len(names) == 75, f"expected the current 75-tool surface, got {len(names)}"
 for tool in ["voice_profile_update", "voice_profile_lock",
              "voice_profile_unlock", "tts_batch", "audiobook_encode"]:
     assert tool in names, f"{tool} missing from the surface"

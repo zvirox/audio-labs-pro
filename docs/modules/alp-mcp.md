@@ -33,7 +33,7 @@ Malformed JSON returns standard JSON-RPC errors. Tool-domain failures return `is
 
 ## Testing
 
-`cargo test -p alp-mcp` covers the shared catalog, schemas, dispatch, tools, limits and headless workflows. Live attach tests exercise the shared dispatcher against attached workers, including history, media-source reconciliation, conflict refusal and revocation. `bash scripts/mcp-eval.sh` runs the 8 legacy suites plus 25 named Phase 18 scenarios over real stdio and writes `target/mcp_eval_results.json`.
+`cargo test -p alp-mcp` covers the shared catalog, schemas, dispatch, tools, limits and headless workflows. Live attach tests exercise the shared dispatcher against attached workers, including history, media-source reconciliation, conflict refusal and revocation. `bash scripts/mcp-eval.sh` runs the 8 legacy suites, 25 named Phase 18 scenarios and Suite 9 Phase 19 studio-tool checks over real stdio, and writes `target/mcp_eval_results.json`.
 
 ## Known limits
 

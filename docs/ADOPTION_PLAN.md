@@ -1,6 +1,6 @@
 # Audio Labs Pro — Master Engineering Roadmap & Feature Plan
 
-> **Current Release Baseline:** `v0.1.0-beta.1`
+> **Current Release Baseline:** `v0.1.0-beta.3`
 > **Architecture Status:** 12 Rust workspace crates + Tauri v2 + React 19 TypeScript frontend (`frontend/`).
 > **UI Policy:** **The Linear UI design system is FINAL and LOCKED.** No glassmorphism, no KWin/compositor blur, no frosted translucent layers, and no alternative UI themes are planned. All frontend changes must pass `npm --prefix frontend run check:linear`.
 
@@ -16,7 +16,7 @@
 - [x] **Voice Cleanup & Spectral Core (`alp-dsp`):** Parametric EQ, biquads, dynamics compressor/gate/de-esser, true-peak limiter, ITU-R BS.1770 LUFS metering, `RnnoiseDenoiser` + `SpectralDenoiser` (`denoise.rs`), and STFT spectrogram + 2D spectral selection (`spectral.rs`).
 - [x] **Local Neural Inference & Voice Lab (`alp-infer`, `alp-voice`):** Offline subprocess daemon executing Kokoro/Kitten/StyleTTS2, Qwen3 voice cloning with mandatory written consent attestation, Moonshine STT, VAD, and SHA-256 verified model downloads.
 - [x] **CLAP & LV2 Plugin Support (`alp-plugin`):** Plugin discovery and hosting on Linux.
-- [x] **MCP Host & Starship Bridge (`alp-mcp`):** 68 authenticated MCP tools (`Observe` / `Edit` / `Export`), UNIX socket host, live UI approval prompts, and Starship Control socket bridge (`$XDG_RUNTIME_DIR/starship/bridges/alp.sock`).
+- [x] **MCP Host & Starship Bridge (`alp-mcp`):** 75 authenticated MCP tools (`Observe` / `Edit` / `Export`), UNIX socket host, live UI approval prompts, and Starship Control socket bridge (`$XDG_RUNTIME_DIR/starship/bridges/alp.sock`).
 
 ### Desktop Cutover, Linear UI & Release Packaging (Completed M0–M8)
 - [x] **M0–M2:** Latency/performance benchmarks verified, `alp-session` extracted as framework-agnostic UI session core, Tauri v2 shell (`alp-desktop`) and Vite + React 19 scaffold (`frontend/`) created.
@@ -60,3 +60,8 @@
 ### Phase 18 — Long-Horizon Verification & Fuzzing (implemented, pending release)
 - [x] **Automated 25-Scenario MCP Eval (`mcp_eval.py`):** End-to-end tool sequence benchmarks verifying deterministic state convergence and single-entry undo rollback.
 - [x] **Stability Soak & Fuzzing:** 24-hour continuous playback memory/drop-frame soak test and fuzz harnesses for `.alpproj` JSON/SQLite deserializers and media decoders.
+
+### Phase 19 — Release Readiness & MCP Coverage (implemented, pending release)
+- [x] **Studio MCP Coverage:** `effects_response`, `acx_qa_analyze`, `audiobook_export_m4b`, `marker_remove`, `loop_range_set` and `clip_trim` bring the advertised surface to 75 tools, with end-to-end Suite 9 checks.
+- [x] **Packaging Parity:** `alp-mcp` is built by `release.yml` and installed by `nfpm.yaml`; `scripts/phase19-release-check.sh` performs a local deb/rpm/archlinux dry-run and SHA256SUMS verification.
+- [ ] **Version Bump & External Signing:** promotion to `v1.0.0-rc.1` (workspace/Tauri/frontend versions, changelog entry) and GPG signing remain release-cut steps delegated to the external release workflow.

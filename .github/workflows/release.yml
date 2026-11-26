@@ -15,7 +15,7 @@ jobs:
       app_name: ${{ github.event.repository.name }}
       frontend_dir: frontend
       system_deps: libasound2-dev libwebkit2gtk-4.1-dev libsoup-3.0-dev libxkbcommon-dev libwayland-dev wayland-protocols libx11-dev libxcursor-dev libxrandr-dev libxi-dev libgl1-mesa-dev libegl1-mesa-dev libfontconfig1-dev libxcb1-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev shared-mime-info
-      build_cmd: cargo build --release --locked -p alp-desktop -p alp-cli -p alp-infer
+      build_cmd: cargo build --release --locked -p alp-desktop -p alp-cli -p alp-infer -p alp-mcp
       binary_path: target/release/audio-labs-pro
       runs_on: ubuntu-24.04
       smoke_ubuntu22: false

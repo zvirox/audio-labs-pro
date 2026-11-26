@@ -19,6 +19,9 @@ contents:
   - src: target/release/alp-infer
     dst: /usr/bin/alp-infer
     file_info: { mode: 0755 }
+  - src: target/release/alp-mcp
+    dst: /usr/bin/alp-mcp
+    file_info: { mode: 0755 }
   - src: packaging/audio-labs-pro.desktop
     dst: /usr/share/applications/audio-labs-pro.desktop
   - src: packaging/audio-labs-pro.xml

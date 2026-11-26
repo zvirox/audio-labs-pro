@@ -17,6 +17,11 @@ versions follow the release milestones in the build plan.
   eval report, an ignored 24-hour-equivalent playback soak, and proptest
   harnesses for project JSON, sample blocks and media decoders.
 
+- **Phase 19 — Release Readiness & MCP Coverage.** Six studio tools (EQ response,
+  ACX QA, M4B export, marker removal, loop range and clip trim) bring the MCP
+  surface to 75 tools; `alp-mcp` is now built and packaged for release; a local
+  nfpm/checksum acceptance script validates deb/rpm/archlinux artifacts.
+
 ### Added
 
 - **Phase 16 — Neural Stem Separation & Video Dubbing Pipeline.** WSOLA
@@ -144,7 +149,7 @@ versions follow the release milestones in the build plan.
 - **Phase 16 (`v0.1.0-beta.1`):** Audiobook Studio with EPUB/Markdown ingestion, multi-character cast tagging, cadence pacing rules, and M4B container packaging with QuickTime chapter markers.
 - **Phase 17 (`v0.1.0-beta.2`):** Video Dubbing with Demucs v4 4-stem separation, sync-locked label tracks (SRT/VTT), speech-to-speech dubbing with rate fitting, and FFmpeg video remux.
 - **Phase 18 (`v0.1.0-beta.3`):** VST3 plugin hosting engine, native X11/Wayland plugin window embedding, and scriptable DSP macro batch processing.
-- **Phase 19 (`v1.0.0-rc.1` / `v1.0.0`):** Full MCP autonomous agent tool coverage across all studio features and multi-distro release packaging (eval/soak work was pulled forward into Phase 18).
+- **Phase 19 (`v1.0.0-rc.1` / `v1.0.0`):** Studio MCP coverage and packaging parity are implemented; version promotion and release signing remain release-cut steps (eval/soak work was pulled forward into Phase 18).
 - Complete roadmap and execution checklists: see [`docs/ADOPTION_PLAN.md`](docs/ADOPTION_PLAN.md) and [`REAVSA.md`](REAVSA.md).
 
 ## [0.0.1-alpha.7] - 2026-11-23
