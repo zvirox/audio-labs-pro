@@ -22,6 +22,8 @@ import type {
   EffectStage,
   BiquadBandDto,
   BiquadResponseDto,
+  MacroRequestDto,
+  MacroJobReportDto,
   DiscoveredPlugin,
   CaptureTake,
   TranscriptWord,
@@ -722,6 +724,32 @@ export async function getEffectsResponse(
   return mockBiquadResponse(bands, sampleRate, points);
 }
 
+/** Run a DSP macro over a directory of audio files. */
+export async function runDspMacro(
+  request: MacroRequestDto,
+): Promise<MacroJobReportDto> {
+  if (isTauriEnvironment()) {
+    return invoke<MacroJobReportDto>('dsp_macro_batch', { request });
+  }
+  return {
+    job_id: 'mock-macro-job',
+    report: {
+      processed: 1,
+      succeeded: 1,
+      failed: 0,
+      files: [
+        {
+          input: `${request.input_dir}/take.wav`,
+          output: `${request.output_dir}/take.wav`,
+          ok: true,
+          error: null,
+        },
+      ],
+      cancelled: false,
+    },
+  };
+}
+
 export async function getDiscoveredPlugins(): Promise<DiscoveredPlugin[]> {
   return [
     {
@@ -751,6 +779,13 @@ export async function getDiscoveredPlugins(): Promise<DiscoveredPlugin[]> {
       vendor: 'Calf Studio Gear',
       format: 'LV2',
       category: 'Equalizer',
+    },
+    {
+      id: 'vst3:Discovered-VST3',
+      name: 'Discovered VST3 Bundle',
+      vendor: 'VST3',
+      format: 'VST3',
+      category: 'Effect',
     },
   ];
 }

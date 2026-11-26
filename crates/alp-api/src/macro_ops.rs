@@ -51,11 +51,7 @@ impl ApiSession {
                 } else {
                     0.0
                 };
-                jobs.update_progress(
-                    &id,
-                    progress,
-                    format!("macro file {completed}/{total}"),
-                );
+                jobs.update_progress(&id, progress, format!("macro file {completed}/{total}"));
                 true
             })
         };
@@ -64,10 +60,7 @@ impl ApiSession {
             Ok(report) => {
                 self.jobs.complete(
                     &job_id,
-                    format!(
-                        "{} succeeded, {} failed",
-                        report.succeeded, report.failed
-                    ),
+                    format!("{} succeeded, {} failed", report.succeeded, report.failed),
                 );
                 self.record_audit("dsp_macro_execute", "ok", self.revision());
                 Ok(MacroJobReport { job_id, report })
@@ -99,8 +92,15 @@ mod tests {
         let project = Project::new("Macro Test").expect("project");
         let sandbox = WorkspaceSandbox::new([dir]).expect("sandbox");
         let audit = AuditLogger::new(dir.join("audit.jsonl")).expect("audit");
-        ApiSession::new(project, proj_paths, PermissionTier::Export, sandbox, audit, "agent")
-            .expect("session")
+        ApiSession::new(
+            project,
+            proj_paths,
+            PermissionTier::Export,
+            sandbox,
+            audit,
+            "agent",
+        )
+        .expect("session")
     }
 
     #[test]

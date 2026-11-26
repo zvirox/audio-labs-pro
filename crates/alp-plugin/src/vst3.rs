@@ -63,7 +63,10 @@ fn find_shared_library(dir: &Path, depth: usize) -> Option<PathBuf> {
             return Some(entry);
         }
     }
-    for entry in std::fs::read_dir(dir).ok()?.filter_map(|entry| entry.ok().map(|entry| entry.path())) {
+    for entry in std::fs::read_dir(dir)
+        .ok()?
+        .filter_map(|entry| entry.ok().map(|entry| entry.path()))
+    {
         if entry.is_dir()
             && let Some(found) = find_shared_library(&entry, depth + 1)
         {
@@ -88,8 +91,7 @@ mod tests {
 
     #[test]
     fn non_directory_is_rejected() {
-        let error = scan_vst3_bundle(Path::new("/definitely/not/a.bundle"))
-            .expect_err("error");
+        let error = scan_vst3_bundle(Path::new("/definitely/not/a.bundle")).expect_err("error");
         assert!(error.to_string().contains("not a directory"));
     }
 
@@ -105,8 +107,10 @@ mod tests {
         assert_eq!(descriptor.format, PluginFormat::Vst3);
         assert_eq!(descriptor.id, "vst3:Test");
         assert_eq!(descriptor.path, binary);
-        assert!(instantiation_error(&descriptor)
-            .to_string()
-            .contains("not implemented"));
+        assert!(
+            instantiation_error(&descriptor)
+                .to_string()
+                .contains("not implemented")
+        );
     }
 }

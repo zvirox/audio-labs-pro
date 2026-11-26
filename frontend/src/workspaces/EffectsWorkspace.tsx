@@ -9,12 +9,14 @@ import { useState, useEffect } from 'react';
 import { Card } from '../kit/Card';
 import { Button } from '../kit/Button';
 import { Slider } from '../kit/Slider';
-import { getEffectsChain, getDiscoveredPlugins, getEffectsResponse } from '../ipc/client';
+import { Input } from '../kit/Input';
+import { getEffectsChain, getDiscoveredPlugins, getEffectsResponse, runDspMacro } from '../ipc/client';
 import type {
   EffectStage,
   DiscoveredPlugin,
   BiquadBandDto,
   BiquadResponseDto,
+  MacroJobReportDto,
 } from '../ipc/types';
 import { FrequencyResponseCanvas } from '../components/FrequencyResponseCanvas';
 import {
@@ -32,6 +34,12 @@ export function EffectsWorkspace() {
   const [isRescanning, setIsRescanning] = useState<boolean>(false);
   const [activeStageId, setActiveStageId] = useState<string>('parametric_eq');
   const [response, setResponse] = useState<BiquadResponseDto | null>(null);
+  const [macroInput, setMacroInput] = useState('');
+  const [macroOutput, setMacroOutput] = useState('');
+  const [macroEffect, setMacroEffect] = useState('voice_cleanup');
+  const [macroReport, setMacroReport] = useState<MacroJobReportDto | null>(null);
+  const [macroBusy, setMacroBusy] = useState(false);
+  const [macroNotice, setMacroNotice] = useState<string | null>(null);
 
   useEffect(() => {
     getEffectsChain().then((s) => {
@@ -52,6 +60,29 @@ export function EffectsWorkspace() {
     setTimeout(() => {
       setIsRescanning(false);
     }, 1000);
+  };
+
+  const handleMacro = async () => {
+    if (!macroInput.trim() || !macroOutput.trim()) {
+      setMacroNotice('Set an input and output directory first');
+      return;
+    }
+    setMacroBusy(true);
+    setMacroNotice(null);
+    try {
+      setMacroReport(
+        await runDspMacro({
+          input_dir: macroInput.trim(),
+          output_dir: macroOutput.trim(),
+          overwrite: false,
+          steps: [{ effect_id: macroEffect.trim() || 'gain', params: {} }],
+        })
+      );
+    } catch (error) {
+      setMacroNotice(error instanceof Error ? error.message : String(error));
+    } finally {
+      setMacroBusy(false);
+    }
   };
 
   const activeStage = stages.find((s) => s.id === activeStageId) || stages[0];
@@ -279,6 +310,53 @@ export function EffectsWorkspace() {
                   </div>
                 ))}
               </div>
+            </div>
+          </Card>
+
+          {/* Batch DSP Macros */}
+          <Card title="Batch DSP Macros" subtitle="Directory queue runner with cancellable jobs">
+            <div className="space-y-3 text-xs">
+              <Input
+                label="Input directory"
+                placeholder="/path/to/source-takes"
+                value={macroInput}
+                onChange={(event) => setMacroInput(event.target.value)}
+              />
+              <Input
+                label="Output directory"
+                placeholder="/path/to/processed"
+                value={macroOutput}
+                onChange={(event) => setMacroOutput(event.target.value)}
+              />
+              <Input
+                label="Effect id"
+                placeholder="voice_cleanup"
+                value={macroEffect}
+                onChange={(event) => setMacroEffect(event.target.value)}
+              />
+              <Button
+                variant="secondary"
+                size="xs"
+                onClick={handleMacro}
+                disabled={macroBusy}
+              >
+                {macroBusy ? 'Running...' : 'Run Macro Batch'}
+              </Button>
+              {macroNotice && (
+                <div className="text-[11px] text-amber">{macroNotice}</div>
+              )}
+              {macroReport && (
+                <div className="pt-2 border-t border-[var(--color-border)] font-mono text-[10px] text-[var(--color-fg-muted)] space-y-1">
+                  <div>
+                    job {macroReport.job_id} · {macroReport.report.succeeded}/{macroReport.report.processed} succeeded
+                  </div>
+                  {macroReport.report.files.map((file) => (
+                    <div key={file.output} className="truncate" title={file.output}>
+                      {file.ok ? 'ok' : 'failed'} · {file.output}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </Card>
         </div>

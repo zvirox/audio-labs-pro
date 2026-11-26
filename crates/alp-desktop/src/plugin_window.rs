@@ -77,8 +77,9 @@ pub fn host_window_id<W: HasWindowHandle>(window: &W) -> Result<u32, String> {
         .window_handle()
         .map_err(|error| format!("cannot obtain window handle: {error}"))?;
     match handle.as_raw() {
-        RawWindowHandle::Xlib(xlib) => u32::try_from(xlib.window)
-            .map_err(|_| "Xlib window id exceeds 32 bits".to_owned()),
+        RawWindowHandle::Xlib(xlib) => {
+            u32::try_from(xlib.window).map_err(|_| "Xlib window id exceeds 32 bits".to_owned())
+        }
         RawWindowHandle::Xcb(xcb) => Ok(xcb.window.get()),
         _ => Err("window handle is not X11 (Xlib or Xcb)".to_owned()),
     }
@@ -133,10 +134,7 @@ pub fn embed_editor(
 }
 
 /// Unmap and forget a hosted plugin editor.
-pub fn release_editor(
-    registry: &mut PluginWindowRegistry,
-    plugin_id: &str,
-) -> Result<(), String> {
+pub fn release_editor(registry: &mut PluginWindowRegistry, plugin_id: &str) -> Result<(), String> {
     let xid = registry
         .list()
         .into_iter()
@@ -180,8 +178,8 @@ mod tests {
     #[test]
     fn embed_requires_a_host_window() {
         let mut registry = PluginWindowRegistry::new();
-        let error = embed_editor(&mut registry, "clap:EQ", 100, 0, 0, 640, 360)
-            .expect_err("no host id");
+        let error =
+            embed_editor(&mut registry, "clap:EQ", 100, 0, 0, 640, 360).expect_err("no host id");
         assert!(error.contains("no X11 host window id"));
     }
 }

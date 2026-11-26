@@ -198,7 +198,7 @@ export interface DiscoveredPlugin {
   id: string;
   name: string;
   vendor: string;
-  format: 'CLAP' | 'LV2';
+  format: 'CLAP' | 'LV2' | 'VST3';
   category: string;
 }
 
@@ -335,6 +335,39 @@ export interface RemuxReport {
   duration_secs: number | null;
   video_stream_copied: boolean;
   audio_codec: string;
+}
+
+export interface MacroStepDto {
+  effect_id: string;
+  params: Record<string, number>;
+}
+
+export interface MacroRequestDto {
+  input_dir: string;
+  output_dir: string;
+  pattern?: string | null;
+  overwrite?: boolean;
+  steps: MacroStepDto[];
+}
+
+export interface MacroFileResultDto {
+  input: string;
+  output: string;
+  ok: boolean;
+  error: string | null;
+}
+
+export interface MacroReportDto {
+  processed: number;
+  succeeded: number;
+  failed: number;
+  files: MacroFileResultDto[];
+  cancelled: boolean;
+}
+
+export interface MacroJobReportDto {
+  job_id: string;
+  report: MacroReportDto;
 }
 
 export type PermissionTier = 'observe' | 'edit' | 'export';

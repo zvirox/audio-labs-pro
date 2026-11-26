@@ -50,12 +50,12 @@
   - [x] Implement `FitPlanner` (`rate_fitting.rs`) time-stretching translated TTS takes to match reference subtitle/dialog windows.
   - [x] Implement `VideoRemuxer` (`video_sync.rs`) for MP4/MKV audio extraction and lossless video stream copy (`-c:v copy`) remuxing, plus dedicated Dubbing Studio UI controls.
 
-### Phase 17 — VST3 Plugin Host & Batch Macros
-- [ ] **VST3 Host Engine (`alp-plugin`):**
-  - [ ] Discover and instantiate `.vst3` modules in `/usr/lib/vst3` and `~/.vst3` alongside existing CLAP/LV2 hosts.
-  - [ ] Native X11/XWayland external plugin GUI window parenting bridge in `alp-desktop`.
-- [ ] **DSP Macro Batch Queue (`alp-engine`, `alp-mcp`):**
-  - [ ] Implement `MacroChain` directory batch processing pipeline and expose `dsp_macro_execute` via MCP.
+### Phase 17 — VST3 Plugin Host & Batch Macros (implemented, pending release)
+- [x] **VST3 Host Engine (`alp-plugin`):**
+  - [x] Discover and instantiate `.vst3` modules in `/usr/lib/vst3` and `~/.vst3` alongside existing CLAP/LV2 hosts.
+  - [x] Native X11/XWayland external plugin GUI window parenting bridge in `alp-desktop`.
+- [x] **DSP Macro Batch Queue (`alp-engine`, `alp-mcp`):**
+  - [x] Implement `MacroChain` directory batch processing pipeline and expose `dsp_macro_execute` via MCP.
 
 ### Phase 18 — Long-Horizon Verification & Fuzzing
 - [ ] **Automated 25-Scenario MCP Eval (`mcp_eval.py`):** End-to-end tool sequence benchmarks verifying deterministic state convergence and single-entry undo rollback.

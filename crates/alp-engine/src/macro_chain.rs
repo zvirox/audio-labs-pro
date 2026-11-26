@@ -132,10 +132,7 @@ pub fn process_directory(
     request: &MacroRequest,
     mut progress: impl FnMut(usize, usize, &Path) -> bool,
 ) -> Result<MacroReport, EngineError> {
-    let files = audio_files(
-        Path::new(&request.input_dir),
-        request.pattern.as_deref(),
-    )?;
+    let files = audio_files(Path::new(&request.input_dir), request.pattern.as_deref())?;
     std::fs::create_dir_all(&request.output_dir)?;
     let mut chain = MacroChain {
         steps: request.steps.clone(),
@@ -198,13 +195,9 @@ fn process_one(chain: &mut EffectChain, input: &Path, output: &Path) -> Result<(
     chain.reset();
     chain.prepare(pcm.sample_rate(), pcm.channels());
     chain.process(pcm.samples_mut());
-    export(
-        output,
-        &pcm,
-        &ExportSettings::wav(WavBitDepth::Int24),
-    )
-    .map(|_| ())
-    .map_err(|error| format!("export failed: {error}"))
+    export(output, &pcm, &ExportSettings::wav(WavBitDepth::Int24))
+        .map(|_| ())
+        .map_err(|error| format!("export failed: {error}"))
 }
 
 #[cfg(test)]
@@ -218,12 +211,7 @@ mod tests {
             .map(|i| 0.3 * (2.0 * PI * 220.0 * i as f32 / 48_000.0).sin())
             .collect();
         let pcm = PcmBuffer::new(48_000, 1, samples).expect("pcm");
-        export(
-            path,
-            &pcm,
-            &ExportSettings::wav(WavBitDepth::Int16),
-        )
-        .expect("write tone");
+        export(path, &pcm, &ExportSettings::wav(WavBitDepth::Int16)).expect("write tone");
     }
 
     fn request(input: &Path, output: &Path) -> MacroRequest {

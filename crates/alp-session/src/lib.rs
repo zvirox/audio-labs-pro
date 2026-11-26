@@ -13,6 +13,7 @@ pub mod audiobook_mastering;
 pub mod dubbing;
 pub mod effects;
 pub mod jobs;
+pub mod macro_bridge;
 pub mod panels;
 pub mod session;
 pub mod timeline;
@@ -24,6 +25,7 @@ pub use alp_api::AcxQaReport;
 pub use alp_api::PermissionTier;
 pub use alp_api::ProjectSummary;
 pub use alp_api::control::ApprovalDecision;
+pub use alp_api::{MacroJobReport, MacroRequest, MacroStep};
 pub use alp_dsp::spectral::{FrequencyScale, SpectrogramConfig, SpectrogramData, WindowType};
 pub use alp_media::{M4bExportReport, RemuxReport};
 pub use audiobook_mastering::{
@@ -36,6 +38,7 @@ pub use dubbing::{
 };
 pub use effects::{BiquadBandDto, BiquadResponseDto, compute_biquad_response};
 pub use jobs::{Job, JobQueue, JobReporter, JobStatus};
+pub use macro_bridge::dsp_macro_execute;
 pub use panels::{DockSide, PanelKind, PanelManager, PanelRect, PanelState, Point, Size};
 pub use session::{EditSession, ImportedAudio, NORMALIZE_TARGET};
 pub use timeline::{

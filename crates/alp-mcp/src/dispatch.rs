@@ -12,10 +12,7 @@
 //! reported as a failure that names the argument, not as a zero-value default
 //! that silently edits the wrong thing.
 
-use alp_api::{
-    ApiSession, BatchTtsRequest, ExportPreset, MacroRequest, MacroStep, VoiceParamsUpdate,
-    VoiceProfileUpdate,
-};
+use alp_api::{ApiSession, BatchTtsRequest, ExportPreset, VoiceParamsUpdate, VoiceProfileUpdate};
 use serde_json::{Value, json};
 
 use crate::protocol::ToolCallResult;
@@ -1436,71 +1433,7 @@ pub fn dispatch(session: &mut ApiSession, tool_name: &str, arguments: &Value) ->
                 Err(e) => ToolCallResult::failure(format!("Audiobook encode failed: {e}")),
             }
         }
-        "dsp_macro_execute" => {
-            let input_dir = arguments
-                .get("input_dir")
-                .and_then(Value::as_str)
-                .unwrap_or("")
-                .to_owned();
-            let output_dir = arguments
-                .get("output_dir")
-                .and_then(Value::as_str)
-                .unwrap_or("")
-                .to_owned();
-            if input_dir.is_empty() || output_dir.is_empty() {
-                return ToolCallResult::failure(
-                    "input_dir and output_dir are required workspace paths",
-                );
-            }
-            let steps_json = match arguments.get("steps").and_then(Value::as_array) {
-                Some(steps) if !steps.is_empty() => steps,
-                _ => return ToolCallResult::failure("steps must be a non-empty array"),
-            };
-            let mut steps = Vec::with_capacity(steps_json.len());
-            for step in steps_json {
-                let effect_id = step.get("effect_id").and_then(Value::as_str);
-                let Some(effect_id) = effect_id else {
-                    return ToolCallResult::failure("each step requires effect_id");
-                };
-                let params = step.get("params").cloned().unwrap_or_else(|| json!({}));
-                let params: std::collections::BTreeMap<String, f64> =
-                    match serde_json::from_value(params) {
-                        Ok(params) => params,
-                        Err(error) => {
-                            return ToolCallResult::failure(format!(
-                                "invalid parameters for {effect_id}: {error}"
-                            ));
-                        }
-                    };
-                steps.push(MacroStep {
-                    effect_id: effect_id.to_owned(),
-                    params,
-                });
-            }
-            let request = MacroRequest {
-                input_dir,
-                output_dir,
-                pattern: arguments.get("pattern").and_then(Value::as_str).map(str::to_owned),
-                overwrite: arguments
-                    .get("overwrite")
-                    .and_then(Value::as_bool)
-                    .unwrap_or(false),
-                steps,
-            };
-            match session.dsp_macro_execute(&request) {
-                Ok(report) => ToolCallResult::success(
-                    format!(
-                        "Macro job {} processed {} file(s): {} succeeded, {} failed",
-                        report.job_id,
-                        report.report.processed,
-                        report.report.succeeded,
-                        report.report.failed
-                    ),
-                    serde_json::to_value(report).unwrap(),
-                ),
-                Err(e) => ToolCallResult::failure(format!("DSP macro failed: {e}")),
-            }
-        }
+        "dsp_macro_execute" => crate::macro_dispatch::dispatch_dsp_macro(session, arguments),
         _ => ToolCallResult::failure(format!("tool '{tool_name}' not recognized")),
     }
 }

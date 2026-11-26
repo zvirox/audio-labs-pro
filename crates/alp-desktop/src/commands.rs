@@ -10,18 +10,16 @@ use tauri::{AppHandle, Emitter, State};
 use alp_session::{
     AcxChapterFileDto, AcxQaReport, AiActivityEntry, AiControlStatus, ApprovalDecision,
     BiquadBandDto, BiquadResponseDto, FrequencyScale, M4bExportReport, M4bExportRequestDto,
-    MeterFrame, PanelManager, PermissionTier, PersistedWorkspace, ProjectSummary, RateFitReport,
-    RateFitRequestDto, RemuxReport, Size, SpectralSelectionDto, SpectrogramConfig, SpectrogramData,
-    StemSeparationReport, StemSeparationRequestDto, TimelineDto, TimelinePanPointDto,
-    TransportController, TransportState, VideoRemuxRequestDto, WaveformPeaksDto, WindowType,
-    analyze_acx_files, compute_biquad_response, export_audiobook_m4b, fit_rate, remux_video,
-    separate_stems,
+    MacroJobReport, MacroRequest, MeterFrame, PanelManager, PermissionTier, PersistedWorkspace,
+    ProjectSummary, RateFitReport, RateFitRequestDto, RemuxReport, Size, SpectralSelectionDto,
+    SpectrogramConfig, SpectrogramData, StemSeparationReport, StemSeparationRequestDto,
+    TimelineDto, TimelinePanPointDto, TransportController, TransportState, VideoRemuxRequestDto,
+    WaveformPeaksDto, WindowType, analyze_acx_files, compute_biquad_response, dsp_macro_execute,
+    export_audiobook_m4b, fit_rate, remux_video, separate_stems,
 };
 
 use crate::glass::GlassReport;
-use crate::plugin_window::{
-    PluginWindowInfo, embed_editor, release_editor,
-};
+use crate::plugin_window::{PluginWindowInfo, embed_editor, release_editor};
 use crate::state::AppState;
 
 /// Payload emitted when the project revision changes.
@@ -595,6 +593,12 @@ pub fn effects_get_response(
         session.project_summary().sample_rate
     };
     Ok(compute_biquad_response(&bands, rate, points.unwrap_or(160)))
+}
+
+/// Run an offline DSP macro batch over a directory of audio files.
+#[tauri::command]
+pub fn dsp_macro_batch(request: MacroRequest) -> Result<MacroJobReport, String> {
+    dsp_macro_execute(&request)
 }
 
 /// Parent a native plugin editor window under the studio window (X11 only).

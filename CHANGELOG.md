@@ -7,6 +7,13 @@ versions follow the release milestones in the build plan.
 
 ### Added
 
+- **Phase 17 — VST3 Plugin Host & Batch Macros.** VST3 bundle discovery with
+  explicit unsupported instantiation, a safe `x11rb` native plugin editor
+  parenting bridge, offline `MacroChain` directory batches with the
+  `dsp_macro_execute` MCP job tool, and batch macro controls in Effects.
+
+### Added
+
 - **Phase 16 — Neural Stem Separation & Video Dubbing Pipeline.** WSOLA
   pitch-preserving time stretching with `FitPlanner` rate fitting, ffmpeg-backed
   stream-copy video remux, a model-gated four-stem ONNX runner with daemon

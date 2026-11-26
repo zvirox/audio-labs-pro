@@ -8,8 +8,8 @@ use tracing::{info, warn};
 use crate::clap::scan_clap_file;
 use crate::error::PluginError;
 use crate::lv2::scan_lv2_bundle;
-use crate::vst3::scan_vst3_bundle;
 use crate::types::PluginDescriptor;
+use crate::vst3::scan_vst3_bundle;
 
 /// Plugin scanner managing discovery paths and metadata caching.
 #[derive(Debug, Clone)]
