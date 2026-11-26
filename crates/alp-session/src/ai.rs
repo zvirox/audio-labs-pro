@@ -837,11 +837,11 @@ impl AiControlManager {
             ));
             return;
         }
-        if let Ok(request) = serde_json::from_value::<JsonRpcRequest>(message.clone()) {
-            if live::tool_name(&request).is_some_and(|name| name.starts_with("transport_")) {
-                transport_control::handle_transport_call(self, &request, &response, session);
-                return;
-            }
+        if let Ok(request) = serde_json::from_value::<JsonRpcRequest>(message.clone())
+            && live::tool_name(&request).is_some_and(|name| name.starts_with("transport_"))
+        {
+            transport_control::handle_transport_call(self, &request, &response, session);
+            return;
         }
         let Some(state) = session.attached_project_state() else {
             let _ = response.send(ControlResponse::error(

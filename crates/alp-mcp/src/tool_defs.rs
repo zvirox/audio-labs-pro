@@ -1058,6 +1058,8 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
         });
     }
 
+    tools.extend(crate::transport_tools::definitions(tier));
+
     for tool in &mut tools {
         decorate_schema(&tool.name, &mut tool.input_schema);
     }
@@ -1080,7 +1082,9 @@ pub const PAGED_TOOLS: [&str; 5] = [
 /// anything that is not read-only may be called optimistically. File-writing
 /// export tools are included, since they also read the current mix.
 fn accepts_expected_revision(name: &str) -> bool {
-    !metadata_for(name).annotations.read_only
+    // Transport tools control live device state, not the project snapshot.
+    !crate::transport_tools::TRANSPORT_TOOLS.contains(&name)
+        && !metadata_for(name).annotations.read_only
 }
 
 /// Add the cross-cutting arguments to a tool's input schema.
@@ -1165,6 +1169,14 @@ pub fn metadata_for(name: &str) -> ToolMetadata {
         "dubbing_remux" => ("Remux Dubbed Video", export_add),
         "dsp_spectral_repair" => ("Spectral Repair", export_add),
         "dsp_time_stretch" => ("Time Stretch Audio", export_add),
+        // --- Live transport (attached mode only) ---
+        "transport_state" => ("Transport State", read),
+        "transport_play" => ("Start Playback", add),
+        "transport_pause" => ("Pause Playback", add),
+        "transport_stop" => ("Stop Playback", destroy),
+        "transport_seek" => ("Seek Playhead", add),
+        "transport_set_volume" => ("Set Master Volume", add),
+        "transport_set_loop" => ("Set Transport Loop", add),
         // --- Projects & history ---
         "project_list" => ("List Projects", read),
         "project_info" => ("Project Summary", read),

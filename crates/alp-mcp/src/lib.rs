@@ -13,6 +13,8 @@ pub mod server;
 pub mod starship;
 mod studio_dispatch;
 pub mod tool_defs;
+mod transport_dispatch;
+mod transport_tools;
 
 pub use protocol::{JsonRpcRequest, JsonRpcResponse, ToolCallResult};
 pub use server::McpServer;

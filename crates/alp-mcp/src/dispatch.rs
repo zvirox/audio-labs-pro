@@ -1452,6 +1452,13 @@ pub fn dispatch(session: &mut ApiSession, tool_name: &str, arguments: &Value) ->
         "dsp_time_stretch" => {
             crate::coverage_ext_dispatch::dispatch_dsp_time_stretch(session, arguments)
         }
+        "transport_state"
+        | "transport_play"
+        | "transport_pause"
+        | "transport_stop"
+        | "transport_seek"
+        | "transport_set_volume"
+        | "transport_set_loop" => crate::transport_dispatch::dispatch_transport(tool_name),
         _ => ToolCallResult::failure(format!("tool '{tool_name}' not recognized")),
     }
 }

@@ -46,7 +46,7 @@ fn call_mcp(
         let _ = manager.tick(session);
         match rx.try_recv() {
             Ok(ControlResponse::Mcp { response }) => {
-                return serde_json::from_value(response).expect("decode jsonrpc")
+                return serde_json::from_value(response).expect("decode jsonrpc");
             }
             Ok(other) => panic!("unexpected response: {other:?}"),
             Err(TryRecvError::Empty) => {}

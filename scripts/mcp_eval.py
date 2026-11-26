@@ -827,6 +827,52 @@ class EvaluationSuite:
             client.close()
 
 
+    def run_suite_11_live_transport(self, work_dir):
+        print("\n--- Suite 11: Live Transport Bridge (headless honesty) ---")
+        client = McpClient(self.bin_path, work_dir, tier="export", client_id="eval-transport")
+        expected = {
+            "transport_state",
+            "transport_play",
+            "transport_pause",
+            "transport_stop",
+            "transport_seek",
+            "transport_set_volume",
+            "transport_set_loop",
+        }
+        try:
+            tools = {tool["name"] for tool in client.rpc("tools/list").get("tools", [])}
+            self.record(
+                "Suite 11",
+                "seven live transport tools are advertised",
+                expected.issubset(tools),
+                f"missing={sorted(expected - tools)}",
+            )
+            for name, args in [
+                ("transport_state", {}),
+                ("transport_play", {}),
+                ("transport_seek", {"position_secs": 1.0}),
+            ]:
+                result = client.rpc(
+                    "tools/call",
+                    {"name": name, "arguments": args},
+                    expect_error=True,
+                )
+                text = " ".join(
+                    str(item.get("text", ""))
+                    for item in (result.get("content") or [])
+                    if isinstance(item, dict)
+                )
+                self.record(
+                    "Suite 11",
+                    f"{name} refuses headless with attach guidance",
+                    result.get("isError") is True
+                    and "requires a live desktop attach" in text,
+                    text[:140],
+                )
+        finally:
+            client.close()
+
+
 def main():
     if len(sys.argv) < 2:
         print("Usage: mcp_eval.py <PATH_TO_ALP_MCP_BIN>")
@@ -872,6 +918,7 @@ def main():
 
         suite.run_suite_9_phase19_studio_tools(work_dir)
         suite.run_suite_10_extended_coverage(work_dir)
+        suite.run_suite_11_live_transport(work_dir)
 
         total = suite.passed_tests + suite.failed_tests
         pass_pct = (suite.passed_tests / total * 100.0) if total > 0 else 0.0

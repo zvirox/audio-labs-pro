@@ -26,6 +26,10 @@ versions follow the release milestones in the build plan.
   `dubbing_remux`, `dsp_spectral_repair`, `dsp_time_stretch`) bring the surface
   to 79 tools, with end-to-end Suite 10 checks.
 
+- **Live Transport Bridge.** Seven transport tools bring the surface to 86.
+  Attached mode drives the real `TransportController` on the UI thread; headless
+  mode returns an explicit attach-required error instead of fabricated state.
+
 ### Added
 
 - **Phase 16 — Neural Stem Separation & Video Dubbing Pipeline.** WSOLA

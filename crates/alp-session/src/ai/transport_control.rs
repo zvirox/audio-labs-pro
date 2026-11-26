@@ -6,8 +6,8 @@
 
 use std::sync::mpsc::SyncSender;
 
-use alp_api::control::ControlResponse;
 use alp_api::PermissionTier;
+use alp_api::control::ControlResponse;
 use alp_mcp::{JsonRpcRequest, JsonRpcResponse, ToolCallResult, live};
 use serde_json::Value;
 
@@ -128,7 +128,10 @@ pub(crate) fn handle_transport_call(
                     match serde_json::to_value(result) {
                         Ok(value) => send_mcp_response(
                             response,
-                            JsonRpcResponse::success(request.id.clone().unwrap_or(Value::Null), value),
+                            JsonRpcResponse::success(
+                                request.id.clone().unwrap_or(Value::Null),
+                                value,
+                            ),
                         ),
                         Err(error) => transport_failure(response, request, error.to_string()),
                     }

@@ -68,5 +68,5 @@
 
 ### Post-Roadmap — Extended MCP Coverage
 - [x] Four additional Export tools: `dubbing_fit_rate`, `dubbing_remux`, `dsp_spectral_repair` and `dsp_time_stretch`; advertised surface is now 79 tools with Suite 10 checks.
-- [ ] Live transport tools (play/pause/seek) require session/control-bridge plumbing and are not exposed through MCP.
+- [x] Live transport tools (`transport_state`, play/pause/stop/seek, volume, loop) are handled on the desktop UI thread through the existing MCP control envelope; headless mode fails honestly.
 - [ ] Demucs stem separation remains unavailable through MCP because `alp-mcp` cannot depend on `alp-infer` and no model weights are bundled.

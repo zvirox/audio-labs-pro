@@ -1,6 +1,6 @@
 # Audio Labs Pro — MCP Tool Reference
 
-All 79 tools exposed by `alp-mcp` (58 at `v0.0.1-alpha.5`; later phases add
+All 86 tools exposed by `alp-mcp` (58 at `v0.0.1-alpha.5`; later phases add
 profile/batch, audiobook, macro batch and Phase 19 studio tools). Tools are filtered by the session's
 permission tier (`Observe` < `Edit` < `Export`), and every call is audited.
 
@@ -308,3 +308,22 @@ cancellation between segments, so `job_cancel` stops them promptly.
   returns a tool error rather than a panic.
 - Four-stem Demucs separation is deliberately not exposed through MCP: it
   needs `alp-infer` and a loaded `demucs-4stem` model.
+
+## 13. Live Transport (attached mode only)
+
+| Tool | Tier | Inputs | Result |
+|------|------|--------|--------|
+| `transport_state` (bridge) | Observe | — | full live `TransportState` snapshot |
+| `transport_play` (bridge) | Edit | — | `TransportState` after play |
+| `transport_pause` (bridge) | Edit | — | `TransportState` after pause |
+| `transport_stop` (bridge) | Edit | — | `TransportState` after stop |
+| `transport_seek` (bridge) | Edit | `position_secs` | `TransportState` after seek |
+| `transport_set_volume` (bridge) | Edit | `volume` | `TransportState` after volume change |
+| `transport_set_loop` (bridge) | Edit | `enabled`, `start_secs`, `end_secs` | `TransportState` after loop change |
+
+- These tools control live device state, not the project. They are handled on
+  the desktop UI thread and create **no** project undo entry.
+- In headless `alp-mcp` they return `isError: true` with attach guidance; no
+  fabricated transport state is ever reported.
+- Transport writes do not accept `expected_revision`, because they never touch
+  the project snapshot.
