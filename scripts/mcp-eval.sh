@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Audio Labs Pro — Automated MCP Evaluation Suite Harness
-# Executes architecture validation, builds alp-mcp, and runs all 8 evaluation benchmark suites.
+# Executes architecture validation, builds alp-mcp, and runs the legacy suites plus the 25 named Phase 18 scenarios.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -23,8 +23,8 @@ if [[ ! -x "${MCP_BIN}" ]]; then
 fi
 
 echo ""
-echo "== [3/3] Executing 8 MCP Evaluation Benchmark Suites =="
-python3 "${ROOT}/scripts/mcp_eval.py" "${MCP_BIN}"
+echo "== [3/3] Executing MCP Benchmark Suites + 25 Named Scenarios =="
+python3 "${ROOT}/scripts/mcp_eval.py" "${MCP_BIN}" "${ROOT}/target/mcp_eval_results.json"
 
 echo ""
-echo "PASS: Phase 10 MCP Evaluation Harness completed with 100% pass rate."
+echo "PASS: MCP evaluation completed with 100% pass rate (report: target/mcp_eval_results.json)."

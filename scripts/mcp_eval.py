@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Audio Labs Pro — MCP Automated Evaluation & Benchmark Suite.
 
-Executes end-to-end evaluation covering 8 benchmark suites over stdio JSON-RPC 2.0:
+Executes end-to-end evaluation covering 8 legacy suites plus 25 named
+Phase 18 scenarios over stdio JSON-RPC 2.0:
 1. Protocol Handshake & Discovery
 2. Resources (alp:// URIs)
 3. Prompts & Workflows
@@ -10,6 +11,8 @@ Executes end-to-end evaluation covering 8 benchmark suites over stdio JSON-RPC 2
 6. Security Sandboxing & Path Traversal Jail
 7. Ethics Safety Invariant (Human-only consent & clone exclusion)
 8. Full Multitrack Production Workflow, Master Export, and Session Rollback
+Phase 18 scenarios add deterministic replay, deep rollback equality and
+single-entry undo verification.
 """
 
 import json
@@ -19,6 +22,8 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+import mcp_eval_scenarios
 
 
 class McpClient:
@@ -556,8 +561,48 @@ def main():
         suite.run_suite_7_ethics_gate(work_dir)
         suite.run_suite_8_workflow_and_rollback(work_dir)
 
+        print("\n--- Phase 18: 25 Named MCP Scenarios ---")
+        def scenario_factory(tier, client_id, workspace=None):
+            return McpClient(
+                bin_path,
+                workspace or work_dir,
+                tier=tier,
+                client_id=client_id,
+            )
+
+        mcp_eval_scenarios.run(
+            scenario_factory,
+            suite.record,
+            workspace=work_dir,
+        )
+
         total = suite.passed_tests + suite.failed_tests
         pass_pct = (suite.passed_tests / total * 100.0) if total > 0 else 0.0
+
+        if len(sys.argv) > 2:
+            report_path = Path(sys.argv[2])
+            report_path.parent.mkdir(parents=True, exist_ok=True)
+            report_path.write_text(
+                json.dumps(
+                    {
+                        "binary": bin_path,
+                        "passed": suite.passed_tests,
+                        "failed": suite.failed_tests,
+                        "total": total,
+                        "results": [
+                            {
+                                "suite": suite_name,
+                                "check": check_name,
+                                "status": status,
+                                "detail": detail,
+                            }
+                            for suite_name, check_name, status, detail in suite.results
+                        ],
+                    },
+                    indent=2,
+                )
+            )
+            print(f"  Machine-readable report: {report_path}")
 
         print("\n==================================================================")
         print(f"  EVALUATION SUMMARY: {suite.passed_tests}/{total} passed ({pass_pct:.1f}%)")
