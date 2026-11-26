@@ -10,6 +10,7 @@ mod macro_dispatch;
 pub mod protocol;
 pub mod server;
 pub mod starship;
+mod studio_dispatch;
 pub mod tool_defs;
 
 pub use protocol::{JsonRpcRequest, JsonRpcResponse, ToolCallResult};

@@ -524,6 +524,55 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
                     "required": ["track_id", "view_mode"]
                 }),
             },
+            McpTool {
+                name: "effects_response".into(),
+                description: "Compute the combined magnitude/phase response of an EQ band chain from explicit band settings (pure calculation; does not read or modify the project).".into(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "bands": {
+                            "type": "array",
+                            "description": "EQ bands to evaluate",
+                            "items": {
+                                "type": "object",
+                                "required": ["filter_type", "frequency_hz", "q", "gain_db", "enabled"],
+                                "properties": {
+                                    "filter_type": { "type": "string", "description": "highpass, lowpass, peaking, lowshelf, highshelf, notch or bandpass" },
+                                    "frequency_hz": { "type": "number" },
+                                    "q": { "type": "number" },
+                                    "gain_db": { "type": "number" },
+                                    "enabled": { "type": "boolean" }
+                                }
+                            }
+                        },
+                        "sample_rate": { "type": "integer", "description": "Analysis sample rate in Hz" },
+                        "points": { "type": "integer", "description": "Log-spaced sample count, clamped to 16..=512" }
+                    },
+                    "required": ["bands", "sample_rate"]
+                }),
+            },
+            McpTool {
+                name: "acx_qa_analyze".into(),
+                description: "Analyse chapter audio files against ACX targets (RMS -23..-18 dBFS, true peak <= -3 dBFS, noise floor <= -60 dBFS). Paths must be inside the workspace.".into(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "chapters": {
+                            "type": "array",
+                            "minItems": 1,
+                            "items": {
+                                "type": "object",
+                                "required": ["title", "audio_path"],
+                                "properties": {
+                                    "title": { "type": "string" },
+                                    "audio_path": { "type": "string", "description": "Workspace path to a decodable audio file" }
+                                }
+                            }
+                        }
+                    },
+                    "required": ["chapters"]
+                }),
+            },
         ];
 
     if tier >= PermissionTier::Edit {
@@ -812,6 +861,42 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
                         "required": ["requests"]
                     }),
                 },
+                McpTool {
+                    name: "marker_remove".into(),
+                    description: "Remove a timeline marker by id. One undo step.".into(),
+                    input_schema: json!({
+                        "type": "object",
+                        "properties": {
+                            "marker_id": { "type": "string", "description": "Marker id from marker_add" }
+                        },
+                        "required": ["marker_id"]
+                    }),
+                },
+                McpTool {
+                    name: "loop_range_set".into(),
+                    description: "Set the project loop range in seconds, or clear it when both times are omitted. One undo step.".into(),
+                    input_schema: json!({
+                        "type": "object",
+                        "properties": {
+                            "start_secs": { "type": "number" },
+                            "end_secs": { "type": "number" }
+                        }
+                    }),
+                },
+                McpTool {
+                    name: "clip_trim".into(),
+                    description: "Trim a clip by replacing its source frame range and timeline start frame. One undo step.".into(),
+                    input_schema: json!({
+                        "type": "object",
+                        "properties": {
+                            "clip_id": { "type": "string" },
+                            "source_start_frame": { "type": "integer" },
+                            "source_end_frame": { "type": "integer" },
+                            "timeline_start_frame": { "type": "integer" }
+                        },
+                        "required": ["clip_id", "source_start_frame", "source_end_frame", "timeline_start_frame"]
+                    }),
+                },
             ]);
     }
 
@@ -873,6 +958,42 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
                     }
                 },
                 "required": ["input_dir", "output_dir", "steps"]
+            }),
+        });
+        tools.push(McpTool {
+            name: "audiobook_export_m4b".into(),
+            description: "Export a rendered master audio file as a chaptered M4B audiobook with optional cover art and metadata. Paths must be inside the workspace.".into(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "output_path": { "type": "string", "description": "Destination .m4b path inside the workspace" },
+                    "master_audio_path": { "type": "string", "description": "Rendered full-book audio file" },
+                    "chapters": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                            "type": "object",
+                            "required": ["title", "start_secs", "duration_secs"],
+                            "properties": {
+                                "title": { "type": "string" },
+                                "start_secs": { "type": "number" },
+                                "duration_secs": { "type": "number" }
+                            }
+                        }
+                    },
+                    "cover_path": { "type": "string", "description": "Optional JPEG or PNG cover inside the workspace" },
+                    "metadata": {
+                        "type": "object",
+                        "properties": {
+                            "title": { "type": "string" },
+                            "narrator": { "type": "string" },
+                            "series": { "type": "string" },
+                            "series_number": { "type": "integer" },
+                            "comment": { "type": "string" }
+                        }
+                    }
+                },
+                "required": ["output_path", "master_audio_path", "chapters"]
             }),
         });
     }
@@ -959,6 +1080,21 @@ pub fn metadata_for(name: &str) -> ToolMetadata {
     let destroy = ToolAnnotations::destructive();
 
     let (title, annotations) = match name {
+        // --- Phase 19 studio coverage ---
+        "effects_response" => ("EQ Frequency Response", read),
+        "acx_qa_analyze" => ("ACX Chapter QA", read),
+        "audiobook_export_m4b" => (
+            "Write M4B Audiobook",
+            ToolAnnotations {
+                read_only: false,
+                destructive: true,
+                idempotent: false,
+                open_world: false,
+            },
+        ),
+        "marker_remove" => ("Remove Marker", destroy),
+        "loop_range_set" => ("Set Loop Range", add),
+        "clip_trim" => ("Trim Clip", destroy),
         // --- Projects & history ---
         "project_list" => ("List Projects", read),
         "project_info" => ("Project Summary", read),

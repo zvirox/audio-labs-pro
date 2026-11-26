@@ -1,7 +1,7 @@
 # Audio Labs Pro — MCP Tool Reference
 
-All 69 tools exposed by `alp-mcp` (58 at `v0.0.1-alpha.5`; later phases add
-profile/batch, audiobook, dubbing and macro batch tools). Tools are filtered by the session's
+All 75 tools exposed by `alp-mcp` (58 at `v0.0.1-alpha.5`; later phases add
+profile/batch, audiobook, macro batch and Phase 19 studio tools). Tools are filtered by the session's
 permission tier (`Observe` < `Edit` < `Export`), and every call is audited.
 
 Conventions used below:
@@ -87,6 +87,9 @@ undoable source add. An import can never overwrite existing media.
 | `clip_remove` | Edit | `clip_id` | `{ removed: true }` |
 | `range_delete` | Edit | `start_secs`, `end_secs` | `{ deleted: true }` — ripple-deletes on the first track |
 | `marker_add` | Edit | `name`, `position_secs` | `{ marker_id }` |
+| `marker_remove` (phase 19) | Edit | `marker_id` | `{ marker_id }` |
+| `loop_range_set` (phase 19) | Edit | `start_secs?`, `end_secs?` | `{ start_secs, end_secs }` — omit both to clear |
+| `clip_trim` (phase 19) | Edit | `clip_id`, `source_start_frame`, `source_end_frame`, `timeline_start_frame` | `{ clip_id, … }` |
 | `edit_batch` | Edit | `label`, `operations[]` | `{ label, operations_applied, single_undo_step, status }` |
 
 `clip_add` interprets `duration_secs`/`source_offset_secs` at the source's own
@@ -123,6 +126,7 @@ Operation kinds: `track_update`, `clip_update`, `clip_remove`, `clip_split`,
 | `effect_update` | Edit | `track_id`, `effect_id`, `params` | `{ updated: true }` |
 | `effect_remove` | Edit | `track_id`, `effect_id` | `{ removed: true }` |
 | `preset_apply` | Edit | `track_id`, `preset` | `{ applied: true }` |
+| `effects_response` (phase 19) | Observe | `bands[]`, `sample_rate`, `points?` | `{ frequencies_hz, magnitude_db, phase_deg }` |
 
 `effect_apply` and `preset_apply` validate the id against the catalog and fail
 with the known list. Presets available: `voice_cleanup`, `podcast_master`.
@@ -164,6 +168,7 @@ All analysis runs on a real render of the project through the engine.
 | `render_waveform` | Observe | `width`, `height` | `{ ascii, width, height, peak, duration_secs }` |
 | `render_spectrogram` | Observe | `width`, `height` | `{ ascii, width, height, band_centers_hz, range_db }` |
 | `compare_renders` | Observe | `path_a`, `path_b` | `{ similarity, differences, recommendation }` |
+| `acx_qa_analyze` (phase 19) | Observe | `chapters[{title, audio_path}]` | `{ chapters, compliant_count, total_count, all_compliant }` |
 
 Field meaning:
 
@@ -232,6 +237,7 @@ Engines run daemon-first and results always name what actually ran:
 | `export_audio` | Export | `preset`, `output_path` | `{ exported_path, … }` |
 | `audiobook_encode` (alpha.6) | Export | `script_json`, `output_path?` | `{ track_id, master_path, segment_count, total_duration_secs, job_id }` |
 | `dsp_macro_execute` (phase 17) | Export | `input_dir`, `output_dir`, `steps`, `pattern?`, `overwrite?` | `{ job_id, report }` |
+| `audiobook_export_m4b` (phase 19) | Export | `output_path`, `master_audio_path`, `chapters[]`, `cover_path?`, `metadata?` | `{ path, frames, duration_secs, chapter_count, has_cover }` |
 | `export_stems` | Export | `output_dir`, `preset?` | `[StemExportReport]` |
 | `export_transcript` | Export | `format`, `path` | `{ format, path, duration_secs, engine, segments, text }` |
 | `preview_render` | Observe | `start_secs`, `duration_secs` | `{ start_secs, duration_secs, sample_rate, channels, peak, preview_path }` |

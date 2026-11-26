@@ -26,4 +26,6 @@ Best practices and protocol conventions for AI models interacting with Audio Lab
 5. analyze_loudness    -> verify integrated loudness moved closer to -16 LUFS
 6. export_audio        -> render master with "podcast" or "voice_over" preset
 7. dsp_macro_execute   -> batch-process a directory of files with a DSP macro chain (poll with job_status)
+8. acx_qa_analyze      -> check chapter WAVs against ACX targets before export
+9. audiobook_export_m4b -> mux a rendered master into a chaptered M4B
 ```

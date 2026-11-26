@@ -12,15 +12,18 @@ Phase 18 scenarios over stdio JSON-RPC 2.0:
 7. Ethics Safety Invariant (Human-only consent & clone exclusion)
 8. Full Multitrack Production Workflow, Master Export, and Session Rollback
 Phase 18 scenarios add deterministic replay, deep rollback equality and
-single-entry undo verification.
+single-entry undo verification. Suite 9 exercises the Phase 19 studio tools.
 """
 
 import json
+import math
 import os
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
+import wave
 from pathlib import Path
 
 import mcp_eval_scenarios
@@ -533,6 +536,188 @@ class EvaluationSuite:
         )
 
 
+    def run_suite_9_phase19_studio_tools(self, work_dir):
+        print("\n--- Suite 9: Phase 19 Studio Tool Coverage ---")
+        client = McpClient(self.bin_path, work_dir, tier="export", client_id="eval-phase19")
+        expected = {
+            "effects_response",
+            "acx_qa_analyze",
+            "audiobook_export_m4b",
+            "marker_remove",
+            "loop_range_set",
+            "clip_trim",
+        }
+        try:
+            tools = {tool["name"] for tool in client.rpc("tools/list").get("tools", [])}
+            self.record(
+                "Suite 9",
+                "six Phase 19 studio tools are advertised",
+                expected.issubset(tools),
+                f"missing={sorted(expected - tools)}",
+            )
+
+            response = client.rpc(
+                "tools/call",
+                {
+                    "name": "effects_response",
+                    "arguments": {
+                        "bands": [
+                            {
+                                "filter_type": "peaking",
+                                "frequency_hz": 1000.0,
+                                "q": 1.0,
+                                "gain_db": 6.0,
+                                "enabled": True,
+                            }
+                        ],
+                        "sample_rate": 48000,
+                        "points": 32,
+                    },
+                },
+            )
+            eq = response.get("structuredContent") or {}
+            self.record(
+                "Suite 9",
+                "effects_response returns sampled EQ telemetry",
+                len(eq.get("frequencies_hz", [])) == 32
+                and len(eq.get("magnitude_db", [])) == 32
+                and len(eq.get("phase_deg", [])) == 32,
+                f"points={len(eq.get('frequencies_hz', []))}",
+            )
+
+            chapter = Path(work_dir) / "phase19_chapter.wav"
+            with wave.open(str(chapter), "wb") as wav:
+                wav.setnchannels(1)
+                wav.setsampwidth(2)
+                wav.setframerate(48000)
+                frames = b"".join(
+                    struct.pack("<h", int(9000 * math.sin(2 * math.pi * 220 * i / 48000)))
+                    for i in range(4800)
+                )
+                wav.writeframes(frames)
+
+            qa = client.rpc(
+                "tools/call",
+                {
+                    "name": "acx_qa_analyze",
+                    "arguments": {
+                        "chapters": [
+                            {"title": "Chapter 1", "audio_path": str(chapter)}
+                        ]
+                    },
+                },
+            )
+            qa_data = qa.get("structuredContent") or {}
+            self.record(
+                "Suite 9",
+                "acx_qa_analyze reports chapter compliance",
+                qa_data.get("total_count") == 1
+                and len(qa_data.get("chapters", [])) == 1,
+                str(qa_data.get("chapters", [{}])[0].get("title")),
+            )
+
+            m4b = Path(work_dir) / "phase19_book.m4b"
+            exported = client.rpc(
+                "tools/call",
+                {
+                    "name": "audiobook_export_m4b",
+                    "arguments": {
+                        "output_path": str(m4b),
+                        "master_audio_path": str(chapter),
+                        "chapters": [
+                            {"title": "Chapter 1", "start_secs": 0.0, "duration_secs": 0.05}
+                        ],
+                    },
+                },
+            )
+            self.record(
+                "Suite 9",
+                "audiobook_export_m4b writes a chaptered file",
+                exported.get("isError") is not True and m4b.is_file(),
+                f"exists={m4b.is_file()}",
+            )
+
+            marker = client.rpc(
+                "tools/call",
+                {
+                    "name": "marker_add",
+                    "arguments": {"name": "phase19", "position_secs": 1.0},
+                },
+            )
+            marker_id = (marker.get("structuredContent") or {}).get("marker_id")
+            removed = client.rpc(
+                "tools/call",
+                {"name": "marker_remove", "arguments": {"marker_id": marker_id}},
+            )
+            self.record(
+                "Suite 9",
+                "marker_remove removes a real marker",
+                marker_id is not None and removed.get("isError") is not True,
+                f"marker_id={marker_id}",
+            )
+
+            looped = client.rpc(
+                "tools/call",
+                {
+                    "name": "loop_range_set",
+                    "arguments": {"start_secs": 0.5, "end_secs": 1.5},
+                },
+            )
+            cleared = client.rpc(
+                "tools/call",
+                {"name": "loop_range_set", "arguments": {}},
+            )
+            self.record(
+                "Suite 9",
+                "loop_range_set sets and clears the loop",
+                looped.get("isError") is not True and cleared.get("isError") is not True,
+                "set + clear",
+            )
+
+            track = client.rpc(
+                "tools/call",
+                {"name": "track_add", "arguments": {"name": "Phase 19 Track"}},
+            )
+            track_id = (track.get("structuredContent") or {}).get("track_id")
+            source = client.rpc(
+                "tools/call",
+                {"name": "media_import", "arguments": {"path": str(chapter), "name": "phase19"}},
+            )
+            source_id = (source.get("structuredContent") or {}).get("source_id")
+            clip = client.rpc(
+                "tools/call",
+                {
+                    "name": "clip_add",
+                    "arguments": {
+                        "track_id": track_id,
+                        "source_id": source_id,
+                        "start_secs": 0.0,
+                    },
+                },
+            )
+            clip_id = (clip.get("structuredContent") or {}).get("clip_id")
+            trimmed = client.rpc(
+                "tools/call",
+                {
+                    "name": "clip_trim",
+                    "arguments": {
+                        "clip_id": clip_id,
+                        "source_start_frame": 0,
+                        "source_end_frame": 2400,
+                        "timeline_start_frame": 0,
+                    },
+                },
+            )
+            self.record(
+                "Suite 9",
+                "clip_trim trims a real timeline clip",
+                clip_id is not None and trimmed.get("isError") is not True,
+                f"clip_id={clip_id}",
+            )
+        finally:
+            client.close()
+
+
 def main():
     if len(sys.argv) < 2:
         print("Usage: mcp_eval.py <PATH_TO_ALP_MCP_BIN>")
@@ -575,6 +760,8 @@ def main():
             suite.record,
             workspace=work_dir,
         )
+
+        suite.run_suite_9_phase19_studio_tools(work_dir)
 
         total = suite.passed_tests + suite.failed_tests
         pass_pct = (suite.passed_tests / total * 100.0) if total > 0 else 0.0

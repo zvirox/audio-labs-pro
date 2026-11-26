@@ -69,6 +69,7 @@ pub struct M4bChapterDto {
 
 /// Serializable subset of M4B metadata.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct M4bMetadataDto {
     /// Book title.
     pub title: String,
@@ -365,9 +366,13 @@ mod tests {
                 Box::new(AddMarker::new(id, 4_800, "Ch1".to_owned())),
             )
             .expect("add marker");
-        session.marker_remove(&id.to_string()).expect("remove marker");
+        session
+            .marker_remove(&id.to_string())
+            .expect("remove marker");
         assert!(session.undo().expect("undo"));
-        session.loop_range_set(Some(1.0), Some(2.0)).expect("set loop");
+        session
+            .loop_range_set(Some(1.0), Some(2.0))
+            .expect("set loop");
         session.loop_range_set(None, None).expect("clear loop");
     }
 

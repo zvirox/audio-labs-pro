@@ -1434,6 +1434,14 @@ pub fn dispatch(session: &mut ApiSession, tool_name: &str, arguments: &Value) ->
             }
         }
         "dsp_macro_execute" => crate::macro_dispatch::dispatch_dsp_macro(session, arguments),
+        "effects_response" => crate::studio_dispatch::dispatch_effects_response(arguments),
+        "acx_qa_analyze" => crate::studio_dispatch::dispatch_acx_qa_analyze(session, arguments),
+        "audiobook_export_m4b" => {
+            crate::studio_dispatch::dispatch_audiobook_export_m4b(session, arguments)
+        }
+        "marker_remove" => crate::studio_dispatch::dispatch_marker_remove(session, arguments),
+        "loop_range_set" => crate::studio_dispatch::dispatch_loop_range_set(session, arguments),
+        "clip_trim" => crate::studio_dispatch::dispatch_clip_trim(session, arguments),
         _ => ToolCallResult::failure(format!("tool '{tool_name}' not recognized")),
     }
 }

@@ -15,7 +15,7 @@
 | DSP & Spectral Engine (`alp-dsp`) | **Core Complete** | Parametric EQ, biquads, compressor/gate/de-esser, true-peak limiter, LUFS meter, RNNoise + spectral denoiser (`denoise.rs`), STFT spectrogram & 2D spectral selection (`spectral.rs`) |
 | Voice & Neural Inference (`alp-voice`, `alp-infer`) | **Core Complete** | Kokoro/Kitten/StyleTTS2, Qwen3-TTS cloning + mandatory consent attestation, Moonshine STT, VAD, pronunciation lexicon, GGUF/ONNX download & SHA-256 verification |
 | Audio Plugins (`alp-plugin`) | **CLAP + LV2 Complete** | System scanner (`~/.clap`, `/usr/lib/clap`, LV2 bundles), sandboxing, parameter presets |
-| Session Bridge & AI Control (`alp-session`, `alp-mcp`, `alp-cli`) | **Complete** | Tauri IPC commands, 68 MCP tools across Observe/Edit/Export tiers, Starship Control bridge (`alp.sock`), live UNIX socket host |
+| Session Bridge & AI Control (`alp-session`, `alp-mcp`, `alp-cli`) | **Complete** | Tauri IPC commands, 75 MCP tools across Observe/Edit/Export tiers, Starship Control bridge (`alp.sock`), live UNIX socket host |
 | Desktop Shell & Locked Linear UI (`alp-desktop`, `frontend/`) | **Complete & Locked** | Tauri v2 frameless window (`1280x800`, min `1024x640`, opaque solid surface), TitleBar/Sidebar/Breadcrumb shell, 9 workspaces, Multitrack + Spectrogram canvases, chart-free engine telemetry, `check:linear` gate |
 | Packaging & Release (`packaging/nfpm.yaml`, `.github/workflows/`) | **Complete** | Multi-distro `.deb`, `.rpm`, and Arch `.pkg.tar.zst` via `nfpm`; CI + `v0.1.0-beta.1` release pipeline |
 
@@ -33,6 +33,7 @@
 - [x] **Phase 11 (Plugin Hosting):** CLAP and LV2 plugin discovery and real-time host integration in `alp-plugin`.
 - [x] **M0–M8 (Tauri v2 Migration & Legacy Removal):** Full cutover from `iced` (`alp-ui` / `alp-ui-kit` removed) to Tauri v2 + React 19 + TypeScript; unified Linux packaging via `packaging/nfpm.yaml` (`.deb`, `.rpm`, `.pkg.tar.zst`).
 - [x] **Phase 17 (Plugins & Macros):** VST3 bundle discovery, safe X11 editor parenting bridge, offline `MacroChain` batches, and the `dsp_macro_execute` MCP job tool.
+- [x] **Phase 19 (Release Readiness):** 75 MCP tools with EQ/ACX/M4B/timeline coverage; packaging config parity for `alp-mcp` and a local nfpm/checksum acceptance script.
 - [x] **Phase 16 (Dubbing Pipeline):** WSOLA time-stretch + `FitPlanner`, ffmpeg stream-copy remux, model-gated 4-stem ONNX runner with daemon protocol, and a dedicated Dubbing Studio workspace.
 - [x] **Phase 15 (Audiobook Mastering):** ACX chapter QA with true-peak estimation, native M4B export with AAC/chapters/cover/tags, and UI/IPC exposure in Stories workspace.
 - [x] **Phase 14 (Spectral Repair & Insert Racks):** `alp-dsp::repair` notch/harmonic STFT effects, `alp-engine::insert_rack` with 8 lock-free controlled slots, and `EffectsWorkspace` native magnitude/phase curve from real `Coefficients::response` telemetry.
