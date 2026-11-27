@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   ArrowRight,
@@ -11,6 +11,11 @@ import {
   Sliders,
 } from 'lucide-react';
 import { WORKSPACE_LIST } from '../layout/PrimaryRail';
+import {
+  getAiStatus,
+  getProjectSummary,
+} from '../ipc/client';
+import type { AiControlStatus, ProjectSummary } from '../ipc/types';
 import {
   StatCard,
   LinearCard,
@@ -36,17 +41,17 @@ const ENGINE_PIPELINES = [
   },
   {
     name: 'Neural Inference Subprocess',
-    detail: 'Matcha-TTS & RNNoise offline daemon ready',
+    detail: 'Kokoro, Moonshine, Qwen3-TTS & HTDemucs ONNX daemon',
     status: 'Ready' as const,
   },
   {
     name: 'MCP Tool Registry & Socket',
-    detail: '68 typed tools behind Observe/Edit/Export tiers',
+    detail: '87 typed tools behind Observe/Edit/Export tiers',
     status: 'Active' as const,
   },
   {
-    name: 'Plugin Host (CLAP / LV2)',
-    detail: 'System audio effect discovery and preset host',
+    name: 'Plugin Host (CLAP / LV2 / VST3)',
+    detail: 'System discovery, C/COM ABI hosting, and X11 editor views',
     status: 'Ready' as const,
   },
 ];
@@ -56,6 +61,14 @@ export function DashboardWorkspace({
   onOpenPalette,
   onOpenShortcuts,
 }: DashboardWorkspaceProps) {
+  const [summary, setSummary] = useState<ProjectSummary | null>(null);
+  const [aiStatus, setAiStatus] = useState<AiControlStatus | null>(null);
+
+  useEffect(() => {
+    getProjectSummary().then(setSummary).catch(() => {});
+    getAiStatus().then(setAiStatus).catch(() => {});
+  }, []);
+
   const studioRows = useMemo(
     () =>
       WORKSPACE_LIST.map((ws) => ({
@@ -104,30 +117,30 @@ export function DashboardWorkspace({
       {/* Primary KPI Stat Row (no charts/sparklines) */}
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          label="Active Studios"
-          value={WORKSPACE_LIST.length}
-          subtitle="Unified single-window shell"
-          delta={{ value: 'Magenta v2', trend: 'neutral' }}
+          label="Active Session"
+          value={summary ? `${summary.track_count} Tracks` : `${WORKSPACE_LIST.length} Studios`}
+          subtitle={summary ? `${summary.clip_count} clips · rev #${summary.revision}` : 'Unified single-window shell'}
+          delta={{ value: 'Linear UI', trend: 'neutral' }}
           icon={<Layers className="h-4 w-4" />}
         />
         <StatCard
           label="Engine Target"
-          value="48.0 kHz"
+          value={summary ? `${(summary.sample_rate / 1000).toFixed(1)} kHz` : '48.0 kHz'}
           subtitle="32-bit float internal bus"
-          delta={{ value: '2.6 ms', trend: 'up' }}
+          delta={{ value: summary ? `${summary.duration_secs.toFixed(1)}s` : '2.6 ms', trend: 'up' }}
           icon={<Gauge className="h-4 w-4" />}
         />
         <StatCard
           label="MCP Capabilities"
-          value={68}
-          subtitle="Authenticated local tools"
+          value={87}
+          subtitle={aiStatus?.enabled ? `Host active (${aiStatus.tier})` : 'Authenticated local tools'}
           delta={{ value: '3 Tiers', trend: 'neutral' }}
           icon={<ShieldCheck className="h-4 w-4" />}
         />
         <StatCard
           label="Inference Ready"
-          value="ONNX"
-          subtitle="Matcha-TTS & RNNoise offline"
+          value="ORT 1.22"
+          subtitle="Kokoro, Moonshine & HTDemucs local"
           delta={{ value: 'Local', trend: 'up' }}
           icon={<Cpu className="h-4 w-4" />}
         />

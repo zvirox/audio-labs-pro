@@ -9,8 +9,8 @@ import { useState, useEffect } from 'react';
 import { Card } from '../kit/Card';
 import { Button } from '../kit/Button';
 import { Toggle } from '../kit/Toggle';
-import { getModelCatalogue } from '../ipc/client';
-import type { ModelItem } from '../ipc/types';
+import { getModelCatalogue, getHardwareProfile, verifyModelIntegrity } from '../ipc/client';
+import type { HardwareProfile, ModelItem } from '../ipc/types';
 import {
   Brain,
   Download,
@@ -23,21 +23,28 @@ import {
 
 export function ModelsWorkspace() {
   const [models, setModels] = useState<ModelItem[]>([]);
+  const [hardware, setHardware] = useState<HardwareProfile | null>(null);
   const [offlineOnly, setOfflineOnly] = useState<boolean>(true);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
+  const [verifyMessage, setVerifyMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    getModelCatalogue().then(setModels);
+    getModelCatalogue().then(setModels).catch(() => {});
+    getHardwareProfile().then(setHardware).catch(() => {});
   }, []);
 
-  const handleVerify = (id: string) => {
+  const handleVerify = async (id: string) => {
     setVerifyingId(id);
-    setTimeout(() => {
-      setModels((prev) =>
-        prev.map((m) => (m.id === id ? { ...m, status: 'verified' } : m))
-      );
+    setVerifyMessage(null);
+    try {
+      const updated = await verifyModelIntegrity(id);
+      setModels((prev) => prev.map((m) => (m.id === id ? updated : m)));
+      setVerifyMessage(`${updated.name}: ${updated.status}`);
+    } catch (error) {
+      setVerifyMessage(`Verify failed for ${id}: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
       setVerifyingId(null);
-    }, 1200);
+    }
   };
 
   return (
@@ -52,6 +59,12 @@ export function ModelsWorkspace() {
           Manage local AI speech models, offline verification, SPDX licenses, and on-device hardware accelerators.
         </p>
       </div>
+
+      {verifyMessage && (
+        <div className="p-3 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border-strong)] text-xs font-mono text-[var(--color-fg-muted)]">
+          {verifyMessage}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Model Catalogue (2 cols) */}
@@ -143,29 +156,40 @@ export function ModelsWorkspace() {
           </Card>
 
           {/* Hardware Accelerators */}
-          <Card title="Hardware Telemetry" subtitle="On-device inference execution">
+          <Card title="Hardware Telemetry" subtitle="Probed host compute and memory profile">
             <div className="space-y-3 text-xs font-mono">
               <div className="flex items-center justify-between">
                 <span className="text-[var(--color-fg-muted)] flex items-center gap-1.5">
                   <Cpu className="w-4 h-4 text-[var(--color-accent)]" />
-                  CPU Host:
+                  CPU Cores:
                 </span>
-                <span className="text-[var(--color-fg)]">x86_64 AVX2 / FMA</span>
+                <span className="text-[var(--color-fg)]">
+                  {hardware ? `${hardware.cpu_cores} logical threads` : 'Probing...'}
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-[var(--color-fg-muted)] flex items-center gap-1.5">
                   <HardDrive className="w-4 h-4 text-[var(--color-fg-muted)]" />
-                  Inference RAM:
+                  System RAM:
                 </span>
-                <span className="text-[var(--color-fg)]">528 MB allocated</span>
+                <span className="text-[var(--color-fg)]">
+                  {hardware ? `${hardware.available_ram_gb} / ${hardware.total_ram_gb} GB free` : 'Probing...'}
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-[var(--color-fg-muted)] flex items-center gap-1.5">
                   <Download className="w-4 h-4 text-[var(--color-fg-muted)]" />
-                  Acceleration:
+                  Recommended Tier:
                 </span>
-                <span className="text-[var(--color-fg-muted)] font-medium">Vulkan Engine Active</span>
+                <span className="text-[var(--color-fg)] font-medium">
+                  {hardware?.recommended_tier || 'Fast (Lightweight)'}
+                </span>
               </div>
+              {hardware?.gpu_description && (
+                <div className="pt-2 border-t border-[var(--color-border)] text-[10px] text-[var(--color-fg-muted)] truncate" title={hardware.gpu_description}>
+                  GPU: {hardware.gpu_description}
+                </div>
+              )}
             </div>
           </Card>
         </div>

@@ -67,11 +67,18 @@ impl SpectralSelectionDto {
     }
 }
 
+fn default_master_gain() -> f32 {
+    1.0
+}
+
 /// Full multitrack timeline presentation state.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimelineDto {
     /// Project audio sample rate in Hz (e.g. 48000).
     pub sample_rate: u32,
+    /// Master bus linear gain multiplier.
+    #[serde(default = "default_master_gain")]
+    pub master_gain: f32,
     /// Total duration of the timeline in seconds.
     pub duration_secs: f64,
     /// Ordered list of tracks and contained clips.

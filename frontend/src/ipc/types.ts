@@ -200,6 +200,96 @@ export interface DiscoveredPlugin {
   vendor: string;
   format: 'CLAP' | 'LV2' | 'VST3';
   category: string;
+  path?: string;
+}
+
+export interface HardwareProfile {
+  total_ram_gb: number;
+  available_ram_gb: number;
+  cpu_cores: number;
+  gpu_detected: boolean;
+  gpu_description: string | null;
+  recommended_tier: string;
+}
+
+export interface DesktopTtsReport {
+  path: string;
+  duration_secs: number;
+  sample_rate: number;
+  engine: string;
+  voice_id: string;
+}
+
+export interface LexiconRule {
+  word: string;
+  replacement: string;
+}
+
+export interface LexiconPreview {
+  output_text: string;
+  tokens: string[];
+}
+
+export interface SpectralRepairRequestDto {
+  input_path: string;
+  output_path: string;
+  mode: 'notch' | 'harmonic';
+  center_hz: number;
+  fundamental_hz: number;
+  harmonics: number;
+  bandwidth_q: number;
+  reduction_db: number;
+}
+
+export interface SpectralRepairReport {
+  path: string;
+  mode: string;
+  frames: number;
+  sample_rate: number;
+}
+
+export interface TimeStretchRequestDto {
+  input_path: string;
+  output_path: string;
+  ratio: number;
+}
+
+export interface TimeStretchReport {
+  path: string;
+  ratio: number;
+  duration_secs: number;
+}
+
+export interface FileLoudnessReport {
+  path: string;
+  integrated_lufs: number;
+  peak_dbfs: number;
+  true_peak_dbfs: number;
+  duration_secs: number;
+  sample_rate: number;
+  channels: number;
+}
+
+export interface TranscriptionWordReport {
+  word: string;
+  start_secs: number;
+  end_secs: number;
+  confidence: number;
+}
+
+export interface TranscriptionSegmentReport {
+  start_secs: number;
+  end_secs: number;
+  text: string;
+  words: TranscriptionWordReport[];
+}
+
+export interface TranscriptionReport {
+  path: string;
+  text: string;
+  duration_secs: number;
+  segments: TranscriptionSegmentReport[];
+  engine: string;
 }
 
 export interface CaptureTake {

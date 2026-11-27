@@ -1,6 +1,6 @@
 # Audio Labs Pro Documentation
 
-Welcome to the engineering, architectural, and user documentation for **Audio Labs Pro** (`v0.1.0-beta.5`) — an offline-first Linux workstation combining multitrack audio production, neural speech synthesis & cloning, and authenticated AI MCP automation inside a locked Tauri v2 **Linear UI** desktop shell.
+Welcome to the engineering, architectural, and user documentation for **Audio Labs Pro** (`v0.1.0-beta.6`) — an offline-first Linux workstation combining multitrack audio production, neural speech synthesis & cloning, and authenticated AI MCP automation inside a locked Tauri v2 **Linear UI** desktop shell.
 
 ---
 
@@ -8,7 +8,7 @@ Welcome to the engineering, architectural, and user documentation for **Audio La
 
 - [**MASTER CHECKLIST**](../MASTER_CHECKLIST.md) — Verified inventory of implemented crates, Linear UI completion, and remaining gaps
 - [**Adoption & Feature Plan**](ADOPTION_PLAN.md) — Phased implementation plan covering M0–M8, Phases 0–19, and remaining work
-- [**Status Report**](../ALP_STATUS_REPORT.md) — Current codebase and release baseline (`v0.1.0-beta.5`)
+- [**Status Report**](../ALP_STATUS_REPORT.md) — Current codebase and release baseline (`v0.1.0-beta.6`)
 - [**Release & Packaging Audit**](release-audit.md) — Unified `nfpm` packaging configuration (`.deb`, `.rpm`, `.pkg.tar.zst`)
 
 ---

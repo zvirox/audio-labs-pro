@@ -1,6 +1,6 @@
 # Audio Labs Pro — Master Verification & Engineering Checklist
 
-> Last verified against codebase: `v0.1.0-beta.5` (12 Rust crates, `frontend/` Tauri v2 + React 19 Linear UI, `packaging/nfpm.yaml`).
+> Last verified against codebase: `v0.1.0-beta.6` (12 Rust crates, `frontend/` Tauri v2 + React 19 Linear UI, `packaging/nfpm.yaml`).
 > **UI Policy:** The **Linear UI** (shared Tessera-sampled matte palette `#1C1C1C` dark / `#F8F9FA` light, **Magenta** primary accent `#C026D3`/`#A21CAF`, zero green/teal, chart-free, self-hosted Inter, `check:linear` enforced) is **final and locked** per [DESIGN.md](DESIGN.md). No further UI style redesigns are planned.
 
 ---
@@ -17,7 +17,7 @@
 | Audio Plugins (`alp-plugin`) | **Complete (CLAP, LV2 & VST3)** | System scanner (`~/.clap`, `/usr/lib/clap`, LV2, `~/.vst3`, `/usr/lib/vst3`), CLAP/LV2 + VST3 COM ABI hosting (`IComponent`/`IAudioProcessor`/`IEditController`/`IPlugView`), X11 editor bridge, presets |
 | Session Bridge & AI Control (`alp-session`, `alp-mcp`, `alp-cli`) | **Complete** | Tauri IPC commands, 87 MCP tools (`80` in `tool_defs.rs` + `7` `transport_*` in `transport_tools.rs`) across Observe/Edit/Export tiers, Starship Control bridge (`alp.sock`), live UNIX socket host |
 | Desktop Shell & Locked Linear UI (`alp-desktop`, `frontend/`) | **Complete & Locked** | Tauri v2 frameless window (`1280x800`, min `1024x640`, opaque solid surface), TitleBar/Sidebar/Breadcrumb shell, 9 workspaces, Multitrack + Spectrogram canvases, chart-free engine telemetry, `check:linear` gate |
-| Packaging & Release (`packaging/nfpm.yaml`, `.github/workflows/`) | **Complete** | Multi-distro `.deb`, `.rpm`, and Arch `.pkg.tar.zst` via `nfpm` on `ubuntu-22.04` (`glibc 2.35+` / ORT 1.22); CI + `v0.1.0-beta.5` prerelease pipeline |
+| Packaging & Release (`packaging/nfpm.yaml`, `.github/workflows/`) | **Complete** | Multi-distro `.deb`, `.rpm`, and Arch `.pkg.tar.zst` via `nfpm` on `ubuntu-22.04` (`glibc 2.35+` / ORT 1.22); CI + `v0.1.0-beta.6` prerelease pipeline |
 
 ---
 
@@ -55,4 +55,4 @@
 - [x] **VST3 COM ABI Host Runtime:** Implemented in `alp-plugin::vst3` via `vst3 = 0.3.0` (`ModuleEntry`, `GetPluginFactory`, `IComponent`, `IAudioProcessor`, `IEditController`, `"X11EmbedWindowID"` `IPlugView`) and verified against a real C COM shared-library test (`tests/vst3_host.rs`).
 - [x] **Demucs Catalog & MCP Separation:** Registered MIT `demucs-4stem` in `alp-voice::model::standard_catalogue()`, added HTDemucs packed overlap-add in `alp-infer::demucs`, and exposed `dubbing_separate_stems` (#87) via `alp-api -> alp_voice::InferClient` (weights download on demand rather than bundling).
 - [x] **Ubuntu 22.04 Compatibility:** Pinned `ort = "=2.0.0-rc.10"` (ORT 1.22, no `GLIBC_2.38+` symbols) and restored `ubuntu-22.04` builds + Ubuntu 22.04 smoke checks in `.github/workflows/release.yml`.
-- [ ] **1.0 Promotion (`v1.0.0-rc.1` / `v1.0.0`):** Workspace manifests remain on `v0.1.0-beta.5` prerelease pending explicit user authorization for the `1.0` version bump and release tag.
+- [ ] **1.0 Promotion (`v1.0.0-rc.1` / `v1.0.0`):** Workspace manifests remain on `v0.1.0-beta.6` prerelease pending explicit user authorization for the `1.0` version bump and release tag.

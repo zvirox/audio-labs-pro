@@ -1,6 +1,6 @@
 # Audio Labs Pro — Master Engineering Roadmap & Feature Plan
 
-> **Current Release Baseline:** `v0.1.0-beta.5`
+> **Current Release Baseline:** `v0.1.0-beta.6`
 > **Architecture Status:** 12 Rust workspace crates + Tauri v2 + React 19 TypeScript frontend (`frontend/`).
 > **UI Policy:** **The Linear UI design system is FINAL and LOCKED.** No glassmorphism, no KWin/compositor blur, no frosted translucent layers, and no alternative UI themes are planned. All frontend changes must pass `npm --prefix frontend run check:linear`.
 
@@ -74,5 +74,5 @@
 
 ## 3. Truly Pending Work & Honest Limits
 
-- [ ] **Version Bump & 1.0 Release Cut:** Promotion from pre-release `v0.1.0-beta.5` to `v1.0.0-rc.1` / `v1.0.0` (workspace/Tauri/frontend versions and non-prerelease release cut, intentionally deferred by user).
+- [ ] **Version Bump & 1.0 Release Cut:** Promotion from pre-release `v0.1.0-beta.6` to `v1.0.0-rc.1` / `v1.0.0` (workspace/Tauri/frontend versions and non-prerelease release cut, intentionally deferred by user).
 - **Operational Runtime Limits:** `dubbing_separate_stems` and `demucs-4stem` download weights on demand via `ModelManager` (not bundled inside the installer) and require a running `alp-infer` daemon; X11 `IPlugView` embedding targets X11/XWayland rather than native Wayland surfaces.

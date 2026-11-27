@@ -920,6 +920,7 @@ impl EditSession {
 
         crate::timeline::TimelineDto {
             sample_rate: rate,
+            master_gain: self.master_gain(),
             duration_secs: self.duration_secs(),
             tracks,
             markers,

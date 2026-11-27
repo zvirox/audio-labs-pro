@@ -16,6 +16,7 @@ pub mod jobs;
 pub mod macro_bridge;
 pub mod panels;
 pub mod session;
+pub mod studio_bridges;
 pub mod timeline;
 pub mod transport;
 pub mod workspace;
@@ -25,7 +26,10 @@ pub use alp_api::AcxQaReport;
 pub use alp_api::PermissionTier;
 pub use alp_api::ProjectSummary;
 pub use alp_api::control::ApprovalDecision;
-pub use alp_api::{MacroJobReport, MacroRequest, MacroStep};
+pub use alp_api::{
+    MacroJobReport, MacroRequest, MacroStep, SpectralRepairReport, SpectralRepairRequestDto,
+    TimeStretchReport, TimeStretchRequestDto, TranscriptionReport,
+};
 pub use alp_dsp::spectral::{FrequencyScale, SpectrogramConfig, SpectrogramData, WindowType};
 pub use alp_media::{M4bExportReport, RemuxReport};
 pub use audiobook_mastering::{
@@ -41,6 +45,14 @@ pub use jobs::{Job, JobQueue, JobReporter, JobStatus};
 pub use macro_bridge::dsp_macro_execute;
 pub use panels::{DockSide, PanelKind, PanelManager, PanelRect, PanelState, Point, Size};
 pub use session::{EditSession, ImportedAudio, NORMALIZE_TARGET};
+pub use studio_bridges::{
+    AudioDeviceDto, DesktopConsentDto, DesktopTtsReportDto, DesktopVoiceProfileDto,
+    DiscoveredPluginDto, FileLoudnessDto, HardwareProfileDto, LexiconPreviewDto, LexiconRuleDto,
+    ModelCatalogueItemDto, analyze_file_loudness, desktop_spectral_repair_file,
+    desktop_time_stretch_file, desktop_transcribe_audio, discover_system_plugins,
+    list_audio_devices, list_model_catalogue, list_voice_profiles, preview_lexicon_markup,
+    probe_hardware_profile, synthesize_tts_preview, verify_model_integrity,
+};
 pub use timeline::{
     SpectralSelectionDto, SpectrogramRequestDto, TimelineClipDto, TimelineDto,
     TimelineEnvelopePointDto, TimelineLoopRangeDto, TimelineMarkerDto, TimelinePanPointDto,

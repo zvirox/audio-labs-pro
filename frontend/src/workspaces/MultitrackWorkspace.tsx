@@ -46,7 +46,10 @@ import {
   Layers,
 } from 'lucide-react';
 
+import { ConsoleMixerView, CueMarkersView, EnvelopesView } from './MultitrackSubtabs';
+
 export interface MultitrackWorkspaceProps {
+  subtab?: string;
   currentTimeSecs: number;
   isPlaying: boolean;
   onSeek: (secs: number) => void;
@@ -54,6 +57,7 @@ export interface MultitrackWorkspaceProps {
 }
 
 export function MultitrackWorkspace({
+  subtab = 'arranger',
   currentTimeSecs,
   isPlaying,
   onSeek,
@@ -333,6 +337,42 @@ export function MultitrackWorkspace({
     );
   }
 
+  if (subtab === 'mixer') {
+    return (
+      <ConsoleMixerView
+        timeline={timeline}
+        currentTimeSecs={currentTimeSecs}
+        onUpdateTimeline={setTimeline}
+        onSeek={onSeek}
+        onStatus={setStatusMessage}
+      />
+    );
+  }
+
+  if (subtab === 'markers') {
+    return (
+      <CueMarkersView
+        timeline={timeline}
+        currentTimeSecs={currentTimeSecs}
+        onUpdateTimeline={setTimeline}
+        onSeek={onSeek}
+        onStatus={setStatusMessage}
+      />
+    );
+  }
+
+  if (subtab === 'automation') {
+    return (
+      <EnvelopesView
+        timeline={timeline}
+        currentTimeSecs={currentTimeSecs}
+        onUpdateTimeline={setTimeline}
+        onSeek={onSeek}
+        onStatus={setStatusMessage}
+      />
+    );
+  }
+
   return (
     <div className="h-full flex flex-col overflow-hidden bg-[var(--bg-app)] select-none">
       {/* Arranger Top Toolbar */}
@@ -522,8 +562,8 @@ export function MultitrackWorkspace({
       </div>
 
       {/* Footer Track & Clip Status Bar */}
-      <div className="h-6 border-t border-[var(--color-border)] bg-[var(--color-bg)] px-3 flex items-center justify-between text-[11px] text-[var(--color-fg-muted)] font-mono flex-shrink-0">
-        <div className="flex items-center gap-4">
+      <div className="min-h-6 py-1 border-t border-[var(--color-border)] bg-[var(--color-bg)] px-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[11px] text-[var(--color-fg-muted)] font-mono flex-shrink-0">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 whitespace-nowrap">
           <span>Tracks: {timeline.tracks.length}</span>
           <span>
             Clips:{' '}
@@ -535,7 +575,7 @@ export function MultitrackWorkspace({
             </span>
           )}
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 whitespace-nowrap">
           <span>Undo Steps: {timeline.undo_steps}</span>
           <span>Redo Steps: {timeline.redo_steps}</span>
           <span>Sample Rate: {timeline.sample_rate} Hz</span>

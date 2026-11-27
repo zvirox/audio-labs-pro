@@ -43,10 +43,21 @@ import type {
   TrackViewMode,
   SpectralSelectionDto,
   TimelinePanPointDto,
+  TimelineEnvelopePointDto,
   SpectrogramData,
   AiControlStatus,
   AiActivityEntry,
   PermissionTier,
+  HardwareProfile,
+  DesktopTtsReport,
+  LexiconRule,
+  LexiconPreview,
+  SpectralRepairRequestDto,
+  SpectralRepairReport,
+  TimeStretchRequestDto,
+  TimeStretchReport,
+  FileLoudnessReport,
+  TranscriptionReport,
 } from './types';
 
 export const isTauriEnvironment = (): boolean => {
@@ -762,6 +773,9 @@ export async function runDspMacro(
 }
 
 export async function getDiscoveredPlugins(): Promise<DiscoveredPlugin[]> {
+  if (isTauriEnvironment()) {
+    return await invoke<DiscoveredPlugin[]>('get_discovered_plugins');
+  }
   return [
     {
       id: 'u-he-satin',
@@ -1482,6 +1496,238 @@ export async function timelineSlipClip(
     }
   }
   return JSON.parse(JSON.stringify(mockTimeline));
+}
+
+export async function timelineSetClipEnvelope(
+  clipId: string,
+  points: TimelineEnvelopePointDto[]
+): Promise<TimelineDto> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimelineDto>('timeline_set_clip_envelope', {
+      clipId,
+      points: points.map((p) => [p.offset_secs, p.gain]),
+    });
+  }
+  const next = JSON.parse(JSON.stringify(mockTimeline)) as TimelineDto;
+  for (const track of next.tracks) {
+    const clip = track.clips.find((c) => c.id === clipId);
+    if (clip) {
+      clip.envelope = points;
+      pushTimelineState(next);
+      break;
+    }
+  }
+  return JSON.parse(JSON.stringify(mockTimeline));
+}
+
+export async function timelineAddTrack(name: string): Promise<TimelineDto> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimelineDto>('timeline_add_track', { name });
+  }
+  const next = JSON.parse(JSON.stringify(mockTimeline)) as TimelineDto;
+  next.tracks.push({
+    id: `track-${Date.now().toString(36)}`,
+    name: name.trim() || `Track ${next.tracks.length + 1}`,
+    gain: 1.0,
+    pan: 0.0,
+    muted: false,
+    solo: false,
+    armed: false,
+    view_mode: 'waveform',
+    spectral_selection: null,
+    clips: [],
+  });
+  pushTimelineState(next);
+  return JSON.parse(JSON.stringify(mockTimeline));
+}
+
+export async function timelineSetTrackGain(trackIndex: number, gain: number): Promise<TimelineDto> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimelineDto>('timeline_set_track_gain', { trackIndex, gain });
+  }
+  const next = JSON.parse(JSON.stringify(mockTimeline)) as TimelineDto;
+  if (next.tracks[trackIndex]) {
+    next.tracks[trackIndex].gain = Math.max(0, Math.min(2, gain));
+    pushTimelineState(next);
+  }
+  return JSON.parse(JSON.stringify(mockTimeline));
+}
+
+export async function timelineSetTrackPan(trackIndex: number, pan: number): Promise<TimelineDto> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimelineDto>('timeline_set_track_pan', { trackIndex, pan });
+  }
+  const next = JSON.parse(JSON.stringify(mockTimeline)) as TimelineDto;
+  if (next.tracks[trackIndex]) {
+    next.tracks[trackIndex].pan = Math.max(-1, Math.min(1, pan));
+    pushTimelineState(next);
+  }
+  return JSON.parse(JSON.stringify(mockTimeline));
+}
+
+export async function timelineToggleTrackMute(trackIndex: number): Promise<TimelineDto> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimelineDto>('timeline_toggle_track_mute', { trackIndex });
+  }
+  const next = JSON.parse(JSON.stringify(mockTimeline)) as TimelineDto;
+  if (next.tracks[trackIndex]) {
+    next.tracks[trackIndex].muted = !next.tracks[trackIndex].muted;
+    pushTimelineState(next);
+  }
+  return JSON.parse(JSON.stringify(mockTimeline));
+}
+
+export async function timelineToggleTrackSolo(trackIndex: number): Promise<TimelineDto> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimelineDto>('timeline_toggle_track_solo', { trackIndex });
+  }
+  const next = JSON.parse(JSON.stringify(mockTimeline)) as TimelineDto;
+  if (next.tracks[trackIndex]) {
+    next.tracks[trackIndex].solo = !next.tracks[trackIndex].solo;
+    pushTimelineState(next);
+  }
+  return JSON.parse(JSON.stringify(mockTimeline));
+}
+
+export async function timelineToggleTrackArm(trackIndex: number): Promise<TimelineDto> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimelineDto>('timeline_toggle_track_arm', { trackIndex });
+  }
+  const next = JSON.parse(JSON.stringify(mockTimeline)) as TimelineDto;
+  if (next.tracks[trackIndex]) {
+    next.tracks[trackIndex].armed = !next.tracks[trackIndex].armed;
+    pushTimelineState(next);
+  }
+  return JSON.parse(JSON.stringify(mockTimeline));
+}
+
+export async function timelineSetMasterGain(gain: number): Promise<TimelineDto> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimelineDto>('timeline_set_master_gain', { gain });
+  }
+  const next = JSON.parse(JSON.stringify(mockTimeline)) as TimelineDto;
+  next.master_gain = Math.max(0, Math.min(4, gain));
+  pushTimelineState(next);
+  return JSON.parse(JSON.stringify(mockTimeline));
+}
+
+export async function verifyModelIntegrity(modelId: string): Promise<ModelItem> {
+  if (isTauriEnvironment()) {
+    return await invoke<ModelItem>('verify_model_integrity_cmd', { modelId });
+  }
+  const list = await getModelCatalogue();
+  const found = list.find((m) => m.id === modelId) ?? list[0];
+  return { ...found, status: 'verified' };
+}
+
+export async function getHardwareProfile(): Promise<HardwareProfile> {
+  if (isTauriEnvironment()) {
+    return await invoke<HardwareProfile>('get_hardware_profile');
+  }
+  return {
+    total_ram_gb: 16.0,
+    available_ram_gb: 8.5,
+    cpu_cores: 8,
+    gpu_detected: false,
+    gpu_description: null,
+    recommended_tier: 'Fast (Lightweight)',
+  };
+}
+
+export async function desktopTtsSynthesize(
+  voiceId: string,
+  text: string,
+  speed = 1.0
+): Promise<DesktopTtsReport> {
+  if (isTauriEnvironment()) {
+    return await invoke<DesktopTtsReport>('desktop_tts_synthesize', {
+      voiceId,
+      text,
+      speed,
+    });
+  }
+  return {
+    path: '/tmp/alp-desktop-ops/mock-tts.wav',
+    duration_secs: Math.max(1.2, +(text.trim().split(/\s+/).length * 0.35).toFixed(1)),
+    sample_rate: 24000,
+    engine: 'builtin-acoustic',
+    voice_id: voiceId,
+  };
+}
+
+export async function applyPronunciationLexicon(
+  rules: LexiconRule[],
+  text: string
+): Promise<LexiconPreview> {
+  if (isTauriEnvironment()) {
+    return await invoke<LexiconPreview>('apply_pronunciation_lexicon', { rules, text });
+  }
+  let output = text;
+  for (const r of rules) {
+    if (r.word.trim() && r.replacement.trim()) {
+      output = output.replaceAll(r.word.trim(), r.replacement.trim());
+    }
+  }
+  return {
+    output_text: output,
+    tokens: [`TEXT: ${output}`],
+  };
+}
+
+export async function dspSpectralRepairFile(
+  request: SpectralRepairRequestDto
+): Promise<SpectralRepairReport> {
+  if (isTauriEnvironment()) {
+    return await invoke<SpectralRepairReport>('dsp_spectral_repair_file', { request });
+  }
+  return { path: request.output_path, mode: request.mode, frames: 48000, sample_rate: 48000 };
+}
+
+export async function dspTimeStretchFile(
+  request: TimeStretchRequestDto
+): Promise<TimeStretchReport> {
+  if (isTauriEnvironment()) {
+    return await invoke<TimeStretchReport>('dsp_time_stretch_file', { request });
+  }
+  return { path: request.output_path, ratio: request.ratio, duration_secs: 4.0 * request.ratio };
+}
+
+export async function analyzeAudioFileLoudness(path: string): Promise<FileLoudnessReport> {
+  if (isTauriEnvironment()) {
+    return await invoke<FileLoudnessReport>('analyze_audio_file_loudness', { path });
+  }
+  return {
+    path,
+    integrated_lufs: -18.4,
+    peak_dbfs: -2.1,
+    true_peak_dbfs: -1.9,
+    duration_secs: 12.4,
+    sample_rate: 48000,
+    channels: 2,
+  };
+}
+
+export async function desktopTranscribeAudio(path: string): Promise<TranscriptionReport> {
+  if (isTauriEnvironment()) {
+    return await invoke<TranscriptionReport>('desktop_transcribe_audio', { path });
+  }
+  return {
+    path,
+    text: 'Preview transcription of local audio take.',
+    duration_secs: 6.4,
+    segments: [
+      {
+        start_secs: 0.2,
+        end_secs: 2.1,
+        text: 'Preview transcription of local audio take.',
+        words: [
+          { word: 'Preview', start_secs: 0.2, end_secs: 0.8, confidence: 0.96 },
+          { word: 'transcription', start_secs: 0.9, end_secs: 2.1, confidence: 0.95 },
+        ],
+      },
+    ],
+    engine: 'builtin-stt',
+  };
 }
 
 // ---------------------------------------------------------------------------

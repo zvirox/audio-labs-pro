@@ -7,6 +7,7 @@
 
 export interface TimelineDto {
   sample_rate: number;
+  master_gain?: number;
   duration_secs: number;
   tracks: TimelineTrackDto[];
   markers: TimelineMarkerDto[];

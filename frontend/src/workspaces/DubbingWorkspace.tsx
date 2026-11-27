@@ -110,7 +110,7 @@ export function DubbingWorkspace({ subtab }: DubbingWorkspaceProps) {
     }
   };
 
-  const visible = (key: string) => !subtab || subtab === key || subtab === 'video_sync';
+  const visible = (key: string) => !subtab || subtab === key;
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto p-2 pb-12 select-none">
@@ -127,6 +127,27 @@ export function DubbingWorkspace({ subtab }: DubbingWorkspaceProps) {
       {notice && (
         <div className="p-3 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border-strong)] text-amber text-xs font-mono">
           {notice}
+        </div>
+      )}
+
+      {subtab === 'video_sync' && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card title="1. Stem Isolation (demucs-4stem)" subtitle="MIT HTDemucs ONNX via alp-infer">
+            <p className="text-xs text-[var(--color-fg-muted)]">
+              Split original film or broadcast mixes into vocals, drums, bass, and M&amp;E stems cleanly. Switch to{' '}
+              <strong>Stem Isolation</strong> above to process a WAV/FLAC mix.
+            </p>
+          </Card>
+          <Card title="2. ADR Timing & WSOLA Fit" subtitle="FitPlanner + pitch-preserving stretch">
+            <p className="text-xs text-[var(--color-fg-muted)]">
+              Align translated dialogue takes to exact on-screen cue windows automatically using TTS speed selection plus WSOLA stretch.
+            </p>
+          </Card>
+          <Card title="3. Lossless Stream-Copy Remux" subtitle="FFmpeg -c:v copy + SRT subtitles">
+            <p className="text-xs text-[var(--color-fg-muted)]">
+              Mux your fitted dub stem and optional subtitle sidecar back into MP4/MKV containers without re-encoding video frames.
+            </p>
+          </Card>
         </div>
       )}
 

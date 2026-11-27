@@ -7,6 +7,7 @@ mod commands;
 mod glass;
 mod plugin_window;
 mod state;
+mod studio_commands;
 
 use alp_session::AiEvent;
 use tauri::{Emitter, Manager};
@@ -29,6 +30,14 @@ use crate::commands::{
 };
 use crate::glass::probe;
 use crate::state::AppState;
+use crate::studio_commands::{
+    analyze_audio_file_loudness, apply_pronunciation_lexicon, desktop_transcribe_audio,
+    desktop_tts_synthesize, dsp_spectral_repair_file, dsp_time_stretch_file, get_audio_devices,
+    get_discovered_plugins, get_hardware_profile, get_model_catalogue, get_voice_profiles,
+    timeline_add_track, timeline_set_master_gain, timeline_set_track_gain, timeline_set_track_pan,
+    timeline_toggle_track_arm, timeline_toggle_track_mute, timeline_toggle_track_solo,
+    verify_model_integrity_cmd,
+};
 
 fn main() {
     tracing_subscriber::fmt::init();
@@ -163,6 +172,25 @@ fn main() {
             plugin_editor_close,
             plugin_editor_list,
             dsp_macro_batch,
+            timeline_add_track,
+            timeline_set_track_gain,
+            timeline_set_track_pan,
+            timeline_toggle_track_mute,
+            timeline_toggle_track_solo,
+            timeline_toggle_track_arm,
+            timeline_set_master_gain,
+            get_audio_devices,
+            get_model_catalogue,
+            verify_model_integrity_cmd,
+            get_hardware_profile,
+            get_discovered_plugins,
+            get_voice_profiles,
+            desktop_tts_synthesize,
+            apply_pronunciation_lexicon,
+            dsp_spectral_repair_file,
+            dsp_time_stretch_file,
+            analyze_audio_file_loudness,
+            desktop_transcribe_audio,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Audio Labs Pro desktop shell");

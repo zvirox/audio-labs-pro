@@ -6,7 +6,7 @@ interface ShortcutsModalProps {
   onClose: () => void;
 }
 
-const SHORTCUT_GROUPS = [
+export const SHORTCUT_GROUPS = [
   {
     title: 'Navigation & Shell',
     items: [

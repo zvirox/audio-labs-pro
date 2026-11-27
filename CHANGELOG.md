@@ -5,6 +5,25 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+## [0.1.0-beta.6] - 2026-11-27
+
+This release replaces shared workspace views across subtabs with dedicated,
+backend-connected studio views across all workspaces (`Multitrack DAW`,
+`Audiobook Lab`, `Batch & Repair`, `DSP & Effects`, `Voice Studio`,
+`Video Dubbing`, and `Preferences`).
+
+### Added
+
+- **Dedicated Subtab Views Across All Workspaces (`frontend/`):**
+  - `Multitrack DAW`: Opens directly in the arranger workspace and provides dedicated pages for **Timeline Arranger**, **Console Mixer**, **Cue Markers**, and **Envelopes** (`MultitrackSubtabs.tsx`).
+  - `Audiobook Lab`: Dedicated **Chapter Script & Cast**, **Cast & Voices**, **ACX Compliance QA**, and **M4B Package** views.
+  - `Batch & Repair`: Dedicated **Voice Captures & VAD** (real STT file transcription), **Spectral De-Noise** (`dsp_spectral_repair_file`), **Click & Pop Removal** (macro batch + WSOLA time-stretch), and **LUFS Normalizer** (`analyze_audio_file_loudness` + directory normalize) views.
+  - `DSP & Effects`: Dedicated **Parametric EQ**, **Multiband Compressor**, **Acoustics & Cleanup Chain**, and **Hosted CLAP / LV2 / VST3** (live OS plugin scan) views.
+  - `Preferences` & `Voice Studio`: Dedicated **Audio Hardware & ALSA**, **Model Catalogue**, **MCP Agents & Tiers**, **Window & Surface**, **Shortcuts Parity**, **Pronunciation Lexicon**, and **Batch Takes** views.
+- **Desktop Session IPC Bridges (`alp-session`, `alp-desktop`):**
+  - Exposed per-track mixer & master gain commands (`timeline_add_track`, `timeline_set_track_gain`, `timeline_set_track_pan`, `timeline_toggle_track_mute`, `timeline_toggle_track_solo`, `timeline_toggle_track_arm`, `timeline_set_master_gain`).
+  - Added `studio_bridges` & `studio_commands` wiring real OS device probing, `ModelManager` SHA-256 verification, `HardwareProfile` telemetry, system plugin scanning, TTS synthesis, pronunciation lexicon parsing, spectral repair, WSOLA stretch, LUFS/true-peak analysis, and STT transcription.
+
 ## [0.1.0-beta.5] - 2026-11-27
 
 This release adds full VST3 C++ COM ABI hosting and X11 editor embedding,

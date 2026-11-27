@@ -241,7 +241,7 @@ pub fn subscribe_meters(
     Ok(())
 }
 
-fn emit_revision(app: &AppHandle, revision: u64, is_dirty: bool, reason: &str) {
+pub(crate) fn emit_revision(app: &AppHandle, revision: u64, is_dirty: bool, reason: &str) {
     let payload = SessionRevisionPayload {
         revision,
         is_dirty,

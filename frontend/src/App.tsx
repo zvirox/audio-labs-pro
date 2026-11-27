@@ -97,8 +97,8 @@ const WORKSPACE_SUBTABS: Record<string, { id: string; label: string }[]> = {
   effects: [
     { id: 'eq', label: 'Parametric EQ' },
     { id: 'dynamics', label: 'Multiband Compressor' },
-    { id: 'spatial', label: 'Acoustics & Reverb' },
-    { id: 'vst', label: 'Hosted CLAP / LV2' },
+    { id: 'spatial', label: 'Acoustics & Cleanup Chain' },
+    { id: 'vst', label: 'Hosted CLAP / LV2 / VST3' },
   ],
   settings: [
     { id: 'audio_dev', label: 'Audio Hardware & ALSA' },
@@ -212,18 +212,14 @@ export default function App() {
     }
   }
 
-  // Handle workspace change
+  // Handle workspace change (always enter dedicated workspace + subtabs cleanly)
   const handleSelectWorkspace = useCallback((id: string) => {
     setActiveWorkspace(id);
     const subtabs = WORKSPACE_SUBTABS[id];
     if (subtabs && subtabs.length > 0) {
       setActiveSubtab(subtabs[0].id);
     }
-    if (id === 'multitrack') {
-      setViewMode('panels');
-    } else {
-      setViewMode('workspace');
-    }
+    setViewMode('workspace');
   }, []);
 
   // Update a single panel's geometry/state and persist
@@ -402,7 +398,9 @@ export default function App() {
             {viewMode === 'workspace' ? (
               <div
                 className={`h-full w-full overflow-hidden ${
-                  activeWorkspace === 'multitrack' ? '' : 'overflow-y-auto p-4'
+                  activeWorkspace === 'multitrack' && activeSubtab === 'arranger'
+                    ? ''
+                    : 'overflow-y-auto p-4'
                 }`}
               >
                 {renderActiveWorkspace(
@@ -412,6 +410,7 @@ export default function App() {
                   handleToggleTheme,
                   reduceMotion,
                   () => setReduceMotion(!reduceMotion),
+                  handleResetLayout,
                   transport,
                   handleSelectWorkspace,
                   () => setIsPaletteOpen(true),
@@ -501,6 +500,7 @@ function renderActiveWorkspace(
   onToggleTheme: () => void,
   reduceMotion: boolean,
   onToggleReduceMotion: () => void,
+  onResetLayout: () => void,
   transport: ReturnType<typeof useTransport>,
   onOpenWorkspace: (id: string) => void,
   onOpenPalette: () => void,
@@ -523,30 +523,33 @@ function renderActiveWorkspace(
       }
       return (
         <SettingsWorkspace
+          subtab={subtab}
           theme={theme}
           onToggleTheme={onToggleTheme}
           reduceMotion={reduceMotion}
           onToggleReduceMotion={onToggleReduceMotion}
+          onResetLayout={onResetLayout}
+          onOpenShortcuts={onOpenShortcuts}
         />
       );
 
     case 'voice':
       if (subtab === 'tts' || subtab === 'batch') {
-        return <GenerateWorkspace />;
+        return <GenerateWorkspace subtab={subtab} />;
       }
       if (subtab === 'models') {
         return <ModelsWorkspace />;
       }
-      return <VoicesWorkspace />;
+      return <VoicesWorkspace subtab={subtab} />;
 
     case 'effects':
-      return <EffectsWorkspace />;
+      return <EffectsWorkspace subtab={subtab} />;
 
     case 'audiobook':
-      return <StoriesWorkspace />;
+      return <StoriesWorkspace subtab={subtab} />;
 
     case 'tools':
-      return <CapturesWorkspace onSeek={transport.seek} />;
+      return <CapturesWorkspace subtab={subtab} onSeek={transport.seek} />;
 
     case 'dubbing':
       return <DubbingWorkspace subtab={subtab} />;
@@ -555,6 +558,7 @@ function renderActiveWorkspace(
     default:
       return (
         <MultitrackWorkspace
+          subtab={subtab}
           currentTimeSecs={transport.positionSecs}
           isPlaying={transport.playing}
           onSeek={transport.seek}
@@ -610,15 +614,22 @@ function renderPanelContent(
     case 'transport':
       return (
         <div className="flex flex-col items-center justify-center gap-3 py-2">
-          <div className="text-xl font-mono font-medium text-[var(--color-accent)]">
-            00:00:12.45
+          <div className="text-xl font-mono font-medium text-[var(--color-accent)] tabular-nums">
+            {new Date(transport.positionSecs * 1000).toISOString().substring(14, 22)}
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="secondary" size="xs">0:00</Button>
-            <Button variant="primary" size="sm" leftIcon={<Play className="w-3.5 h-3.5 fill-current" />}>
-              Play
+            <Button variant="secondary" size="xs" onClick={() => transport.seek(0)}>0:00</Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={transport.togglePlay}
+              leftIcon={<Play className="w-3.5 h-3.5 fill-current" />}
+            >
+              {transport.playing ? 'Pause' : 'Play'}
             </Button>
-            <Button variant="secondary" size="xs">Loop</Button>
+            <Button variant="secondary" size="xs" onClick={transport.toggleLoop}>
+              {transport.loopEnabled ? 'Loop On' : 'Loop'}
+            </Button>
           </div>
         </div>
       );
