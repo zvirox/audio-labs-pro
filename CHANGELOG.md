@@ -5,6 +5,12 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+## [0.1.0-beta.5] - 2026-11-27
+
+This release adds full VST3 C++ COM ABI hosting and X11 editor embedding,
+catalog-downloadable MIT HTDemucs 4-stem separation with MCP exposure (87 tools),
+and restored Ubuntu 22.04 (`glibc 2.35+`) binary compatibility.
+
 ### Added
 
 - **VST3 C++ COM ABI Host (`alp-plugin`):** Implemented full Linux `.vst3` COM

@@ -1,6 +1,6 @@
 # Audio Labs Pro — Master Engineering Roadmap & Feature Plan
 
-> **Current Release Baseline:** `v0.1.0-beta.4`
+> **Current Release Baseline:** `v0.1.0-beta.5`
 > **Architecture Status:** 12 Rust workspace crates + Tauri v2 + React 19 TypeScript frontend (`frontend/`).
 > **UI Policy:** **The Linear UI design system is FINAL and LOCKED.** No glassmorphism, no KWin/compositor blur, no frosted translucent layers, and no alternative UI themes are planned. All frontend changes must pass `npm --prefix frontend run check:linear`.
 
@@ -50,7 +50,7 @@
   - [x] Implement `FitPlanner` (`rate_fitting.rs`) time-stretching translated TTS takes to match reference subtitle/dialog windows.
   - [x] Implement `VideoRemuxer` (`video_sync.rs`) for MP4/MKV audio extraction and lossless video stream copy (`-c:v copy`) remuxing, plus dedicated Dubbing Studio UI controls.
 
-### Phase 17 — VST3 Plugin Host & Batch Macros (completed on main post-v0.1.0-beta.4)
+### Phase 17 — VST3 Plugin Host & Batch Macros (released in v0.1.0-beta.5)
 - [x] **VST3 Host Engine (`alp-plugin`):**
   - [x] Discover `.vst3` bundles and instantiate real Linux `.vst3` plugins via Steinberg C++ COM ABI (`vst3 = 0.3.0`: `IComponent`, `IAudioProcessor`, `IEditController`, parameter automation queues, `IPlugView`), verified with compiled C shared-library tests (`tests/vst3_host.rs`).
   - [x] Native X11/XWayland external plugin GUI window parenting bridge (`X11EmbedWindowID`) in `alp-desktop` & `alp-plugin`.
@@ -74,5 +74,5 @@
 
 ## 3. Truly Pending Work & Honest Limits
 
-- [ ] **Version Bump & 1.0 Release Cut:** Promotion from pre-release `v0.1.0-beta.4` to `v1.0.0-rc.1` / `v1.0.0` (workspace/Tauri/frontend versions and non-prerelease release cut, intentionally deferred by user).
+- [ ] **Version Bump & 1.0 Release Cut:** Promotion from pre-release `v0.1.0-beta.5` to `v1.0.0-rc.1` / `v1.0.0` (workspace/Tauri/frontend versions and non-prerelease release cut, intentionally deferred by user).
 - **Operational Runtime Limits:** `dubbing_separate_stems` and `demucs-4stem` download weights on demand via `ModelManager` (not bundled inside the installer) and require a running `alp-infer` daemon; X11 `IPlugView` embedding targets X11/XWayland rather than native Wayland surfaces.
