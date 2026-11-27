@@ -7,7 +7,7 @@ Defines model identifiers, manifest schema, file metadata, licensing records, st
 ## Public API
 
 - `ModelId`: model identifier wrapper
-- `ModelKind`: `TtsLight`, `TtsMedium`, `Stt`, `VoiceClone`
+- `ModelKind`: `TtsLight`, `TtsMedium`, `Stt`, `VoiceClone`, `StemSeparation`
 - `ModelLicense`: `name`, `spdx`, `terms`, `accepted`
 - `ModelFile`: `filename`, `size_bytes`, `sha256`, `url`
 - `ModelManifest`: `id`, `name`, `description`, `kind`, `author`, `version`, `license`, `files`, `is_builtin`, `voice_names`, `total_size_bytes`, `is_installed_at`
@@ -16,8 +16,8 @@ Defines model identifiers, manifest schema, file metadata, licensing records, st
 
 ## Data flow
 
-1. `standard_catalogue` provides definitions for built-in and downloadable models (Kokoro-82M, Kitten Nano, Moonshine Tiny, Qwen3-TTS).
-2. Manifests provide size, voice listings, and verification hashes used by `ModelManager`.
+1. `standard_catalogue` provides definitions for built-in and downloadable models (Kokoro-82M, Kitten Nano, Moonshine Tiny, Qwen3-TTS, HTDemucs 4-Stem `demucs-4stem`).
+2. Manifests provide size, voice listings, and SHA-256 verification hashes used by `ModelManager`.
 
 ## Allowed dependencies
 

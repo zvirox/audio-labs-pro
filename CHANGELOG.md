@@ -5,6 +5,24 @@ versions follow the release milestones in the build plan.
 
 ## [Unreleased]
 
+### Added
+
+- **VST3 C++ COM ABI Host (`alp-plugin`):** Implemented full Linux `.vst3` COM
+  runtime via `vst3 = 0.3.0` (`IComponent`, `IAudioProcessor`, `IEditController`,
+  parameter automation queues, and `"X11EmbedWindowID"` `IPlugView` editor
+  parenting), verified against a compiled C COM shared library (`tests/vst3_host.rs`).
+- **Demucs 4-Stem Catalog & MCP Exposure (`alp-voice`, `alp-infer`, `alp-api`, `alp-mcp`):**
+  Added MIT-licensed `demucs-4stem` manifest (`StemSplitio/htdemucs-onnx`) to
+  `standard_catalogue()`, added HTDemucs packed overlap-add inference in
+  `alp-infer::demucs`, and exposed Export-tier `dubbing_separate_stems` via
+  `alp_voice::InferClient` (**87 MCP tools total**).
+
+### Fixed
+
+- **Ubuntu 22.04 (`glibc 2.35`) Binary Compatibility:** Pinned `ort = "=2.0.0-rc.10"`
+  (ONNX Runtime 1.22, eliminating `GLIBC_2.38+` symbols from `rc.15`) and switched
+  `.github/workflows/release.yml` back to `ubuntu-22.04` with Ubuntu 22.04 smoke checks enabled.
+
 ## [0.1.0-beta.4] - 2026-11-26
 
 This release merges Phases 14–19, the extended MCP coverage work and the

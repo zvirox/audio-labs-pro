@@ -20,7 +20,7 @@ The **Linear-Style Solid Matte UI** is **FINAL and LOCKED**. Do not alter layout
 
 ## 2. Core Safety & Engineering Invariants
 
-1. **Zero Audio-Thread Blocking:** File decoding, inference subprocesses (`alp-infer`), SQLite block commits (`alp-core`), and IPC serialization must stay off real-time audio callbacks (`alp-engine`).
+1. **Zero Audio-Thread Blocking:** File decoding, inference subprocesses (`alp-infer`), project/sample-block commits (`alp-core`), and IPC serialization must stay off real-time audio callbacks (`alp-engine`).
 2. **Unsafe Code & Panics Forbidden in Desktop:** `alp-desktop` enforces zero `unsafe` blocks and returns structured `IpcError` DTOs.
 3. **Consent-Gated Voice Cloning:** Zero-shot cloning requires explicit speaker attestation in `alp-voice` and `CloningConsentModal`.
 4. **Repository Guards:** `./scripts/check-deps.sh`, `./scripts/check-docs.sh`, `./scripts/check-ui.sh`, and `./scripts/check-file-length.sh` must remain green.

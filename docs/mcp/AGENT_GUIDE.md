@@ -30,4 +30,5 @@ Best practices and protocol conventions for AI models interacting with Audio Lab
 9. audiobook_export_m4b -> mux a rendered master into a chaptered M4B
 10. dsp_spectral_repair  -> notch or suppress harmonics in a WAV file
 11. dsp_time_stretch     -> fit a WAV duration with WSOLA (no pitch change)
+12. dubbing_separate_stems -> isolate 4 stems (vocals/drums/bass/other) via alp-infer
 ```

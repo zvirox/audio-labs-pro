@@ -724,6 +724,7 @@ class EvaluationSuite:
         expected = {
             "dubbing_fit_rate",
             "dubbing_remux",
+            "dubbing_separate_stems",
             "dsp_spectral_repair",
             "dsp_time_stretch",
         }
@@ -822,6 +823,24 @@ class EvaluationSuite:
                 "dubbing_remux reports a missing source without panicking",
                 result.get("isError") is True,
                 "missing source returned a tool error",
+            )
+
+            result = client.rpc(
+                "tools/call",
+                {
+                    "name": "dubbing_separate_stems",
+                    "arguments": {
+                        "audio_path": str(tone),
+                        "output_dir": str(Path(work_dir) / "stems_out"),
+                    },
+                },
+                expect_error=True,
+            )
+            self.record(
+                "Suite 10",
+                "dubbing_separate_stems reports missing daemon/model without panicking",
+                result.get("isError") is True,
+                "missing daemon/model returned an honest tool error",
             )
         finally:
             client.close()

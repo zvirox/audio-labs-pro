@@ -28,8 +28,10 @@ editing, **P4-P8** used by multitrack, DSP, TTS, dictation, and voice profiles,
 | FFmpeg / ffprobe (external) | system build | LGPL-2.1-or-later or GPL (build-dependent) | P2 | Video demux/remux for dubbing; not redistributed, requires system install |
 | rubato | 5.0.1 | MIT OR Apache-2.0 | P1 | offline FFT resampling |
 | crane-core | 26.9.0 | MIT | P0 | validated Candle Qwen3-TTS neural cloning runtime, pinned exactly |
-| ort | 2.0.0-rc.15 | MIT OR Apache-2.0 | P0 | ONNX Runtime bindings; Phase 6 |
-| ONNX Runtime (binary) | 1.31 | MIT | P0 | downloaded by `ort` |
+| ort | 2.0.0-rc.10 | MIT OR Apache-2.0 | P0 | ONNX Runtime bindings; Phase 6 (Ubuntu 22.04 glibc 2.35+ compat) |
+| ONNX Runtime (binary) | 1.22 | MIT | P0 | downloaded by `ort` |
+| vst3 | 0.3.0 | MIT OR Apache-2.0 | P17 | Pre-generated Steinberg VST3 C++ COM ABI bindings |
+| com-scrape-types | 0.1.1 | MIT OR Apache-2.0 | P17 | COM vtable/smart-pointer support crate for `vst3` |
 | piper-plus-g2p | 0.5.2 | MIT | P0 | English G2P (eSpeak-free) |
 | ureq | 3.5.0 | MIT OR Apache-2.0 | P0 | blocking HTTPS model downloads (rustls, resumable) |
 | fs4 | 1.1.0 | MIT OR Apache-2.0 | P1 | free-disk-space checks (pure-Rust statvfs) |
@@ -96,6 +98,7 @@ F5-TTS weights (CC-BY-NC), XTTS-v2 (CPML), KittenTTS 2 (custom license + AUP).
 | KittenML/kitten-tts-nano-0.8-fp32 | instant TTS | Apache-2.0 (model card front matter) | approved, not run |
 | onnx-community/kitten-tts-nano-0.1-ONNX | instant TTS (downloadable via `kitten-nano` manifest) | Apache-2.0 (HF cardData) | P6, files hash-verified, engine not wired |
 | onnx-community/moonshine-tiny-ONNX | dictation | MIT (HF cardData) | approved, not run |
+| StemSplitio/htdemucs-onnx (`demucs-4stem`) | 4-stem separation | MIT (HF cardData) | Phase 16, downloadable `htdemucs_fp16weights.onnx` |
 | Qwen/Qwen3-TTS-12Hz-0.6B-Base | clone "Fast" | Apache-2.0 (HF cardData) | P0, real CPU neural inference through daemon |
 | Qwen/Qwen3-TTS-12Hz-1.7B-Base | clone "Best" | Apache-2.0 (HF cardData) | Phase 8, not run |
 | openbmb/VoxCPM2 | voice design | Apache-2.0 (HF cardData) | Phase 8, verify weights on model card |

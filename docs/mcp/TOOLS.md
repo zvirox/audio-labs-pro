@@ -1,6 +1,6 @@
 # Audio Labs Pro — MCP Tool Reference
 
-All 86 tools exposed by `alp-mcp` (58 at `v0.0.1-alpha.5`; later phases add
+All 87 tools exposed by `alp-mcp` (58 at `v0.0.1-alpha.5`; later phases add
 profile/batch, audiobook, macro batch and Phase 19 studio tools). Tools are filtered by the session's
 permission tier (`Observe` < `Edit` < `Export`), and every call is audited.
 
@@ -297,17 +297,20 @@ cancellation between segments, so `job_cancel` stops them promptly.
 
 | Tool | Tier | Inputs | Result |
 |------|------|--------|--------|
+| `dubbing_separate_stems` (ext) | Export | `input_path`, `output_dir`, `format?` | `{ stems, sample_rate, output_dir }` |
 | `dubbing_fit_rate` (ext) | Export | `audio_path`, `target_duration_secs`, `output_path` | `{ path, duration_secs, plan }` |
 | `dubbing_remux` (ext) | Export | `video_path`, `output_path`, `audio_path?`, `subtitle_path?` | `{ output_path, duration_secs?, video_stream_copied, audio_codec }` |
 | `dsp_spectral_repair` (ext) | Export | `input_path`, `output_path`, `mode`, `center_hz?`, `fundamental_hz?`, `harmonics?`, `bandwidth_q?`, `reduction_db?` | `{ path, mode, frames, sample_rate }` |
 | `dsp_time_stretch` (ext) | Export | `input_path`, `output_path`, `ratio` | `{ path, ratio, duration_secs }` |
 
-- All four are offline file-to-file operations; paths are confined to the
+- All five are offline file-to-file operations; paths are confined to the
   workspace sandbox. They never modify the active project timeline.
+- `dubbing_separate_stems` talks to the running `alp-infer` daemon via
+  `alp_voice::InferClient` and auto-loads `demucs-4stem` when installed; if
+  no daemon is reachable or weights are not installed, it returns an explicit
+  tool error.
 - `dubbing_remux` requires external `ffmpeg`/`ffprobe`; a missing source video
   returns a tool error rather than a panic.
-- Four-stem Demucs separation is deliberately not exposed through MCP: it
-  needs `alp-infer` and a loaded `demucs-4stem` model.
 
 ## 13. Live Transport (attached mode only)
 

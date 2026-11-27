@@ -6,10 +6,12 @@ use crate::clap::ActiveClapInstance;
 use crate::error::PluginError;
 use crate::lv2::ActiveLv2Instance;
 use crate::types::{PluginDescriptor, PluginFormat, PluginParameter, ProcessContext};
+use crate::vst3::ActiveVst3Instance;
 
 enum BackendInstance {
     Clap(ActiveClapInstance),
     Lv2(ActiveLv2Instance),
+    Vst3(ActiveVst3Instance),
     Stub { gain: f32 },
 }
 
@@ -60,10 +62,31 @@ impl ActivePlugin {
                     Ok(lv2_inst) => BackendInstance::Lv2(lv2_inst),
                     Err(_) => BackendInstance::Stub { gain: 1.0 },
                 },
-                // Discovery is supported, but the VST3 C++ COM ABI host is not
-                // implemented. Fail explicitly rather than pretending to load.
-                PluginFormat::Vst3 => return Err(crate::vst3::instantiation_error(desc)),
+                PluginFormat::Vst3 => {
+                    let vst3_inst = ActiveVst3Instance::load(desc, sample_rate)?;
+                    parameters.clear();
+                    param_lookup.clear();
+                    for (idx, meta) in vst3_inst.parameters().iter().enumerate() {
+                        let current = vst3_inst
+                            .get_parameter_normalized(meta.param_id)
+                            .unwrap_or(meta.default_normalized);
+                        parameters.push(PluginParameter {
+                            id: meta.param_id,
+                            symbol: meta.symbol.clone(),
+                            name: meta.name.clone(),
+                            min_value: 0.0,
+                            max_value: 1.0,
+                            default_value: meta.default_normalized,
+                            current_value: current,
+                            unit: meta.unit.clone(),
+                        });
+                        param_lookup.insert(meta.symbol.clone(), idx);
+                    }
+                    BackendInstance::Vst3(vst3_inst)
+                }
             }
+        } else if desc.format == PluginFormat::Vst3 {
+            return Err(PluginError::NotFound(desc.path.display().to_string()));
         } else {
             BackendInstance::Stub { gain: 1.0 }
         };
@@ -133,8 +156,14 @@ impl ActivePlugin {
             self.bypassed = param.current_value > 0.5;
         }
 
-        if let (BackendInstance::Stub { gain }, "gain") = (&mut self.backend, symbol) {
-            *gain = 10.0f32.powf((param.current_value as f32) / 20.0);
+        match &mut self.backend {
+            BackendInstance::Stub { gain } if symbol == "gain" => {
+                *gain = 10.0f32.powf((param.current_value as f32) / 20.0);
+            }
+            BackendInstance::Vst3(vst3_inst) => {
+                vst3_inst.set_parameter_normalized(symbol, param.current_value)?;
+            }
+            _ => {}
         }
 
         Ok(())
@@ -167,6 +196,9 @@ impl ActivePlugin {
             BackendInstance::Lv2(ref mut lv2_inst) => {
                 lv2_inst.process_block(in_l, in_r, out_l, out_r, ctx)?;
             }
+            BackendInstance::Vst3(ref mut vst3_inst) => {
+                vst3_inst.process_block(in_l, in_r, out_l, out_r, ctx)?;
+            }
             BackendInstance::Stub { gain } => {
                 for i in 0..frames {
                     out_l[i] = in_l[i] * gain;
@@ -176,6 +208,24 @@ impl ActivePlugin {
         }
 
         Ok(())
+    }
+
+    /// Attach a hosted native X11 editor view under `parent_xid` (VST3 `IPlugView`).
+    pub fn open_editor_x11(&mut self, parent_xid: u32) -> Result<(u32, u32), PluginError> {
+        match &mut self.backend {
+            BackendInstance::Vst3(vst3_inst) => vst3_inst.attach_editor_x11(parent_xid),
+            _ => Err(PluginError::Activation {
+                plugin_id: self.descriptor.id.clone(),
+                message: "native X11 editor embedding is only supported for VST3 plugins".into(),
+            }),
+        }
+    }
+
+    /// Detach any active hosted native X11 editor view.
+    pub fn close_editor_x11(&mut self) {
+        if let BackendInstance::Vst3(vst3_inst) = &mut self.backend {
+            vst3_inst.detach_editor_x11();
+        }
     }
 
     /// Export plugin parameters as a serialized state string.

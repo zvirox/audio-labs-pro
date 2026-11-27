@@ -988,6 +988,18 @@ pub fn tools_for_tier(tier: PermissionTier) -> Vec<McpTool> {
             }),
         });
         tools.push(McpTool {
+            name: "dubbing_separate_stems".into(),
+            description: "Separate a mixed audio file into four WAV stems (vocals, drums, bass, other) via the alp-infer Demucs runner. Paths must be inside the workspace.".into(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "audio_path": { "type": "string", "description": "Mixed input audio path inside the workspace" },
+                    "output_dir": { "type": "string", "description": "Destination workspace directory for stem WAV files" }
+                },
+                "required": ["audio_path", "output_dir"]
+            }),
+        });
+        tools.push(McpTool {
             name: "dsp_spectral_repair".into(),
             description: "Offline spectral repair of a WAV: notch a narrow band or suppress a fundamental and its overtones, writing a new WAV.".into(),
             input_schema: json!({
@@ -1167,6 +1179,7 @@ pub fn metadata_for(name: &str) -> ToolMetadata {
         "clip_trim" => ("Trim Clip", destroy),
         "dubbing_fit_rate" => ("Fit Dubbing Take", export_add),
         "dubbing_remux" => ("Remux Dubbed Video", export_add),
+        "dubbing_separate_stems" => ("Separate 4 Audio Stems", export_add),
         "dsp_spectral_repair" => ("Spectral Repair", export_add),
         "dsp_time_stretch" => ("Time Stretch Audio", export_add),
         // --- Live transport (attached mode only) ---

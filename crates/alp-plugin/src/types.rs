@@ -11,7 +11,7 @@ pub enum PluginFormat {
     Clap,
     /// LV2 Linux Audio standard.
     Lv2,
-    /// VST3 bundle standard (discovery only in this build).
+    /// VST3 bundle standard (discovery, COM ABI hosting, and X11 editor views).
     Vst3,
 }
 

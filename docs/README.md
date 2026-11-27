@@ -1,14 +1,14 @@
 # Audio Labs Pro Documentation
 
-Welcome to the engineering, architectural, and user documentation for **Audio Labs Pro** (`v0.1.0-beta.1`) — an offline-first Linux workstation combining multitrack audio production, neural speech synthesis & cloning, and authenticated AI MCP automation inside a locked Tauri v2 **Linear UI** desktop shell.
+Welcome to the engineering, architectural, and user documentation for **Audio Labs Pro** (`v0.1.0-beta.4`) — an offline-first Linux workstation combining multitrack audio production, neural speech synthesis & cloning, and authenticated AI MCP automation inside a locked Tauri v2 **Linear UI** desktop shell.
 
 ---
 
 ## Core Roadmaps & Status
 
-- [**MASTER CHECKLIST**](../MASTER_CHECKLIST.md) — Verified inventory of implemented crates, Linear UI completion, and remaining feature backlog
-- [**Adoption & Feature Plan**](ADOPTION_PLAN.md) — Phased implementation plan separating finished M0–M8/Phases 0–13 work from Phases 14–18
-- [**Status Report**](../ALP_STATUS_REPORT.md) — Current codebase and release baseline (`v0.1.0-beta.1`)
+- [**MASTER CHECKLIST**](../MASTER_CHECKLIST.md) — Verified inventory of implemented crates, Linear UI completion, and remaining gaps
+- [**Adoption & Feature Plan**](ADOPTION_PLAN.md) — Phased implementation plan covering M0–M8, Phases 0–19, and remaining work
+- [**Status Report**](../ALP_STATUS_REPORT.md) — Current codebase and release baseline (`v0.1.0-beta.4`)
 - [**Release & Packaging Audit**](release-audit.md) — Unified `nfpm` packaging configuration (`.deb`, `.rpm`, `.pkg.tar.zst`)
 
 ---
@@ -33,7 +33,7 @@ Welcome to the engineering, architectural, and user documentation for **Audio La
 
 ## MCP & Starship Integration
 
-- [**Agent Guide**](mcp/AGENT_GUIDE.md) · [**Tool Catalog (68 Tools)**](mcp/TOOLS.md) · [**Security Tiers**](mcp/SECURITY.md) · [**Client Setup**](mcp/CLIENT_SETUP.md)
+- [**Agent Guide**](mcp/AGENT_GUIDE.md) · [**Tool Catalog (87 Tools)**](mcp/TOOLS.md) · [**Security Tiers**](mcp/SECURITY.md) · [**Client Setup**](mcp/CLIENT_SETUP.md)
 
 ---
 

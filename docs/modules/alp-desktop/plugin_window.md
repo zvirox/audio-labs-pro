@@ -37,6 +37,6 @@ Tests verify registry add/list/remove semantics and that `embed_editor` refuses 
 
 ## Known limits
 
-- X11/XWayland only; Wayland-native plugin GUI embedding needs a different protocol and is not implemented.
+- X11/XWayland only (`X11EmbedWindowID`); Wayland-native plugin GUI embedding needs a different protocol and is not implemented.
 - The host XID must be captured at startup; multi-window scenarios are not supported.
-- VST3 descriptors currently cannot be instantiated, so no real VST3 editor uses this bridge yet.
+- VST3 plugins attach directly into registered parent XIDs via `IPlugView::attached` (`alp-plugin::vst3`).

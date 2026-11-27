@@ -4,8 +4,8 @@
 //! repository's 1500-line limit.
 
 use alp_api::{
-    ApiSession, DubbingFitRequestDto, DubbingRemuxRequestDto, SpectralRepairRequestDto,
-    TimeStretchRequestDto,
+    ApiSession, DubbingFitRequestDto, DubbingRemuxRequestDto, DubbingStemsRequestDto,
+    SpectralRepairRequestDto, TimeStretchRequestDto,
 };
 use serde_json::Value;
 
@@ -95,6 +95,35 @@ pub(crate) fn dispatch_dubbing_remux(
             serde_json::to_value(report).unwrap(),
         ),
         Err(error) => ToolCallResult::failure(format!("dubbing_remux failed: {error}")),
+    }
+}
+
+pub(crate) fn dispatch_dubbing_separate_stems(
+    session: &mut ApiSession,
+    arguments: &Value,
+) -> ToolCallResult {
+    let audio_path = match required_str(arguments, "audio_path") {
+        Ok(path) => path.to_owned(),
+        Err(error) => return error,
+    };
+    let output_dir = match required_str(arguments, "output_dir") {
+        Ok(path) => path.to_owned(),
+        Err(error) => return error,
+    };
+    let request = DubbingStemsRequestDto {
+        audio_path,
+        output_dir,
+    };
+    match session.dubbing_separate_stems(&request) {
+        Ok(report) => ToolCallResult::success(
+            format!(
+                "separated {} stems at {} Hz",
+                report.stems.len(),
+                report.sample_rate
+            ),
+            serde_json::to_value(report).unwrap(),
+        ),
+        Err(error) => ToolCallResult::failure(format!("dubbing_separate_stems failed: {error}")),
     }
 }
 

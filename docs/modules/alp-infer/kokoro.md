@@ -38,7 +38,7 @@ model facts.
 ## Allowed dependencies
 
 - `alp-media` (`PcmBuffer`), `alp-voice` (`TtsBackend`, `VoiceError`, `TextNormalizer`)
-- `ort` (pinned `2.0.0-rc.15`), `piper-plus-g2p` (MIT; `bundled-dicts` for CMUdict)
+- `ort` (pinned `2.0.0-rc.10`), `piper-plus-g2p` (MIT; `bundled-dicts` for CMUdict)
 - `serde_json` (tokenizer parsing), standard library
 
 ## Threading / real-time notes

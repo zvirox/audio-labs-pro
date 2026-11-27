@@ -8,13 +8,13 @@ Audio Labs Pro combines a pure Rust core audio/ML backend with a Tauri v2 + Reac
 
 | Layer | Technologies |
 |---|---|
-| Core Domain & Storage | `serde`, `serde_json`, `rusqlite` (WAL block store), `uuid`, `thiserror`, `tracing` |
+| Core Domain & Storage | `serde`, `serde_json` (`*.alp/` `project.json` + checksummed `SampleBlock` storage), `uuid`, `thiserror`, `tracing` |
 | Audio I/O & Engine | `cpal` (PipeWire/ALSA/JACK), `ringbuf`, `crossbeam-channel` |
 | Signal Processing & Peaks | `realfft`, `rustfft`, `nnnoiseless` (RNNoise), custom STFT spectral / LUFS / dynamics (`alp-dsp`) |
 | Media Codecs & Resampling | `symphonia`, `hound`, `claxon`, `lewton`, `rubato`, custom TPDF dither (`alp-media`) |
-| Audio Plugin Hosts | `clack-host` (CLAP), `lilv` / LV2 bindings (`alp-plugin`) |
-| Neural Inference Subprocess | `ort` (`onnxruntime`), `llama-cpp-2` (GGUF), Candle (`qwen3.rs`, `kitten.rs`, `kokoro.rs`, `style_tts2.rs`, `moonshine.rs`) |
-| AI Control & Starship Suite | `tokio`, JSON-RPC 2.0 MCP server (68 tools), `starship-plugin` Unix socket bridge |
+| Audio Plugin Hosts | `clack-host` (CLAP), `lilv` / LV2 bindings, `vst3` COM ABI (`alp-plugin`) |
+| Neural Inference Subprocess | `ort` (`2.0.0-rc.10` / ONNX Runtime 1.22), `llama-cpp-2` (GGUF), Candle (`qwen3.rs`, `kitten.rs`, `kokoro.rs`, `style_tts2.rs`, `moonshine.rs`, `demucs.rs`) |
+| AI Control & Starship Suite | `tokio`, JSON-RPC 2.0 MCP server (87 tools), `starship-plugin` Unix socket bridge |
 | Desktop Host Shell | `tauri` v2, `tauri-build`, `tokio` IPC bridge |
 
 ---
@@ -39,4 +39,4 @@ Audio Labs Pro combines a pure Rust core audio/ML backend with a Tauri v2 + Reac
 ## Linux Packaging & Distribution
 
 - **Unified Package Builder:** `nfpm` via `packaging/nfpm.yaml` producing `.deb`, `.rpm`, and Arch Linux `.pkg.tar.zst` artifacts.
-- **CI & Release:** GitHub Actions on `ubuntu-24.04` (`.github/workflows/ci.yml`, `.github/workflows/release.yml`).
+- **CI & Release:** GitHub Actions on `ubuntu-22.04` (`.github/workflows/ci.yml`, `.github/workflows/release.yml`).

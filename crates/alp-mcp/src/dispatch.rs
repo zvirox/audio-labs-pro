@@ -1446,6 +1446,9 @@ pub fn dispatch(session: &mut ApiSession, tool_name: &str, arguments: &Value) ->
             crate::coverage_ext_dispatch::dispatch_dubbing_fit_rate(session, arguments)
         }
         "dubbing_remux" => crate::coverage_ext_dispatch::dispatch_dubbing_remux(session, arguments),
+        "dubbing_separate_stems" => {
+            crate::coverage_ext_dispatch::dispatch_dubbing_separate_stems(session, arguments)
+        }
         "dsp_spectral_repair" => {
             crate::coverage_ext_dispatch::dispatch_dsp_spectral_repair(session, arguments)
         }

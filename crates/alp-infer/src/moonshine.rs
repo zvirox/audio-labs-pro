@@ -20,7 +20,6 @@ use std::sync::Mutex;
 
 use alp_media::{PcmBuffer, resample};
 use alp_voice::{SttBackend, TranscriptSegment, VoiceError, WordTimestamp};
-use ort::environment::Environment;
 use ort::session::{Session, SessionInputValue};
 use ort::value::Tensor;
 use serde_json::Value as Json;
@@ -60,10 +59,9 @@ const MAX_DECODE_STEPS: usize = 448;
 /// (the tiny model is tuned for short utterances).
 const MAX_INPUT_SECS: u64 = 300;
 
-/// The process-wide ONNX Runtime environment: one per process, shared with
-/// the TTS engines (see `style_tts2::runtime_environment`).
-fn runtime_environment() -> &'static Environment {
-    crate::style_tts2::runtime_environment()
+/// Ensure the process-wide ONNX Runtime environment is initialized once.
+fn ensure_runtime_environment() {
+    crate::style_tts2::ensure_runtime_environment();
 }
 
 /// The 24 KV-cache slot names in a stable order (past and present share it).
@@ -84,10 +82,12 @@ fn kv_names() -> Vec<String> {
 
 /// Empty past tensors shaped `[1, 8, 0, 36]` as the prefill expects.
 fn empty_kv_cache() -> Result<Vec<KvSlot>, VoiceError> {
+    ensure_runtime_environment();
+    let allocator = ort::memory::Allocator::default();
     kv_names()
         .into_iter()
         .map(|name| {
-            let tensor = Tensor::from_array((vec![1, KV_HEADS, 0, KV_HEAD_DIM], Vec::<f32>::new()))
+            let tensor = Tensor::<f32>::new(&allocator, [1_i64, KV_HEADS, 0, KV_HEAD_DIM])
                 .map_err(|e| VoiceError::Backend(format!("cache tensor: {e}")))?;
             Ok((name, tensor))
         })
@@ -355,6 +355,9 @@ impl KvCache {
     fn roll(&mut self, present: Vec<KvSlot>) -> Result<(), VoiceError> {
         let (present_encoder, present_decoder) = KvCache::split(present);
         for (slot, (_, tensor)) in self.encoder.iter_mut().zip(present_encoder) {
+            if tensor.shape().iter().copied().product::<i64>() == 0 {
+                continue;
+            }
             let (shape, data) = tensor
                 .try_extract_tensor::<f32>()
                 .map_err(|e| VoiceError::Backend(format!("reading present encoder KV: {e}")))?;
@@ -406,13 +409,14 @@ impl MoonshineEngine {
         let tokenizer = parse_tokenizer(&tokenizer_path)?;
         let (decoder_start_token_id, eos_token_id) = parse_special_ids(&config_path)?;
 
-        let mut encoder_builder = Session::builder(runtime_environment()).map_err(|e| {
+        ensure_runtime_environment();
+        let encoder_builder = Session::builder().map_err(|e| {
             VoiceError::Backend(format!("ONNX Runtime session builder failed: {e}"))
         })?;
         let encoder = encoder_builder
             .commit_from_file(&encoder_path)
             .map_err(|e| VoiceError::Backend(format!("loading {}: {e}", encoder_path.display())))?;
-        let mut decoder_builder = Session::builder(runtime_environment()).map_err(|e| {
+        let decoder_builder = Session::builder().map_err(|e| {
             VoiceError::Backend(format!("ONNX Runtime session builder failed: {e}"))
         })?;
         let decoder = decoder_builder
@@ -763,9 +767,13 @@ mod tests {
         let empty = empty_kv_cache().expect("empty cache");
         for (name, tensor) in &empty {
             assert!(name.starts_with("past_key_values."));
-            let (shape, data) = tensor.try_extract_tensor::<f32>().expect("read");
+            let shape = tensor.shape();
             assert_eq!(shape.len(), 4);
-            assert_eq!(data.len(), 0, "{name} must have an empty time axis");
+            assert_eq!(
+                shape.iter().copied().product::<i64>(),
+                0,
+                "{name} must have an empty time axis"
+            );
         }
     }
 

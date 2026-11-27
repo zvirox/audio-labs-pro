@@ -27,7 +27,7 @@ Binary executable with command-line interface:
 
 ## Threading / real-time notes
 
-Inference is CPU/worker-bound within this isolated process. It never interacts with the audio callback thread or audio devices. Clients are served sequentially on the accept loop, so loaded models are constructed once per daemon and reused across connections; each engine's ONNX session sits behind a mutex and is idle between requests. All neural engines share the single process-wide `ort::Environment` (rc.15 allows one live environment per process; ADR 0025).
+Inference is CPU/worker-bound within this isolated process. It never interacts with the audio callback thread or audio devices. Clients are served sequentially on the accept loop, so loaded models are constructed once per daemon and reused across connections; each engine's ONNX session sits behind a mutex and is idle between requests. All neural engines share the single process-wide `ort::Environment` (`ort` 2.0.0-rc.10 / ORT 1.22 allows one live environment per process; ADR 0025).
 
 ## Error handling
 

@@ -33,7 +33,7 @@ Installed binaries:
 
 Audio Labs Pro uses a high-contrast, opaque **Linear UI** without compositor blur or visual clutter:
 
-- **Top TitleBar (40 px):** Displays the app mark, `Audio Labs Pro`, current version tag (`v0.1.0-beta.1`), drag region (double-click to maximize/restore), the global Light/Dark `ThemeToggle` (`Ctrl+D`), and window controls.
+- **Top TitleBar (40 px):** Displays the app mark, `Audio Labs Pro`, current version tag (from `tauri.conf.json`, e.g. `v0.1.0-beta.4`), drag region (double-click to maximize/restore), the global Light/Dark `ThemeToggle` (`Ctrl+D`), and window controls.
 - **Collapsible Sidebar (`240 px` / `56 px`):** Switches between **Dashboard** (`Ctrl+0`) and 7 workspaces:
   1. **Voice Studio (`Ctrl+1`)** — Zero-shot voice cloning (requires written consent attestation), TTS synthesis, Neural Models, and Lexicon.
   2. **Multitrack DAW (`Ctrl+2`)** — Non-linear canvas arranger with discrete `Waveform | Spectrogram | Dual` per-track views, gain/pan envelopes, split/trim/slip editing, magnetic snap (`S`), and ripple edit (`R`).

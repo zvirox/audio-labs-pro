@@ -14,27 +14,22 @@ use std::sync::{Mutex, OnceLock};
 use alp_media::PcmBuffer;
 use alp_voice::text::TextNormalizer;
 use alp_voice::{TtsRequest, VoiceError, VoiceInfo, VoiceKind};
-use ort::environment::Environment;
 use ort::session::Session;
 use ort::value::Tensor;
 use piper_plus_g2p::Phonemizer;
 use piper_plus_g2p::english::EnglishPhonemizer;
 
-/// The process-wide ONNX Runtime environment.
+/// Ensure the process-wide ONNX Runtime environment is initialized once.
 ///
 /// ONNX Runtime permits only one live `OrtEnv` per process, so every engine
-/// session shares this single instance instead of building its own (an early
-/// per-engine environment survived dual-engine tests only by drop timing).
-static RUNTIME_ENV: OnceLock<Environment> = OnceLock::new();
+/// session initializes and shares this global instance.
+static RUNTIME_ENV: OnceLock<()> = OnceLock::new();
 
-/// Borrow (initializing once) the shared runtime environment.
-pub(crate) fn runtime_environment() -> &'static Environment {
+/// Initialize (once) the shared ONNX Runtime environment.
+pub(crate) fn ensure_runtime_environment() {
     RUNTIME_ENV.get_or_init(|| {
-        ort::init()
-            .with_name("alp-infer")
-            .build()
-            .expect("ONNX Runtime environment init")
-    })
+        let _ = ort::init().with_name("alp-infer").commit();
+    });
 }
 
 /// Bytes per style row: 256 f32 lanes.
@@ -245,7 +240,8 @@ impl NeuralSession {
         required: &[&str],
     ) -> Result<Self, VoiceError> {
         let started = std::time::Instant::now();
-        let mut builder = Session::builder(runtime_environment()).map_err(|e| {
+        ensure_runtime_environment();
+        let builder = Session::builder().map_err(|e| {
             VoiceError::Backend(format!("ONNX Runtime session builder failed: {e}"))
         })?;
         let session = builder
@@ -253,9 +249,9 @@ impl NeuralSession {
             .map_err(|e| VoiceError::Backend(format!("loading {}: {e}", model_path.display())))?;
 
         let input_names: Vec<String> = session
-            .inputs()
+            .inputs
             .iter()
-            .map(|input| input.name().to_owned())
+            .map(|input| input.name.clone())
             .collect();
         for expected in required {
             if !input_names.iter().any(|name| name == expected) {

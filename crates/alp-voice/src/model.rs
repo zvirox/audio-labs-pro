@@ -38,6 +38,8 @@ pub enum ModelKind {
     Stt,
     /// Voice cloning model (Phase 8).
     VoiceClone,
+    /// Four-stem audio separation model (Phase 16).
+    StemSeparation,
 }
 
 /// License information for a model requiring user acknowledgment.
@@ -431,6 +433,33 @@ pub fn standard_catalogue() -> Vec<ModelManifest> {
             is_builtin: false,
             voice_names: vec!["Dynamic Reference Clone".into()],
         },
+        ModelManifest {
+            id: ModelId::new("demucs-4stem"),
+            name: "HTDemucs 4-Stem Separator".into(),
+            description: "MIT-licensed hybrid transformer Demucs 4-stem ONNX model (vocals, drums, bass, other) executed via ONNX Runtime.".into(),
+            kind: ModelKind::StemSeparation,
+            author: "Meta Research / StemSplitio".into(),
+            version: "htdemucs-fp16weights".into(),
+            license: ModelLicense {
+                name: "MIT".into(),
+                spdx: "MIT".into(),
+                terms: "MIT License. Permissive for open-source and commercial applications.".into(),
+                accepted: false,
+            },
+            files: vec![ModelFile {
+                filename: "htdemucs_fp16weights.onnx".into(),
+                size_bytes: 165_612_636,
+                sha256: "d05c269d0178d2a72ad484b10b11dd370193fc923201c3b27a99f848745db70a".into(),
+                url: "https://huggingface.co/StemSplitio/htdemucs-onnx/resolve/main/htdemucs_fp16weights.onnx".into(),
+            }],
+            is_builtin: false,
+            voice_names: vec![
+                "Vocals".into(),
+                "Drums".into(),
+                "Bass".into(),
+                "Other".into(),
+            ],
+        },
     ]
 }
 
@@ -473,5 +502,21 @@ mod tests {
         );
         assert!(qwen.files.iter().all(|file| file.sha256.len() == 64));
         assert!(qwen.total_size_bytes() > 0);
+    }
+
+    #[test]
+    fn catalogue_contains_demucs_4stem_manifest() {
+        let catalogue = standard_catalogue();
+        let demucs = catalogue
+            .iter()
+            .find(|m| m.id.as_str() == "demucs-4stem")
+            .expect("demucs-4stem manifest must exist in standard catalogue");
+        assert_eq!(demucs.kind, ModelKind::StemSeparation);
+        assert_eq!(demucs.license.spdx, "MIT");
+        assert!(!demucs.is_builtin);
+        assert_eq!(demucs.files.len(), 1);
+        assert_eq!(demucs.files[0].filename, "htdemucs_fp16weights.onnx");
+        assert_eq!(demucs.files[0].sha256.len(), 64);
+        assert!(demucs.total_size_bytes() > 0);
     }
 }

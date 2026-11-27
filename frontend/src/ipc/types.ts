@@ -142,7 +142,7 @@ export interface AudioDevice {
 export interface ModelItem {
   id: string;
   name: string;
-  kind: 'tts_light' | 'tts_medium' | 'stt' | 'cloning';
+  kind: 'tts_light' | 'tts_medium' | 'stt' | 'cloning' | 'stem_separation';
   size_mb: number;
   status: 'installed' | 'verified' | 'downloading' | 'not_installed' | 'corrupt';
   progress?: number;

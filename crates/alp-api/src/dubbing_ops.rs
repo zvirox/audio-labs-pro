@@ -1,16 +1,46 @@
 //! Automation wrappers for offline dubbing operations.
 //!
-//! Rate fitting and video remux use existing pure/media implementations and
-//! never contact the inference daemon. Stem separation stays out of this crate
-//! because `alp-api` may not depend on `alp-infer`.
+//! Rate fitting and video remux use existing pure/media implementations, while
+//! stem separation reaches `alp-infer` across the `alp_voice::InferClient` IPC
+//! boundary so `alp-api` never depends on `alp-infer`.
 
 use alp_media::{
     ExportSettings, RemuxReport, RemuxRequest, VideoRemuxer, WavBitDepth, decode, export,
 };
-use alp_voice::{FitPlan, fit_take};
+use alp_voice::{FitPlan, InferClient, fit_take};
 use serde::{Deserialize, Serialize};
 
 use crate::{ApiError, PermissionTier, session::ApiSession};
+
+/// Stem names in the order returned by the inference daemon.
+pub const API_DUB_STEM_NAMES: [&str; 4] = ["vocals", "drums", "bass", "other"];
+
+/// One exported stem file from `dubbing_separate_stems`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ApiStemFileDto {
+    /// `vocals`, `drums`, `bass`, or `other`.
+    pub name: String,
+    /// Exported WAV path inside the workspace.
+    pub path: String,
+}
+
+/// Request to separate a mixed audio file into four stems via `alp-infer`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DubbingStemsRequestDto {
+    /// Mixed audio file on disk inside the workspace.
+    pub audio_path: String,
+    /// Directory inside the workspace that receives `{vocals,drums,bass,other}.wav`.
+    pub output_dir: String,
+}
+
+/// Result of a four-stem separation call.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DubbingStemsReport {
+    /// Exported stems in `API_DUB_STEM_NAMES` order.
+    pub stems: Vec<ApiStemFileDto>,
+    /// Sample rate of the exported stems.
+    pub sample_rate: u32,
+}
 
 /// Request to fit a rendered take to a dialogue window.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -97,6 +127,53 @@ impl ApiSession {
         };
         Ok(VideoRemuxer::new().remux(&remux_request)?)
     }
+
+    /// Separate a mixed audio file into four WAV stems via the `alp-infer` daemon.
+    pub fn dubbing_separate_stems(
+        &mut self,
+        request: &DubbingStemsRequestDto,
+    ) -> Result<DubbingStemsReport, ApiError> {
+        self.check_permission(PermissionTier::Export)?;
+        let input = self.sandbox.validate_path(&request.audio_path)?;
+        let output_dir = self.sandbox.validate_path(&request.output_dir)?;
+        let mixed = decode(&input)?;
+        let client = InferClient::new();
+        if !client.is_alive() {
+            return Err(ApiError::Validation(
+                "alp-infer daemon is not running; start it before separating stems".into(),
+            ));
+        }
+        let status = client
+            .status()
+            .map_err(|error| ApiError::Validation(format!("inference status failed: {error}")))?;
+        if status.active_stem_model.is_none() {
+            let loaded = client.load_model("demucs-4stem").map_err(|error| {
+                ApiError::Validation(format!("loading demucs-4stem failed: {error}"))
+            })?;
+            if loaded.active_stem_model.is_none() {
+                return Err(ApiError::Validation(
+                    "demucs-4stem could not be loaded; download via `alp-cli model download demucs-4stem` or set ALP_DEMUCS_DIR".into(),
+                ));
+            }
+        }
+        let stems = client
+            .separate_stems(&mixed)
+            .map_err(|error| ApiError::Validation(format!("stem separation failed: {error}")))?;
+        std::fs::create_dir_all(&output_dir)?;
+        let mut files = Vec::with_capacity(4);
+        for (name, pcm) in API_DUB_STEM_NAMES.iter().zip(stems.iter()) {
+            let path = output_dir.join(format!("{name}.wav"));
+            export(&path, pcm, &ExportSettings::wav(WavBitDepth::Int16))?;
+            files.push(ApiStemFileDto {
+                name: (*name).to_owned(),
+                path: path.display().to_string(),
+            });
+        }
+        Ok(DubbingStemsReport {
+            stems: files,
+            sample_rate: stems[0].sample_rate(),
+        })
+    }
 }
 
 #[cfg(test)]
@@ -168,5 +245,27 @@ mod tests {
         });
         // ffmpeg/ffprobe availability decides the exact error, never a panic.
         let _ = result;
+    }
+
+    #[test]
+    fn separate_stems_checks_sandbox_and_reports_unavailable_daemon_honestly() {
+        let dir = tempdir().expect("tempdir");
+        let input = dir.path().join("mix.wav");
+        write_test_tone(&input, 0.2, 44_100, 2, 440.0, 0.2).expect("write mix");
+        let mut session = session_in(dir.path());
+        let escape = session
+            .dubbing_separate_stems(&DubbingStemsRequestDto {
+                audio_path: "/etc/passwd".into(),
+                output_dir: dir.path().join("stems").display().to_string(),
+            })
+            .expect_err("sandbox blocks outside path");
+        assert!(matches!(escape, ApiError::SandboxEscape(_)));
+
+        let result = session.dubbing_separate_stems(&DubbingStemsRequestDto {
+            audio_path: input.display().to_string(),
+            output_dir: dir.path().join("stems").display().to_string(),
+        });
+        // Without a running daemon/model this returns a clear Validation error, never a panic.
+        assert!(result.is_err());
     }
 }

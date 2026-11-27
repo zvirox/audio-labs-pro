@@ -29,7 +29,7 @@ Schemas state the attach requirement in tool descriptions; actual refusal is pro
 
 ## Testing
 
-Covered by the 86-tool count assertion in `main.rs` and the headless transport checks in `scripts/mcp_eval.py` Suite 11.
+Covered by the 87-tool count assertion in `main.rs` and the headless transport checks in `scripts/mcp_eval.py` Suite 11.
 
 ## Known limits
 

@@ -2,9 +2,9 @@
 
 ## Purpose
 
-CLAP and LV2 audio plugin hosting engine for Audio Labs Pro. Provides standard
+CLAP, LV2, and VST3 audio plugin hosting engine for Audio Labs Pro. Provides standard
 filesystem discovery, dynamic library loading, unified real-time audio block
-processing, parameter automation, and state management.
+processing, parameter automation, X11 editor hosting (`VST3`), and state management.
 
 ## Public API
 
@@ -18,13 +18,14 @@ processing, parameter automation, and state management.
 ## Data flow
 
 Discovers installed plugins in standard Linux audio paths (`/usr/lib/clap`, `/usr/lib/lv2`,
-`~/.clap`, `~/.lv2`). Instantiates active plugins via C ABI bridges, connects audio scratch
+`/usr/lib/vst3`, `~/.clap`, `~/.lv2`, `~/.vst3`). Instantiates active plugins via C/COM ABI bridges (`vst3` crate for VST3), connects audio scratch
 buffers, and processes blocks in series on track effect chains.
 
 ## Allowed dependencies
 
 - `alp-core`: Core types and project structures.
 - `libloading`: Dynamic shared library loading.
+- `vst3`: Steinberg VST3 COM ABI interface bindings (`MIT OR Apache-2.0`).
 - `serde`, `serde_json`: Serialization and caching.
 - `thiserror`, `tracing`, `uuid`.
 

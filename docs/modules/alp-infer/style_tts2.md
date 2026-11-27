@@ -47,7 +47,7 @@ chunked synthesis flow (ADR 0024), and waveform concatenation. `kokoro.rs` and
 
 - `alp-media` (`PcmBuffer`), `alp-voice` (`TextNormalizer`, `TtsRequest`,
   `VoiceError`, `VoiceInfo`, `VoiceKind`)
-- `ort` (pinned `2.0.0-rc.15`), `piper-plus-g2p` (MIT; bundled CMUdict per
+- `ort` (pinned `2.0.0-rc.10`), `piper-plus-g2p` (MIT; bundled CMUdict per
   ADR 0010), `serde_json` (vocabulary parsing), standard library
 
 ## Threading / real-time notes

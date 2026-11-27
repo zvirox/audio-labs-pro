@@ -48,8 +48,8 @@ its loads and vice versa.
 
 ## Allowed dependencies
 
-- `ort` 2.0.0-rc.15 CPU (shared process-wide environment via
-  `style_tts2::runtime_environment`; rc.15 allows one live `Environment`)
+- `ort` 2.0.0-rc.10 CPU (shared process-wide environment via
+  `style_tts2::runtime_environment`; allows one live `Environment`)
 - `alp_media` (`resample`, `PcmBuffer`), `alp_voice`
   (`SttBackend`, `TranscriptSegment`, `WordTimestamp`, `VoiceError`, `segment_speech`, `VadConfig`)
 - `serde_json` for tokenizer/config reads

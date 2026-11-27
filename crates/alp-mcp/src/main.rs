@@ -1059,7 +1059,7 @@ mod tests {
             .as_array()
             .expect("tools")
             .clone();
-        assert_eq!(tools.len(), 86, "the advertised surface is 86 tools");
+        assert_eq!(tools.len(), 87, "the advertised surface is 87 tools");
         for tool in &tools {
             let name = tool["name"].as_str().expect("name");
             let title = tool["title"].as_str().unwrap_or_default();

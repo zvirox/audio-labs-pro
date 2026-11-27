@@ -541,6 +541,17 @@ export async function getModelCatalogue(): Promise<ModelItem[]> {
       description: 'Zero-shot voice cloning engine strictly gated by human legal consent record.',
       is_builtin: true,
     },
+    {
+      id: 'demucs-4stem',
+      name: 'HTDemucs 4-Stem Separator',
+      kind: 'stem_separation',
+      size_mb: 158.0,
+      status: 'not_installed',
+      license: 'MIT',
+      spdx: 'MIT',
+      description: '4-stem ONNX music and speech separator (vocals, drums, bass, other).',
+      is_builtin: false,
+    },
   ];
 }
 

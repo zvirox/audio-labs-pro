@@ -8,7 +8,7 @@
 ## 1. Automated Workflows (`.github/workflows/`)
 
 - **`.github/workflows/ci.yml`:** Runs on push/PR to `main` (`cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test --workspace`, `npm run check:linear`, `npm test`, `npm run build`, and `./scripts/check-{deps,docs,ui,file-length}.sh`).
-- **`.github/workflows/release.yml`:** Runs on `v*` tag pushes on `ubuntu-24.04`. Builds release binaries (`audio-labs-pro`, `alp-cli`, `alp-infer`, `alp-mcp`) and delegates multi-distro packaging to `nfpm`.
+- **`.github/workflows/release.yml`:** Runs on `v*` tag pushes on `ubuntu-22.04` (compatible with Ubuntu 22.04 `glibc 2.35+`, Ubuntu 24.04, Fedora, and Arch). Builds release binaries (`audio-labs-pro`, `alp-cli`, `alp-infer`, `alp-mcp`) and delegates multi-distro packaging to `nfpm`.
 
 ---
 
